@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.assistant;
+package biz.paluch.dap.assistant.presentation;
 
 import javax.swing.Icon;
 

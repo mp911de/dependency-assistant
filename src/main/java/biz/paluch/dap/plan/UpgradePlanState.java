@@ -29,6 +29,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
+import biz.paluch.dap.artifact.HasPackageIdentity;
 import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
@@ -380,7 +381,7 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 		static Item from(PlannedUpgrade plannedUpgrade, ArtifactVersion targetVersion) {
 
 			List<Member> members = plannedUpgrade.getUpgradeCandidates().stream().map(Member::of).toList();
-			return from(plannedUpgrade.getDependencyName(), targetVersion, members,
+			return from(plannedUpgrade.getDependencyOrProjectName(), targetVersion, members,
 					plannedUpgrade.getUpgradeCandidates());
 		}
 
@@ -819,7 +820,7 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 	 * emits no update of its own because another member owns the property write.
 	 */
 	@Tag("member")
-	public static class Member {
+	public static class Member implements HasPackageIdentity {
 
 		@Attribute
 		public boolean implicit;
@@ -891,6 +892,7 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 		}
 
 		@Transient
+		@Override
 		public PackageIdentity getPackageIdentity() {
 			return PackageIdentity.of(ArtifactId.of(groupId, artifactId), packageSystem);
 		}

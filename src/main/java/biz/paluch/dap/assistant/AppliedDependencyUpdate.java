@@ -18,8 +18,8 @@ package biz.paluch.dap.assistant;
 
 import java.util.Comparator;
 
-import biz.paluch.dap.DependencyPresentation;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.assistant.presentation.DependencyPresentation;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.support.ArtifactVersionChange;
 import biz.paluch.dap.support.DependencyUpdate;

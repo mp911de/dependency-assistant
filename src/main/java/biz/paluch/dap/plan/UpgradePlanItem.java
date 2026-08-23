@@ -36,6 +36,7 @@ import biz.paluch.dap.ticket.TicketKey;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.Sequence;
 import biz.paluch.dap.util.StringUtils;
+import com.intellij.openapi.actionSystem.DataKey;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.Assert;
@@ -47,20 +48,29 @@ import org.springframework.util.ObjectUtils;
  * Persisted plan state is resolved into this type by the plan loader.
  *
  * <p>Item identity is the {@link #getId() item id} alone: two items with the
- * same id are equal regardless of their versions or linked ticket. The linked
- * ticket is the one mutable aspect, replaced in place through
- * {@link #setTicket} by the link and unlink undo flow; every other member fact
- * is fixed at construction.
+ * same id are equal regardless of their versions, display name, or linked
+ * ticket. The linked ticket and the display name are the two mutable aspects,
+ * replaced in place through {@link #setTicket} by the link and unlink undo flow
+ * and through {@link #setDisplayName} by the rename undo flow; every other
+ * member fact is fixed at construction.
  *
  * @author Mark Paluch
  */
 class UpgradePlanItem implements Sequence<ItemDependency> {
 
+	/**
+	 * The single top-level plan item a rename applies to, published by the Upgrade
+	 * Plan panel only while exactly one top-level row is selected and the plan is
+	 * idle.
+	 */
+	static final DataKey<UpgradePlanItem> RENAME_TARGET = DataKey
+			.create("DependencyAssistant.UpgradePlan.RenameTarget");
+
 	private final ItemId itemId;
 
 	private final List<ItemDependency> members;
 
-	private final String displayName;
+	private String displayName;
 
 	private final AttentionLevel attentionLevel;
 
@@ -191,6 +201,16 @@ class UpgradePlanItem implements Sequence<ItemDependency> {
 
 	public String getDisplayName() {
 		return displayName;
+	}
+
+	/**
+	 * Replace the display name in place. Driven by the rename undo flow; the name
+	 * is expected to be sanitized and non-blank.
+	 *
+	 * @param displayName the new display name.
+	 */
+	public void setDisplayName(String displayName) {
+		this.displayName = displayName;
 	}
 
 	/**

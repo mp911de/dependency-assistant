@@ -17,6 +17,7 @@
 package biz.paluch.dap.assistant;
 
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.assistant.presentation.ProjectDisplayName;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;

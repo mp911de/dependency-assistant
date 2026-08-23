@@ -19,8 +19,6 @@ package biz.paluch.dap.lookup;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
-import biz.paluch.dap.metadata.ProjectMetadata;
-import biz.paluch.dap.metadata.ProjectMetadataService;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
@@ -32,7 +30,7 @@ import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Per-file deep module that resolves a build-file element to its
+ * Per-file module that resolves a build-file element to its
  * {@link ArtifactReference} and current version.
  *
  * <p>Lookup methods are cache-only and never trigger remote repository access.
@@ -44,9 +42,7 @@ public class VersionUpgradeLookup {
 
 	private final StateService stateService;
 
-	private final ProjectMetadataService metadataService;
-
-	private final @Nullable ProjectState projectState;
+	private final ProjectState projectState;
 
 	private final ArtifactReferenceResolver resolver;
 
@@ -54,16 +50,12 @@ public class VersionUpgradeLookup {
 	 * Create a {@code VersionUpgradeLookup} backed by the given state and resolver.
 	 *
 	 * @param stateService the state service exposing cached release data.
-	 * @param metadataService
-	 * @param projectState the project dependency state, or {@literal null} if it is
-	 * unavailable.
-	 * @param resolver the build-tool-specific reference resolver .
+	 * @param projectState the project dependency state.
+	 * @param resolver the build-tool-specific reference resolver.
 	 */
-	public VersionUpgradeLookup(StateService stateService, ProjectMetadataService metadataService,
-			@Nullable ProjectState projectState,
+	public VersionUpgradeLookup(StateService stateService, ProjectState projectState,
 			ArtifactReferenceResolver resolver) {
 		this.stateService = stateService;
-		this.metadataService = metadataService;
 		this.projectState = projectState;
 		this.resolver = resolver;
 	}
@@ -73,8 +65,7 @@ public class VersionUpgradeLookup {
 
 		StateService stateService = StateService.getInstance(project);
 		ProjectState projectState = stateService.getProjectState(projectId);
-		ProjectMetadataService metadataService = ProjectMetadataService.getInstance(project);
-		return new VersionUpgradeLookup(stateService, metadataService, projectState,
+		return new VersionUpgradeLookup(stateService, projectState,
 				referenceResolver);
 	}
 
@@ -132,7 +123,7 @@ public class VersionUpgradeLookup {
 	}
 
 	public @Nullable VersionProperty findProperty(String property) {
-		return projectState != null ? projectState.findProperty(property) : null;
+		return projectState.findProperty(property);
 	}
 
 	/**
@@ -152,16 +143,8 @@ public class VersionUpgradeLookup {
 
 	private @Nullable ArtifactVersion findCurrentVersion(ArtifactId artifactId) {
 
-		if (projectState == null) {
-			return null;
-		}
-
 		Dependency dependency = projectState.findDependency(artifactId);
 		return dependency != null ? dependency.getCurrentVersion() : null;
-	}
-
-	public ProjectMetadata getMetadata(ArtifactId artifactId) {
-		return metadataService.getMetadata(artifactId);
 	}
 
 }

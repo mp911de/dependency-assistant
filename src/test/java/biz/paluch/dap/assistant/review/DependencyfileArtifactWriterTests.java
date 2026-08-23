@@ -18,10 +18,11 @@ package biz.paluch.dap.assistant.review;
 
 import java.util.List;
 
-import biz.paluch.dap.assistant.review.DependencyfileArtifactWriter.ArtifactEntry;
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.TestFixture;
+import biz.paluch.dap.rule.DependencyfileArtifacts;
+import biz.paluch.dap.rule.DependencyfileArtifacts.ArtifactEntry;
 import com.intellij.json.psi.JsonFile;
 import com.intellij.json.psi.JsonObject;
 import com.intellij.json.psi.JsonProperty;
@@ -139,7 +140,7 @@ class DependencyfileArtifactWriterTests {
 	private TextRange insert(PsiFile file, ArtifactEntry... entries) {
 		return WriteCommandAction.writeCommandAction(fixture.getProject())
 				.compute(
-						() -> DependencyfileArtifactWriter.insertEntries(fixture.getProject(), file, List.of(entries)));
+						() -> DependencyfileArtifacts.insertEntries(fixture.getProject(), file, List.of(entries)));
 	}
 
 	private static List<String> artifactKeys(PsiFile file) {

@@ -30,7 +30,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import biz.paluch.dap.DependencyPresentation;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
@@ -43,18 +42,21 @@ import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.assistant.ArtifactReferenceContext;
-import biz.paluch.dap.assistant.DependencyPresentationFactory;
 import biz.paluch.dap.assistant.VersionStatus;
+import biz.paluch.dap.assistant.presentation.DependencyPresentation;
+import biz.paluch.dap.assistant.presentation.DependencyPresentationFactory;
 import biz.paluch.dap.checker.SecurityShieldIcons;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.checker.Vulnerability;
 import biz.paluch.dap.metadata.ProjectMetadata;
 import biz.paluch.dap.metadata.ProjectMetadataService;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
+import biz.paluch.dap.state.ApplicationSettings;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.state.VersionProperty;
+import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ReleaseDateFormatter;
 import biz.paluch.dap.util.HttpClientUtil;
 import biz.paluch.dap.util.MessageBundle;
@@ -62,6 +64,7 @@ import com.intellij.icons.AllIcons;
 import com.intellij.lang.documentation.DocumentationMarkup;
 import com.intellij.openapi.util.text.HtmlBuilder;
 import com.intellij.openapi.util.text.HtmlChunk;
+import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -110,7 +113,23 @@ class DependencyDocumentationRenderer {
 		this.currentVersion = currentVersion;
 		this.linkable = linkable;
 		this.metadataService = new ProjectMetadataService(null, stateService.getCache());
-		this.presentationFactory = new DependencyPresentationFactory(stateService);
+		this.presentationFactory = new DependencyPresentationFactory(this.metadataService, new ApplicationSettings());
+	}
+
+	public DependencyDocumentationRenderer(ArtifactReferenceContext context, boolean linkable) {
+
+		ProjectDependencyContext dependencyContext = context.getDependencyContext();
+		ArtifactDeclaration declaration = context.getDeclaration();
+		PsiElement psiElement = declaration.getDeclarationElement();
+
+		this.packageSystem = context.getPackageIdentity().getPackageSystem();
+		this.interfaceAssistant = dependencyContext.getInterfaceAssistant();
+		this.stateService = context.getStateService();
+		this.evaluator = context.getEvaluator();
+		this.currentVersion = context.getCurrentVersion();
+		this.linkable = linkable;
+		this.metadataService = ProjectMetadataService.getInstance(psiElement.getProject());
+		this.presentationFactory = new DependencyPresentationFactory(psiElement.getProject());
 	}
 
 	/**
@@ -125,11 +144,7 @@ class DependencyDocumentationRenderer {
 	 * @return the renderer.
 	 */
 	static DependencyDocumentationRenderer from(ArtifactReferenceContext context, boolean linkable) {
-
-		ProjectDependencyContext dependencyContext = context.getDependencyContext();
-		return new DependencyDocumentationRenderer(context.getDeclaration().getPackageSystem(),
-				dependencyContext.getInterfaceAssistant(), context.getStateService(),
-				context.getEvaluator(), context.getVersion(), linkable);
+		return new DependencyDocumentationRenderer(context, linkable);
 	}
 
 	/**
@@ -160,8 +175,7 @@ class DependencyDocumentationRenderer {
 		HtmlBuilder content = new HtmlBuilder();
 
 		DependencyPresentation presentation = presentationFactory.create(PackageIdentity.of(artifactId, packageSystem),
-				evaluator.getRule(),
-				interfaceAssistant);
+				evaluator.getRule(), interfaceAssistant);
 		List<HtmlChunk> sections = new ArrayList<>();
 		if (presentation.hasProjectName()) {
 			sections.add(section("documentation.project-name", HtmlChunk.text(presentation.getProjectName())));
@@ -550,7 +564,6 @@ class DependencyDocumentationRenderer {
 
 			content.append(group.renderHeader(interfaceAssistant));
 			if (group.hasReleases()) {
-
 				ReleaseDigest digest = group.digest(currentVersion, MAX_PREVIEWS, MAX_VERSIONS);
 				content.append(versionsTable(group.artifactIds.getFirst(), digest, withIcons, formatter, presentation));
 			}

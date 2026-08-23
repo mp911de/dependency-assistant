@@ -14,11 +14,13 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap;
+package biz.paluch.dap.assistant.presentation;
 
 import biz.paluch.dap.artifact.HasArtifactId;
 import biz.paluch.dap.artifact.HasPackageIdentity;
 import biz.paluch.dap.artifact.PackageIdentity;
+import biz.paluch.dap.rule.DependencyRule;
+import com.intellij.openapi.util.text.HtmlChunk;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -45,8 +47,8 @@ import org.jspecify.annotations.Nullable;
  * threads.
  *
  * @author Mark Paluch
- * @see biz.paluch.dap.assistant.IconDependencyPresentation
- * @see biz.paluch.dap.assistant.DependencyPresentationFactory
+ * @see IconDependencyPresentation
+ * @see DependencyPresentationFactory
  */
 public interface DependencyPresentation extends HasArtifactId {
 
@@ -90,6 +92,8 @@ public interface DependencyPresentation extends HasArtifactId {
 
 	/**
 	 * Return the curated dependency name.
+	 * <p>Either derived from {@link DependencyRule#getDependencyName()} or
+	 * {@link biz.paluch.dap.state.ApplicationSettings#findNameHint(PackageIdentity)}.
 	 *
 	 * @return the dependency name.
 	 * @throws IllegalStateException if no dependency name is present.
@@ -114,6 +118,19 @@ public interface DependencyPresentation extends HasArtifactId {
 	 * @see #hasProjectName()
 	 */
 	String getProjectName();
+
+	/**
+	 * Return the dependency name as HTML.
+	 * <p>Favors {@link #getDependencyName()} if present, otherwise
+	 * {@link #getDisplayName()} wrapped in quotes to indicate the raw artifact
+	 * coordinates.
+	 * @return the dependency name as HTML.
+	 */
+	default HtmlChunk getHtmlDisplayName() {
+		return hasDependencyName()
+				? HtmlChunk.text(getDependencyName())
+				: HtmlChunk.text("'" + getDisplayName() + "'");
+	}
 
 	/**
 	 * Create a presentation from the artifact coordinates of the given source,
@@ -144,7 +161,7 @@ public interface DependencyPresentation extends HasArtifactId {
 	 * Create a fully populated presentation.
 	 *
 	 * @param pkg the artifact coordinates to present.
-	 * @param displayName the rendered artifact coordinates returned from
+	 * @param artifactIdDisplayName the rendered artifact coordinates returned from
 	 * {@link #getArtifactIdDisplayName()}.
 	 * @param artifactId the rendered artifact coordinates.
 	 * @param dependencyName the curated dependency name; can be {@literal null} if
@@ -153,10 +170,10 @@ public interface DependencyPresentation extends HasArtifactId {
 	 * {@literal null} if the metadata does not declare one.
 	 * @return the presentation carrying the given name facets.
 	 */
-	static DependencyPresentation of(PackageIdentity pkg, String displayName,
+	static DependencyPresentation of(PackageIdentity pkg, String artifactIdDisplayName,
 			String artifactId, @Nullable String dependencyName,
 			@Nullable String projectName) {
-		return new SimpleDependencyPresentation(pkg, displayName, artifactId, dependencyName, projectName);
+		return new SimpleDependencyPresentation(pkg, artifactIdDisplayName, artifactId, dependencyName, projectName);
 	}
 
 }

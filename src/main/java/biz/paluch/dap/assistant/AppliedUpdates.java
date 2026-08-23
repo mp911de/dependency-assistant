@@ -24,7 +24,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
-import biz.paluch.dap.DependencyPresentation;
+import biz.paluch.dap.assistant.presentation.DependencyPresentation;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.DependencyUpdates;

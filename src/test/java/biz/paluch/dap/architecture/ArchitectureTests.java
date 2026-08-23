@@ -18,7 +18,6 @@ package biz.paluch.dap.architecture;
 
 import java.util.Arrays;
 
-import biz.paluch.dap.DependencyPresentation;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
@@ -26,7 +25,7 @@ import biz.paluch.dap.artifact.BillOfMaterials;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.VersionedArtifact;
 import biz.paluch.dap.artifact.VersionedPackage;
-import biz.paluch.dap.assistant.IconDependencyPresentation;
+import biz.paluch.dap.assistant.presentation.DependencyPresentation;
 import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.metadata.IssueTracker;
 import biz.paluch.dap.rule.DependencyRuleService;
@@ -77,7 +76,7 @@ class ArchitectureTests {
 						.withClosedHierarchy(BillOfMaterials.class)
 						.withStrictClosedHierarchy(PropertyResolver.class)
 						.withStrictClosedHierarchy(DependencyPresentation.class)
-						.withStrictClosedHierarchy(IconDependencyPresentation.class)
+						.withClosedHierarchy(DependencyPresentation.class)
 						.withStrictClosedHierarchy(IssueTracker.class)
 						.withStrictClosedHierarchy(ProjectDependencyContext.class)
 						.withStrictClosedHierarchy(VulnerabilityRepository.class)
@@ -119,8 +118,8 @@ class ArchitectureTests {
 	@ArchTest
 	ArchRule assistant = packageDependencies(
 			"assistant", "biz.paluch.dap", "artifact",
-			"checker", "lookup", "metadata", "rule", "state", "support", "upgrade",
-			"util");
+			"assistant.presentation", "checker", "lookup", "metadata",
+			"rule", "state", "support", "upgrade", "util");
 
 	@ArchTest
 	ArchRule assistantAction = packageDependencies("assistant.action",
@@ -129,30 +128,33 @@ class ArchitectureTests {
 
 	@ArchTest
 	ArchRule assistantCheck = packageDependencies("assistant.check",
-			"biz.paluch.dap", "artifact", "assistant", "checker", "lookup",
-			"metadata", "rule", "state", "support", "upgrade", "util");
+			"biz.paluch.dap", "artifact", "assistant", "assistant.presentation",
+			"checker", "lookup", "metadata", "presentation", "rule", "state",
+			"support", "upgrade", "util");
 
 	@ArchTest
 	ArchRule assistantCompletion = packageDependencies("assistant.completion",
-			"biz.paluch.dap", "artifact", "assistant", "checker", "lookup",
-			"metadata", "rule", "state", "support", "util");
+			"biz.paluch.dap", "artifact", "assistant", "assistant.presentation",
+			"checker", "lookup", "metadata", "presentation", "rule", "state",
+			"support", "util");
 
 	@ArchTest
 	ArchRule assistantDocumentation = packageDependencies("assistant.documentation",
-			"biz.paluch.dap", "artifact", "assistant", "assistant.action", "checker",
-			"lookup", "metadata", "rule", "state", "support", "util");
+			"biz.paluch.dap", "artifact", "assistant", "assistant.action",
+			"assistant.presentation", "checker", "lookup", "metadata", "presentation",
+			"rule", "state", "support", "util");
 
 	@ArchTest
 	ArchRule assistantEditor = packageDependencies("assistant.editor",
 			"biz.paluch.dap", "artifact", "assistant", "assistant.action",
-			"assistant.check", "checker", "lookup", "metadata", "rule", "severity",
-			"state", "support", "upgrade", "util");
+			"assistant.check", "assistant.presentation", "checker", "lookup", "metadata",
+			"presentation", "rule", "severity", "state", "support", "upgrade", "util");
 
 	@ArchTest
 	ArchRule assistantReview = packageDependencies("assistant.review",
 			"biz.paluch.dap", "artifact", "assistant", "assistant.check",
-			"checker", "lookup", "metadata", "plan", "rule", "state", "support", "upgrade",
-			"util");
+			"assistant.presentation", "checker", "lookup", "metadata", "plan", "rule",
+			"state", "support", "upgrade", "util");
 
 	@ArchTest
 	ArchRule antora = packageDependencies("antora",

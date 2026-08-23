@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -31,17 +30,13 @@ import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
 import biz.paluch.dap.metadata.ProjectMetadata;
 import biz.paluch.dap.metadata.ProjectMetadataService;
 import biz.paluch.dap.rule.ArtifactPattern;
+import biz.paluch.dap.rule.DependencyfileArtifacts;
+import biz.paluch.dap.rule.DependencyfileArtifacts.ArtifactEntry;
 import biz.paluch.dap.rule.DependencyfileService;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.FileUtils;
 import biz.paluch.dap.util.MessageBundle;
-import biz.paluch.dap.util.StringUtils;
-import com.intellij.json.psi.JsonElementGenerator;
-import com.intellij.json.psi.JsonFile;
-import com.intellij.json.psi.JsonObject;
-import com.intellij.json.psi.JsonProperty;
-import com.intellij.json.psi.JsonStringLiteral;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
@@ -50,13 +45,9 @@ import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.fileEditor.OpenFileDescriptor;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.TextRange;
-import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiDocumentManager;
-import com.intellij.psi.PsiElement;
-import com.intellij.psi.PsiFile;
-import com.intellij.psi.codeStyle.CodeStyleManager;
 import com.intellij.util.IncorrectOperationException;
 import org.jspecify.annotations.Nullable;
 
@@ -65,13 +56,12 @@ import org.jspecify.annotations.Nullable;
  * {@code dependencyfile.json}, creating the descriptor when none exists.
  *
  * <p>For a regular row the entry key is the narrowest
- * {@link ArtifactPattern#keyFor(ArtifactId) pattern key}. For an group whose
+ * {@link ArtifactPattern#keyFor(ArtifactId) pattern key}. For a group whose
  * members share a groupId and a word-boundary common prefix, a single wildcard
  * entry (for example {@code org.springframework.boot:spring-boot-starter-*})
  * covers them all; otherwise one entry per member is written. Entries already
- * present are skipped, and the new key is inserted before the first existing
- * key that sorts after it (case-insensitive), so the descriptor stays loosely
- * ordered without a full rewrite.
+ * present are skipped; the PSI edits themselves live in
+ * {@link DependencyfileArtifacts}.
  *
  * @author Mark Paluch
  */
@@ -107,7 +97,7 @@ class DependencyfileArtifactWriter {
 
 			TextRange selection = WriteCommandAction.writeCommandAction(project)
 					.withName(MessageBundle.message("dialog.action.addToDependencyfile"))
-					.compute(() -> insertEntries(project, psiManager.findFile(descriptor),
+					.compute(() -> DependencyfileArtifacts.insertEntries(project, psiManager.findFile(descriptor),
 							entries(row)));
 
 			openInEditor(descriptor, selection);
@@ -115,123 +105,6 @@ class DependencyfileArtifactWriter {
 			Notifications.error(project, MessageBundle.message("dialog.action.addToDependencyfile"),
 					Notifications.errorMessage(ex));
 		}
-	}
-
-	/**
-	 * Insert the entries not already present into the descriptor's
-	 * {@code artifacts} object (creating that object when absent), reformat the
-	 * file, and return the range covering the first inserted entry's {@code name}
-	 * value for the caret.
-	 *
-	 * @return the {@code name}-value range to select, or {@literal null} when the
-	 * file is not a JSON object or every entry was already present.
-	 */
-	static @Nullable TextRange insertEntries(Project project, @Nullable PsiFile psiFile,
-			Collection<ArtifactEntry> entries) {
-
-		if (!(psiFile instanceof JsonFile jsonFile) || !(jsonFile.getTopLevelValue() instanceof JsonObject root)) {
-			return null;
-		}
-
-		JsonElementGenerator generator = new JsonElementGenerator(project);
-		JsonObject artifacts = artifactsObject(root, generator);
-
-		Set<String> existing = new HashSet<>();
-		for (JsonProperty property : artifacts.getPropertyList()) {
-			existing.add(property.getName());
-		}
-
-		String firstKey = null;
-		for (ArtifactEntry entry : entries) {
-			if (!existing.add(entry.key())) {
-				continue;
-			}
-			insertSorted(artifacts, entry, generator);
-			if (firstKey == null) {
-				firstKey = entry.key();
-			}
-		}
-
-		if (firstKey == null) {
-			return null;
-		}
-
-		CodeStyleManager.getInstance(project).reformat(jsonFile);
-
-		return nameValueRange(artifacts, firstKey);
-	}
-
-	/**
-	 * Return the active descriptor object's {@code artifacts} value, creating an
-	 * empty {@code artifacts} object when the descriptor does not declare one.
-	 */
-	private static JsonObject artifactsObject(JsonObject root, JsonElementGenerator generator) {
-
-		JsonProperty artifacts = root.findProperty("artifacts");
-		if (artifacts != null && artifacts.getValue() instanceof JsonObject object) {
-			return object;
-		}
-
-		JsonProperty created = generator.createProperty("artifacts", "{}");
-		JsonProperty inserted = (JsonProperty) insertProperty(root, created, null, generator);
-		return (JsonObject) inserted.getValue();
-	}
-
-	private static void insertSorted(JsonObject artifacts, ArtifactEntry entry, JsonElementGenerator generator) {
-
-		JsonProperty property = generator.createProperty(entry.key(),
-				"{\"name\": \"" + StringUtil.escapeStringCharacters(entry.name()) + "\"}");
-
-		JsonProperty anchor = null;
-		for (JsonProperty sibling : artifacts.getPropertyList()) {
-			if (sibling.getName().compareToIgnoreCase(entry.key()) > 0) {
-				anchor = sibling;
-				break;
-			}
-		}
-
-		insertProperty(artifacts, property, anchor, generator);
-	}
-
-	/**
-	 * Insert {@code property} into {@code object}: before {@code anchor} when
-	 * given, otherwise appended after the last property; an empty object receives
-	 * it directly after the opening brace. The required comma is added on the side
-	 * that borders an existing property.
-	 */
-	private static PsiElement insertProperty(JsonObject object, JsonProperty property, @Nullable JsonProperty anchor,
-			JsonElementGenerator generator) {
-
-		List<JsonProperty> properties = object.getPropertyList();
-		if (properties.isEmpty()) {
-			return object.addAfter(property, object.getFirstChild());
-		}
-
-		if (anchor == null) {
-			PsiElement added = object.addAfter(property, properties.getLast());
-			object.addBefore(generator.createComma(), added);
-			return added;
-		}
-
-		PsiElement added = object.addBefore(property, anchor);
-		object.addAfter(generator.createComma(), added);
-		return added;
-	}
-
-	private static @Nullable TextRange nameValueRange(JsonObject artifacts, String key) {
-
-		for (JsonProperty property : artifacts.getPropertyList()) {
-			if (!property.getName().equals(key)) {
-				continue;
-			}
-			if (property.getValue() instanceof JsonObject value
-					&& value.findProperty("name") instanceof JsonProperty name
-					&& name.getValue() instanceof JsonStringLiteral literal) {
-				TextRange range = literal.getTextRange();
-				return new TextRange(range.getStartOffset() + 1, range.getEndOffset() - 1);
-			}
-		}
-		return null;
 	}
 
 	private void openInEditor(VirtualFile descriptor, @Nullable TextRange selection) {
@@ -250,7 +123,6 @@ class DependencyfileArtifactWriter {
 	 * starter {@code .idea/dependencyfile.json} populated with the used artifact
 	 * ids as unconstrained rules.
 	 *
-	 * with.
 	 * @throws IOException when the descriptor cannot be created.
 	 */
 	void createOrOpen() throws IOException {
@@ -284,7 +156,7 @@ class DependencyfileArtifactWriter {
 
 		WriteCommandAction.writeCommandAction(project)
 				.withName(MessageBundle.message("dependencyfile.create.action"))
-				.compute(() -> insertEntries(project, psiManager.findFile(descriptor),
+				.compute(() -> DependencyfileArtifacts.insertEntries(project, psiManager.findFile(descriptor),
 						createEntries(artifactIds)));
 		saveDocument(descriptor);
 		openInEditor(descriptor, null);
@@ -366,25 +238,6 @@ class DependencyfileArtifactWriter {
 		return descriptor;
 	}
 
-	private Set<String> existingKeys(VirtualFile descriptor) {
-
-		PsiFile psiFile = psiManager.findFile(descriptor);
-		if (!(psiFile instanceof JsonFile jsonFile) || !(jsonFile.getTopLevelValue() instanceof JsonObject root)) {
-			return Set.of();
-		}
-
-		if (!(root.findProperty("artifacts") instanceof JsonProperty artifacts)
-				|| !(artifacts.getValue() instanceof JsonObject object)) {
-			return Set.of();
-		}
-
-		Set<String> keys = new HashSet<>();
-		for (JsonProperty property : object.getPropertyList()) {
-			keys.add(property.getName());
-		}
-		return keys;
-	}
-
 	private Collection<ArtifactEntry> createEntries(Collection<? extends ArtifactId> artifactIds) {
 
 		Set<ArtifactEntry> entries = new TreeSet<>();
@@ -406,7 +259,8 @@ class DependencyfileArtifactWriter {
 		List<DependencyUpgradeCandidate> upgrades = row.getUpgradeCandidates();
 		List<TableRow> rows = new ArrayList<>();
 		if (upgrades.size() > 1) {
-			String wildcardKey = wildcardKey(upgrades);
+			String wildcardKey = DependencyfileArtifacts.wildcardKey(
+					upgrades.stream().map(DependencyUpgradeCandidate::getArtifactId).toList());
 			if (wildcardKey != null) {
 				return List.of(new ArtifactEntry(wildcardKey, row.getName()));
 			}
@@ -421,47 +275,6 @@ class DependencyfileArtifactWriter {
 		}
 
 		return entries;
-	}
-
-	/**
-	 * Return the {@code groupId:prefix*} wildcard key for the members, or
-	 * {@literal null} when they do not share a groupId or their artifactIds have no
-	 * common prefix ending on a {@code -} or {@code .} word boundary.
-	 */
-	private static @Nullable String wildcardKey(List<DependencyUpgradeCandidate> members) {
-
-		String groupId = members.getFirst().getArtifactId().groupId();
-		List<String> artifactIds = new ArrayList<>(members.size());
-		for (DependencyUpgradeCandidate member : members) {
-			if (!groupId.equals(member.getArtifactId().groupId())) {
-				return null;
-			}
-			artifactIds.add(member.getArtifactId().artifactId());
-		}
-
-		String commonPrefix = StringUtils.longestCommonPrefix(artifactIds);
-		int separator = Math.max(commonPrefix.lastIndexOf('-'), commonPrefix.lastIndexOf('.'));
-		if (separator < 0) {
-			return null;
-		}
-
-		return groupId + ":" + commonPrefix.substring(0, separator + 1) + "*";
-	}
-
-	record ArtifactEntry(String key, String name) implements Comparable<ArtifactEntry> {
-
-		public static ArtifactEntry create(ArtifactId artifactId, @Nullable String projectName) {
-
-			String key = ArtifactPattern.keyFor(artifactId);
-			String name = StringUtils.hasText(projectName) ? projectName
-					: (key.startsWith("@") ? key.substring(1) : key);
-			return new ArtifactEntry(key, name);
-		}
-
-		@Override
-		public int compareTo(ArtifactEntry o) {
-			return key.compareToIgnoreCase(o.key);
-		}
 	}
 
 }

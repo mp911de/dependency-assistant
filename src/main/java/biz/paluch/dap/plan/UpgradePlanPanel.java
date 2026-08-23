@@ -275,6 +275,13 @@ class UpgradePlanPanel extends SimpleToolWindowPanel implements Disposable, Upgr
 			sink.set(CommonDataKeys.NAVIGATABLE, navigatable);
 			sink.set(CommonDataKeys.NAVIGATABLE_ARRAY, new Navigatable[] {navigatable});
 		}
+
+		// rename target (Shift+F6): a single selected top-level item while the plan
+		// is idle; withheld otherwise so the platform rename disables itself
+		UpgradePlanItem renameTarget = tree.getRenameTarget();
+		if (renameTarget != null && !service.isBusy()) {
+			sink.set(UpgradePlanItem.RENAME_TARGET, renameTarget);
+		}
 	}
 
 	@Override

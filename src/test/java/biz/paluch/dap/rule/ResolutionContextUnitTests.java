@@ -24,7 +24,6 @@ import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.artifact.Versioned;
-import biz.paluch.dap.metadata.ProjectMetadata;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import com.intellij.psi.PsiElement;
 import org.junit.jupiter.api.Test;
@@ -48,9 +47,9 @@ class ResolutionContextUnitTests {
 	void referenceContextUsesDeclarationPluginSemantics() {
 
 		ResolutionContext plugin = ResolutionContext.forDeclaration(declaration(DeclarationSource.plugin()),
-				BRANCH_SOURCE, PROJECT_VERSION, ProjectMetadata.absent());
+				BRANCH_SOURCE, PROJECT_VERSION);
 		ResolutionContext dependency = ResolutionContext.forDeclaration(declaration(DeclarationSource.dependency()),
-				BRANCH_SOURCE, PROJECT_VERSION, ProjectMetadata.absent());
+				BRANCH_SOURCE, PROJECT_VERSION);
 
 		assertThat(plugin.suppressSemanticUpgrading()).isTrue();
 		assertThat(dependency.suppressSemanticUpgrading()).isFalse();
@@ -61,10 +60,9 @@ class ResolutionContextUnitTests {
 
 		ResolutionContext plugins = ResolutionContext.forAggregate(ARTIFACT_ID,
 				List.of(DeclarationSource.plugin(), DeclarationSource.pluginManagement()), BRANCH_SOURCE,
-				PROJECT_VERSION, ProjectMetadata.absent());
+				PROJECT_VERSION);
 		ResolutionContext mixed = ResolutionContext.forAggregate(ARTIFACT_ID,
-				List.of(DeclarationSource.plugin(), DeclarationSource.dependency()), BRANCH_SOURCE, PROJECT_VERSION,
-				ProjectMetadata.absent());
+				List.of(DeclarationSource.plugin(), DeclarationSource.dependency()), BRANCH_SOURCE, PROJECT_VERSION);
 
 		assertThat(plugins.suppressSemanticUpgrading()).isTrue();
 		assertThat(mixed.suppressSemanticUpgrading()).isFalse();

@@ -32,10 +32,9 @@ import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.assistant.IconDependencyPresentation;
+import biz.paluch.dap.assistant.presentation.IconDependencyPresentation;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.checker.VulnerabilityRepository;
-import biz.paluch.dap.metadata.ProjectMetadata;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.UpgradeStrategy;
@@ -88,8 +87,8 @@ public class DependencyUpgradeCandidate implements HasArtifactId, HasPackageIden
 
 	private final Map<ArtifactVersion, Vulnerabilities> vulnerabilitiesByVersion = new ConcurrentHashMap<>();
 
-	private DependencyUpgradeCandidate(Dependency dependency, DependencyAssistant assistant, Releases releases,
-			VulnerabilityRepository vulnerabilities, DependencyRule rule,
+	private DependencyUpgradeCandidate(Dependency dependency, DependencyAssistant assistant,
+			Releases releases, VulnerabilityRepository vulnerabilities, DependencyRule rule,
 			IconDependencyPresentation presentation, DeclaredVersions declaredVersions) {
 
 		this.dependency = dependency;
@@ -113,20 +112,6 @@ public class DependencyUpgradeCandidate implements HasArtifactId, HasPackageIden
 
 	/**
 	 * Create an upgrade governed by the given rule.
-	 *
-	 * <p>The release universe always retains the dependency's current version;
-	 * suggestions and display views are computed eagerly from the supplied facts.
-	 *
-	 * @param dependency the collected dependency to upgrade.
-	 * @param assistant
-	 * @param releases the known releases for the dependency.
-	 * @param vulnerabilities the vulnerability results for known versions.
-	 * @param rule the governing dependency rule.
-	 * @param presentation
-	 * @param declaredVersions the versions the dependency is declared at. sources,
-	 * or {@link ProjectMetadata#absent()} when none was captured.
-	 * @return an upgrade with suggestions and display views computed from the
-	 * supplied facts.
 	 */
 	public static DependencyUpgradeCandidate create(Dependency dependency,
 			DependencyAssistant assistant, Releases releases, VulnerabilityRepository vulnerabilities,

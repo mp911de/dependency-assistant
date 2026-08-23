@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 
+import biz.paluch.dap.artifact.CoordinateShape;
 import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
 import biz.paluch.dap.assistant.check.UpgradeGroup;

@@ -21,15 +21,13 @@ import java.util.List;
 import java.util.Map;
 
 import biz.paluch.dap.DependencyAssistantDispatcher;
-import biz.paluch.dap.DependencyPresentation;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.assistant.AppliedUpdates;
-import biz.paluch.dap.assistant.DependencyPresentationFactory;
 import biz.paluch.dap.assistant.Notifications;
-import biz.paluch.dap.metadata.ProjectMetadata;
-import biz.paluch.dap.metadata.ProjectMetadataService;
+import biz.paluch.dap.assistant.presentation.DependencyPresentation;
+import biz.paluch.dap.assistant.presentation.DependencyPresentationFactory;
 import biz.paluch.dap.plan.PlannedUpgrade;
 import biz.paluch.dap.plan.UpgradePlanToolWindowFactory;
 import biz.paluch.dap.rule.BranchSource;
@@ -82,9 +80,24 @@ class AssistantReviewActions {
 				: UndoConfirmationPolicy.DO_NOT_REQUEST_CONFIRMATION;
 
 		FileScope scope = FileScope.of(files);
-		ProjectMetadataService metadataService = ProjectMetadataService.getInstance(project);
+		DependencyUpdates dependencyUpdates = getDependencyUpdates(updates, ruleService, applied);
 
-		DependencyUpdates dependencyUpdates = new DependencyUpdates(updates) {
+		new FileUpdateDelegate(project).withGlobalUndo(undoConfirmationPolicy)
+				.updateFiles(indicator, scope, dependencyUpdates);
+
+		Runnable undoFlagged = () -> new FileUpdateDelegate(project)
+				.updateFiles(new EmptyProgressIndicator(ModalityState.nonModal()),
+						applied.getReverseFiles(),
+						applied.getReverse());
+
+		Notifications.updatesApplied(project, applied, undoFlagged);
+	}
+
+	private DependencyUpdates getDependencyUpdates(List<DependencyUpdate> updates, DependencyRuleService ruleService,
+			AppliedUpdates applied) {
+		DependencyPresentationFactory presentationFactory = new DependencyPresentationFactory(project);
+
+		return new DependencyUpdates(updates) {
 
 			@Override
 			public void update(PsiFile file, DependencyUpdate update, Consumer<DependencyUpdate> updateTask) {
@@ -99,29 +112,17 @@ class AssistantReviewActions {
 			protected void afterDependencyUpdate(PsiFile file, DependencyUpdate update) {
 
 				ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(file);
-				ProjectMetadata metadata = metadataService.getMetadata(update.artifactId());
 				DependencyRule rule = ruleService.resolve(ResolutionContext.forAggregate(update.artifactId(),
-						update.declarationSources(), BranchSource.of(file), context.getProjectVersion(),
-						metadata));
+						update.declarationSources(), BranchSource.of(file), context.getProjectVersion()));
 
 				PackageIdentity pkg = PackageIdentity.of(update.artifactId(), context.getPackageSystem());
-				DependencyPresentation presentation = DependencyPresentationFactory.create(pkg,
-						metadata.getProjectName(), rule, context.getInterfaceAssistant());
+				DependencyPresentation presentation = presentationFactory.create(pkg, rule,
+						context.getInterfaceAssistant());
 
 				applied.record(file.getVirtualFile(), update, rule, presentation);
 			}
 
 		};
-
-		new FileUpdateDelegate(project).withGlobalUndo(undoConfirmationPolicy)
-				.updateFiles(indicator, scope, dependencyUpdates);
-
-		Runnable undoFlagged = () -> new FileUpdateDelegate(project)
-				.updateFiles(new EmptyProgressIndicator(ModalityState.nonModal()),
-						applied.getReverseFiles(),
-				applied.getReverse());
-
-		Notifications.updatesApplied(project, applied, undoFlagged);
 	}
 
 	public void reportApplyError(Throwable error) {

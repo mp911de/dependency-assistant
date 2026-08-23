@@ -40,25 +40,25 @@ import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.ReleaseSources;
 import biz.paluch.dap.artifact.Versioned;
-import biz.paluch.dap.assistant.DependencyPresentationFactory;
-import biz.paluch.dap.assistant.IconDependencyPresentation;
+import biz.paluch.dap.assistant.presentation.DependencyPresentationFactory;
+import biz.paluch.dap.assistant.presentation.IconDependencyPresentation;
 import biz.paluch.dap.checker.VulnerabilityRepository;
-import biz.paluch.dap.metadata.ProjectMetadata;
 import biz.paluch.dap.metadata.ProjectMetadataService;
 import biz.paluch.dap.rule.BranchSource;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleService;
 import biz.paluch.dap.rule.ResolutionContext;
+import biz.paluch.dap.state.ApplicationSettings;
 import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.util.Sequence;
+import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 
-import org.springframework.util.StringUtils;
 
 /**
  * Aggregates dependency declarations found while scanning an upgrade scope.
@@ -79,23 +79,12 @@ public class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 
 	private final StateService stateService;
 
-	private final ProjectMetadataService metadataService;
+	private final ApplicationSettings settings;
 
-	private final DependencyPresentationFactory presentationFactory;
-
-	public DependencyCheckAggregator(Project project, StateService stateService) {
+	public DependencyCheckAggregator(Project project, StateService stateService, ApplicationSettings settings) {
 		this.project = project;
 		this.stateService = stateService;
-		this.metadataService = new ProjectMetadataService(project, stateService.getCache());
-		this.presentationFactory = new DependencyPresentationFactory(stateService);
-	}
-
-	public DependencyCheckAggregator(Project project, StateService stateService,
-			ProjectMetadataService metadataService) {
-		this.project = project;
-		this.stateService = stateService;
-		this.metadataService = metadataService;
-		this.presentationFactory = new DependencyPresentationFactory(stateService);
+		this.settings = settings;
 	}
 
 	/**
@@ -256,29 +245,17 @@ public class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 	 * that were resolved successfully.
 	 *
 	 * @param releases the resolved releases keyed by artifact.
-	 * @return a new dependency-check result with candidates sorted by artifact.
-	 */
-	public DependencyCheckResult toDependencyCheckResult(Map<PackageIdentity, ReleaseLookupResult> releases) {
-		return toDependencyCheckResult(releases, DependencyRuleService.absent());
-	}
-
-	/**
-	 * Create a dependency-check result from the resolved releases.
-	 *
-	 * <p>Artifacts without resolved releases are skipped. Release lookup errors are
-	 * copied into the result so the UI can display them alongside the candidates
-	 * that were resolved successfully.
-	 *
-	 * @param releases the resolved releases keyed by artifact.
 	 * @param evaluator the rule service used to resolve governing dependency rules.
 	 * @return a new dependency-check result with candidates sorted by artifact.
 	 */
 	public DependencyCheckResult toDependencyCheckResult(Map<PackageIdentity, ReleaseLookupResult> releases,
 			DependencyRuleService evaluator) {
 
+		ProjectMetadataService metadataService = ProjectMetadataService.getInstance(project);
+		DependencyPresentationFactory presentationFactory = new DependencyPresentationFactory(metadataService,
+				settings);
 		List<DependencyUpgradeCandidate> upgrades = new ArrayList<>();
 		List<String> errors = getErrors(releases);
-		VulnerabilityScanner scanner = VulnerabilityScanner.create(project, stateService);
 		entries.forEach((pkg, entry) -> {
 
 			ReleaseLookupResult lookup = releases.get(pkg);
@@ -304,9 +281,8 @@ public class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 			DeclaredDependency merged = mergeDeclarations(pkg, entry);
 			Dependency dependency = Dependency.from(merged, declaredVersions.getLowestDeclaredVersion());
 
-			ProjectMetadata metadata = metadataService.getMetadata(pkg);
 			ResolutionContext resolutionContext = ResolutionContext.forAggregate(merged,
-					BranchSource.of(entry.declarationSites().iterator().next().file()), versioned, metadata);
+					BranchSource.of(entry.declarationSites().iterator().next().file()), versioned);
 			DependencyRule rule = evaluator.resolve(resolutionContext);
 
 			VulnerabilityRepository vulnerabilities = version -> stateService.getVulnerabilities(pkg, version);

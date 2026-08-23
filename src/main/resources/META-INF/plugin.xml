@@ -78,6 +78,7 @@
 	</extensions>
 
 	<extensions defaultExtensionNs="com.intellij">
+		<renameHandler implementation="biz.paluch.dap.plan.RenameItemHandler"/>
 		<applicationService
 				serviceImplementation="biz.paluch.dap.state.ApplicationSettings"/>
 		<fileTemplateGroup implementation="biz.paluch.dap.plan.UpgradePlanTemplateGroup"/>
@@ -221,6 +222,7 @@
 			        class="biz.paluch.dap.plan.UnlinkTicketAction"
 			        icon="AllIcons.General.Remove"/>
 			<separator/>
+			<reference ref="RenameElement"/>
 			<reference ref="$Copy"/>
 			<reference ref="$Paste"/>
 			<reference ref="$Delete"/>

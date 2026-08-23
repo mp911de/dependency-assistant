@@ -23,7 +23,6 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DeclaredDependency;
 import biz.paluch.dap.artifact.Versioned;
-import biz.paluch.dap.metadata.ProjectMetadata;
 import biz.paluch.dap.support.ArtifactDeclaration;
 
 /**
@@ -41,15 +40,12 @@ public class ResolutionContext {
 
 	private final Versioned projectVersion;
 
-	private final ProjectMetadata projectMetadata;
-
 	ResolutionContext(ArtifactId artifactId, boolean suppressSemanticUpgrading,
-			BranchSource branchSource, Versioned projectVersion, ProjectMetadata projectMetadata) {
+			BranchSource branchSource, Versioned projectVersion) {
 		this.artifactId = artifactId;
 		this.suppressSemanticUpgrading = suppressSemanticUpgrading;
 		this.branchSource = branchSource;
 		this.projectVersion = projectVersion;
-		this.projectMetadata = projectMetadata;
 	}
 
 	/**
@@ -61,11 +57,11 @@ public class ResolutionContext {
 	 * @return a resolution context using per-declaration plugin semantics.
 	 */
 	public static ResolutionContext forDeclaration(ArtifactDeclaration declaration,
-			BranchSource branchSource, Versioned projectVersion, ProjectMetadata metadata) {
+			BranchSource branchSource, Versioned projectVersion) {
 
 		return new ResolutionContext(declaration.getArtifactId(),
 				declaration.getDeclarationSource().isPlugin(),
-				branchSource, projectVersion, metadata);
+				branchSource, projectVersion);
 	}
 
 	/**
@@ -74,13 +70,12 @@ public class ResolutionContext {
 	 * @param dependency the aggregate dependency declaration.
 	 * @param branchSource the source used for branch lookup.
 	 * @param projectVersion the project version used for branch rule selection.
-	 * @param metadata the project metadata.
 	 * @return a resolution context using aggregate plugin-only semantics.
 	 */
 	public static ResolutionContext forAggregate(DeclaredDependency dependency, BranchSource branchSource,
-			Versioned projectVersion, ProjectMetadata metadata) {
+			Versioned projectVersion) {
 		return forAggregate(dependency.getArtifactId(), dependency.getDeclarationSources(), branchSource,
-				projectVersion, metadata);
+				projectVersion);
 	}
 
 	/**
@@ -91,15 +86,13 @@ public class ResolutionContext {
 	 * @param declarationSources the declaration sources backing the artifact.
 	 * @param branchSource the source used for branch lookup.
 	 * @param projectVersion the project version used for branch rule selection.
-	 * @param metadata the project metadata.
 	 * @return a resolution context using aggregate plugin-only semantics.
 	 */
 	public static ResolutionContext forAggregate(ArtifactId artifactId,
-			Collection<DeclarationSource> declarationSources, BranchSource branchSource, Versioned projectVersion,
-			ProjectMetadata metadata) {
+			Collection<DeclarationSource> declarationSources, BranchSource branchSource, Versioned projectVersion) {
 
 		return new ResolutionContext(artifactId, DeclarationSource.isPlugin(declarationSources), branchSource,
-				projectVersion, metadata);
+				projectVersion);
 	}
 
 	public ArtifactId getArtifactId() {
@@ -116,10 +109,6 @@ public class ResolutionContext {
 
 	public Versioned getProjectVersion() {
 		return projectVersion;
-	}
-
-	public ProjectMetadata getProjectMetadata() {
-		return projectMetadata;
 	}
 
 	@Override

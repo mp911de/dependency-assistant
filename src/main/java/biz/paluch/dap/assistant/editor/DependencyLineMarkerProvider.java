@@ -23,13 +23,13 @@ import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.DependencyAssistantIcons;
-import biz.paluch.dap.DependencyPresentation;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.assistant.ArtifactReferenceContext;
 import biz.paluch.dap.assistant.action.DependencyCheckTask;
 import biz.paluch.dap.assistant.action.UpgradeRequest;
+import biz.paluch.dap.assistant.presentation.DependencyPresentation;
 import biz.paluch.dap.checker.SecurityShieldIcons;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
@@ -107,7 +107,7 @@ public class DependencyLineMarkerProvider extends LineMarkerProviderDescriptor {
 			} else if (evaluated.isPresent() && evaluated.isLocked()) {
 				return new LineMarkerInfo<>(anchor, context.getHighlightRange(anchor),
 						getRuleIcon(transparentIcon, evaluated),
-						e -> evaluated.getToolTipText(presentation).toString(),
+						e -> evaluated.getToolTipText(presentation.getHtmlDisplayName()).toString(),
 						new UpgradeDialogNavigationHandler(pkg),
 						GutterIconRenderer.Alignment.LEFT, evaluated::getAccessibleName);
 			}
@@ -133,7 +133,7 @@ public class DependencyLineMarkerProvider extends LineMarkerProviderDescriptor {
 		}
 
 		if (evaluated.isPresent()) {
-			HtmlChunk evaluatedToolTip = evaluated.getToolTipText(presentation);
+			HtmlChunk evaluatedToolTip = evaluated.getToolTipText(presentation.getHtmlDisplayName());
 			if (!evaluatedToolTip.isEmpty()) {
 				tooltip += "<br>" + evaluatedToolTip;
 			}

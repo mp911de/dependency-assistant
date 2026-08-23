@@ -116,4 +116,9 @@ class TestPlannedUpgrade implements PlannedUpgrade {
 		return getName();
 	}
 
+	@Override
+	public String getDependencyOrProjectName() {
+		return getName();
+	}
+
 }

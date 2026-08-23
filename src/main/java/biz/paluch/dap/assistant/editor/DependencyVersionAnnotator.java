@@ -19,11 +19,10 @@ package biz.paluch.dap.assistant.editor;
 import java.util.HashSet;
 import java.util.Set;
 
-import biz.paluch.dap.DependencyPresentation;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.assistant.ArtifactReferenceContext;
+import biz.paluch.dap.assistant.presentation.DependencyPresentation;
 import biz.paluch.dap.checker.Vulnerabilities;
-import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.severity.DependencyAssistantSeverities;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyUpdate;
@@ -61,7 +60,6 @@ public class DependencyVersionAnnotator implements Annotator {
 		DependencyPresentation presentation = context.getPresentation();
 		UpgradeSuggestions suggestions = context.getSuggestions();
 		ArtifactDeclaration declaration = context.getDeclaration();
-		DependencyRuleEvaluator evaluated = context.getEvaluator();
 
 		Vulnerabilities vulnerabilities = context.getCurrentVulnerabilities();
 		VulnerabilitiesPresentation vulnerability = null;
@@ -69,7 +67,7 @@ public class DependencyVersionAnnotator implements Annotator {
 			vulnerability = VulnerabilitiesPresentation.of(vulnerabilities);
 		}
 
-		String dependencyName = evaluated.getDependencyName(presentation);
+		String dependencyName = presentation.getHtmlDisplayName().toString();
 		if (suggestions.isEmpty()) {
 
 			if (vulnerability != null) {

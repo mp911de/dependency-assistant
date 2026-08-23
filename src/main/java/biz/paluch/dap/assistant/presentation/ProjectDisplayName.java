@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.assistant;
+package biz.paluch.dap.assistant.presentation;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -31,7 +31,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-class ProjectDisplayName {
+public class ProjectDisplayName {
 
 	private static final Pattern WHITESPACE = Pattern.compile("\\s+");
 

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap;
+package biz.paluch.dap.assistant.presentation;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.PackageIdentity;
@@ -29,7 +29,7 @@ class SimpleDependencyPresentation implements DependencyPresentation {
 
 	private final PackageIdentity pkg;
 
-	private final String displayName;
+	private final String artifactIdDisplayName;
 
 	private final String artifactId;
 
@@ -37,10 +37,10 @@ class SimpleDependencyPresentation implements DependencyPresentation {
 
 	private final @Nullable String projectName;
 
-	public SimpleDependencyPresentation(PackageIdentity pkg, String displayName,
+	public SimpleDependencyPresentation(PackageIdentity pkg, String artifactIdDisplayName,
 			String artifactId, @Nullable String dependencyName, @Nullable String projectName) {
 		this.pkg = pkg;
-		this.displayName = displayName;
+		this.artifactIdDisplayName = artifactIdDisplayName;
 		this.artifactId = artifactId;
 		this.dependencyName = dependencyName;
 		this.projectName = projectName;
@@ -71,7 +71,7 @@ class SimpleDependencyPresentation implements DependencyPresentation {
 
 	@Override
 	public String getArtifactCoordinatesDisplayName() {
-		return displayName;
+		return artifactIdDisplayName;
 	}
 
 	@Override
@@ -111,9 +111,9 @@ class SimpleDependencyPresentation implements DependencyPresentation {
 	@Override
 	public String toString() {
 		if (hasDependencyName()) {
-			return displayName + " (" + dependencyName + ")";
+			return artifactIdDisplayName + " (" + dependencyName + ")";
 		}
-		return displayName;
+		return artifactIdDisplayName;
 	}
 
 }

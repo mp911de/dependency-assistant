@@ -23,7 +23,6 @@ import java.util.function.Predicate;
 import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantIcons;
-import biz.paluch.dap.DependencyPresentation;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.support.UpgradeStrategy;
 import biz.paluch.dap.util.MessageBundle;
@@ -54,7 +53,7 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 		}
 
 		@Override
-		public HtmlChunk getToolTipText(DependencyPresentation presentation) {
+		public HtmlChunk getToolTipText(HtmlChunk displayName) {
 			return HtmlChunk.text(MessageBundle.message("inspection.dependency-rule.absent"));
 		}
 
@@ -152,10 +151,6 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 		return rule.isEnabled(strategy);
 	}
 
-	public String getDependencyName(DependencyPresentation presentation) {
-		return presentation.hasDependencyName() ? presentation.getDependencyName() : presentation.getDisplayName();
-	}
-
 	/**
 	 * Render the tool tip describing the rule outcome and whether semantic
 	 * upgrading is enabled.
@@ -163,30 +158,24 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 	 * <p>Dependency name, version, and generation range originate from build files
 	 * and rule definitions and are escaped; the returned chunk is safe to embed in
 	 * HTML tooltips.
-	 *
-	 * @param presentation the presentation naming the evaluated dependency.
-	 * @return the tool tip markup; an empty chunk when there is nothing to report.
 	 */
-	public HtmlChunk getToolTipText(DependencyPresentation presentation) {
+	public HtmlChunk getToolTipText(HtmlChunk displayName) {
 
 		HtmlBuilder tooltip = new HtmlBuilder();
 
 		if (isLocked()) {
 
-			HtmlChunk dependencyName = presentation.hasDependencyName()
-					? HtmlChunk.text(presentation.getDependencyName())
-					: HtmlChunk.text("'" + presentation.getDisplayName() + "'");
 			HtmlChunk version = HtmlChunk.text(this.version.toDocumentationString());
 			HtmlChunk generations = HtmlChunk.text(rule.getGenerations().value());
 
 			if (result == EvaluationState.NOT_PASSED) {
 				tooltip.appendRaw(MessageBundle.message("inspection.dependency-rule.problem",
-						dependencyName, version, generations));
+						displayName, version, generations));
 			}
 
 			if (isPassed()) {
 				tooltip.appendRaw(MessageBundle.message("inspection.dependency-rule.description",
-						dependencyName, generations));
+						displayName, generations));
 			}
 		}
 

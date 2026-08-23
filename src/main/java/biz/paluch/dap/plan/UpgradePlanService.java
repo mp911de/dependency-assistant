@@ -398,6 +398,13 @@ public final class UpgradePlanService implements Disposable {
 	}
 
 	/**
+	 * Rename the given plan item as one undoable transition.
+	 */
+	void renameItem(UpgradePlanItem item, String displayName, boolean rememberName) {
+		execute(PlanAction.renameItem(getContent(), item, displayName, rememberName));
+	}
+
+	/**
 	 * Remove the ticket association of the given plan items as one undoable
 	 * command. The ticket keeps existing in the external system; only the plan
 	 * links are cleared and restored.

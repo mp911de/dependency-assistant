@@ -20,11 +20,15 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.PackageIdentity;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.plan.UpgradePlanState.Item;
 import biz.paluch.dap.plan.UpgradePlanState.Member;
 import biz.paluch.dap.plan.UpgradePlanState.VersionSourceKind;
+import biz.paluch.dap.state.ApplicationSettings;
 import biz.paluch.dap.util.Sequence;
 import org.junit.jupiter.api.Test;
 
@@ -50,11 +54,67 @@ class ImplicitGroupsUnitTests {
 						it -> it.versionProperty("jackson.version"))),
 				ArtifactVersion.of("2.18.1"));
 
-		Sequence<Item> items = ImplicitGroups.create(upgrades);
+		Sequence<Item> items = ImplicitGroups.create(upgrades, new ApplicationSettings());
 
 		assertThat(items).extracting(Item::getDisplayName).containsExactly("spring-core", "jackson-core");
 		assertThat(items).allSatisfy(item -> assertThat(item.getMembers()).hasSize(1)
 				.noneMatch(member -> member.implicit));
+	}
+
+	@Test
+	void rememberedNameWinsForMatchingConstellation() {
+
+		Map<PlannedUpgrade, ArtifactVersion> upgrades = new LinkedHashMap<>();
+		upgrades.put(new TestPlannedUpgrade(candidate("org.springframework:spring-core:6.2.1")),
+				ArtifactVersion.of("6.2.2"));
+		upgrades.put(new TestPlannedUpgrade(List.of(
+				candidate("com.fasterxml.jackson.core:jackson-core:2.18.0"),
+				candidate("com.fasterxml.jackson.core:jackson-databind:2.18.0")), "jackson"),
+				ArtifactVersion.of("2.18.1"));
+
+		ApplicationSettings settings = new ApplicationSettings();
+		settings.addNameHint("Spring Framework",
+				List.of(PackageIdentity.of(ArtifactId.of("org.springframework", "spring-core"), PackageSystem.MAVEN)));
+		settings.addNameHint("Jackson", List.of(
+				PackageIdentity.of(ArtifactId.of("com.fasterxml.jackson.core", "jackson-core"), PackageSystem.MAVEN),
+				PackageIdentity.of(ArtifactId.of("com.fasterxml.jackson.core", "jackson-databind"),
+						PackageSystem.MAVEN)));
+
+		assertThat(ImplicitGroups.create(upgrades, settings)).extracting(Item::getDisplayName)
+				.containsExactly("Spring Framework", "Jackson");
+	}
+
+	@Test
+	void ruleNamedCaptureOutranksRememberedName() {
+
+		Map<PlannedUpgrade, ArtifactVersion> upgrades = new LinkedHashMap<>();
+		upgrades.put(new TestPlannedUpgrade(
+				candidate("org.springframework:spring-core:6.2.1", it -> it.rule("Spring Framework"))),
+				ArtifactVersion.of("6.2.2"));
+
+		ApplicationSettings settings = new ApplicationSettings();
+		settings.addNameHint("Spring",
+				List.of(PackageIdentity.of(ArtifactId.of("org.springframework", "spring-core"), PackageSystem.MAVEN)));
+
+		assertThat(ImplicitGroups.create(upgrades, settings)).extracting(Item::getDisplayName)
+				.containsExactly("spring-core");
+	}
+
+	@Test
+	void rememberedNameIgnoresReshapedConstellation() {
+
+		Map<PlannedUpgrade, ArtifactVersion> upgrades = new LinkedHashMap<>();
+		upgrades.put(new TestPlannedUpgrade(List.of(
+				candidate("com.fasterxml.jackson.core:jackson-core:2.18.0"),
+				candidate("com.fasterxml.jackson.core:jackson-databind:2.18.0")), "jackson"),
+				ArtifactVersion.of("2.18.1"));
+
+		ApplicationSettings settings = new ApplicationSettings();
+		settings.addNameHint("Jackson Core", List.of(
+				PackageIdentity.of(ArtifactId.of("com.fasterxml.jackson.core", "jackson-core"), PackageSystem.MAVEN)));
+
+		assertThat(ImplicitGroups.create(upgrades, settings)).extracting(Item::getDisplayName)
+				.containsExactly("jackson");
 	}
 
 	@Test
@@ -68,7 +128,7 @@ class ImplicitGroupsUnitTests {
 				candidate("org.springframework:spring-context:6.2.1", it -> it.versionProperty("spring.version"))),
 				ArtifactVersion.of("6.2.2"));
 
-		Sequence<Item> items = ImplicitGroups.create(upgrades);
+		Sequence<Item> items = ImplicitGroups.create(upgrades, new ApplicationSettings());
 
 		assertThat(items).singleElement().satisfies(item -> {
 			assertThat(item.getDisplayName()).isEqualTo("spring.version");
@@ -87,7 +147,7 @@ class ImplicitGroupsUnitTests {
 				candidate("com.example:addon:6.2.1", it -> it.versionProperty("spring.version"))),
 				ArtifactVersion.of("6.2.2"));
 
-		Sequence<Item> items = ImplicitGroups.create(upgrades);
+		Sequence<Item> items = ImplicitGroups.create(upgrades, new ApplicationSettings());
 
 		assertThat(items).singleElement().satisfies(item -> {
 			assertThat(item.getDisplayName()).isEqualTo("Spring");
@@ -107,7 +167,7 @@ class ImplicitGroupsUnitTests {
 				ArtifactVersion.of("6.2.2"));
 		upgrades.put(springGroup(), ArtifactVersion.of("6.2.2"));
 
-		Sequence<Item> items = ImplicitGroups.create(upgrades);
+		Sequence<Item> items = ImplicitGroups.create(upgrades, new ApplicationSettings());
 
 		assertThat(items).singleElement().satisfies(item -> {
 			assertThat(item.getDisplayName()).isEqualTo("Spring");
@@ -127,7 +187,7 @@ class ImplicitGroupsUnitTests {
 				candidate("com.example:addon:6.2.1", it -> it.versionProperty("spring.version"))),
 				ArtifactVersion.of("7.0.0"));
 
-		Sequence<Item> items = ImplicitGroups.create(upgrades);
+		Sequence<Item> items = ImplicitGroups.create(upgrades, new ApplicationSettings());
 
 		assertThat(items).extracting(Item::getDisplayName).containsExactly("spring-core", "addon");
 		assertThat(items).allSatisfy(item -> assertThat(item.getMembers()).hasSize(1)
@@ -145,7 +205,7 @@ class ImplicitGroupsUnitTests {
 				it -> it.versionSources(VersionSource.property("spring.version"), VersionSource.declared("6.2.1")))),
 				ArtifactVersion.of("6.2.2"));
 
-		Sequence<Item> items = ImplicitGroups.create(upgrades);
+		Sequence<Item> items = ImplicitGroups.create(upgrades, new ApplicationSettings());
 
 		assertThat(items).singleElement().satisfies(item -> {
 			assertThat(item.getDisplayName()).isEqualTo("spring.version");
@@ -180,7 +240,7 @@ class ImplicitGroupsUnitTests {
 						VersionSource.property("micrometer.version")))),
 				ArtifactVersion.of("2.19.0"));
 
-		List<Item> items = ImplicitGroups.create(upgrades).toList();
+		List<Item> items = ImplicitGroups.create(upgrades, new ApplicationSettings()).toList();
 
 		assertThat(items).extracting(Item::getDisplayName).containsExactly("Jackson", "Micrometer");
 		assertThat(items.getFirst().getMembers()).extracting(member -> member.artifactId)

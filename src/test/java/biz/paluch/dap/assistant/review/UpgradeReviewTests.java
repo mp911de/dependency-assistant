@@ -21,13 +21,16 @@ import java.util.List;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.assistant.check.DependencyCheckResult;
+import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.fixtures.TestAssistant;
 import biz.paluch.dap.fixtures.TestCandidates;
 import biz.paluch.dap.fixtures.TestReleases;
+import biz.paluch.dap.state.ApplicationSettings;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.support.UpgradeStrategy;
@@ -42,6 +45,7 @@ import static org.assertj.core.api.Assertions.*;
  *
  * @author Mark Paluch
  */
+@IdeaProjectTests
 class UpgradeReviewTests {
 
 	private static final ArtifactId SPRING_CORE = ArtifactId.of("org.springframework", "spring-core");
@@ -59,8 +63,8 @@ class UpgradeReviewTests {
 	@Test
 	void assemblesAndGroupsTransportedDecisions() {
 
-		TableRow core = candidate(SPRING_CORE, "6.2.0");
-		TableRow test = candidate(SPRING_TEST, "6.2.0");
+		TableRow core = createRow(SPRING_CORE, "6.2.0");
+		TableRow test = createRow(SPRING_TEST, "6.2.0");
 		DependencyCheckResult transported = new DependencyCheckResult(
 				List.of(core.getUpgrade(), test.getUpgrade()), FileScope.of(), List.of());
 
@@ -72,10 +76,34 @@ class UpgradeReviewTests {
 	}
 
 	@Test
+	void inferredGroupTakesRememberedName() {
+
+		// ungoverned rows: no rule, so the group is inferred from the coordinate shape
+		TableRow core = new TableRow(TestCandidates.candidate(SPRING_CORE, "6.2.0",
+				it -> it.releases("6.2.0", "6.2.1").declaredVersions("6.2.0")));
+		TableRow test = new TableRow(TestCandidates.candidate(SPRING_TEST, "6.2.0",
+				it -> it.releases("6.2.0", "6.2.1").declaredVersions("6.2.0")));
+		DependencyCheckResult transported = new DependencyCheckResult(
+				List.of(core.getUpgrade(), test.getUpgrade()), FileScope.of(), List.of());
+		List<PackageIdentity> packages = List.of(core.getPackageIdentity(), test.getPackageIdentity());
+		ApplicationSettings settings = ApplicationSettings.getInstance();
+		settings.addNameHint("Spring Framework", packages);
+
+		try {
+			UpgradeReview review = new UpgradeReview(transported);
+
+			assertThat(review.getAllCandidates()).singleElement().isInstanceOfSatisfying(GroupRow.class,
+					group -> assertThat(group.getName()).isEqualTo("Spring Framework"));
+		} finally {
+			settings.removeNameHint("Spring Framework", packages);
+		}
+	}
+
+	@Test
 	void groupApplyFansOutToOneUpdatePerMemberCoordinate() {
 
-		TableRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
-		TableRow test = candidate(SPRING_TEST, "6.2.0");
+		TableRow core = createRow(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		TableRow test = createRow(SPRING_TEST, "6.2.0");
 		GroupRow group = GroupRow.governed(core, test);
 
 		UpgradeReview review = new UpgradeReview(group);
@@ -93,8 +121,8 @@ class UpgradeReviewTests {
 	@Test
 	void groupFanOutCarriesDriftingMemberCurrentVersion() {
 
-		TableRow core = candidate(SPRING_CORE, "6.2.0");
-		TableRow drifting = candidate(SPRING_TEST, "6.0.9", TestReleases.from("6.0.9", "6.2.1"), "6.2.0",
+		TableRow core = createRow(SPRING_CORE, "6.2.0");
+		TableRow drifting = createRow(SPRING_TEST, "6.0.9", TestReleases.from("6.0.9", "6.2.1"), "6.2.0",
 				"6.0.9");
 		GroupRow group = GroupRow.governed(core, drifting);
 
@@ -111,7 +139,7 @@ class UpgradeReviewTests {
 	@Test
 	void selectedSingleCandidateProducesOneUpdate() {
 
-		TableRow core = candidate(SPRING_CORE, "6.2.0");
+		TableRow core = createRow(SPRING_CORE, "6.2.0");
 
 		UpgradeReview review = new UpgradeReview(core);
 		review.setVersion(core, ArtifactVersion.of("6.2.1"));
@@ -126,7 +154,7 @@ class UpgradeReviewTests {
 	@Test
 	void deselectedCandidateProducesNoUpdate() {
 
-		TableRow core = candidate(SPRING_CORE, "6.2.0");
+		TableRow core = createRow(SPRING_CORE, "6.2.0");
 
 		UpgradeReview review = new UpgradeReview(core);
 		review.setVersion(core, ArtifactVersion.of("6.2.1"));
@@ -138,8 +166,8 @@ class UpgradeReviewTests {
 	@Test
 	void selectAllTogglesApplyStateOfVisibleRows() {
 
-		TableRow core = candidate(SPRING_CORE, "6.2.0");
-		TableRow test = candidate(SPRING_TEST, "6.2.0");
+		TableRow core = createRow(SPRING_CORE, "6.2.0");
+		TableRow test = createRow(SPRING_TEST, "6.2.0");
 
 		UpgradeReview review = new UpgradeReview(core, test);
 		review.selectAll(true);
@@ -156,7 +184,7 @@ class UpgradeReviewTests {
 	@Test
 	void applyStrategyTargetSelectsAndArmsStrategyRelease() {
 
-		TableRow core = candidate(SPRING_CORE, "6.2.0", TestReleases.from("6.2.0", "6.2.1"), "6.2.0");
+		TableRow core = createRow(SPRING_CORE, "6.2.0", TestReleases.from("6.2.0", "6.2.1"), "6.2.0");
 
 		UpgradeReview review = new UpgradeReview(core);
 		review.applyStrategyTarget(core, UpgradeStrategy.LATEST);
@@ -168,8 +196,8 @@ class UpgradeReviewTests {
 	@Test
 	void strategySelectionOnGroupResolvesAgainstIntersectionReleases() {
 
-		TableRow core = candidate(SPRING_CORE, "6.2.0", TestReleases.from("6.2.0", "6.2.1", "6.3.0"), "6.2.0");
-		TableRow test = candidate(SPRING_TEST, "6.2.0", TestReleases.from("6.2.0", "6.2.1"), "6.2.0");
+		TableRow core = createRow(SPRING_CORE, "6.2.0", TestReleases.from("6.2.0", "6.2.1", "6.3.0"), "6.2.0");
+		TableRow test = createRow(SPRING_TEST, "6.2.0", TestReleases.from("6.2.0", "6.2.1"), "6.2.0");
 		GroupRow group = GroupRow.governed(core, test);
 
 		UpgradeReview review = new UpgradeReview(group);
@@ -181,8 +209,8 @@ class UpgradeReviewTests {
 	@Test
 	void rowsLabeledByRuleNameDoNotMakeCoordinatesAmbiguous() {
 
-		TableRow driver = candidate(POSTGRESQL, "6.2.0");
-		TableRow testcontainer = candidate(TESTCONTAINERS_POSTGRESQL, "6.2.0");
+		TableRow driver = createRow(POSTGRESQL, "6.2.0");
+		TableRow testcontainer = createRow(TESTCONTAINERS_POSTGRESQL, "6.2.0");
 		testcontainer.labelByDependencyName();
 
 		UpgradeReview review = new UpgradeReview(driver, testcontainer);
@@ -205,9 +233,9 @@ class UpgradeReviewTests {
 	@Test
 	void sharedVersionPropertyCrossReferencesCoupledRowsByBareName() {
 
-		TableRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
-		TableRow addon = candidate(ADDON, "6.2.0", VersionSource.profileProperty("dev", "spring.version"));
-		TableRow lettuce = candidate(LETTUCE_CORE, "6.2.0");
+		TableRow core = createRow(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		TableRow addon = createRow(ADDON, "6.2.0", VersionSource.profileProperty("dev", "spring.version"));
+		TableRow lettuce = createRow(LETTUCE_CORE, "6.2.0");
 
 		UpgradeReview review = new UpgradeReview(core, addon, lettuce);
 
@@ -219,10 +247,10 @@ class UpgradeReviewTests {
 	@Test
 	void groupCrossReferencesUngovernedRowSharingMemberProperty() {
 
-		TableRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
-		TableRow test = candidate(SPRING_TEST, "6.2.0");
+		TableRow core = createRow(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		TableRow test = createRow(SPRING_TEST, "6.2.0");
 		GroupRow group = GroupRow.governed(core, test);
-		TableRow ungoverned = candidate(ADDON, "6.2.0", VersionSource.property("spring.version"));
+		TableRow ungoverned = createRow(ADDON, "6.2.0", VersionSource.property("spring.version"));
 
 		UpgradeReview review = new UpgradeReview(group, ungoverned);
 
@@ -247,8 +275,8 @@ class UpgradeReviewTests {
 	@Test
 	void sharedVersionPropertySynchronizesTargetAndApplyState() {
 
-		TableRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
-		TableRow addon = candidate(ADDON, "6.2.0", TestReleases.from("6.2.0"),
+		TableRow core = createRow(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		TableRow addon = createRow(ADDON, "6.2.0", TestReleases.from("6.2.0"),
 				VersionSource.profileProperty("dev", "spring.version"), "6.2.0");
 
 		UpgradeReview review = new UpgradeReview(core, addon);
@@ -268,8 +296,8 @@ class UpgradeReviewTests {
 	@Test
 	void sharedVersionTargetAbsentFromPeerReleasesProducesUpdates() {
 
-		TableRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
-		TableRow addon = candidate(ADDON, "6.2.0", TestReleases.from("6.2.0"),
+		TableRow core = createRow(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		TableRow addon = createRow(ADDON, "6.2.0", TestReleases.from("6.2.0"),
 				VersionSource.property("spring.version"), "6.2.0");
 
 		UpgradeReview review = new UpgradeReview(core, addon);
@@ -282,8 +310,8 @@ class UpgradeReviewTests {
 	@Test
 	void reselectingPropagatedTargetAbsentFromPeerReleasesKeepsSelection() {
 
-		TableRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
-		TableRow addon = candidate(ADDON, "6.2.0", TestReleases.from("6.2.0"),
+		TableRow core = createRow(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		TableRow addon = createRow(ADDON, "6.2.0", TestReleases.from("6.2.0"),
 				VersionSource.property("spring.version"), "6.2.0");
 
 		UpgradeReview review = new UpgradeReview(core, addon);
@@ -300,7 +328,7 @@ class UpgradeReviewTests {
 	@Test
 	void setVersionKeepsTargetAbsentFromReleaseUniverse() {
 
-		TableRow addon = candidate(ADDON, "6.2.0", TestReleases.from("6.2.0"), "6.2.0");
+		TableRow addon = createRow(ADDON, "6.2.0", TestReleases.from("6.2.0"), "6.2.0");
 
 		UpgradeReview review = new UpgradeReview(addon);
 		review.setVersion(addon, ArtifactVersion.of("6.9.9"));
@@ -311,134 +339,130 @@ class UpgradeReviewTests {
 	@Test
 	void singleRowVersionPickFiresSingleRowRefresh() {
 
-		TableRow core = candidate(SPRING_CORE, "6.2.0");
+		TableRow core = createRow(SPRING_CORE, "6.2.0");
 
 		UpgradeReview review = new UpgradeReview(core);
 
-		assertThat(changes(review, () -> review.setVersion(core, ArtifactVersion.of("6.2.1"))))
+		assertThat(createChanges(review, () -> review.setVersion(core, ArtifactVersion.of("6.2.1"))))
 				.containsExactly(ReviewChange.row(core));
 	}
 
 	@Test
 	void repeatedVersionPickFiresNoChange() {
 
-		TableRow core = candidate(SPRING_CORE, "6.2.0");
+		TableRow core = createRow(SPRING_CORE, "6.2.0");
 
 		UpgradeReview review = new UpgradeReview(core);
 		review.setVersion(core, ArtifactVersion.of("6.2.1"));
 
-		assertThat(changes(review, () -> review.setVersion(core, ArtifactVersion.of("6.2.1")))).isEmpty();
+		assertThat(createChanges(review, () -> review.setVersion(core, ArtifactVersion.of("6.2.1")))).isEmpty();
 	}
 
 	@Test
 	void versionPickRevealingSharedPropertyPeerFiresReload() {
 
-		TableRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
-		TableRow addon = candidate(ADDON, "6.2.0", TestReleases.from("6.2.0"),
+		TableRow core = createRow(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		TableRow addon = createRow(ADDON, "6.2.0", TestReleases.from("6.2.0"),
 				VersionSource.property("spring.version"), "6.2.0");
 
 		UpgradeReview review = new UpgradeReview(core, addon);
 
-		// arming core propagates to the up-to-date addon, which becomes visible
-		assertThat(changes(review, () -> review.setVersion(core, ArtifactVersion.of("6.2.1"))))
+		assertThat(createChanges(review, () -> review.setVersion(core, ArtifactVersion.of("6.2.1"))))
 				.containsExactly(ReviewChange.reloadVisible());
 	}
 
 	@Test
 	void disarmingRowVisibleOnlyWhileArmedFiresReload() {
 
-		TableRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
-		TableRow addon = candidate(ADDON, "6.2.0", TestReleases.from("6.2.0"),
+		TableRow core = createRow(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		TableRow addon = createRow(ADDON, "6.2.0", TestReleases.from("6.2.0"),
 				VersionSource.property("spring.version"), "6.2.0");
 
 		UpgradeReview review = new UpgradeReview(core, addon);
 		review.setVersion(core, ArtifactVersion.of("6.2.1"));
 
-		assertThat(changes(review, () -> review.setSelected(addon, false)))
+		assertThat(createChanges(review, () -> review.setSelected(addon, false)))
 				.containsExactly(ReviewChange.reloadVisible());
 	}
 
 	@Test
 	void checkboxToggleWithUnchangedVisibilityFiresSingleRowRefresh() {
 
-		TableRow core = candidate(SPRING_CORE, "6.2.0");
+		TableRow core = createRow(SPRING_CORE, "6.2.0");
 
 		UpgradeReview review = new UpgradeReview(core);
 		review.setVersion(core, ArtifactVersion.of("6.2.1"));
 
-		// core keeps an upgrade target, so disarming does not hide it
-		assertThat(changes(review, () -> review.setSelected(core, false)))
+		assertThat(createChanges(review, () -> review.setSelected(core, false)))
 				.containsExactly(ReviewChange.row(core));
 	}
 
 	@Test
 	void versionPickOnCoupledVisibleRowsRefreshesAllRows() {
 
-		TableRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
-		TableRow addon = candidate(ADDON, "6.2.0", VersionSource.profileProperty("dev", "spring.version"));
+		TableRow core = createRow(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		TableRow addon = createRow(ADDON, "6.2.0", VersionSource.profileProperty("dev", "spring.version"));
 
 		UpgradeReview review = new UpgradeReview(core, addon);
 
-		// both rows keep their own upgrade target, so propagation changes no
-		// visibility and the table only refreshes rows in place
-		assertThat(changes(review, () -> review.setVersion(core, ArtifactVersion.of("6.2.1"))))
+		assertThat(createChanges(review, () -> review.setVersion(core, ArtifactVersion.of("6.2.1"))))
 				.containsExactly(ReviewChange.allRows());
 	}
 
 	@Test
 	void togglingVersionFilterFiresReload() {
 
-		TableRow core = candidate(SPRING_CORE, "6.2.0");
+		TableRow core = createRow(SPRING_CORE, "6.2.0");
 
 		UpgradeReview review = new UpgradeReview(core);
 
-		assertThat(changes(review, () -> review.setHideUpToDate(false)))
+		assertThat(createChanges(review, () -> review.setHideUpToDate(false)))
 				.containsExactly(ReviewChange.reloadVisible());
 	}
 
 	@Test
 	void applyStrategyTargetWithoutTargetFiresNoChange() {
 
-		TableRow targetless = candidate(ADDON, "6.2.0", TestReleases.from("6.2.0"), "6.2.0");
+		TableRow targetless = createRow(ADDON, "6.2.0", TestReleases.from("6.2.0"), "6.2.0");
 
 		UpgradeReview review = new UpgradeReview(targetless);
 
-		assertThat(changes(review, () -> review.applyStrategyTarget(targetless, UpgradeStrategy.LATEST)))
+		assertThat(createChanges(review, () -> review.applyStrategyTarget(targetless, UpgradeStrategy.LATEST)))
 				.isEmpty();
 	}
 
 	@Test
 	void selectAllWithUnchangedVisibilityRefreshesRowsWithoutReload() {
 
-		TableRow core = candidate(SPRING_CORE, "6.2.0");
-		TableRow test = candidate(SPRING_TEST, "6.2.0");
+		TableRow core = createRow(SPRING_CORE, "6.2.0");
+		TableRow test = createRow(SPRING_TEST, "6.2.0");
 
 		UpgradeReview review = new UpgradeReview(core, test);
 
-		assertThat(changes(review, () -> review.selectAll(true))).containsExactly(ReviewChange.allRows());
+		assertThat(createChanges(review, () -> review.selectAll(true))).containsExactly(ReviewChange.allRows());
 	}
 
 	@Test
 	void selectAllHidingArmedOnlyRowsFiresReload() {
 
-		TableRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
-		TableRow addon = candidate(ADDON, "6.2.0", TestReleases.from("6.2.0"),
+		TableRow core = createRow(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		TableRow addon = createRow(ADDON, "6.2.0", TestReleases.from("6.2.0"),
 				VersionSource.property("spring.version"), "6.2.0");
 
 		UpgradeReview review = new UpgradeReview(core, addon);
 		review.setVersion(core, ArtifactVersion.of("6.2.1"));
 
 		// disarming all hides the addon, which was visible only while armed
-		assertThat(changes(review, () -> review.selectAll(false)))
+		assertThat(createChanges(review, () -> review.selectAll(false)))
 				.containsExactly(ReviewChange.reloadVisible());
 	}
 
 	@Test
 	void bulkStrategyUsesFirstPeerWithAnApplicableTarget() {
 
-		TableRow targetless = candidate(ADDON, "6.2.0", TestReleases.from("6.2.0"),
+		TableRow targetless = createRow(ADDON, "6.2.0", TestReleases.from("6.2.0"),
 				VersionSource.property("spring.version"), "6.2.0");
-		TableRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		TableRow core = createRow(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
 
 		UpgradeReview review = new UpgradeReview(targetless, core);
 		review.setHideUpToDate(false);
@@ -455,8 +479,8 @@ class UpgradeReviewTests {
 	@Test
 	void selectedSharedPropertyPeerRemainsVisibleWithoutOwnUpgradeTarget() {
 
-		TableRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
-		TableRow addon = candidate(ADDON, "6.2.0", TestReleases.from("6.2.0"),
+		TableRow core = createRow(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		TableRow addon = createRow(ADDON, "6.2.0", TestReleases.from("6.2.0"),
 				VersionSource.property("spring.version"), "6.2.0");
 
 		UpgradeReview review = new UpgradeReview(core, addon);
@@ -482,7 +506,7 @@ class UpgradeReviewTests {
 			}
 
 		};
-		TableRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		TableRow core = createRow(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
 		TableRow addon = new TableRow(TestCandidates.candidate(ADDON, "6.2.0",
 				it -> it.releases("6.2.1").versionProperty("spring.version").assistant(other)));
 
@@ -495,8 +519,8 @@ class UpgradeReviewTests {
 	@Test
 	void propagatedApplyStateDoesNotDependOnPeerCurrentVersion() {
 
-		TableRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
-		TableRow addon = candidate(ADDON, "6.2.1", TestReleases.from("6.2.1"),
+		TableRow core = createRow(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		TableRow addon = createRow(ADDON, "6.2.1", TestReleases.from("6.2.1"),
 				VersionSource.property("spring.version"), "6.2.1");
 
 		UpgradeReview review = new UpgradeReview(core, addon);
@@ -509,7 +533,7 @@ class UpgradeReviewTests {
 	/**
 	 * Collect the {@link ReviewChange}s fired while running {@code interaction}.
 	 */
-	private static List<ReviewChange> changes(UpgradeReview review, Runnable interaction) {
+	private static List<ReviewChange> createChanges(UpgradeReview review, Runnable interaction) {
 
 		List<ReviewChange> changes = new ArrayList<>();
 		Disposable parent = Disposer.newDisposable();
@@ -522,28 +546,24 @@ class UpgradeReviewTests {
 		return changes;
 	}
 
-	/**
-	 * A candidate without a governing rule, so the row stays labeled by its bare
-	 * coordinate.
-	 */
 	private static TableRow bareCandidate(ArtifactId artifactId, String version) {
 		return new TableRow(TestCandidates.candidate(artifactId, version, it -> it.releases(version, "6.2.1")));
 	}
 
-	private static TableRow candidate(ArtifactId artifactId, String version) {
-		return candidate(artifactId, version, VersionSource.declared(version));
+	private static TableRow createRow(ArtifactId artifactId, String version) {
+		return createRow(artifactId, version, VersionSource.declared(version));
 	}
 
-	private static TableRow candidate(ArtifactId artifactId, String version, VersionSource versionSource) {
-		return candidate(artifactId, version, TestReleases.from(version, "6.2.1"), versionSource, version);
+	private static TableRow createRow(ArtifactId artifactId, String version, VersionSource versionSource) {
+		return createRow(artifactId, version, TestReleases.from(version, "6.2.1"), versionSource, version);
 	}
 
-	private static TableRow candidate(ArtifactId artifactId, String version, Releases releases,
+	private static TableRow createRow(ArtifactId artifactId, String version, Releases releases,
 			String... declaredVersions) {
-		return candidate(artifactId, version, releases, VersionSource.declared(version), declaredVersions);
+		return createRow(artifactId, version, releases, VersionSource.declared(version), declaredVersions);
 	}
 
-	private static TableRow candidate(ArtifactId artifactId, String version, Releases releases,
+	private static TableRow createRow(ArtifactId artifactId, String version, Releases releases,
 			VersionSource versionSource, String... declaredVersions) {
 		return new TableRow(TestCandidates.candidate(artifactId, version, it -> it.releases(releases)
 				.versionSource(versionSource).rule("Spring Framework").declaredVersions(declaredVersions)));

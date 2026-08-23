@@ -19,12 +19,12 @@ package biz.paluch.dap.assistant.completion;
 import java.time.Duration;
 import java.time.LocalDateTime;
 
-import biz.paluch.dap.DependencyPresentation;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.VersioningScheme;
 import biz.paluch.dap.assistant.VersionStatus;
+import biz.paluch.dap.assistant.presentation.DependencyPresentation;
 import biz.paluch.dap.checker.SecurityShieldIcons;
 import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.rule.DependencyRule;

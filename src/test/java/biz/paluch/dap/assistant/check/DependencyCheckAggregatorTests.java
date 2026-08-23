@@ -35,11 +35,15 @@ import biz.paluch.dap.fixtures.TestInterfaceAssistant;
 import biz.paluch.dap.fixtures.TestProjectDependencyContext;
 import biz.paluch.dap.fixtures.TestProjects;
 import biz.paluch.dap.fixtures.TestReleaseSource;
+import biz.paluch.dap.metadata.ProjectMetadataService;
+import biz.paluch.dap.rule.DependencyRuleService;
+import biz.paluch.dap.state.ApplicationSettings;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
 import com.intellij.mock.MockVirtualFile;
 import com.intellij.openapi.vfs.VirtualFile;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import static biz.paluch.dap.assertions.Assertions.*;
@@ -93,8 +97,21 @@ class DependencyCheckAggregatorTests {
 
 	private static final String BROKEN_ARTIFACT_ERROR = "broken: unavailable";
 
+	private final ApplicationSettings settings = new ApplicationSettings();
+
+	private static final StateService STATE_SERVICE = new StateService();
+
 	private final DependencyCheckAggregator aggregator = new DependencyCheckAggregator(
-			TestProjects.PROJECT, new StateService());
+			TestProjects.PROJECT, STATE_SERVICE, settings);
+
+	@BeforeAll
+	static void registerMetadataService() {
+
+		if (TestProjects.PROJECT.getService(ProjectMetadataService.class) == null) {
+			TestProjects.PROJECT.registerService(ProjectMetadataService.class,
+					new ProjectMetadataService(TestProjects.PROJECT, STATE_SERVICE.getCache()));
+		}
+	}
 
 	@Test
 	void groupsDeclarationsByArtifact() {
@@ -130,7 +147,7 @@ class DependencyCheckAggregatorTests {
 		Map<PackageIdentity, ReleaseLookupResult> releases = Map.of(VAVR_CURRENT.getPackageIdentity(), resolved(VAVR),
 				LETTUCE_CURRENT.getPackageIdentity(), resolved(LETTUCE_CORE), BROKEN_ARTIFACT,
 				ReleaseLookupResult.failed(BROKEN_ARTIFACT_ERROR));
-		DependencyCheckResult result = aggregator.toDependencyCheckResult(releases);
+		DependencyCheckResult result = aggregator.toDependencyCheckResult(releases, DependencyRuleService.absent());
 
 		assertThat(result).extracting(upgrade -> upgrade.getArtifactId().artifactId())
 				.containsExactly(LETTUCE_CURRENT.getArtifactId().artifactId(),
@@ -139,6 +156,19 @@ class DependencyCheckAggregatorTests {
 				.containsExactly(LETTUCE_CURRENT.getVersion(), VAVR_CURRENT.getVersion());
 		assertThat(result.errors()).containsExactly(BROKEN_ARTIFACT_ERROR);
 		assertThat(result.scope().toList()).containsExactly(a, b);
+	}
+
+	@Test
+	void namesCandidateAfterRememberedNameHint() {
+
+		settings.addNameHint("Lettuce", List.of(LETTUCE_CURRENT.getPackageIdentity()));
+		aggregator.add(dependency(LETTUCE_CURRENT), context(ACME_APP), buildFile("hint/build.gradle"), List.of());
+
+		DependencyCheckResult result = aggregator.toDependencyCheckResult(
+				Map.of(LETTUCE_CURRENT.getPackageIdentity(), resolved(LETTUCE_CORE)), DependencyRuleService.absent());
+
+		assertThat(result).singleElement()
+				.satisfies(upgrade -> assertThat(upgrade.getPresentation().getDependencyName()).isEqualTo("Lettuce"));
 	}
 
 	@Test
@@ -151,8 +181,8 @@ class DependencyCheckAggregatorTests {
 				context(ACME_APP), a, List.of());
 		aggregator.add(dependency(VAVR_CURRENT), context(ACME_LIB), b, List.of());
 
-		DependencyCheckResult result = aggregator
-				.toDependencyCheckResult(Map.of(VAVR_CURRENT.getPackageIdentity(), resolved(VAVR)));
+		DependencyCheckResult result = aggregator.toDependencyCheckResult(
+				Map.of(VAVR_CURRENT.getPackageIdentity(), resolved(VAVR)), DependencyRuleService.absent());
 
 		assertThat(result).singleElement().satisfies(upgrade -> {
 			DeclaredVersions declaredVersions = upgrade.getDeclaredVersions();
@@ -183,7 +213,8 @@ class DependencyCheckAggregatorTests {
 
 		DependencyCheckResult result = aggregator.toDependencyCheckResult(
 				Map.of(mavenDependency.getPackageIdentity(), resolved(LETTUCE_CORE),
-						npmDependency.getPackageIdentity(), resolved(LETTUCE_CORE)));
+						npmDependency.getPackageIdentity(), resolved(LETTUCE_CORE)),
+				DependencyRuleService.absent());
 
 		assertThat(result.upgrades())
 				.extracting(upgrade -> upgrade.getPackageIdentity().getPackageSystem())

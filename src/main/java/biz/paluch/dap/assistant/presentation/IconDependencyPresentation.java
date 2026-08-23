@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.assistant;
+package biz.paluch.dap.assistant.presentation;
 
-import biz.paluch.dap.DependencyPresentation;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.HasPackageSystem;

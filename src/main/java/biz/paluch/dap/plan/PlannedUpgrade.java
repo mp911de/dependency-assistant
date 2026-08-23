@@ -51,6 +51,8 @@ public interface PlannedUpgrade {
 
 	String getDependencyName();
 
+	String getDependencyOrProjectName();
+
 	/**
 	 * Return the upgrades this planned upgrade contributes, in update order.
 	 *

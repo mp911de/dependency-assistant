@@ -14,18 +14,14 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.assistant;
+package biz.paluch.dap.assistant.presentation;
 
 import javax.swing.Icon;
 
-import biz.paluch.dap.DependencyPresentation;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.PackageSystem;
 
-/**
- * @author Mark Paluch
- */
 class DefaultIconDependencyPresentation implements IconDependencyPresentation {
 
 	private final Icon tableIcon;

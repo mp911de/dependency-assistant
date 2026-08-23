@@ -21,17 +21,21 @@ import java.util.stream.Stream;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.extension.IdeaProjectTests;
+import biz.paluch.dap.fixtures.TestAssistant;
 import biz.paluch.dap.fixtures.TestCandidates;
+import biz.paluch.dap.state.ApplicationSettings;
 import com.intellij.openapi.command.impl.UndoManagerImpl;
 import com.intellij.openapi.command.undo.UndoManager;
 import com.intellij.openapi.project.Project;
+import com.intellij.util.Consumer;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
 
 /**
- * Unit tests for {@link UpgradePlanService} command history.
+ * Unit tests for {@link UpgradePlanService} command history and plan actions.
  *
  * @author Mark Paluch
  */
@@ -87,6 +91,88 @@ class UpgradePlanServiceUnitTests {
 		action.apply();
 
 		assertThat(content.getAffectedFiles()).containsExactly("current.xml", "pasted.xml");
+	}
+
+	@Test
+	void renameActionAppliesUndoesAndRedoes() {
+
+		UpgradePlanState.Item stored = UpgradePlanState.Item.from(candidate("alpha"), TARGET);
+		UpgradePlanItem item = new UpgradePlanLoader(TestAssistant.INSTANCE, null).create(stored);
+		stored.setMaterialized(item);
+		UpgradePlanState.Content content = new UpgradePlanState.Content();
+		content.getItems().add(stored);
+
+		PlanAction action = PlanAction.renameItem(content, item, "Alpha", false);
+		action.apply();
+		assertThat(stored.getDisplayName()).isEqualTo("Alpha");
+		assertThat(item.getDisplayName()).isEqualTo("Alpha");
+
+		action.undo();
+		assertThat(stored.getDisplayName()).isEqualTo("alpha");
+		assertThat(item.getDisplayName()).isEqualTo("alpha");
+
+		action.apply();
+		assertThat(stored.getDisplayName()).isEqualTo("Alpha");
+		assertThat(item.getDisplayName()).isEqualTo("Alpha");
+	}
+
+	@Test
+	void renameActionRemembersNameWhenRequested() {
+
+		UpgradePlanState.Item stored = UpgradePlanState.Item.from(candidate("alpha"), TARGET);
+		UpgradePlanItem item = new UpgradePlanLoader(TestAssistant.INSTANCE, null).create(stored);
+		stored.setMaterialized(item);
+		UpgradePlanState.Content content = new UpgradePlanState.Content();
+		content.getItems().add(stored);
+		List<PackageIdentity> packages = List.of(item.getMembers().getFirst().getPackageIdentity());
+		ApplicationSettings settings = ApplicationSettings.getInstance();
+		settings.doWithState((Consumer<? super ApplicationSettings.State>) state -> state.getNameHints().clear());
+
+		PlanAction action = PlanAction.renameItem(content, item, "Alpha", true);
+		try {
+			action.apply();
+			assertThat(settings.findNameHint(packages)).isEqualTo("Alpha");
+
+			action.undo();
+			assertThat(settings.findNameHint(packages)).isNull();
+		} finally {
+			settings.removeNameHint("Alpha", packages);
+		}
+	}
+
+	@Test
+	void renameItemIsUndoable(Project project) {
+
+		ApplicationSettings settings = ApplicationSettings.getInstance();
+		settings.doWithState((Consumer<? super ApplicationSettings.State>) state -> state.getNameHints().clear());
+		List<UpgradePlanItem> items = TestPlannedUpgrade.create(project, TARGET, candidate("alpha"));
+		UpgradePlanService service = UpgradePlanService.getInstance(project);
+		UndoManager undoManager = UndoManager.getInstance(project);
+		try {
+
+			assertThat(settings.findNameHint(items.getFirst().getMembers().getFirst()
+					.getPackageIdentity())).isNull();
+
+			service.renameItem(items.getFirst(), "Alpha", true);
+			assertThat(service.getUpgradePlan().getItems().getFirst().getDisplayName()).isEqualTo("Alpha");
+
+			assertThat(settings.findNameHint(items.getFirst().getMembers().getFirst()
+					.getPackageIdentity())).isEqualTo("Alpha");
+
+			undoManager.undo(null);
+			assertThat(service.getUpgradePlan().getItems().getFirst().getDisplayName()).isEqualTo("alpha");
+
+			assertThat(settings.findNameHint(items.getFirst().getMembers().getFirst()
+					.getPackageIdentity())).isNull();
+
+			undoManager.redo(null);
+			assertThat(service.getUpgradePlan().getItems().getFirst().getDisplayName()).isEqualTo("Alpha");
+
+			assertThat(settings.findNameHint(items.getFirst().getMembers().getFirst()
+					.getPackageIdentity())).isEqualTo("Alpha");
+		} finally {
+			((UndoManagerImpl) undoManager).dropHistoryInTests();
+		}
 	}
 
 	private static TestPlannedUpgrade candidate(String name) {

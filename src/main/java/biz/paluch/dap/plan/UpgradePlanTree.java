@@ -282,6 +282,23 @@ class UpgradePlanTree {
 		return selectionSet;
 	}
 
+	/**
+	 * Return the rename target: the plan item of the single selected top-level row.
+	 * Unlike {@link #getSelection()}, a selected member row does not resolve to its
+	 * parent group; a multi-selection, a member row, or an empty selection yields
+	 * {@literal null}.
+	 */
+	@Nullable
+	UpgradePlanItem getRenameTarget() {
+
+		TreePath[] paths = tree.getSelectionPaths();
+		if (paths == null || paths.length != 1) {
+			return null;
+		}
+
+		return paths[0].getLastPathComponent() instanceof PlanTreeNode node ? node.getItem() : null;
+	}
+
 	@Nullable
 	UpgradePlanItem selectionAfterRemoving(Set<UpgradePlanItem> items) {
 		return PlanItemOrdering.selectionAfterRemoval(this.shownItems, items);

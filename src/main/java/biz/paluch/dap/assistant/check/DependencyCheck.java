@@ -38,8 +38,8 @@ import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.ReleaseSources;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.metadata.ProjectMetadataIndexer;
-import biz.paluch.dap.metadata.ProjectMetadataService;
 import biz.paluch.dap.rule.DependencyfileService;
+import biz.paluch.dap.state.ApplicationSettings;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.util.MessageBundle;
@@ -74,7 +74,7 @@ public class DependencyCheck {
 
 	private final StateService stateService;
 
-	private final ProjectMetadataService metadataService;
+	private final ApplicationSettings settings;
 
 	/**
 	 * Create a dependency check bound to the given project.
@@ -84,7 +84,7 @@ public class DependencyCheck {
 	public DependencyCheck(Project project) {
 		this.project = project;
 		this.stateService = StateService.getInstance(project);
-		this.metadataService = ProjectMetadataService.getInstance(project);
+		this.settings = ApplicationSettings.getInstance();
 		this.metadataIndexer = new ProjectMetadataIndexer(project);
 	}
 
@@ -98,6 +98,7 @@ public class DependencyCheck {
 	 */
 	public DependencyCheckResult findDependencyUpgrades(ProgressIndicator indicator,
 			UpgradeScope scope) {
+
 		this.stateService.markUsed();
 		indicator.setIndeterminate(false);
 
@@ -125,7 +126,7 @@ public class DependencyCheck {
 	}
 
 	private DependencyCheckAggregator aggregate(StepsProgressIndicator steps, UpgradeScope scope) {
-		DependencyCheckAggregator aggregator = new DependencyCheckAggregator(project, stateService, metadataService);
+		DependencyCheckAggregator aggregator = new DependencyCheckAggregator(project, stateService, settings);
 		steps.setText(MessageBundle.message("action.check.dependencies.progress.collecting"));
 		scope.forEach(entry -> {
 			steps.checkCanceled();
@@ -151,7 +152,7 @@ public class DependencyCheck {
 	public DependencyCheckAggregator collectDependencies(ProgressIndicator indicator,
 			DependencyAssistant assistant) {
 		ProjectStateIndexer indexer = new ProjectStateIndexer(project, indicator);
-		DependencyCheckAggregator aggregator = new DependencyCheckAggregator(project, stateService, metadataService);
+		DependencyCheckAggregator aggregator = new DependencyCheckAggregator(project, stateService, settings);
 		indexer.forEachAvailableEntry(assistant, (psiFile, context) -> {
 			aggregator.add(psiFile.getVirtualFile(), context, indicator);
 		});

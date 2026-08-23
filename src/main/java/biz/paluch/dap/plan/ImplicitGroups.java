@@ -26,12 +26,15 @@ import java.util.Set;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
+import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
 import biz.paluch.dap.assistant.check.VersionProperty;
 import biz.paluch.dap.plan.UpgradePlanState.Item;
 import biz.paluch.dap.plan.UpgradePlanState.Member;
+import biz.paluch.dap.state.ApplicationSettings;
 import biz.paluch.dap.util.Sequence;
+import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -44,15 +47,15 @@ class ImplicitGroups implements Sequence<Item> {
 
 	private final List<Item> items;
 
-	private ImplicitGroups(List<ReviewedUpgrade> retained, Map<VersionProperty, ReviewedUpgrade> owners) {
-
-		this.items = new ArrayList<>(retained.size());
-		for (ReviewedUpgrade reviewedUpgrade : retained) {
-			items.add(reviewedUpgrade.toItem(owners));
-		}
+	public ImplicitGroups(List<Item> items) {
+		this.items = items;
 	}
 
-	static ImplicitGroups create(Map<? extends PlannedUpgrade, ArtifactVersion> upgrades) {
+	/**
+	 * Normalize the reviewed upgrades into persisted items.
+	 */
+	static ImplicitGroups create(Map<? extends PlannedUpgrade, ArtifactVersion> upgrades,
+			ApplicationSettings settings) {
 
 		List<ReviewedUpgrade> reviewedUpgrades = new ArrayList<>(upgrades.size());
 		upgrades.forEach((capture, version) -> reviewedUpgrades.add(new ReviewedUpgrade(capture, version)));
@@ -83,7 +86,12 @@ class ImplicitGroups implements Sequence<Item> {
 			match.owner().fold(reviewedUpgrade, match.property(), owners);
 		}
 
-		return new ImplicitGroups(retained, owners);
+		List<Item> items = new ArrayList<>(retained.size());
+		for (ReviewedUpgrade reviewedUpgrade : retained) {
+			items.add(reviewedUpgrade.toItem(owners, settings));
+		}
+
+		return new ImplicitGroups(items);
 	}
 
 	/**
@@ -136,7 +144,7 @@ class ImplicitGroups implements Sequence<Item> {
 		private String name;
 
 		ReviewedUpgrade(PlannedUpgrade capture, ArtifactVersion target) {
-			this.name = capture.getDependencyName();
+			this.name = capture.getDependencyOrProjectName();
 			this.target = target;
 			this.candidates = new ArrayList<>(capture.getUpgradeCandidates());
 			this.group = candidates.size() > 1;
@@ -198,15 +206,35 @@ class ImplicitGroups implements Sequence<Item> {
 			});
 		}
 
-		Item toItem(Map<VersionProperty, ReviewedUpgrade> owners) {
+		Item toItem(Map<VersionProperty, ReviewedUpgrade> owners, ApplicationSettings settings) {
 
 			Set<VersionProperty> claimed = new HashSet<>();
 			List<Member> members = new ArrayList<>(candidates.size());
+			List<PackageIdentity> packages = new ArrayList<>(candidates.size());
 			for (DependencyUpgradeCandidate candidate : candidates) {
 				members.add(toMember(candidate, claimed, owners));
+				packages.add(candidate.getDependency().getPackageIdentity());
 			}
 
-			return Item.from(name, target, members, candidates);
+			String hint = null;
+			if (!isRuleNamed()) {
+				hint = settings.findNameHint(packages);
+			}
+			return Item.from(hint != null ? hint : name, target, members, candidates);
+		}
+
+		/**
+		 * A capture governed by a rule carrying a dependency name keeps that name; the
+		 * rule outranks any remembered hint.
+		 */
+		private boolean isRuleNamed() {
+
+			for (DependencyUpgradeCandidate candidate : candidates) {
+				if (StringUtils.hasText(candidate.getRule().getDependencyName())) {
+					return true;
+				}
+			}
+			return false;
 		}
 
 		private Member toMember(DependencyUpgradeCandidate candidate, Set<VersionProperty> claimed,

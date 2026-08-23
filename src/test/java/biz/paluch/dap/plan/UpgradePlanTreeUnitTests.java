@@ -27,7 +27,9 @@ import java.util.List;
 import javax.swing.JComponent;
 import javax.swing.tree.DefaultMutableTreeNode;
 
+import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.extension.IdeaProjectTests;
+import biz.paluch.dap.fixtures.TestCandidates;
 import com.intellij.openapi.project.Project;
 import com.intellij.ui.treeStructure.Tree;
 import com.intellij.util.ui.JBUI;
@@ -122,6 +124,42 @@ class UpgradePlanTreeUnitTests {
 		probe.planTree.refreshItems(List.of(item));
 
 		assertThat(probe.badgeHits(0, tooltip)).isEmpty();
+	}
+
+	@Test
+	void renameTargetIsTheSingleSelectedTopLevelItem(Project project) {
+
+		UpgradePlanItem alpha = TestPlannedUpgrade.item("org.example:alpha:1.0.0", "1.1.0");
+		UpgradePlanItem bravo = TestPlannedUpgrade.item("org.example:bravo:1.0.0", "1.1.0");
+		PlanTreeProbe probe = new PlanTreeProbe(project, alpha, bravo);
+
+		assertThat(probe.planTree.getRenameTarget()).isNull();
+
+		probe.tree.setSelectionRow(0);
+		assertThat(probe.planTree.getRenameTarget()).isEqualTo(alpha);
+
+		probe.tree.addSelectionRow(1);
+		assertThat(probe.planTree.getRenameTarget()).isNull();
+	}
+
+	@Test
+	void renameTargetIgnoresGroupMemberRows(Project project) {
+
+		TestPlannedUpgrade group = new TestPlannedUpgrade(List.of(
+				TestCandidates.candidate("org.springframework:spring-core:6.0.0",
+						it -> it.releases("6.1.0").versionProperty("spring.version")),
+				TestCandidates.candidate("org.springframework:spring-context:6.0.0",
+						it -> it.releases("6.1.0").versionProperty("spring.version"))),
+				"spring.version");
+		UpgradePlanItem item = TestPlannedUpgrade.create(project, ArtifactVersion.of("6.1.0"), group).getFirst();
+		PlanTreeProbe probe = new PlanTreeProbe(project, item);
+
+		probe.tree.expandRow(0);
+		probe.tree.setSelectionRow(1);
+		assertThat(probe.planTree.getRenameTarget()).isNull();
+
+		probe.tree.setSelectionRow(0);
+		assertThat(probe.planTree.getRenameTarget()).isEqualTo(item);
 	}
 
 	/**

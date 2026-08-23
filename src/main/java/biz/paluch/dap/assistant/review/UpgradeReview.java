@@ -66,11 +66,6 @@ class UpgradeReview {
 
 	private final Map<TableRow, String> toolTips = new HashMap<>();
 
-	/**
-	 * Selected release per row, resolved lazily from the release universe.
-	 * Invalidated when the row's target version or the visibility filter changes so
-	 * the rendering path stays a map lookup.
-	 */
 	private final Map<TableRow, Release> selectedReleases = new HashMap<>();
 
 	private final EventDispatcher<ReviewListener> listeners = EventDispatcher.create(ReviewListener.class);

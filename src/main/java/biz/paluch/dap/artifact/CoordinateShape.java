@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.assistant.review;
+package biz.paluch.dap.artifact;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -36,11 +36,9 @@ import org.jspecify.annotations.Nullable;
  * so {@code httpcore5} is never read as a base of {@code httpcore5reactive}.
  *
  * @author Mark Paluch
- * @see UpgradeRows
- * @see GroupRow
  */
 // TODO: refactor
-class CoordinateShape {
+public class CoordinateShape {
 
 	private final List<String> artifactIds;
 

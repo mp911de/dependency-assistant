@@ -20,7 +20,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.CoordinateShape;
+import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.PackageSystem;
+import biz.paluch.dap.state.ApplicationSettings;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.LinkedMultiValueMap;
@@ -38,6 +41,12 @@ import org.springframework.util.MultiValueMap;
  */
 class InferredGrouping implements GroupingPolicy<TableRow, GroupRow> {
 
+	private final ApplicationSettings settings;
+
+	InferredGrouping() {
+		this.settings = ApplicationSettings.getInstance();
+	}
+
 	@Override
 	public List<GroupRow> group(List<TableRow> candidates) {
 
@@ -50,7 +59,7 @@ class InferredGrouping implements GroupingPolicy<TableRow, GroupRow> {
 		}
 
 		List<GroupRow> groups = new ArrayList<>();
-		families.forEach((family, members) -> groups.addAll(groupFamily(family.groupId(), members)));
+		families.forEach((family, members) -> groups.addAll(groupFamily(family, members)));
 		return groups;
 	}
 
@@ -61,9 +70,9 @@ class InferredGrouping implements GroupingPolicy<TableRow, GroupRow> {
 	 * unique stay individual rows. Drifting members join by version match only; a
 	 * shared version property never pulls a member in.
 	 */
-	private static List<GroupRow> groupFamily(String groupId, List<TableRow> family) {
+	private List<GroupRow> groupFamily(Family family, List<TableRow> members) {
 
-		VersionAgreement agreement = VersionAgreement.select(family);
+		VersionAgreement agreement = VersionAgreement.select(members);
 		if (agreement == null || agreement.size() < 2) {
 			return List.of();
 		}
@@ -79,7 +88,7 @@ class InferredGrouping implements GroupingPolicy<TableRow, GroupRow> {
 			if (line.size() < 2) {
 				return;
 			}
-			GroupRow group = groupReleaseLine(groupId, line);
+			GroupRow group = groupReleaseLine(family, line);
 			if (group == null) {
 				return;
 			}
@@ -90,10 +99,15 @@ class InferredGrouping implements GroupingPolicy<TableRow, GroupRow> {
 		return groups;
 	}
 
-	private static @Nullable GroupRow groupReleaseLine(String groupId, List<TableRow> line) {
+	private @Nullable GroupRow groupReleaseLine(Family family, List<TableRow> line) {
 
-		List<String> artifactIds = line.stream().map(it -> it.getArtifactId().artifactId()).toList();
-		String name = CoordinateShape.of(artifactIds).deriveGroupName(groupId);
+		List<PackageIdentity> packages = line.stream().map(TableRow::getPackageIdentity).toList();
+		String name = settings.findNameHint(packages);
+		if (name == null) {
+			name = CoordinateShape
+					.of(packages.stream().map(PackageIdentity::getArtifactId).map(ArtifactId::artifactId).toList())
+					.deriveGroupName(family.groupId());
+		}
 		return name == null ? null : GroupRow.inferred(line, name);
 	}
 

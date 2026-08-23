@@ -25,7 +25,6 @@ import java.util.function.Consumer;
 import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantIcons;
-import biz.paluch.dap.DependencyPresentation;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
@@ -34,18 +33,18 @@ import biz.paluch.dap.artifact.HasArtifactId;
 import biz.paluch.dap.artifact.HasPackageIdentity;
 import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.assistant.IconDependencyPresentation;
 import biz.paluch.dap.assistant.VersionStatus;
 import biz.paluch.dap.assistant.check.DeclaredVersions;
 import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
 import biz.paluch.dap.assistant.check.VersionProperty;
+import biz.paluch.dap.assistant.presentation.DependencyPresentation;
+import biz.paluch.dap.assistant.presentation.IconDependencyPresentation;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.lookup.DependencySiteQuery;
 import biz.paluch.dap.plan.PlannedUpgrade;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.util.MessageBundle;
-import biz.paluch.dap.util.StringUtils;
 import com.intellij.lang.documentation.DocumentationMarkup;
 import com.intellij.openapi.util.text.HtmlBuilder;
 import com.intellij.openapi.util.text.HtmlChunk;
@@ -67,7 +66,7 @@ class TableRow implements HasArtifactId, HasPackageIdentity, PlannedUpgrade {
 
 	private boolean labelByDependencyName;
 
-	private final String renderedArtifactId;
+	private final String artifactIdDisplayName;
 
 	private final String rowName;
 
@@ -84,21 +83,19 @@ class TableRow implements HasArtifactId, HasPackageIdentity, PlannedUpgrade {
 		this.upgradeCandidate = upgradeCandidate;
 		this.evaluator = DependencyRuleEvaluator.create(upgradeCandidate.getRule(),
 				getCurrentVersion());
-		this.renderedArtifactId = upgradeCandidate.getArtifactId().artifactId();
 
-		String rowName = getRule().getDependencyName();
-		if (StringUtils.isEmpty(rowName)) {
-			rowName = renderedArtifactId;
-		}
-		else {
+		IconDependencyPresentation presentation = upgradeCandidate.getPresentation();
+		this.artifactIdDisplayName = presentation.getArtifactIdDisplayName();
+
+		String rowName = this.artifactIdDisplayName;
+		if (presentation.hasDependencyName()) {
+			rowName = presentation.getDependencyName();
 			labelByDependencyName();
 		}
 		this.rowName = rowName;
 
-		IconDependencyPresentation presentation = upgradeCandidate.getPresentation();
 		if (presentation.hasDependencyName()) {
 			this.dependencyOrProjectName = presentation.getDependencyName();
-
 		} else if (presentation.hasProjectName()) {
 			this.dependencyOrProjectName = presentation.getProjectName();
 		} else {
@@ -124,7 +121,7 @@ class TableRow implements HasArtifactId, HasPackageIdentity, PlannedUpgrade {
 
 		DependencyPresentation presentation = upgradeCandidate.getPresentation();
 		if (presentation.hasProjectName()
-				&& !presentation.getProjectName().equalsIgnoreCase(renderedArtifactId)) {
+				&& !presentation.getProjectName().equalsIgnoreCase(artifactIdDisplayName)) {
 			return new HtmlBuilder().append(HtmlChunk.text(presentation.getProjectName()))
 					.append(HtmlChunk.br()).toFragment();
 		}
@@ -196,10 +193,10 @@ class TableRow implements HasArtifactId, HasPackageIdentity, PlannedUpgrade {
 	}
 
 	public String getName() {
-		return labelByDependencyName ? rowName : renderedArtifactId;
+		return labelByDependencyName ? rowName : artifactIdDisplayName;
 	}
 
-	String getDependencyOrProjectName() {
+	public String getDependencyOrProjectName() {
 		return dependencyOrProjectName;
 	}
 
@@ -262,7 +259,7 @@ class TableRow implements HasArtifactId, HasPackageIdentity, PlannedUpgrade {
 	}
 
 	public String getSearchString() {
-		return getArtifactId() + " " + getDependencyName() + " " + getName();
+		return getArtifactId() + " " + getDependencyOrProjectName() + " " + getName();
 	}
 
 	/**
@@ -292,7 +289,7 @@ class TableRow implements HasArtifactId, HasPackageIdentity, PlannedUpgrade {
 			}
 
 			if (getRule().isPresent()) {
-				tooltip.append(evaluator.getToolTipText(getUpgrade().getPresentation()));
+				tooltip.append(evaluator.getToolTipText(getUpgrade().getPresentation().getHtmlDisplayName()));
 			}
 
 			if (tooltip.isEmpty()) {

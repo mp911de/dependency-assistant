@@ -24,8 +24,10 @@ import java.util.Map;
 import java.util.Set;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.plan.UpgradePlanState.Content;
 import biz.paluch.dap.plan.UpgradePlanState.Item;
+import biz.paluch.dap.state.ApplicationSettings;
 import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.util.MessageBundle;
 import org.jspecify.annotations.Nullable;
@@ -35,7 +37,7 @@ import org.jspecify.annotations.Nullable;
  * entry on the platform undo stack.
  *
  * <p>Implementations are the unit of change behind every plan mutation:
- * capture, remove, paste, discard, and ticket link and unlink.
+ * capture, remove, paste, discard, rename, and ticket link and unlink.
  * {@link UpgradePlanService} drives them and owns the surrounding machinery: it
  * opens the platform command, advances the plan generation, runs
  * {@link #apply()}, registers the undo adapter, and publishes the change event
@@ -160,6 +162,20 @@ interface PlanAction {
 	}
 
 	/**
+	 * Create the transition that renames a plan item, replacing its persisted
+	 * display name.
+	 *
+	 * @param content the plan content owning the item.
+	 * @param item the item to rename.
+	 * @param displayName the new, already sanitized display name.
+	 * @param rememberName whether the name was remembered by the user.
+	 * @return the reversible rename transition.
+	 */
+	static PlanAction renameItem(Content content, UpgradePlanItem item, String displayName, boolean rememberName) {
+		return new RenameItem(content, item, displayName, rememberName);
+	}
+
+	/**
 	 * Compose several transitions into one undoable unit, applied in order and
 	 * undone in reverse. The composed actions should share a command name and
 	 * materialization, both taken from the first action.
@@ -199,7 +215,7 @@ interface PlanAction {
 		/**
 		 * Reuse the already-materialized items and refresh their views in place,
 		 * preserving tree expansion and selection. Used when no item needs
-		 * re-materialization: remove and ticket link and unlink.
+		 * re-materialization: remove, rename, and ticket link and unlink.
 		 */
 		RETAIN
 
@@ -321,6 +337,93 @@ interface PlanAction {
 	}
 
 	/**
+	 * Renames one plan item by replacing its persisted display name, capturing the
+	 * prior name at construction for undo.
+	 */
+	class RenameItem implements PlanAction {
+
+		private final ApplicationSettings settings;
+
+		private final Content content;
+
+		private final UpgradePlanItem item;
+
+		private final String oldName;
+
+		private final String newName;
+
+		private final boolean rememberName;
+
+		private @Nullable String oldRememberedName;
+
+		private boolean wasRemembered;
+
+		private final List<PackageIdentity> packages;
+
+		private RenameItem(Content content, UpgradePlanItem item, String newName, boolean rememberName) {
+			this.settings = ApplicationSettings.getInstance();
+			this.content = content;
+			this.item = item;
+			this.oldName = item.getDisplayName();
+			this.newName = newName;
+			this.rememberName = rememberName;
+			this.packages = new ArrayList<>(item.getMembers().size());
+			for (ItemDependency member : item) {
+				this.packages.add(member.getPackageIdentity());
+			}
+		}
+
+		@Override
+		public String getCommandName() {
+			return MessageBundle.message("plan.rename.command");
+		}
+
+		@Override
+		public Materialization materialization() {
+			return Materialization.RETAIN;
+		}
+
+		@Override
+		public void apply() {
+			update(newName);
+			if (rememberName) {
+				oldRememberedName = settings.findNameHint(packages);
+				if (oldRememberedName != null) {
+					settings.removeNameHint(oldRememberedName, packages);
+				}
+				wasRemembered = settings.addNameHint(newName, packages);
+			}
+		}
+
+		@Override
+		public void undo() {
+			update(oldName);
+			if (rememberName && wasRemembered) {
+				settings.removeNameHint(newName, packages);
+				if (oldRememberedName != null) {
+					settings.addNameHint(oldRememberedName, packages);
+				}
+			}
+		}
+
+		private void update(String displayName) {
+
+			for (Item item : content) {
+				if (this.item.getId().equals(item.getId())) {
+					item.setDisplayName(displayName);
+					UpgradePlanItem materialized = item.getMaterialized();
+					if (materialized != null) {
+						materialized.setDisplayName(displayName);
+					}
+				}
+			}
+
+			this.item.setDisplayName(displayName);
+		}
+
+	}
+
+	/**
 	 * Removes the given items from the plan by their id, capturing the prior item
 	 * list on apply so undo restores it in full.
 	 */
@@ -383,12 +486,13 @@ interface PlanAction {
 
 		private final Content newContent;
 
-		private PlanUpgrades(Map<? extends PlannedUpgrade, ArtifactVersion> upgrades, FileScope scope,
-				UpgradePlanState.Plan plan) {
+		private PlanUpgrades(Map<? extends PlannedUpgrade, ArtifactVersion> upgrades,
+				FileScope scope, UpgradePlanState.Plan plan) {
 			this.plan = plan;
 
 			Content content = new Content();
-			content.setItems(ImplicitGroups.create(upgrades).toList());
+			ApplicationSettings settings = ApplicationSettings.getInstance();
+			content.setItems(ImplicitGroups.create(upgrades, settings).toList());
 			content.getAffectedFiles().addAll(scope.getPaths());
 
 			this.oldContent = plan.getContent();
