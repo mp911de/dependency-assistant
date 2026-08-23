@@ -47,7 +47,7 @@ public class DependencyDocumentationTargetProvider implements DocumentationTarge
 	public List<? extends DocumentationTarget> documentationTargets(PsiFile file, int offset) {
 
 		PsiElement element = file.findElementAt(offset);
-		if (element == null || hasPlatformTarget(file, element, offset)) {
+		if (element == null) {
 			return List.of();
 		}
 

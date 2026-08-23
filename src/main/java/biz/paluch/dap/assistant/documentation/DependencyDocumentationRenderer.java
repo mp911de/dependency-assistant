@@ -30,8 +30,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import biz.paluch.dap.InterfaceAssistant;
-import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.ArtifactVersion;
@@ -88,8 +86,6 @@ class DependencyDocumentationRenderer {
 
 	private final PackageSystem packageSystem;
 
-	private final InterfaceAssistant interfaceAssistant;
-
 	private final StateService stateService;
 
 	private final ProjectMetadataService metadataService;
@@ -104,11 +100,10 @@ class DependencyDocumentationRenderer {
 
 	private final NumberFormat decimalFormat = NumberFormat.getIntegerInstance();
 
-	DependencyDocumentationRenderer(PackageSystem packageSystem, InterfaceAssistant interfaceAssistant,
+	DependencyDocumentationRenderer(PackageSystem packageSystem,
 			StateService stateService, DependencyRuleEvaluator evaluator,
 			@Nullable ArtifactVersion currentVersion, boolean linkable) {
 		this.packageSystem = packageSystem;
-		this.interfaceAssistant = interfaceAssistant;
 		this.stateService = stateService;
 		this.evaluator = evaluator;
 		this.currentVersion = currentVersion;
@@ -119,12 +114,10 @@ class DependencyDocumentationRenderer {
 
 	public DependencyDocumentationRenderer(ArtifactReferenceContext context, boolean linkable) {
 
-		ProjectDependencyContext dependencyContext = context.getDependencyContext();
 		ArtifactDeclaration declaration = context.getDeclaration();
 		PsiElement psiElement = declaration.getDeclarationElement();
 
 		this.packageSystem = context.getPackageIdentity().getPackageSystem();
-		this.interfaceAssistant = dependencyContext.getInterfaceAssistant();
 		this.stateService = context.getStateService();
 		this.evaluator = context.getEvaluator();
 		this.currentVersion = context.getCurrentVersion();

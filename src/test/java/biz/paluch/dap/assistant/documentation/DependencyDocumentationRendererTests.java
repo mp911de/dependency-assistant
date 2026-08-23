@@ -30,7 +30,6 @@ import biz.paluch.dap.checker.Vulnerability;
 import biz.paluch.dap.fixtures.DependencyAssistantFixtures;
 import biz.paluch.dap.fixtures.Releases;
 import biz.paluch.dap.fixtures.TestDependencyRule;
-import biz.paluch.dap.fixtures.TestInterfaceAssistant;
 import biz.paluch.dap.fixtures.TestVulnerabilities;
 import biz.paluch.dap.metadata.GitLabPlatform;
 import biz.paluch.dap.metadata.Platform;
@@ -458,7 +457,7 @@ class DependencyDocumentationRendererTests {
 	}
 
 	private DependencyDocumentationRenderer renderer(@Nullable String currentVersion, boolean linkable) {
-		return new DependencyDocumentationRenderer(PackageSystem.MAVEN, TestInterfaceAssistant.INSTANCE,
+		return new DependencyDocumentationRenderer(PackageSystem.MAVEN,
 				new StateService(cache), DependencyRuleEvaluator.absent(),
 				currentVersion != null ? ArtifactVersion.of(currentVersion) : null, linkable);
 	}
@@ -472,7 +471,7 @@ class DependencyDocumentationRendererTests {
 	}
 
 	private DependencyDocumentationRenderer renderer(String currentVersion, DependencyRuleEvaluator evaluator) {
-		return new DependencyDocumentationRenderer(PackageSystem.MAVEN, TestInterfaceAssistant.INSTANCE,
+		return new DependencyDocumentationRenderer(PackageSystem.MAVEN,
 				new StateService(cache), evaluator, ArtifactVersion.of(currentVersion), false);
 	}
 
