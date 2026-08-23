@@ -69,8 +69,7 @@ public class DependencyPresentationFactory {
 		}
 
 		if (StringUtils.isEmpty(dependencyName)) {
-			projectName = ProjectDisplayName.getAcceptedProjectName(pkg.getArtifactId(),
-					metadata.getProjectName());
+			projectName = ProjectName.of(pkg.getArtifactId(), projectName).getDisplayName();
 		}
 
 		String displayName = assistant.getDisplayName(pkg.getArtifactId());
