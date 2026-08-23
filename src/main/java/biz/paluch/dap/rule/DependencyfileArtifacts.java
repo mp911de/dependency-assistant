@@ -18,9 +18,7 @@ package biz.paluch.dap.rule;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.util.StringUtils;
@@ -40,8 +38,10 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * PSI edits on the {@code artifacts} section of a {@code dependencyfile.json}
- * descriptor: inserting entries and setting entry names. Callers run these
- * inside a write command on a JSON {@link PsiFile}; the descriptor's
+ * descriptor: setting entry names, inserting entries that do not exist yet.
+ * Existing entries always get their {@code name} replaced so that "Add to
+ * dependencyfile.json" and an Upgrade Plan rename behave alike. Callers run
+ * these inside a write command on a JSON {@link PsiFile}; the descriptor's
  * {@code artifacts} object is created when absent.
  *
  * <p>Entry keys are the narrowest {@link ArtifactPattern#keyFor(ArtifactId)
@@ -59,49 +59,38 @@ public class DependencyfileArtifacts {
 	}
 
 	/**
-	 * Insert the entries not already present into the descriptor's
-	 * {@code artifacts} object (creating that object when absent), reformat the
-	 * file, and return the range covering the first inserted entry's {@code name}
-	 * value for the caret.
+	 * Set {@code name} on the entries covering the coordinates (see
+	 * {@link #entries(List, String)}). When that is a wildcard entry, existing
+	 * exact entries of the coordinates are renamed as well: an exact key outranks
+	 * the wildcard and would otherwise keep the old name in effect.
 	 * @param project the project owning the file.
 	 * @param psiFile the descriptor file; can be {@literal null}.
-	 * @param entries the entries to insert.
-	 * @return the {@code name}-value range to select, or {@literal null} when the
-	 * file is not a JSON object or every entry was already present.
+	 * @param artifactIds the coordinates to name.
+	 * @param name the name to write.
+	 * @return the {@code name}-value range of the first entry for the caret, or
+	 * {@literal null} when the file is not a JSON object.
 	 */
-	public static @Nullable TextRange insertEntries(Project project, @Nullable PsiFile psiFile,
-			Collection<ArtifactEntry> entries) {
+	public static @Nullable TextRange setName(Project project, @Nullable PsiFile psiFile,
+			List<? extends ArtifactId> artifactIds, String name) {
 
 		if (!(psiFile instanceof JsonFile jsonFile) || !(jsonFile.getTopLevelValue() instanceof JsonObject root)) {
 			return null;
 		}
 
-		JsonElementGenerator generator = new JsonElementGenerator(project);
-		JsonObject artifacts = artifactsObject(root, generator);
+		List<ArtifactEntry> entries = new ArrayList<>(entries(artifactIds, name));
 
-		Set<String> existing = new HashSet<>();
-		for (JsonProperty property : artifacts.getPropertyList()) {
-			existing.add(property.getName());
-		}
+		if (root.findProperty("artifacts") instanceof JsonProperty property
+				&& property.getValue() instanceof JsonObject artifacts) {
 
-		String firstKey = null;
-		for (ArtifactEntry entry : entries) {
-			if (!existing.add(entry.key())) {
-				continue;
-			}
-			insertSorted(artifacts, entry, generator);
-			if (firstKey == null) {
-				firstKey = entry.key();
+			for (ArtifactId artifactId : artifactIds) {
+				ArtifactEntry exact = new ArtifactEntry(ArtifactPattern.keyFor(artifactId), name);
+				if (!entries.contains(exact) && artifacts.findProperty(exact.key()) != null) {
+					entries.add(exact);
+				}
 			}
 		}
 
-		if (firstKey == null) {
-			return null;
-		}
-
-		CodeStyleManager.getInstance(project).reformat(jsonFile);
-
-		return nameValueRange(artifacts, firstKey);
+		return setNames(project, psiFile, entries);
 	}
 
 	/**
@@ -112,12 +101,15 @@ public class DependencyfileArtifacts {
 	 * @param project the project owning the file.
 	 * @param psiFile the descriptor file; can be {@literal null}.
 	 * @param entries the entries whose names to set.
-	 * @return whether the file was changed.
+	 * @return the {@code name}-value range of the first entry for the caret, or
+	 * {@literal null} when the file is not a JSON object or no entry was given.
 	 */
-	public static boolean setNames(Project project, @Nullable PsiFile psiFile, Collection<ArtifactEntry> entries) {
+	public static @Nullable TextRange setNames(Project project, @Nullable PsiFile psiFile,
+			Collection<ArtifactEntry> entries) {
 
-		if (!(psiFile instanceof JsonFile jsonFile) || !(jsonFile.getTopLevelValue() instanceof JsonObject root)) {
-			return false;
+		if (!(psiFile instanceof JsonFile jsonFile) || !(jsonFile.getTopLevelValue() instanceof JsonObject root)
+				|| entries.isEmpty()) {
+			return null;
 		}
 
 		JsonElementGenerator generator = new JsonElementGenerator(project);
@@ -161,7 +153,7 @@ public class DependencyfileArtifacts {
 		if (changed) {
 			CodeStyleManager.getInstance(project).reformat(jsonFile);
 		}
-		return changed;
+		return nameValueRange(artifacts, entries.iterator().next().key());
 	}
 
 	/**

@@ -130,9 +130,7 @@ public class RenameItemHandler implements RenameHandler, TitledHandler, DumbAwar
 
 		List<ArtifactId> artifactIds = new ArrayList<>();
 		for (ItemDependency member : item.getMembers()) {
-			if (!member.isImplicit()) {
-				artifactIds.add(member.getArtifactId());
-			}
+			artifactIds.add(member.getArtifactId());
 		}
 		return artifactIds;
 	}
@@ -170,9 +168,8 @@ public class RenameItemHandler implements RenameHandler, TitledHandler, DumbAwar
 
 	/**
 	 * Set {@code name} on the descriptor entries covering the item's explicit
-	 * members (one wildcard entry for a shared groupId and word-boundary prefix,
-	 * otherwise one entry per member), inserting entries that do not exist yet.
-	 * Never creates the descriptor and does not open it in the editor.
+	 * members (see {@link DependencyfileArtifacts#setName}). Never creates the
+	 * descriptor and does not open it in the editor.
 	 */
 	private static void updateDependencyfile(Project project, UpgradePlanItem item, String name) {
 
@@ -185,14 +182,9 @@ public class RenameItemHandler implements RenameHandler, TitledHandler, DumbAwar
 		WriteCommandAction.writeCommandAction(project)
 				.withName(commandName)
 				.run(() -> {
-					PsiFile psiFile = BetterPsiManager.getInstance(project)
-							.findFile(descriptor);
-					List<DependencyfileArtifacts.ArtifactEntry> entries = DependencyfileArtifacts
-							.entries(getArtifactIds(item), name);
-					DependencyfileArtifacts.setNames(project, psiFile,
-							entries);
+					PsiFile psiFile = BetterPsiManager.getInstance(project).findFile(descriptor);
+					DependencyfileArtifacts.setName(project, psiFile, getArtifactIds(item), name);
 				});
-
 	}
 
 }

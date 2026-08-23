@@ -18,7 +18,6 @@ package biz.paluch.dap.assistant.review;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
@@ -37,6 +36,7 @@ import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.FileUtils;
 import biz.paluch.dap.util.MessageBundle;
+import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
@@ -55,13 +55,14 @@ import org.jspecify.annotations.Nullable;
  * Writes artifact entries into the {@code artifacts} section of a
  * {@code dependencyfile.json}, creating the descriptor when none exists.
  *
- * <p>For a regular row the entry key is the narrowest
- * {@link ArtifactPattern#keyFor(ArtifactId) pattern key}. For a group whose
- * members share a groupId and a word-boundary common prefix, a single wildcard
- * entry (for example {@code org.springframework.boot:spring-boot-starter-*})
- * covers them all; otherwise one entry per member is written. Entries already
- * present are skipped; the PSI edits themselves live in
- * {@link DependencyfileArtifacts}.
+ * <p>A regular row is written under its narrowest
+ * {@link ArtifactPattern#keyFor(ArtifactId) pattern key} with its dependency
+ * name. A group is written under the group name, as one wildcard entry (for
+ * example {@code org.springframework.boot:spring-boot-starter-*}) when the
+ * members share a groupId and a word-boundary prefix, otherwise as one entry
+ * per member, all carrying the group name so the descriptor reproduces the
+ * group (see {@link GroupByRule}). Existing entries get their name replaced;
+ * the PSI edits themselves live in {@link DependencyfileArtifacts}.
  *
  * @author Mark Paluch
  */
@@ -83,9 +84,9 @@ class DependencyfileArtifactWriter {
 	}
 
 	/**
-	 * Add the candidate's entries to the active descriptor (creating it if absent),
-	 * then open it in the editor with the caret selecting the first new entry's
-	 * {@code name} value.
+	 * Write the row's name into the active descriptor (creating it if absent), then
+	 * open it in the editor with the caret selecting the first entry's {@code name}
+	 * value.
 	 */
 	public void add(TableRow row) {
 
@@ -95,10 +96,16 @@ class DependencyfileArtifactWriter {
 				return;
 			}
 
+			List<ArtifactId> artifactIds = row.getUpgradeCandidates().stream()
+					.map(DependencyUpgradeCandidate::getArtifactId).toList();
+
+			String dependencyOrProjectName = row.getDependencyOrProjectName();
+			String name = StringUtils.hasText(dependencyOrProjectName) ? dependencyOrProjectName : row.getName();
+
 			TextRange selection = WriteCommandAction.writeCommandAction(project)
 					.withName(MessageBundle.message("dialog.action.addToDependencyfile"))
-					.compute(() -> DependencyfileArtifacts.insertEntries(project, psiManager.findFile(descriptor),
-							entries(row)));
+					.compute(() -> DependencyfileArtifacts.setName(project, psiManager.findFile(descriptor),
+							artifactIds, name));
 
 			openInEditor(descriptor, selection);
 		} catch (IOException | IncorrectOperationException ex) {
@@ -156,7 +163,7 @@ class DependencyfileArtifactWriter {
 
 		WriteCommandAction.writeCommandAction(project)
 				.withName(MessageBundle.message("dependencyfile.create.action"))
-				.compute(() -> DependencyfileArtifacts.insertEntries(project, psiManager.findFile(descriptor),
+				.compute(() -> DependencyfileArtifacts.setNames(project, psiManager.findFile(descriptor),
 						createEntries(artifactIds)));
 		saveDocument(descriptor);
 		openInEditor(descriptor, null);
@@ -244,34 +251,6 @@ class DependencyfileArtifactWriter {
 		for (ArtifactId artifactId : artifactIds) {
 			ProjectMetadata metadata = metadataService.getMetadata(artifactId);
 			entries.add(ArtifactEntry.create(artifactId, metadata.getProjectName()));
-		}
-
-		return entries;
-	}
-
-	/**
-	 * Compute the entries to write for the candidate: a single wildcard entry for a
-	 * group with a shared groupId and word-boundary prefix, one entry per member as
-	 * a fallback, or a single entry for a regular row.
-	 */
-	static List<ArtifactEntry> entries(TableRow row) {
-
-		List<DependencyUpgradeCandidate> upgrades = row.getUpgradeCandidates();
-		List<TableRow> rows = new ArrayList<>();
-		if (upgrades.size() > 1) {
-			String wildcardKey = DependencyfileArtifacts.wildcardKey(
-					upgrades.stream().map(DependencyUpgradeCandidate::getArtifactId).toList());
-			if (wildcardKey != null) {
-				return List.of(new ArtifactEntry(wildcardKey, row.getName()));
-			}
-		}
-
-		List<ArtifactEntry> entries = new ArrayList<>(upgrades.size());
-		row.doWithRow(rows::add);
-
-		for (TableRow upgradeRow : rows) {
-			entries.add(new ArtifactEntry(ArtifactPattern.keyFor(upgradeRow.getArtifactId()),
-					upgradeRow.getDependencyName()));
 		}
 
 		return entries;

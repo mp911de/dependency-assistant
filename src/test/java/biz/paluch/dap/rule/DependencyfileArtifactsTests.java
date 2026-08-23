@@ -24,6 +24,7 @@ import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.TestFixture;
 import biz.paluch.dap.rule.DependencyfileArtifacts.ArtifactEntry;
 import com.intellij.openapi.command.WriteCommandAction;
+import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.Test;
@@ -76,10 +77,10 @@ class DependencyfileArtifactsTests {
 			""")
 	void replacesExistingName(PsiFile file) {
 
-		boolean changed = setNames(file, new ArtifactEntry("org.springframework:spring-core", "Spring"));
+		TextRange range = setNames(file, new ArtifactEntry("org.springframework:spring-core", "Spring"));
 
-		assertThat(changed).isTrue();
 		assertThat(file).containsText("\"name\": \"Spring\"").doesNotContainText("Spring Core");
+		assertThat(file.getText().substring(range.getStartOffset(), range.getEndOffset())).isEqualTo("Spring");
 	}
 
 	@Test
@@ -108,10 +109,9 @@ class DependencyfileArtifactsTests {
 	void leavesFileAloneWhenNameAlreadyMatches(PsiFile file) {
 
 		String before = file.getText();
-		boolean changed = setNames(file, new ArtifactEntry("org.springframework:spring-core", "Spring"));
+		setNames(file, new ArtifactEntry("org.springframework:spring-core", "Spring"));
 
-		assertThat(changed).isFalse();
-		assertThat(file).containsText(before);
+		assertThat(file.getText()).isEqualTo(before);
 	}
 
 	@Test
@@ -130,7 +130,47 @@ class DependencyfileArtifactsTests {
 				.containsText("\"name\": \"Jackson\"").containsText("\"name\": \"Spring Core\"");
 	}
 
-	private boolean setNames(PsiFile file, ArtifactEntry... entries) {
+	@Test
+	@EditorFile(name = "dependencyfile.json", content = """
+			{
+			  "artifacts": {
+			    "org.springframework:spring-context": { "name": "Spring Context" },
+			    "org.springframework:spring-core": { "name": "Spring Core" }
+			  }
+			}
+			""")
+	void wildcardNameAlsoRenamesShadowingExactEntries(PsiFile file) {
+
+		setName(file, List.of(CORE, CONTEXT), "Spring");
+
+		assertThat(file).containsText("\"org.springframework:spring-*\"").doesNotContainText("Spring Core")
+				.doesNotContainText("Spring Context");
+		assertThat(file.getText().split("\"name\": \"Spring\"")).hasSize(4);
+	}
+
+	@Test
+	@EditorFile(name = "dependencyfile.json", content = """
+			{
+			  "artifacts": {
+			    "org.springframework:spring-core": { "name": "Spring Core" }
+			  }
+			}
+			""")
+	void fallbackNamesEveryCoordinate(PsiFile file) {
+
+		setName(file, List.of(CORE, JACKSON), "Mixed");
+
+		assertThat(file).doesNotContainText("Spring Core")
+				.containsText("\"com.fasterxml.jackson.core:jackson-databind\"");
+		assertThat(file.getText().split("\"name\": \"Mixed\"")).hasSize(3);
+	}
+
+	private void setName(PsiFile file, List<ArtifactId> artifactIds, String name) {
+		WriteCommandAction.writeCommandAction(fixture.getProject())
+				.run(() -> DependencyfileArtifacts.setName(fixture.getProject(), file, artifactIds, name));
+	}
+
+	private TextRange setNames(PsiFile file, ArtifactEntry... entries) {
 		return WriteCommandAction.writeCommandAction(fixture.getProject())
 				.compute(() -> DependencyfileArtifacts.setNames(fixture.getProject(), file, List.of(entries)));
 	}

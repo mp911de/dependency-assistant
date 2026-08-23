@@ -111,12 +111,29 @@ class DependencyfileArtifactWriterTests {
 			  }
 			}
 			""")
-	void returnsNullAndKeepsFileWhenEntryAlreadyPresent(PsiFile file) {
+	void selectsExistingNameWhenEntryAlreadyPresent(PsiFile file) {
 
 		TextRange range = insert(file, new ArtifactEntry("org.example:a-lib", "A"));
 
-		assertThat(range).isNull();
+		assertThat(range).isNotNull();
+		assertThat(file.getText().substring(range.getStartOffset(), range.getEndOffset())).isEqualTo("A");
 		assertThat(artifactKeys(file)).containsExactly("org.example:a-lib");
+	}
+
+	@Test
+	@EditorFile(name = "dependencyfile.json", content = """
+			{
+			  "artifacts": {
+			    "org.example:a-lib": { "name": "A" }
+			  }
+			}
+			""")
+	void replacesNameOfExistingEntry(PsiFile file) {
+
+		insert(file, new ArtifactEntry("org.example:a-lib", "Renamed"));
+
+		assertThat(artifactKeys(file)).containsExactly("org.example:a-lib");
+		assertThat(file).containsText("\"name\": \"Renamed\"").doesNotContainText("\"A\"");
 	}
 
 	@Test
@@ -139,8 +156,7 @@ class DependencyfileArtifactWriterTests {
 
 	private TextRange insert(PsiFile file, ArtifactEntry... entries) {
 		return WriteCommandAction.writeCommandAction(fixture.getProject())
-				.compute(
-						() -> DependencyfileArtifacts.insertEntries(fixture.getProject(), file, List.of(entries)));
+				.compute(() -> DependencyfileArtifacts.setNames(fixture.getProject(), file, List.of(entries)));
 	}
 
 	private static List<String> artifactKeys(PsiFile file) {
