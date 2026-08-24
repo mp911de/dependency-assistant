@@ -1,0 +1,254 @@
+name: "[Release] ⭐️ Publish plugin release"
+
+on:
+  push:
+    tags:
+      - "*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing draft release tag, without a prefix
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-plugin-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish to JetBrains Marketplace
+    runs-on: ubuntu-latest
+    environment: release
+
+    steps:
+      - name: Resolve release tag
+        id: release
+        shell: bash
+        env:
+          DISPATCH_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            tag="$GITHUB_REF_NAME"
+          else
+            tag="$DISPATCH_TAG"
+          fi
+
+          version_pattern='^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$'
+          if [[ ! "$tag" =~ $version_pattern ]]; then
+            echo "::error::Invalid release tag: $tag"
+            exit 1
+          fi
+
+          if [[ "$tag" == *-SNAPSHOT ]]; then
+            echo "::error::Release tag must not be a SNAPSHOT: $tag"
+            exit 1
+          fi
+
+          if [[ "$tag" =~ -(M|RC) ]]; then
+            channel="eap"
+          else
+            channel="default"
+          fi
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "channel=$channel" >> "$GITHUB_OUTPUT"
+
+      - name: Check out release tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.release.outputs.tag }}
+          fetch-depth: 1
+
+      - name: Set up Java
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+
+      - name: Wait for draft GitHub release
+        id: draft
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+
+          release_json=""
+
+          for attempt in {1..12}; do
+            if release_json="$(
+              gh release view "$RELEASE_TAG" \
+                --json isDraft,isPrerelease,tagName
+            )"; then
+              break
+            fi
+
+            echo "Draft release is not available yet; attempt $attempt/12"
+            sleep 5
+          done
+
+          if [[ -z "$release_json" ]]; then
+            echo "::error::GitHub release does not exist: $RELEASE_TAG"
+            exit 1
+          fi
+
+          is_draft="$(jq -r '.isDraft' <<< "$release_json")"
+
+          if [[ "$is_draft" != "true" ]]; then
+            echo "Release $RELEASE_TAG is already published"
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "should_publish=true" >> "$GITHUB_OUTPUT"
+
+      - name: Download plugin binary from draft release
+        if: ${{ steps.draft.outputs.should_publish == 'true' }}
+        id: binary
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+
+          download_directory="$RUNNER_TEMP/release-assets"
+          mkdir -p "$download_directory"
+
+          gh release download "$RELEASE_TAG" \
+            --pattern '*.zip' \
+            --pattern '*.zip.sha256' \
+            --dir "$download_directory"
+
+          mapfile -t archives < <(
+            find "$download_directory" \
+              -maxdepth 1 \
+              -type f \
+              -name '*.zip' \
+              -print
+          )
+
+          if [[ "${#archives[@]}" -ne 1 ]]; then
+            echo "::error::Expected exactly one ZIP release asset"
+            find "$download_directory" -maxdepth 1 -type f -print
+            exit 1
+          fi
+
+          archive="$(realpath "${archives[0]}")"
+
+          if [[ ! -f "$archive.sha256" ]]; then
+            echo "::error::Missing checksum asset: $(basename "$archive").sha256"
+            exit 1
+          fi
+
+          (
+            cd "$download_directory"
+            sha256sum --check --strict "$(basename "$archive").sha256"
+          )
+
+          checksum="$(sha256sum "$archive" | cut -d' ' -f1)"
+
+          echo "path=$archive" >> "$GITHUB_OUTPUT"
+          echo "sha256=$checksum" >> "$GITHUB_OUTPUT"
+
+          echo "Downloaded: $archive"
+          echo "SHA-256: $checksum"
+
+      - name: Configure downloaded binary publication
+        if: ${{ steps.draft.outputs.should_publish == 'true' }}
+        id: init_script
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          init_script="$RUNNER_TEMP/publish-downloaded-plugin.gradle"
+
+          cat > "$init_script" <<'GRADLE'
+          allprojects {
+              afterEvaluate {
+                  tasks.matching { task ->
+                      task.name == "publishPlugin"
+                  }.configureEach {
+                      def archivePath =
+                          project.providers.gradleProperty("pluginArchive")
+
+                      if (!archivePath.isPresent()) {
+                          throw new GradleException(
+                              "The pluginArchive Gradle property is required"
+                          )
+                      }
+
+                      archiveFile.set(
+                          project.file(archivePath.get())
+                      )
+                      token.set(
+                          project.providers.environmentVariable(
+                              "JETBRAINS_MARKETPLACE_TOKEN"
+                          )
+                      )
+                      channels.set([
+                          project.providers.gradleProperty("pluginChannel")
+                              .getOrElse("default")
+                      ])
+
+                      // the archive is prebuilt and downloaded; drop the
+                      // rebuild chain wired via dependsOn
+                      setDependsOn([])
+                  }
+              }
+          }
+          GRADLE
+
+          echo "path=$init_script" >> "$GITHUB_OUTPUT"
+
+      - name: Publish downloaded binary to JetBrains Marketplace
+        if: ${{ steps.draft.outputs.should_publish == 'true' }}
+        shell: bash
+        env:
+          JETBRAINS_MARKETPLACE_TOKEN: ${{ secrets.JETBRAINS_MARKETPLACE_TOKEN }}
+          PLUGIN_BINARY: ${{ steps.binary.outputs.path }}
+          PLUGIN_CHANNEL: ${{ steps.release.outputs.channel }}
+          INIT_SCRIPT: ${{ steps.init_script.outputs.path }}
+          EXPECTED_CHECKSUM: ${{ steps.binary.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+
+          expected_checksum="$EXPECTED_CHECKSUM"
+
+          ./gradlew publishPlugin \
+            --init-script "$INIT_SCRIPT" \
+            -PpluginArchive="$PLUGIN_BINARY" \
+            -PpluginChannel="$PLUGIN_CHANNEL" \
+            --no-daemon \
+            --stacktrace
+
+          actual_checksum="$(
+            sha256sum "$PLUGIN_BINARY" | cut -d' ' -f1
+          )"
+
+          if [[ "$expected_checksum" != "$actual_checksum" ]]; then
+            echo "::error::Release ZIP changed during Marketplace publication"
+            echo "Expected: $expected_checksum"
+            echo "Actual:   $actual_checksum"
+            exit 1
+          fi
+
+      - name: Publish GitHub release
+        if: ${{ steps.draft.outputs.should_publish == 'true' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh release edit "$RELEASE_TAG" --draft=false

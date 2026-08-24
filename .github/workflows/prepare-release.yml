@@ -1,0 +1,314 @@
+name: "[Release] 🪄️ Prepare plugin release"
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: Version to release
+        required: true
+        type: string
+      next_development_version:
+        description: Next development version
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  actions: write
+  id-token: write
+  attestations: write
+  artifact-metadata: write
+
+concurrency:
+  group: prepare-plugin-release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Build and prepare release
+    runs-on: ubuntu-latest
+    environment: release
+
+    env:
+      RELEASE_VERSION: ${{ inputs.release_version }}
+      NEXT_DEVELOPMENT_VERSION: ${{ inputs.next_development_version }}
+      RELEASE_TAG: ${{ inputs.release_version }}
+
+    steps:
+      - name: Check out main branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up Java
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+
+      - name: Validate release inputs
+        id: validation
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          version_pattern='^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$'
+
+          if [[ ! "$RELEASE_VERSION" =~ $version_pattern ]]; then
+            echo "::error::Invalid release version: $RELEASE_VERSION"
+            exit 1
+          fi
+
+          if [[ "$RELEASE_VERSION" == *-SNAPSHOT ]]; then
+            echo "::error::Release version must not be a SNAPSHOT: $RELEASE_VERSION"
+            exit 1
+          fi
+
+          if [[ ! "$NEXT_DEVELOPMENT_VERSION" =~ $version_pattern ]]; then
+            echo "::error::Invalid next development version: $NEXT_DEVELOPMENT_VERSION"
+            exit 1
+          fi
+
+          if [[ "$RELEASE_VERSION" == "$NEXT_DEVELOPMENT_VERSION" ]]; then
+            echo "::error::Release and development versions must differ"
+            exit 1
+          fi
+
+          version_declarations="$(grep -Ec '^version = "[^"]+"$' build.gradle.kts || true)"
+          if [[ "$version_declarations" -ne 1 ]]; then
+            echo "::error::Expected exactly one top-level version declaration in build.gradle.kts"
+            exit 1
+          fi
+
+          git fetch origin main --tags
+
+          if git rev-parse --verify --quiet "refs/tags/$RELEASE_TAG"; then
+            echo "::error::Tag already exists: $RELEASE_TAG"
+            exit 1
+          fi
+
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "::error::GitHub release already exists: $RELEASE_TAG"
+            exit 1
+          fi
+
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "::error::The checkout is not clean"
+            git status --short
+            exit 1
+          fi
+
+          echo "base_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Set release version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          sed -i -E \
+            "s/^version = \"[^\"]+\"$/version = \"$RELEASE_VERSION\"/" \
+            build.gradle.kts
+
+          grep '^version = ' build.gradle.kts
+
+      - name: Run tests and plugin checks
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ./gradlew \
+            clean \
+            test \
+            verifyPluginProjectConfiguration \
+            buildPlugin \
+            verifyPlugin \
+            --no-daemon \
+            --stacktrace
+
+      - name: Locate plugin binary
+        id: binary
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mapfile -t archives < <(
+            find build/distributions \
+              -maxdepth 1 \
+              -type f \
+              -name '*.zip' \
+              -print
+          )
+
+          if [[ "${#archives[@]}" -ne 1 ]]; then
+            echo "::error::Expected exactly one plugin ZIP"
+            find build/distributions -maxdepth 1 -type f -print
+            exit 1
+          fi
+
+          archive="$(realpath "${archives[0]}")"
+          checksum="$(sha256sum "$archive" | cut -d' ' -f1)"
+
+          printf '%s  %s\n' "$checksum" "$(basename "$archive")" \
+            > "$archive.sha256"
+
+          echo "path=$archive" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "$archive")" >> "$GITHUB_OUTPUT"
+          echo "sha256=$checksum" >> "$GITHUB_OUTPUT"
+
+          echo "Plugin binary: $archive"
+          echo "SHA-256: $checksum"
+
+      - name: Generate release notes
+        id: notes
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          notes_file="$GITHUB_WORKSPACE/release-notes.md"
+          rm -f "$notes_file"
+
+          npx -y "github:mp911de/changelog#b3eb5f1eb9c64513a11943dd9aa85327ecbdbb37" "$RELEASE_VERSION"
+
+          if [[ ! -s "$notes_file" ]]; then
+            echo "::error::The changelog tool did not create release-notes.md"
+            exit 1
+          fi
+
+          echo "path=$notes_file" >> "$GITHUB_OUTPUT"
+          sed -n '1,80p' "$notes_file"
+
+      - name: Commit release version and create tag
+        id: release_commit
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email \
+            "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add build.gradle.kts
+
+          if git diff --cached --quiet; then
+            echo "::error::Release version did not change"
+            exit 1
+          fi
+
+          git commit -m "Release $RELEASE_VERSION"
+
+          release_commit="$(git rev-parse HEAD)"
+          git tag \
+            --annotate "$RELEASE_TAG" \
+            --message "Release $RELEASE_VERSION" \
+            "$release_commit"
+
+          echo "sha=$release_commit" >> "$GITHUB_OUTPUT"
+
+      - name: Capture Build Artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: plugin
+          path: 'build/distributions/*.zip'
+          retention-days: 15
+          archive: 'false'
+
+      - name: Generate artifact attestation
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: 'build/distributions/'
+
+      - name: Capture Build Reports
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: reports
+          path: 'build/reports/*'
+          retention-days: 15
+
+      - name: Commit next development version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          sed -i -E \
+            "s/^version = \"[^\"]+\"$/version = \"$NEXT_DEVELOPMENT_VERSION\"/" \
+            build.gradle.kts
+
+          git add build.gradle.kts
+
+          if git diff --cached --quiet; then
+            echo "::error::Next development version did not change"
+            exit 1
+          fi
+
+          git commit \
+            -m "Prepare next development iteration $NEXT_DEVELOPMENT_VERSION"
+
+      - name: Push commits and tag
+        shell: bash
+        env:
+          BASE_SHA: ${{ steps.validation.outputs.base_sha }}
+        run: |
+          set -euo pipefail
+
+          git fetch origin main
+          remote_main="$(git rev-parse origin/main)"
+
+          if [[ "$BASE_SHA" != "$remote_main" ]]; then
+            echo "::error::main changed while the release was building"
+            echo "Original main: $BASE_SHA"
+            echo "Current main:  $remote_main"
+            exit 1
+          fi
+
+          git push --atomic origin \
+            HEAD:main \
+            "refs/tags/$RELEASE_TAG"
+
+      - name: Create draft GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PLUGIN_BINARY: ${{ steps.binary.outputs.path }}
+          RELEASE_NOTES: ${{ steps.notes.outputs.path }}
+        run: |
+          set -euo pipefail
+
+          release_flags=(--draft)
+
+          if [[ "$RELEASE_VERSION" =~ -(M|RC).*$ ]]; then
+            release_flags+=(--prerelease)
+          fi
+
+          gh release create "$RELEASE_TAG" \
+            "$PLUGIN_BINARY" \
+            "$PLUGIN_BINARY.sha256" \
+            --verify-tag \
+            --title "$RELEASE_TAG" \
+            --notes-file "$RELEASE_NOTES" \
+            "${release_flags[@]}"
+
+      - name: Dispatch Marketplace publication
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          gh workflow run publish-release.yml \
+            --ref main \
+            --field tag="$RELEASE_TAG"
