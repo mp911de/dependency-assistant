@@ -55,6 +55,8 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+        with:
+          cache-read-only: true
 
       - name: Validate release inputs
         id: validation
@@ -162,6 +164,7 @@ jobs:
             verifyPluginProjectConfiguration \
             buildPlugin \
             verifyPlugin \
+            -Porg.jetbrains.intellij.platform.downloadSources=false \
             --no-daemon \
             --stacktrace
 
@@ -270,12 +273,14 @@ jobs:
             exit 1
           fi
 
-          git commit -m "Release $RELEASE_VERSION"
+          git commit \
+            -m "Release $RELEASE_VERSION." \
+            -m "Closes #$RELEASE_ISSUE"
 
           release_commit="$(git rev-parse HEAD)"
           git tag \
             --annotate "$RELEASE_TAG" \
-            --message "Release $RELEASE_VERSION" \
+            --message "Release $RELEASE_VERSION." \
             "$release_commit"
 
           echo "sha=$release_commit" >> "$GITHUB_OUTPUT"
@@ -320,7 +325,8 @@ jobs:
           fi
 
           git commit \
-            -m "Prepare next development iteration $NEXT_DEVELOPMENT_VERSION"
+            -m "Prepare next development iteration." \
+            -m "See #$RELEASE_ISSUE"
 
       - name: Push commits and tag
         shell: bash

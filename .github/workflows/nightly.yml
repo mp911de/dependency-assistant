@@ -1,0 +1,87 @@
+name: "[CI] 🌗💤 Nightly"
+on:
+  schedule:
+    - cron: '30 3 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  changes:
+    name: Check for changes since the last run
+    runs-on: ubuntu-latest
+    outputs:
+      verify: ${{ steps.check.outputs.verify }}
+    steps:
+
+      - name: Compare with the last successful run
+        id: check
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            echo "verify=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          last_sha="$(
+            gh run list \
+              --repo "$GITHUB_REPOSITORY" \
+              --workflow nightly.yml \
+              --branch "$GITHUB_REF_NAME" \
+              --status success \
+              --limit 1 \
+              --json headSha \
+              --jq '.[0].headSha // empty'
+          )"
+
+          if [[ "$last_sha" == "$GITHUB_SHA" ]]; then
+            echo "No commits since the last successful run at $last_sha; skipping"
+            echo "verify=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Last successful run: ${last_sha:-none}, current: $GITHUB_SHA"
+            echo "verify=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  verify:
+    name: Verify plugin against recommended IDEs
+    needs: changes
+    if: ${{ needs.changes.outputs.verify == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Setup Java
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          java-version: 21
+          distribution: 'temurin'
+
+      - name: Fetch sources
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+        with:
+          cache-read-only: true
+
+      - name: Verify plugin
+        run: >
+          ./gradlew verifyPlugin
+          -Porg.jetbrains.intellij.platform.downloadSources=false
+
+      - name: Capture verifier reports
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: reports
+          path: 'build/reports/*'
+          retention-days: 15
