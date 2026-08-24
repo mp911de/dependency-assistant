@@ -47,3 +47,4 @@ package-lock.json
 *.md
 
 .changelog/
+release-notes.md
