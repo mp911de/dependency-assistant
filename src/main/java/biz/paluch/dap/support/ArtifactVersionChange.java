@@ -133,6 +133,16 @@ public class ArtifactVersionChange {
 		return source.scheme() != to.scheme() || !to.hasSameMajor(source);
 	}
 
+	/**
+	 * Classify this change by its selected upgrade tier.
+	 *
+	 * <p>Preview targets take precedence over their numeric version boundary. An
+	 * unknown source version, an equal target, or an older target has no upgrade
+	 * strategy.
+	 *
+	 * @return the patch, minor, major, or preview strategy, or {@literal null} when
+	 * the change cannot be classified as an upgrade.
+	 */
 	public @Nullable UpgradeStrategy getUpgradeStrategy() {
 
 		if (!from.isVersioned()) {

@@ -18,35 +18,34 @@ package biz.paluch.dap.artifact;
 
 import java.io.IOException;
 
-import biz.paluch.dap.gradle.GradlePluginPortalReleaseSource;
 import biz.paluch.dap.util.Sequence;
 import com.intellij.openapi.progress.ProgressIndicator;
 
 /**
- * Strategy interface for obtaining known tags for an artifact.
+ * Strategy for obtaining known repository tags for an artifact.
  *
  * <p>Throw {@link ArtifactNotFoundException} only for a definitive absence at
- * this source. Return an empty sequence when release data is simply
- * unavailable.
+ * this source. Return an empty sequence when tag data is simply unavailable.
  *
  * @author Mark Paluch
- * @see MavenRepository
- * @see GradlePluginPortalReleaseSource
+ * @see biz.paluch.dap.github.GitHubReleases
+ * @see biz.paluch.dap.metadata.GitLabReleases
  */
 public interface TagSource {
 
 	/**
 	 * Return the unique identifier of this source.
+	 * @return the source identifier.
 	 */
 	String getId();
 
 	/**
 	 * Return all known tags for the given artifact at this source.
-	 * @param artifactId the artifact whose releases to retrieve.
-	 * @param indicator the progress indicator used to honor cancellation; must not
-	 * be {@literal null}.
-	 * @return the releases known to this source.
+	 * @param artifactId the artifact whose tags to retrieve.
+	 * @param indicator the progress indicator used to honor cancellation.
+	 * @return the tags known to this source.
 	 * @throws ArtifactNotFoundException if the artifact is definitively absent.
+	 * @throws IOException if tag data cannot be read from the source.
 	 */
 	Sequence<String> getTags(ArtifactId artifactId, ProgressIndicator indicator) throws IOException;
 

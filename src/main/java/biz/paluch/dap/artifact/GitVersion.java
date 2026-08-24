@@ -22,11 +22,12 @@ import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 /**
- * {@link ArtifactVersion} implementation for versions resolved from a Git ref.
+ * {@link ArtifactVersion} wrapper carrying source-provided hash metadata.
  *
- * <p>An instance optionally carries the resolved SHA-1 commit hash. A SHA-less
- * instance (created through {@link #of(ArtifactVersion)}) represents a tag-only
- * resolution where no commit hash is available.
+ * <p>For Git-backed artifacts the hash is a commit SHA. The same carrier is
+ * also used for checksummed Gradle distributions, where the value is the
+ * published archive checksum. A hash-less instance created through
+ * {@link #of(ArtifactVersion)} retains only the comparable version.
  *
  * @author Mark Paluch
  */
@@ -38,7 +39,7 @@ public class GitVersion extends ArtifactVersionWrapper implements ArtifactVersio
 
 	/**
 	 * Create a new {@code GitVersion}.
-	 * @param sha the full 40-character SHA-1, or {@literal null} when unavailable.
+	 * @param sha the source-provided hash, or {@literal null} when unavailable.
 	 * @param version the version used for comparison and display.
 	 */
 	GitVersion(@Nullable String sha, ArtifactVersion version) {
@@ -48,9 +49,8 @@ public class GitVersion extends ArtifactVersionWrapper implements ArtifactVersio
 	}
 
 	/**
-	 * Create a {@code GitVersion} with an SHA.
-	 * @param sha the full 40-character SHA-1 commit hash, or {@literal null} when
-	 * unavailable.
+	 * Create a {@code GitVersion} with source-provided hash metadata.
+	 * @param sha the source-provided hash, or {@literal null} when unavailable.
 	 * @param version the normalized delegate version.
 	 * @return the version.
 	 */
@@ -59,7 +59,7 @@ public class GitVersion extends ArtifactVersionWrapper implements ArtifactVersio
 	}
 
 	/**
-	 * Create a {@code GitVersion} without a SHA (tag-only resolution).
+	 * Create a {@code GitVersion} without hash metadata.
 	 * @param version the normalized delegate version.
 	 * @return the version.
 	 */
@@ -67,12 +67,17 @@ public class GitVersion extends ArtifactVersionWrapper implements ArtifactVersio
 		return new GitVersion(null, version);
 	}
 
+	/**
+	 * Return whether source-provided hash metadata is available.
+	 * @return {@code true} if a non-blank hash is available.
+	 */
 	public boolean hasSha() {
 		return StringUtils.hasText(sha);
 	}
 
 	/**
-	 * Return the resolved SHA-1 commit hash, or {@literal null} if unavailable.
+	 * Return the source-provided hash, or {@literal null} if unavailable.
+	 * @return the source-provided hash, or {@literal null}.
 	 */
 	@Nullable
 	public String getSha() {
@@ -80,10 +85,9 @@ public class GitVersion extends ArtifactVersionWrapper implements ArtifactVersio
 	}
 
 	/**
-	 * Return the required SHA or throw {@link IllegalStateException} if no SHA is
-	 * associated with this version.
-	 * @return the required SHA.
-	 * @throws IllegalStateException if no SHA is associated with this version.
+	 * Return the required source-provided hash.
+	 * @return the required hash.
+	 * @throws IllegalStateException if no hash is associated with this version.
 	 */
 	public String getRequiredSha() {
 		if (StringUtils.isEmpty(sha)) {
@@ -93,9 +97,9 @@ public class GitVersion extends ArtifactVersionWrapper implements ArtifactVersio
 	}
 
 	/**
-	 * Return the resolved SHA-1 commit hash truncated to its first 8 characters,
-	 * the full hash when it is 8 characters or shorter, or {@literal null} if
-	 * unavailable.
+	 * Return the source-provided hash truncated to its first 8 characters.
+	 * @return the abbreviated hash, the full value when no longer than 8
+	 * characters, or {@literal null} if unavailable.
 	 */
 	@Nullable
 	public String getShortSha() {
@@ -103,9 +107,10 @@ public class GitVersion extends ArtifactVersionWrapper implements ArtifactVersio
 	}
 
 	/**
-	 * Return the required resolved SHA-1 commit hash truncated to its first 8
-	 * characters, the full hash when it is 8 characters or shorter, or throw
-	 * {@link IllegalStateException} if unavailable.
+	 * Return the required source-provided hash truncated to its first 8 characters.
+	 * @return the abbreviated hash, or the full value when no longer than 8
+	 * characters.
+	 * @throws IllegalStateException if no hash is associated with this version.
 	 */
 	public String getRequiredShortSha() {
 		String sha = getShortSha();
@@ -117,16 +122,18 @@ public class GitVersion extends ArtifactVersionWrapper implements ArtifactVersio
 
 	/**
 	 * Render this version as a ref string suitable for the given style.
-	 * <p>
-	 * For {@link RefStyle#VERSION} or when no SHA metadata is available, the
+	 * <p>For {@link RefStyle#VERSION} or when no hash metadata is available, the
 	 * version's tag form is returned. For {@link RefStyle#SHA} with SHA metadata,
-	 * the stored SHA is returned, truncated to the original committish length when
+	 * the stored hash is returned, truncated to the original committish length when
 	 * the original committish is shorter than the SHA. A {@literal null} or empty
 	 * {@code originalCommittish} preserves the full SHA.
+	 *
+	 * <p>{@link RefStyle#SHA} is meaningful only when the stored hash is a Git
+	 * commit hash.
 	 * @param style the rendering style, classified from the original committish.
 	 * @param originalCommittish the original committish text the user wrote; can be
 	 * {@literal null}.
-	 * @return the rendered ref string; guaranteed to be not {@literal null}.
+	 * @return the rendered ref string.
 	 */
 	public String renderRef(RefStyle style, @Nullable String originalCommittish) {
 
@@ -147,7 +154,8 @@ public class GitVersion extends ArtifactVersionWrapper implements ArtifactVersio
 
 	/**
 	 * Return a string suitable for documentation containing the version and
-	 * {@link #getShortSha() short SHA} if present.
+	 * {@link #getShortSha() abbreviated hash} if present.
+	 * @return the documentation display string.
 	 */
 	@Override
 	public String toDocumentationString() {

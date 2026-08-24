@@ -28,11 +28,14 @@ import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Dependency rules that apply to one branch or project-version pattern.
+ * Artifact rules and upgrade-strategy limits selected by a branch or project
+ * version pattern.
  *
  * <p>A branch rule can inherit default artifact rules. Its own artifact rules
  * take precedence; an artifact they do not govern falls back to the inherited
- * defaults, still subject to this rule's upgrade-strategy limits.
+ * defaults, still subject to this rule's upgrade-strategy limits. Natural
+ * ordering ranks exact patterns above wildcard patterns and the match-all
+ * pattern.
  *
  * @author Mark Paluch
  */
@@ -62,11 +65,12 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 	}
 
 	/**
-	 * Create a branch rule.
+	 * Create a non-fallback rule that matches every branch and governs only the
+	 * given artifacts.
 	 *
-	 * @param artifacts the artifact rules.
+	 * @param artifacts the artifact rules retained by the returned rule.
 	 * @param upgradeStrategies the supported upgrade strategies; empty for no
-	 * limits.
+	 * limits. The set is retained by the returned rule.
 	 * @return the branch rule.
 	 */
 	public static BranchRule of(Collection<ArtifactRule> artifacts,
@@ -75,12 +79,12 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 	}
 
 	/**
-	 * Create a branch rule.
+	 * Create a non-fallback rule for the given branch or project-version pattern.
 	 *
 	 * @param pattern the branch or project-version pattern.
-	 * @param artifacts the artifact rules.
+	 * @param artifacts the artifact rules retained by the returned rule.
 	 * @param upgradeStrategies the supported upgrade strategies; empty for no
-	 * limits.
+	 * limits. The set is retained by the returned rule.
 	 * @return the branch rule.
 	 */
 	public static BranchRule of(String pattern, Collection<ArtifactRule> artifacts,
@@ -94,9 +98,10 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 	 * artifact rule resolve to a present rule enforcing the upgrade-strategy
 	 * limits.
 	 *
-	 * @param artifacts the default artifact dependency rules.
+	 * @param artifacts the default artifact dependency rules retained by the
+	 * returned rule.
 	 * @param upgradeStrategies the supported upgrade strategies; empty for no
-	 * limits.
+	 * limits. The set is retained by the returned rule.
 	 * @return the fallback branch rule.
 	 */
 	public static BranchRule fallback(Collection<ArtifactRule> artifacts, Set<UpgradeStrategy> upgradeStrategies) {
@@ -146,6 +151,11 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 		return new BranchRule(this.fallback, this.pattern, this.artifacts, this.defaultArtifacts, upgradeStrategies);
 	}
 
+	/**
+	 * Return the explicitly configured or inferred upgrade-strategy limits.
+	 *
+	 * @return the strategy set retained by this rule. An empty set means no limits.
+	 */
 	public Set<UpgradeStrategy> upgradeStrategies() {
 		return this.upgradeStrategies;
 	}
@@ -161,8 +171,8 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 	 * rule enforcing this branch's upgrade-strategy limits; otherwise
 	 * {@link DependencyRule#absent()} is returned.
 	 *
-	 * @param parentRules the parent rules consulted to resolve a friendly
-	 * dependency name when an artifact rule does not declare one.
+	 * @param parentRules the parent rules consulted to resolve an Artifact Display
+	 * Name when an artifact rule does not declare one.
 	 * @param artifactId the artifact to select a dependency rule for.
 	 * @param branchName the current branch name, can be {@literal null} if the
 	 * project is not versioned.

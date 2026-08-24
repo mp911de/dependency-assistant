@@ -38,13 +38,17 @@ import com.intellij.psi.SmartPsiElementPointer;
 import org.jetbrains.yaml.psi.YAMLScalar;
 
 /**
- * Completion contributor for Antora playbook {@code ui.bundle.url} version
- * segments.
+ * Completion contributor for the version segment of an Antora playbook
+ * {@code ui.bundle.url}.
  *
- * <p>Suggests cached release versions when the caret is positioned inside the
- * version slice of the URL between {@code /releases/download/} and the next
- * path separator. Host, owner, repository, and asset segments are left
- * untouched.
+ * <p>Completion applies only within a parseable bundle URL in a file named
+ * {@code antora-playbook.yml}. It contributes cached release versions for the
+ * segment between {@code /releases/download/} and the next path separator.
+ *
+ * <p>Insertion replaces only that segment and preserves the host, owner,
+ * repository, asset path, and YAML quote style. If the scalar can no longer be
+ * resolved through its smart pointer, the Antora-specific insert handler makes
+ * no replacement.
  *
  * @author Mark Paluch
  */

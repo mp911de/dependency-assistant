@@ -37,10 +37,16 @@ import com.intellij.util.xmlb.annotations.XCollection;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Persistent cache entry for a single artifact and its known releases.
- * <p>
- * The entry is keyed by group and artifact identifiers and stores releases
- * in a serializer-friendly representation.
+ * Persistent cache entry for one package and its resolved metadata.
+ *
+ * <p>The entry stores releases and their vulnerability scans, BOM
+ * classification and memberships, project metadata, and release-source back-off
+ * state. Package-system absence is retained for entries written before
+ * ecosystem tracking and is interpreted by {@link Cache} as a legacy wildcard.
+ *
+ * <p>Release and BOM collections are synchronized independently. Snapshot and
+ * collection accessors provide stable views for serialization and background
+ * processing without exposing the backing lists.
  *
  * @author Mark Paluch
  */
@@ -82,7 +88,7 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 	 * Comma-separated identifiers of release sources that yielded no result for
 	 * this artifact, or {@literal null} if every queried source returned releases.
 	 * Used to detect when a newly added source warrants a fetch despite
-	 * empty-lookup back-off. This is the persisted form;
+	 * empty-lookup back-off. This is the persisted form.
 	 * {@link #getEmptyReleaseSources()} exposes the parsed view.
 	 */
 	private @Nullable @Attribute String emptyReleaseSources;
@@ -181,6 +187,8 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 	/**
 	 * Return {@literal true} if the artifactId contains {@link #groupId()} and
 	 * {@link #artifactId()} values.
+	 *
+	 * @return {@code true} if both coordinate components contain text.
 	 */
 	public boolean hasCoordinates() {
 		return StringUtils.hasText(getGroupId()) && StringUtils.hasText(getArtifactId());
@@ -195,6 +203,12 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 		this.packageSystem = packageSystem;
 	}
 
+	/**
+	 * Return the source that previously produced the preferred release result.
+	 *
+	 * @return the preferred release source identifier, or {@literal null} if none
+	 * is recorded.
+	 */
 	public @Nullable String getPreferredSource() {
 		return preferredSource;
 	}
@@ -203,14 +217,31 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 		this.preferredSource = preferredSource;
 	}
 
+	/**
+	 * Return the number of consecutive fetches that produced no releases.
+	 *
+	 * @return the consecutive empty-fetch count.
+	 */
 	public int getEmptyLookups() {
 		return emptyLookups;
 	}
 
+	/**
+	 * Return when every configured release source was last queried.
+	 *
+	 * @return the epoch-millisecond full-fetch timestamp, or {@code 0} before the
+	 * first full fetch.
+	 */
 	public long getSourcesCheckedSince() {
 		return sourcesCheckedSince;
 	}
 
+	/**
+	 * Return when this entry was last written.
+	 *
+	 * @return the epoch-millisecond write timestamp, or {@code 0} for a legacy
+	 * entry that must not be expired by age.
+	 */
 	public long getLastSeen() {
 		return lastSeen;
 	}
@@ -219,8 +250,8 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 	 * Return the identifiers of release sources known to yield no result for this
 	 * artifact.
 	 *
-	 * @return an immutable set of the known-empty release source identifiers; never
-	 * {@literal null} and empty when every queried source returned releases.
+	 * @return an immutable set of the known-empty release source identifiers. The
+	 * set is empty when every queried source returned releases.
 	 */
 	@Transient
 	public Set<String> getEmptyReleaseSources() {
@@ -278,8 +309,7 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 	 * <p>Entries persisted before BOM classification report {@literal true} once a
 	 * membership is present, so previously cached BOMs keep their classification.
 	 *
-	 * @return {@literal true} if the artifact is known to be a BOM;
-	 * {@literal false} otherwise.
+	 * @return {@code true} if the artifact is known to be a BOM.
 	 */
 	public boolean isBom() {
 		if (bom) {
@@ -294,6 +324,9 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 	 * Return whether a Bill of Materials membership is persisted for the given BOM
 	 * version. Predictions indexed by {@link #predictBom} do not count, so a
 	 * heuristic guess never suppresses resolving and caching the real membership.
+	 *
+	 * @param version the BOM version to check.
+	 * @return {@code true} if a membership is persisted for the version.
 	 */
 	public boolean hasBom(ArtifactVersion version) {
 		synchronized (boms) {
@@ -310,6 +343,7 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 	 * Return the Bill of Materials indexed for the given version: a persisted
 	 * membership or, in its absence, a previously indexed prediction.
 	 *
+	 * @param version the BOM version to look up.
 	 * @return the Bill of Materials, or {@literal null} when neither a membership
 	 * nor a prediction is indexed for the version.
 	 */
@@ -324,8 +358,8 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 	 * Return the cached Bill of Materials memberships of this artifact, ordered by
 	 * ascending BOM version.
 	 *
-	 * @return an immutable snapshot of the memberships; empty when this artifact
-	 * carries no membership.
+	 * @return an immutable snapshot of the memberships. The snapshot is empty when
+	 * this artifact carries no membership.
 	 */
 	public List<CachedBom> getBomMemberships() {
 		synchronized (boms) {
@@ -372,8 +406,8 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 	 * until the real membership is cached or the index is rebuilt.
 	 *
 	 * @param version the BOM version to predict members for.
-	 * @return the predicted Bill of Materials; empty when no membership is cached
-	 * at all or no member follows the release train.
+	 * @return the predicted Bill of Materials. The result is empty when no
+	 * membership is cached or no member follows the release train.
 	 */
 	public BillOfMaterials predictBom(ArtifactVersion version) {
 
@@ -444,6 +478,8 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 
 	/**
 	 * Return whether this entry has any cached releases.
+	 *
+	 * @return {@code true} if at least one release is cached.
 	 */
 	public boolean hasReleases() {
 		synchronized (releases) {
@@ -451,6 +487,13 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 		}
 	}
 
+	/**
+	 * Find a cached release that compares equal to the given version.
+	 *
+	 * @param version the version to match.
+	 * @return the matching cached release, or {@literal null} if none compares
+	 * equal.
+	 */
 	public @Nullable CachedRelease getCachedRelease(ArtifactVersion version) {
 		synchronized (releases) {
 			for (CachedRelease release : releases) {
@@ -465,7 +508,10 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 	/**
 	 * Return releases as {@link Release} objects.
 	 *
-	 * @return a newly created list of releases.
+	 * <p>Malformed persisted releases are omitted rather than failing the entire
+	 * lookup.
+	 *
+	 * @return a newly created list of parseable releases.
 	 */
 	@Transient
 	public List<Release> getReleases() {
@@ -488,14 +534,31 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 		return options;
 	}
 
+	/**
+	 * Append one release without de-duplicating existing entries.
+	 *
+	 * @param release the release to append.
+	 * @see #addReleases(Collection)
+	 */
 	public void addRelease(CachedRelease release) {
 		addReleases(release);
 	}
 
+	/**
+	 * Append releases without de-duplicating existing entries.
+	 *
+	 * @param releases the releases to append.
+	 * @see #addReleases(Collection)
+	 */
 	public void addReleases(CachedRelease... releases) {
 		addReleases(List.of(releases));
 	}
 
+	/**
+	 * Append releases without de-duplicating existing entries.
+	 *
+	 * @param releases the releases to append.
+	 */
 	public void addReleases(Collection<CachedRelease> releases) {
 		synchronized (this.releases) {
 			this.releases.addAll(releases);
@@ -613,7 +676,9 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 	}
 
 	/**
-	 * Record one completed scan attempt that returned no data for this release,
+	 * Record one completed scan attempt that returned no data for this release.
+	 *
+	 * @param version the release version whose attempt counter should advance.
 	 */
 	public void recordAttempt(ArtifactVersion version) {
 		CachedRelease cachedRelease = getCachedRelease(version);
@@ -626,6 +691,7 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 	 * Store the vulnerabilities found by a completed scan, stamping the scan time.
 	 *
 	 * @param scannedAt the time the scan completed.
+	 * @param version the release version whose result should be stored.
 	 * @param vulnerabilities the vulnerabilities found, possibly empty for a clean
 	 * scan.
 	 */
@@ -637,6 +703,15 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 		}
 	}
 
+	/**
+	 * Return a snapshot of this entry for persistence.
+	 *
+	 * <p>Release and BOM entries are copied. Project metadata is retained as a
+	 * shared value because cache writes replace it wholesale rather than mutating
+	 * its descriptive fields.
+	 *
+	 * @return a snapshot detached from the mutable release and BOM collections.
+	 */
 	public CachedArtifact snapshot() {
 		CachedArtifact copy = new CachedArtifact(getGroupId(), getArtifactId());
 		copy.setPackageSystem(getPackageSystem());

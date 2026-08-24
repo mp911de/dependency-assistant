@@ -70,7 +70,7 @@ public interface TicketSystem {
 	 *
 	 * <p>Systems with close keywords may return a closing phrase, for example
 	 * {@code Closes #1234}. Systems without commit-based closing can return a plain
-	 * display reference; an empty string means that no meaningful commit reference
+	 * display reference. An empty string means that no meaningful commit reference
 	 * exists for the key.
 	 *
 	 * @param key the persisted or live ticket key to render.

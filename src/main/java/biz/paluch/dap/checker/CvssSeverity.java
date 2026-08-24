@@ -20,11 +20,11 @@ import biz.paluch.dap.util.MessageBundle;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Qualitative severity rating of a vulnerability.
- * <p>Ratings follow the CVSS v3.1 qualitative severity bands. {@link #UNKNOWN}
- * covers scores or labels that cannot be mapped to a known band so that an
- * unrecognized input is reported as unknown rather than defaulting to a
- * misleading mid-tier band.
+ * Normalized qualitative severity of a vulnerability.
+ *
+ * <p>Numeric ratings use the CVSS v3.1 qualitative severity bands.
+ * {@link #UNKNOWN} represents scores or labels that cannot be mapped to a known
+ * band rather than assigning them a severity by default.
  *
  * @author Mark Paluch
  */
@@ -34,9 +34,11 @@ public enum CvssSeverity {
 
 	/**
 	 * Map a numeric CVSS base score to its qualitative severity band.
-	 * <p>Follows the CVSS v3.1 bands: {@code >= 9.0} CRITICAL, {@code 7.0 - 8.9}
-	 * HIGH, {@code 4.0 - 6.9} MEDIUM, {@code 0.1 - 3.9} LOW, {@code 0.0}
-	 * {@link #NONE}. A negative score yields {@link #UNKNOWN}.
+	 *
+	 * <p>Scores at or above {@code 9.0} are critical, {@code 7.0} through
+	 * {@code 8.9} are high, {@code 4.0} through {@code 6.9} are medium, {@code 0.1}
+	 * through {@code 3.9} are low, and exactly {@code 0.0} is {@link #NONE}.
+	 * Negative values and {@link Double#NaN} yield {@link #UNKNOWN}.
 	 *
 	 * @param score the CVSS base score.
 	 * @return the qualitative severity band.
@@ -63,12 +65,13 @@ public enum CvssSeverity {
 
 	/**
 	 * Map an explicit severity label to its severity band.
+	 *
 	 * <p>Matching is case-insensitive against the enum constant names. Any label
 	 * that does not match a known constant, including {@literal null} or a blank
-	 * string, yields {@link #UNKNOWN} rather than a misleading mid-tier band.
+	 * string, yields {@link #UNKNOWN}.
 	 *
-	 * @param label the severity label as reported by the source, can be
-	 * {@literal null}.
+	 * @param label the severity label reported by the source, or {@literal null} if
+	 * absent.
 	 * @return the matching severity band.
 	 */
 	public static CvssSeverity fromLabel(@Nullable String label) {
@@ -85,13 +88,20 @@ public enum CvssSeverity {
 		return UNKNOWN;
 	}
 
+	/**
+	 * Return the localized label for this severity.
+	 *
+	 * @return the localized severity label.
+	 */
 	public String getLabel() {
 		return MessageBundle.message("CvssSeverity." + name());
 	}
 
 	/**
 	 * Return the ordering rank for severity comparisons.
-	 * <p>Higher values represent more severe ratings.
+	 *
+	 * <p>Higher values represent more severe ratings independently of enum
+	 * declaration order.
 	 *
 	 * @return the severity rank.
 	 */

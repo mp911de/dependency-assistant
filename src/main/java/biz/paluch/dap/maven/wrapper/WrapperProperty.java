@@ -32,7 +32,7 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * Supported Maven wrapper URL property.
+ * Supported Maven Wrapper URL property.
  *
  * <p>Each value connects the property key in
  * {@code .mvn/wrapper/maven-wrapper.properties} with the artifact whose version
@@ -83,6 +83,7 @@ enum WrapperProperty {
 
 	/**
 	 * Return whether the property is a supported wrapper URL property.
+	 *
 	 * @param property the property to inspect.
 	 * @return {@literal true} if the property key is supported.
 	 */
@@ -93,7 +94,8 @@ enum WrapperProperty {
 	/**
 	 * Return the {@link WrapperProperty} that matches the given property key, or
 	 * {@literal null} when the key is unknown.
-	 * @param key the property key to inspect; can be {@literal null}.
+	 *
+	 * @param key the property key to inspect. A {@literal null} key has no match.
 	 * @return the matching {@link WrapperProperty}, or {@literal null}.
 	 */
 	static @Nullable WrapperProperty forKey(@Nullable String key) {
@@ -108,6 +110,7 @@ enum WrapperProperty {
 
 	/**
 	 * Return supported property names.
+	 *
 	 * @return the supported property keys.
 	 */
 	public static String[] propertyNames() {
@@ -146,8 +149,10 @@ enum WrapperProperty {
 	 *
 	 * <p>If {@code preservedExtension} is one of the supported extensions for this
 	 * property, it is honored; otherwise the default extension is used.
+	 *
 	 * @param version the canonical version.
-	 * @param preservedExtension the extension to preserve, can be {@literal null}.
+	 * @param preservedExtension the extension to preserve. A {@literal null} or
+	 * unsupported extension selects the property's default.
 	 * @return the canonical file name.
 	 */
 	public String canonicalFileName(String version, @Nullable String preservedExtension) {
@@ -158,8 +163,9 @@ enum WrapperProperty {
 	}
 
 	/**
-	 * Return whether {@code fileName} is one of the canonical file names for this
-	 * wrapper property at the given version.
+	 * Return whether {@code fileName} exactly matches one of the canonical file
+	 * names for this wrapper property at the given version.
+	 *
 	 * @param fileName the file name to check.
 	 * @param version the canonical version.
 	 * @return {@literal true} if the file name is canonical.
@@ -175,11 +181,11 @@ enum WrapperProperty {
 	}
 
 	/**
-	 * Return the supported extension if the {@code fileName} ends with a supported
-	 * extension, or {@literal null} otherwise.
+	 * Return the normalized supported extension if {@code fileName} ends with one,
+	 * ignoring case.
+	 *
 	 * @param fileName the file name to inspect.
-	 * @return the supported extension if the {@code fileName} ends with a supported
-	 * extension, or {@literal null} otherwise.
+	 * @return the lowercase supported extension, or {@literal null} otherwise.
 	 */
 	public @Nullable String getSupportedExtension(String fileName) {
 
@@ -195,22 +201,26 @@ enum WrapperProperty {
 
 
 	/**
-	 * Return the latest {@link ArtifactRelease}. Returns a default release if
-	 * {@link Cache} does not contain any release for the artifact.
-	 * @param cache the state cache to query for releases; must not be
-	 * {@literal null}.
-	 * @return the latest release.
+	 * Return an {@link ArtifactRelease} containing the latest non-preview release.
+	 *
+	 * <p>The property's built-in fallback version is used when the {@link Cache}
+	 * has no non-preview release for the artifact.
+	 *
+	 * @param cache the state cache to query for releases.
+	 * @return the artifact and its latest non-preview or fallback release.
 	 */
 	public ArtifactRelease getLatestArtifactRelease(Cache cache) {
 		return new ArtifactRelease(artifactId(), getLatestRelease(cache));
 	}
 
 	/**
-	 * Return the latest {@link Release}. Returns a default release if {@link Cache}
-	 * does not contain any release for the artifact.
-	 * @param cache the state cache to query for releases; must not be
-	 * {@literal null}.
-	 * @return the latest release.
+	 * Return the latest non-preview {@link Release} from the cache.
+	 *
+	 * <p>The property's built-in fallback version is used when the {@link Cache}
+	 * has no non-preview release for the artifact.
+	 *
+	 * @param cache the state cache to query for releases.
+	 * @return the latest non-preview or fallback release.
 	 */
 	public Release getLatestRelease(Cache cache) {
 		return cache.getReleases(artifactId())

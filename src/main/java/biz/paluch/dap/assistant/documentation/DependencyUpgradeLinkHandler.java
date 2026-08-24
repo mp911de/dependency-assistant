@@ -35,16 +35,15 @@ import org.jspecify.annotations.Nullable;
 /**
  * Handles Dependency Assistant links in the Quick Documentation popup.
  *
- * <p>Version icons rendered by {@link DependencyDocumentationProvider} carry a
- * {@link #SCHEME}-prefixed link whose remainder is the target version. This
- * handler recognizes the scheme, applies the encoded version through the same
- * update path used by the upgrade quick-fix, and re-renders the popup against
- * the updated declaration.
+ * <p>Upgradeable release rows rendered by
+ * {@link DependencyDocumentationProvider} carry a {@link #SCHEME}-prefixed link
+ * whose remainder is the target version. This handler recognizes the scheme,
+ * applies the linked version through the shared dependency-update path, and
+ * re-renders the popup against the updated declaration.
  *
- * <p>The hidden-release notes carry a {@link #CHECK_SCHEME} link that opens the
- * Dependency Check dialog scoped to the documented declaration's build file,
- * with the artifact's row selected, so the full release history is one click
- * away from the digest.
+ * <p>Counts for release rows omitted from the bounded digest carry a
+ * {@link #CHECK_SCHEME} link. The link opens the Dependency Check dialog scoped
+ * to the documented declaration's build file and selects the artifact's row.
  *
  * @author Mark Paluch
  * @see DependencyUpgradeTarget
@@ -52,14 +51,15 @@ import org.jspecify.annotations.Nullable;
 public class DependencyUpgradeLinkHandler implements DocumentationLinkHandler {
 
 	/**
-	 * URL scheme identifying an upgrade link. The remainder of the URL is the
-	 * target version string.
+	 * URL scheme identifying an upgrade link. URLs start with {@value} and continue
+	 * with the target version string.
 	 */
 	static final String SCHEME = "dependency-assistant-upgrade:";
 
 	/**
-	 * URL identifying an open-the-Dependency-Check-dialog link. The artifact and
-	 * scope derive from the documentation target; the URL carries no payload.
+	 * URL identifying an open-the-Dependency-Check-dialog link ({@value}). The
+	 * artifact and scope derive from the documentation target. The URL carries no
+	 * payload.
 	 */
 	static final String CHECK_SCHEME = "dependency-assistant-check:";
 
@@ -102,8 +102,8 @@ public class DependencyUpgradeLinkHandler implements DocumentationLinkHandler {
 	}
 
 	/**
-	 * Launch a Dependency Check focused on the documented artifact; resolves back
-	 * to the unchanged target so the popup stays intact.
+	 * Launch a Dependency Check focused on the documented artifact. Resolution
+	 * returns to the unchanged target so the popup stays intact.
 	 */
 	private static LinkResolveResult openUpgradeDialog(DocumentationTarget target,
 			DependencyUpgradeTarget upgradeTarget) {

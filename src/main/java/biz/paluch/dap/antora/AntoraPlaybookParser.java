@@ -30,11 +30,11 @@ import org.jspecify.annotations.Nullable;
 /**
  * YAML PSI parser for Antora playbook {@code ui.bundle.url} declarations.
  *
- * <p>
- * Scans an Antora playbook file for {@code url} key-value pairs nested
- * directly under {@code ui.bundle} and parses each scalar value into an
- * {@link AntoraBundleUrl}. Unrelated {@code url} keys at any other path are
- * ignored, as are malformed URLs.
+ * <p>Scans an Antora playbook for scalar {@code url} values nested directly
+ * under {@code ui.bundle} and returns detached {@link AntoraBundleUrl} values.
+ * Unrelated keys, non-scalar values, invalid PSI, and malformed URLs are
+ * ignored. Parsing does not modify the PSI or open a read action. Callers
+ * supply the required PSI read access.
  *
  * @author Mark Paluch
  */
@@ -43,7 +43,7 @@ class AntoraPlaybookParser {
 	/**
 	 * Collect all {@code ui.bundle.url} references from the given Antora playbook.
 	 * @param file the Antora playbook PSI file to scan.
-	 * @return the parsed bundle URLs, possibly empty.
+	 * @return a new list of parsed bundle URLs, possibly empty.
 	 */
 	List<AntoraBundleUrl> parse(PsiFile file) {
 

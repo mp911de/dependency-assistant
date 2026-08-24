@@ -3,9 +3,11 @@ package biz.paluch.dap.gradle;
 import biz.paluch.dap.support.ArtifactReference;
 
 /**
- * Locator for artifact references from a Gradle PSI element.
+ * Strategy for resolving an {@link ArtifactReference} from a Gradle PSI
+ * element.
  *
  * @author Mark Paluch
+ * @param <T> the supported PSI element type.
  */
 interface ArtifactReferenceLocator<T> {
 

@@ -44,7 +44,7 @@ public class UpgradeDependenciesIntention extends BaseIntentionAction
 		implements Iconable, HighPriorityAction {
 
 	/**
-	 * Singleton intention instance registered with IntelliJ.
+	 * Shared instance exposed as an option by dependency update quick fixes.
 	 */
 	public static final UpgradeDependenciesIntention INSTANCE = new UpgradeDependenciesIntention();
 

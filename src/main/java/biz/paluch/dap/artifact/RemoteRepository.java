@@ -24,7 +24,11 @@ import org.springframework.util.Assert;
 import org.springframework.util.ObjectUtils;
 
 /**
- * A remote Maven repository with an optional set of HTTP Basic-auth credentials resolved from {@code settings.xml}.
+ * Remote Maven repository endpoint with optional HTTP Basic credentials.
+ *
+ * <p>The URL is normalized to a trailing slash for relative artifact-path
+ * resolution. Equality uses the URL and credential server id; the repository id
+ * is descriptive and does not participate.
  *
  * @author Mark Paluch
  */
@@ -39,6 +43,14 @@ public class RemoteRepository {
 
 	private final @Nullable RepositoryCredentials credentials;
 
+	/**
+	 * Create a remote Maven repository descriptor.
+	 * @param id the repository id.
+	 * @param url the repository base URL.
+	 * @param credentials the credentials to use, or {@literal null}.
+	 * @throws IllegalArgumentException if the id or URL is blank or the URL is
+	 * malformed.
+	 */
 	public RemoteRepository(String id, String url, @Nullable RepositoryCredentials credentials) {
 		Assert.hasText(id, "Id must not be null or empty!");
 		Assert.hasText(url, "URL must not be null or empty!");

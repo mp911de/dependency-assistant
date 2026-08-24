@@ -22,16 +22,16 @@ import biz.paluch.dap.artifact.ArtifactId;
 import com.intellij.openapi.util.Predicates;
 
 /**
- * Artifact coordinate pattern using {@code *} wildcards.
+ * Pattern for selecting artifact coordinates with {@code *} wildcards.
  *
- * <p>A pattern is either a plain artifactId pattern matching any groupId
- * (for example {@code spring-*}), or a groupId and artifactId pair separated
- * by {@code :} or {@code /} (for example {@code org.springframework:spring-*}).
+ * <p>A pattern is either a plain artifactId pattern matching any groupId (for
+ * example {@code spring-*}), or a groupId and artifactId pair separated by
+ * {@code :} or {@code /} (for example {@code org.springframework:spring-*}).
  *
- * <p>Patterns are ordered by specificity: exact coordinates order highest,
- * followed by exact artifactId patterns, wildcard patterns, and the match-all
- * pattern. Callers select the governing rule via {@code max(...)} over this
- * ordering.
+ * <p>Patterns are ordered by specificity. Exact coordinate pairs rank highest,
+ * followed by exact bare artifactIds, bare artifactId wildcards,
+ * coordinate-pair wildcards, and the match-all pattern. Rule resolution selects
+ * the greatest matching pattern.
  *
  * @author Mark Paluch
  * @see ArtifactRule
@@ -64,8 +64,7 @@ public class ArtifactPattern implements Predicate<ArtifactId>, Comparable<Artifa
 	 * Create an artifact pattern.
 	 *
 	 * @param value the pattern, either an artifactId pattern or a
-	 * {@code groupId:artifactId} / {@code groupId/artifactId} pair; must not be
-	 * {@literal null}.
+	 * {@code groupId:artifactId} or {@code groupId/artifactId} pair.
 	 * @return the artifact pattern.
 	 */
 	public static ArtifactPattern of(String value) {

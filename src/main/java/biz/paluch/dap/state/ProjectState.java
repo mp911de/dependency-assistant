@@ -24,12 +24,14 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Runtime view of dependency and property state for a single analyzed project.
- * <p>
- * Implementations combine transient dependency analysis results with
- * persistent property correlations from the plugin cache. Unless stated
- * otherwise, lookup methods return {@literal null} when no matching state is
- * currently available.
+ * Facade over runtime dependencies for one project identity and persisted
+ * property correlations known to the project service.
+ *
+ * <p>Dependency operations are scoped to the facade's project identity.
+ * Property lookups may return a correlation owned by another cached project
+ * entry and therefore expose that owner through {@link ProjectProperty}. Unless
+ * stated otherwise, lookup methods return {@literal null} when no matching
+ * state is available.
  *
  * @author Mark Paluch
  */

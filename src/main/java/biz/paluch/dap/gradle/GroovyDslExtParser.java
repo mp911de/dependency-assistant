@@ -80,9 +80,7 @@ class GroovyDslExtParser {
 	/**
 	 * Collect all Groovy {@code ext} property declarations from the given file as
 	 * plain string values.
-	 * <p>
-	 * Supported syntax variants:
-	 * <pre class="code">
+	 * <p>Supported syntax variants: <pre class="code">
 	 * ext {
 	 *     springVersion = '6.1.0'              // assignment form
 	 *     set('springVersion', '6.1.0')        // set() call form

@@ -49,7 +49,11 @@ import com.intellij.util.ui.UIUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Dialog-row presentation over one upgrade aggregate.
+ * Dialog-row presentation for either one upgrade candidate or one grouped
+ * selection.
+ *
+ * <p>A row supplies the display and tooltip model while retaining the member
+ * candidates needed for dependency-site queries and update fan-out.
  *
  * @author Mark Paluch
  */
@@ -65,8 +69,9 @@ abstract class TableRow implements PlannedUpgrade, Comparable<TableRow> {
 
 	/**
 	 * Create a table icon for the {@link DependencyUpgradeCandidate}.
+	 *
 	 * @param candidate the upgrade candidate.
-	 * @return a table icon to be used of the row.
+	 * @return the table icon for the row.
 	 */
 	static Icon createTableIcon(DependencyUpgradeCandidate candidate) {
 
@@ -81,8 +86,9 @@ abstract class TableRow implements PlannedUpgrade, Comparable<TableRow> {
 	/**
 	 * Compute the speed-search string containing the row name and presentation
 	 * items.
+	 *
 	 * @param presentation the dependency presentation used for the table row.
-	 * @return speed search string.
+	 * @return the speed-search text.
 	 */
 	protected String getSearchString(DependencyPresentation presentation) {
 
@@ -139,17 +145,24 @@ abstract class TableRow implements PlannedUpgrade, Comparable<TableRow> {
 
 	/**
 	 * The headline rendered above the section table, or {@link HtmlChunk#empty()}.
+	 *
+	 * @return the tooltip headline.
 	 */
 	protected abstract HtmlChunk getToolTipIntro();
 
 	/**
 	 * The label/value section rows of this row's tooltip, assembled and rendered by
 	 * {@link UpgradeReview#getCoordinateToolTip(TableRow)}.
+	 *
+	 * @return the tooltip section rows.
 	 */
 	public abstract List<HtmlChunk> getCoordinateToolTip();
 
 	/**
 	 * Current version column tool tip text.
+	 *
+	 * @return the rendered tooltip, or an empty string when the row has no version
+	 * drift or governing rule details.
 	 */
 	public String getCurrentVersionToolTipText() {
 
@@ -191,8 +204,9 @@ abstract class TableRow implements PlannedUpgrade, Comparable<TableRow> {
 	public abstract boolean represents(PackageIdentity pkg);
 
 	/**
-	 * Create a {@link DependencySiteQuery} to find usages.
-	 * @return the query object.
+	 * Create the {@link DependencySiteQuery} for this row's Dependency Site Find.
+	 *
+	 * @return a query covering the represented artifacts and version properties.
 	 */
 	public DependencySiteQuery toQuery() {
 
@@ -214,6 +228,10 @@ abstract class TableRow implements PlannedUpgrade, Comparable<TableRow> {
 	 * Swing tooltips do not carry the documentation pane's stylesheet, so the
 	 * {@code section} class is inert and the label styling is inlined: context-help
 	 * gray plus a right padding separating the label column from the value column.
+	 *
+	 * @param labelKey the message key for the row label.
+	 * @param value the rendered row value.
+	 * @return the tooltip table row.
 	 */
 	static HtmlChunk section(String labelKey, HtmlChunk value) {
 

@@ -32,7 +32,7 @@ import biz.paluch.dap.util.StringUtils;
 
 /**
  * {@link IntrospectedDependencies} that promotes a declaration backed by a
- * version property to a usage, for build ecosystems where the property and the
+ * version property to a usage in build ecosystems where the property and the
  * declaration it versions can live in different build files.
  *
  * <p>A declaration whose version comes from a property is registered without a
@@ -66,7 +66,7 @@ public class VersionPropertyIntrospectedDependencies implements IntrospectedDepe
 	 * Create a handle seeded with the collectors already known for this project.
 	 *
 	 * @param known the collectors held by the runtime dependency state, keyed by
-	 * project identity; retained by reference to their collectors, not copied.
+	 * project identity. Collector values are retained by reference, not copied.
 	 */
 	public VersionPropertyIntrospectedDependencies(Map<ProjectId, DependencyCollector> known) {
 		this.collectors.putAll(known);

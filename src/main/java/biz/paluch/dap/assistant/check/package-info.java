@@ -1,6 +1,7 @@
 /**
- * Dependency check orchestration, release resolution, upgrade candidate
- * results, and dependency-site navigation.
+ * Dependency check orchestration, release and vulnerability resolution,
+ * upgrade-candidate aggregation, drift reporting, and dependency-site
+ * navigation.
  */
 @org.jspecify.annotations.NullMarked
 package biz.paluch.dap.assistant.check;

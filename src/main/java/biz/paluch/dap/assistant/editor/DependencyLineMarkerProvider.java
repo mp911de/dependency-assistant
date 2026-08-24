@@ -54,9 +54,14 @@ import com.intellij.psi.util.PsiTreeUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Gutter line marker for dependency declarations, rendering upgrade
- * availability as well as known vulnerabilities and governing rule state, with
- * navigation to the upgrade action.
+ * Base gutter provider for resolved dependency declarations, rendering upgrade
+ * suggestions, known vulnerabilities, and governing rule state.
+ *
+ * <p>Markers are derived from live PSI and project-cached dependency data. The
+ * provider performs no remote lookups. Clicking a marker starts a Dependency
+ * Check for the containing build file and focuses the declared package. An
+ * available-upgrade marker whose version literal is defined in another physical
+ * file instead navigates to that literal.
  *
  * @author Mark Paluch
  */
@@ -192,6 +197,17 @@ public class DependencyLineMarkerProvider extends LineMarkerProviderDescriptor {
 		return transparentIcon;
 	}
 
+	/**
+	 * Resolve the dependency context used for the given element.
+	 *
+	 * <p>Subclasses may narrow dispatcher resolution to the integration registered
+	 * for their line-marker extension.
+	 *
+	 * @param element the PSI element being considered for a marker.
+	 * @return the resolved dependency context, or an
+	 * {@link ProjectDependencyContext#absent() absent} context when this provider
+	 * does not own the element.
+	 */
 	protected ProjectDependencyContext getContext(PsiElement element) {
 		return DependencyAssistantDispatcher.findFirstContext(element);
 	}
@@ -200,6 +216,8 @@ public class DependencyLineMarkerProvider extends LineMarkerProviderDescriptor {
 	 * Navigation handler that opens the Dependency Check dialog scoped to the
 	 * clicked declaration's build file, with the artifact's row selected and
 	 * revealed.
+	 *
+	 * @param pkg the package identity to select in the dialog.
 	 */
 	public record UpgradeDialogNavigationHandler(PackageIdentity pkg)
 			implements GutterIconNavigationHandler<PsiElement> {

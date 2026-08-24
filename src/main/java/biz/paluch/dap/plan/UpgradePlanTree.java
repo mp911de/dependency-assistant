@@ -73,8 +73,12 @@ import com.intellij.util.ui.tree.TreeUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Upgrade plan tree showing upgrade plan items with groups and badges for
- * linked tickets and the upgrade attention level.
+ * Upgrade Plan tree showing plan items with groups and badges for linked
+ * tickets and the upgrade attention level.
+ *
+ * <p>Sorting derives Plan View Order without changing Plan Order. Selections
+ * are returned in Plan Order so apply, preview, copy, and ticket actions remain
+ * independent of the current view sorting.
  *
  * @author Mark Paluch
  */

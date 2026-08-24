@@ -27,10 +27,12 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * {@link NumericVersion} parsed from a semantic version string, splitting the
- * numeric components from a release qualifier such as {@code RELEASE},
- * {@code SNAPSHOT}, {@code RCn}, or {@code Mn}, and supporting both
- * dot-separated and modifier ({@code -}) suffix notations.
+ * {@link NumericVersion} parsed from a digit-led artifact-version string.
+ *
+ * <p>The parser separates numeric components from broad Maven and
+ * ecosystem-specific qualifiers such as {@code RELEASE}, {@code SNAPSHOT},
+ * {@code RCn}, or {@code Mn}. Both dot-separated and modifier ({@code -})
+ * suffix notations are supported.
  *
  * @author Mark Paluch
  */

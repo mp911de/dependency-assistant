@@ -33,12 +33,12 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * {@link IntentionAction} that upgrades a single dependency declaration to the
- * version carried by its {@link DependencyUpdate}, applying the change through
- * the owning {@link ProjectDependencyContext}.
+ * {@link IntentionAction} that applies one selected {@link DependencyUpdate}
+ * throughout its target build file through the owning
+ * {@link ProjectDependencyContext}.
  *
  * <p>Also implements {@link FileModifier} so the platform can render an
- * intention preview against a copied file via
+ * intention preview by binding the same update to a copied file through
  * {@link #getFileModifierForPreview(PsiFile)}.
  *
  * @author Mark Paluch

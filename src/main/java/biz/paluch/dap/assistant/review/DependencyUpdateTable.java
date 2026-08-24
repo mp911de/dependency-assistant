@@ -859,9 +859,10 @@ class DependencyUpdateTable extends TableView<TableRow> {
 	}
 
 	/**
-	 * List cell renderer that shows an icon (older / newer patch / minor / major)
-	 * plus version text, graying out versions that do not satisfy the dependency
-	 * rule. Options are classified relative to the candidate set via
+	 * List cell renderer showing each release's version status, version text, and
+	 * release date. Rule violations are grayed out, and a selected release outside
+	 * the candidate's release universe receives a warning icon. Options are
+	 * classified relative to the candidate row through
 	 * {@link #setCandidate(TableRow)}.
 	 */
 	static class VersionOptionCellRenderer extends ColoredListCellRenderer<Release> {

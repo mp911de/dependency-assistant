@@ -38,11 +38,12 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * PSI edits on the {@code artifacts} section of a {@code dependencyfile.json}
- * descriptor: setting entry names, inserting entries that do not exist yet.
- * Existing entries always get their {@code name} replaced so that "Add to
- * dependencyfile.json" and an Upgrade Plan rename behave alike. Callers run
- * these inside a write command on a JSON {@link PsiFile}; the descriptor's
- * {@code artifacts} object is created when absent.
+ * descriptor: setting entry names and inserting entries that do not exist yet.
+ * Existing object-valued entries have their {@code name} replaced so that "Add
+ * to dependencyfile.json" and an Upgrade Plan rename behave alike. Existing
+ * scalar and array rules are left unchanged. Callers run these operations
+ * inside a write command on a JSON {@link PsiFile}; an {@code artifacts} object
+ * is created when no object-valued section exists.
  *
  * <p>Entry keys are the narrowest {@link ArtifactPattern#keyFor(ArtifactId)
  * pattern key}, or a {@code groupId:prefix*} wildcard for members sharing a
@@ -62,13 +63,16 @@ public class DependencyfileArtifacts {
 	 * Set {@code name} on the entries covering the coordinates (see
 	 * {@link #entries(List, String)}). When that is a wildcard entry, existing
 	 * exact entries of the coordinates are renamed as well: an exact key outranks
-	 * the wildcard and would otherwise keep the old name in effect.
+	 * the wildcard and would otherwise keep the old name in effect. Only
+	 * object-valued exact entries can be renamed.
+	 *
 	 * @param project the project owning the file.
 	 * @param psiFile the descriptor file; can be {@literal null}.
-	 * @param artifactIds the coordinates to name.
+	 * @param artifactIds the coordinates to name, possibly empty.
 	 * @param name the name to write.
 	 * @return the {@code name}-value range of the first entry for the caret, or
-	 * {@literal null} when the file is not a JSON object.
+	 * {@literal null} when the file is not a JSON object, no coordinates are given,
+	 * or the first entry remains non-object-valued.
 	 */
 	public static @Nullable TextRange setName(Project project, @Nullable PsiFile psiFile,
 			List<? extends ArtifactId> artifactIds, String name) {
@@ -98,11 +102,13 @@ public class DependencyfileArtifacts {
 	 * an existing entry gets its {@code name} value replaced (or added), a missing
 	 * entry is inserted sorted. Entries whose value is not an object are left
 	 * alone. The file is reformatted when anything changed.
+	 *
 	 * @param project the project owning the file.
 	 * @param psiFile the descriptor file; can be {@literal null}.
 	 * @param entries the entries whose names to set.
 	 * @return the {@code name}-value range of the first entry for the caret, or
-	 * {@literal null} when the file is not a JSON object or no entry was given.
+	 * {@literal null} when the file is not a JSON object, no entry was given, or
+	 * the first entry has no string-valued {@code name} after editing.
 	 */
 	public static @Nullable TextRange setNames(Project project, @Nullable PsiFile psiFile,
 			Collection<ArtifactEntry> entries) {
@@ -160,6 +166,7 @@ public class DependencyfileArtifacts {
 	 * Compute the entries naming the given coordinates {@code name}: one wildcard
 	 * entry when the coordinates share a groupId and word-boundary prefix,
 	 * otherwise one entry per coordinate.
+	 *
 	 * @param artifactIds the coordinates to name.
 	 * @param name the name to write.
 	 * @return the entries, in coordinate order.
@@ -184,8 +191,10 @@ public class DependencyfileArtifacts {
 	 * Return the {@code groupId:prefix*} wildcard key for the coordinates, or
 	 * {@literal null} when they do not share a groupId or their artifactIds have no
 	 * common prefix ending on a {@code -} or {@code .} word boundary.
-	 * @param artifactIds the member coordinates.
+	 *
+	 * @param artifactIds the member coordinates. The list must not be empty.
 	 * @return the wildcard key, or {@literal null}.
+	 * @throws java.util.NoSuchElementException if {@code artifactIds} is empty.
 	 */
 	public static @Nullable String wildcardKey(List<? extends ArtifactId> artifactIds) {
 
@@ -209,7 +218,7 @@ public class DependencyfileArtifacts {
 
 	/**
 	 * Return the descriptor object's {@code artifacts} value, creating an empty
-	 * {@code artifacts} object when the descriptor does not declare one.
+	 * {@code artifacts} object when no object-valued property exists.
 	 */
 	private static JsonObject artifactsObject(JsonObject root, JsonElementGenerator generator) {
 
@@ -294,6 +303,11 @@ public class DependencyfileArtifacts {
 		/**
 		 * Create an entry for the coordinate, named after {@code projectName} when
 		 * present, else after the key without a leading {@code @}.
+		 *
+		 * @param artifactId the artifact coordinates.
+		 * @param projectName the project name, or {@literal null} or blank when
+		 * unavailable.
+		 * @return the descriptor entry.
 		 */
 		public static ArtifactEntry create(ArtifactId artifactId, @Nullable String projectName) {
 

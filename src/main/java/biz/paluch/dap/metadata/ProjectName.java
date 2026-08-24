@@ -24,8 +24,12 @@ import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Display policy for a captured project name: normalizes and display-trims the
- * name once and exposes it through two acceptance tiers.
+ * Display policy for a project name captured from upstream metadata.
+ *
+ * <p>The captured value remains available when it is non-blank. The optional
+ * display name is normalized, length-limited, stripped of common aggregate role
+ * and version suffixes, and suppressed when it merely repeats the artifact
+ * coordinates.
  *
  * @author Mark Paluch
  */
@@ -67,19 +71,23 @@ public class ProjectName {
 	}
 
 	/**
-	 * Create an empty {@link ProjectName} for the given coordinates and captured
-	 * project name.
+	 * Create an empty project-name policy for the given coordinates.
+	 *
 	 * @param artifactId the coordinates the name must add information over.
+	 * @return an empty project-name policy.
 	 */
 	public static ProjectName empty(ArtifactId artifactId) {
 		return of(artifactId, null);
 	}
 
 	/**
-	 * Create a new {@link ProjectName} for the given coordinates and captured
-	 * project name.
+	 * Create a project-name policy for the given coordinates and captured project
+	 * name.
+	 *
 	 * @param artifactId the coordinates the name must add information over.
-	 * @param projectName the project name; can be {@literal null}.
+	 * @param projectName the captured project name, or {@literal null} for an empty
+	 * policy.
+	 * @return the project-name policy.
 	 */
 	public static ProjectName of(ArtifactId artifactId, @Nullable String projectName) {
 		String normalized = normalize(projectName);
@@ -89,18 +97,20 @@ public class ProjectName {
 	}
 
 	/**
-	 * @return {@literal true} if a name is present, normalized and not redundant.
+	 * Return whether an accepted display name is available.
+	 *
+	 * @return {@literal true} if an accepted, non-redundant display name is
+	 * available.
 	 */
 	public boolean hasDisplayName() {
 		return StringUtils.hasText(displayName);
 	}
 
 	/**
-	 * Return the normalized, display-trimmed name or throw
-	 * {@link IllegalStateException} if absent.
+	 * Return the accepted display name.
+	 *
 	 * @return the normalized, display-trimmed name.
-	 * @throws IllegalStateException when the name is absent, unresolved, over-long,
-	 * or merely echoes the coordinates.
+	 * @throws IllegalStateException if no accepted display name is available.
 	 */
 	public String getDisplayName() {
 		if (StringUtils.isEmpty(displayName)) {
@@ -110,16 +120,19 @@ public class ProjectName {
 	}
 
 	/**
-	 * @return {@literal true} if a project name is present.
+	 * Return whether captured metadata supplied a project name.
+	 *
+	 * @return {@literal true} if a non-blank captured project name is available.
 	 */
 	public boolean hasProjectName() {
 		return StringUtils.hasText(projectName);
 	}
 
 	/**
-	 * Return the project name. {@link IllegalStateException} if absent.
-	 * @return the project name.
-	 * @throws IllegalStateException when the name is absent.
+	 * Return the captured project name without display normalization.
+	 *
+	 * @return the captured project name.
+	 * @throws IllegalStateException if the captured name is absent or blank.
 	 */
 	public String getProjectName() {
 		if (StringUtils.isEmpty(projectName)) {

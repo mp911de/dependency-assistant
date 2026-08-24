@@ -44,18 +44,16 @@ import com.intellij.util.concurrency.AppExecutorUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Project-level service that re-collects dependency state for changed build
- * files and restarts highlighting once the state is fresh.
+ * Project-scoped service that coalesces changed-file notifications into
+ * dependency-state re-collection.
  *
- * <p>Changed files accumulate in a pending map, stamped with the generation of
- * the {@link #refresh} call that recorded them. Refreshes are debounced: each
- * call re-arms a quiet-period timer of {@link #REFRESH_DELAY_MS} milliseconds,
- * so a typing burst submits no work at all until the edits pause. The timer
- * then submits a non-blocking read action that drains the map once all
- * documents are committed and indexes are available; overlapping submissions
- * coalesce. After a re-collection the daemon restarts so inspections that
- * consult cross-module state (such as version drift) re-run against fresh data
- * in all open editors, not only the edited file.
+ * <p>Scheduled refreshes are debounced for {@link #REFRESH_DELAY_MS}
+ * milliseconds. Re-collection runs in a non-blocking read action after all
+ * documents are committed and indexes are available. Files are grouped under
+ * every integration that recognizes them. Groups of at most ten files are
+ * invalidated file by file; larger groups trigger a full integration scan.
+ * Highlighting restarts on the UI thread after a completed batch contains at
+ * least one supported file.
  *
  * @author Mark Paluch
  * @see FlushStateOnSave
@@ -85,23 +83,16 @@ public final class StateRefresher implements Disposable {
 		this.psiManager = BetterPsiManager.getInstance(project);
 	}
 
-	/**
-	 * Return the project-scoped refresher instance.
-	 * @param project the IntelliJ project.
-	 * @return the corresponding service instance.
-	 */
 	public static StateRefresher getInstance(Project project) {
 		return project.getService(StateRefresher.class);
 	}
 
 	/**
-	 * Schedule a dependency-state refresh for the given changed file.
-	 * <p>Files that no integration supports are dropped during the refresh. The
-	 * refresh runs asynchronously after a quiet period of {@link #REFRESH_DELAY_MS}
-	 * milliseconds once all documents are committed; each call re-arms the timer
-	 * and overlapping submissions coalesce into the latest one. When state was
-	 * re-collected, highlighting restarts afterwards.
-	 * @param file the changed files.
+	 * Schedule a dependency-state refresh for one changed file.
+	 *
+	 * <p>This method has the same lifecycle as {@link #refresh(Collection)}.
+	 *
+	 * @param file the changed file.
 	 */
 	public void refresh(VirtualFile file) {
 
@@ -115,11 +106,11 @@ public final class StateRefresher implements Disposable {
 
 	/**
 	 * Schedule a dependency-state refresh for the given changed files.
-	 * <p>Files that no integration supports are dropped during the refresh. The
-	 * refresh runs asynchronously after a quiet period of {@link #REFRESH_DELAY_MS}
-	 * milliseconds once all documents are committed; each call re-arms the timer
-	 * and overlapping submissions coalesce into the latest one. When state was
-	 * re-collected, highlighting restarts afterwards.
+	 *
+	 * <p>Each call re-arms the quiet-period timer and adds its files to the pending
+	 * batch. Unsupported files are ignored during re-collection. An empty
+	 * collection schedules no work.
+	 *
 	 * @param files the changed files.
 	 */
 	public void refresh(Collection<VirtualFile> files) {
@@ -162,9 +153,15 @@ public final class StateRefresher implements Disposable {
 	}
 
 	/**
-	 * Re-collect dependency state for the given files. Must run inside a read
-	 * action. Returns the files whose state was re-collected; empty when no given
-	 * file is owned by an integration.
+	 * Re-collect dependency state for the given files immediately.
+	 *
+	 * <p>The caller must hold a read action. Files are grouped under every
+	 * integration that recognizes them. Groups of at most ten files are invalidated
+	 * individually; larger groups trigger a full integration scan.
+	 *
+	 * @param files the files whose owning state should be refreshed.
+	 * @return the supplied files when at least one resolves to a PSI file
+	 * recognized by an integration, or an empty collection otherwise.
 	 */
 	public Collection<VirtualFile> refreshNow(Collection<VirtualFile> files) {
 
@@ -197,10 +194,6 @@ public final class StateRefresher implements Disposable {
 		return files;
 	}
 
-	/**
-	 * Group the given files under every integration whose file-type check accepts
-	 * them; files no integration supports are omitted.
-	 */
 	private static Map<DependencyAssistant, List<PsiFile>> groupByOwner(List<PsiFile> files) {
 
 		List<DependencyAssistant> assistants = DependencyAssistantDispatcher.findAll();

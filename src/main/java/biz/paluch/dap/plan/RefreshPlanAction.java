@@ -21,8 +21,9 @@ import com.intellij.openapi.project.Project;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Refresh the upgrade plan, reloading it from persisted state so fresh
- * releases, vulnerabilities, and rules are reflected.
+ * Refresh the Upgrade Plan by rematerializing its persisted facts against the
+ * currently available assistants and build-file scope. This action does not
+ * recalculate targets, vulnerabilities, or upgrade rules.
  *
  * @author Mark Paluch
  */

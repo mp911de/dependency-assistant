@@ -238,8 +238,8 @@ public class StateService
 	 * to seed scan-wide completion so a pass that re-collects only some modules can
 	 * still see what the remaining modules declared.
 	 *
-	 * @return an immutable snapshot keyed by project identity; empty when no module
-	 * has been collected yet.
+	 * @return an immutable snapshot keyed by project identity. The snapshot is
+	 * empty when no module has been collected yet.
 	 */
 	public Map<ProjectId, DependencyCollector> getCollectors() {
 		return Map.copyOf(dependencies);
@@ -249,8 +249,7 @@ public class StateService
 	 * Perform the given action for every dependency declared across all modules
 	 * currently held in runtime dependency state.
 	 *
-	 * @param consumer the action invoked with each dependency declaration; must not
-	 * be {@literal null}.
+	 * @param consumer the action invoked with each dependency declaration.
 	 */
 	public void doWithDependencies(Consumer<Dependency> consumer) {
 		doWithDependencies(Predicates.alwaysTrue(), consumer);
@@ -261,7 +260,7 @@ public class StateService
 	 * accepted by {@code projectFilter}.
 	 * <p>The consumer is invoked once for each dependency in each accepted module,
 	 * so an artifact declared by several modules is visited several times. Only the
-	 * in-memory runtime dependency state is traversed; the persisted cache is not
+	 * in-memory runtime dependency state is traversed. The persisted cache is not
 	 * consulted.
 	 *
 	 * @param projectFilter selects which modules are traversed.
@@ -283,7 +282,7 @@ public class StateService
 	 * <p>Unlike {@link #doWithDependencies(Predicate, Consumer)}, this variant uses
 	 * the per-module usage index instead of scanning every dependency, so the cost
 	 * scales with the number of modules rather than the total dependency count.
-	 * Only the in-memory runtime dependency state is traversed; the persisted cache
+	 * Only the in-memory runtime dependency state is traversed. The persisted cache
 	 * is not consulted.
 	 *
 	 * @param artifactId the artifact whose usages are visited.
@@ -318,7 +317,7 @@ public class StateService
 	 * modules accepted by {@code projectFilter}.
 	 * <p>The consumer is invoked once per module, so a BOM imported by several
 	 * modules is visited several times. Only the in-memory runtime dependency state
-	 * is traversed; the persisted cache is not consulted.
+	 * is traversed. The persisted cache is not consulted.
 	 *
 	 * @param projectFilter selects which modules are traversed.
 	 * @param consumer the action invoked with each Bill of Materials.
@@ -335,6 +334,11 @@ public class StateService
 
 	/**
 	 * Return whether this service currently knows dependencies or releases.
+	 *
+	 * <p>This check uses the persistent cache. A project entry counts even when no
+	 * runtime dependency collector is currently installed.
+	 *
+	 * @return {@code true} if the cache contains releases or project entries.
 	 */
 	public boolean hasDependenciesOrReleases() {
 		return getCache().hasReleases() || getCache().hasDependencies();
@@ -342,6 +346,8 @@ public class StateService
 
 	/**
 	 * Return {@literal true} if Dependency Assistant has been used actively.
+	 *
+	 * @return {@code true} after the first call to {@link #markUsed()}.
 	 */
 	public boolean hasBeenUsed() {
 		return state.isUsedOnce();
@@ -353,6 +359,8 @@ public class StateService
 
 		/**
 		 * Create a state facade for the given project identity.
+		 *
+		 * @param identity the project identity whose runtime dependencies are exposed.
 		 */
 		public DefaultProjectState(ProjectId identity) {
 			this.identity = identity;

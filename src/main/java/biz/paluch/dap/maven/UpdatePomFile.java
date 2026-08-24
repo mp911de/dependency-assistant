@@ -51,9 +51,6 @@ class UpdatePomFile implements FileDependencyUpdater {
 		this.propertyResolver = propertyResolver;
 	}
 
-	/**
-	 * Apply updates to the POM.
-	 */
 	@Override
 	public void applyUpdates(PsiFile file, DependencyUpdates updates) {
 
@@ -145,7 +142,8 @@ class UpdatePomFile implements FileDependencyUpdater {
 	/**
 	 * Apply a single update at the given version literal. The literal must be the
 	 * {@code <version>} XML tag value or a {@code <properties>}-child tag value of
-	 * the same POM file.
+	 * the same POM file. Other PSI elements are ignored.
+	 *
 	 * @param versionLiteral the version PSI element.
 	 * @param update the update to apply.
 	 */

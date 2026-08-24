@@ -57,8 +57,8 @@ public enum VersionAge {
 	NEWER_MINOR,
 
 	/**
-	 * Newer candidate outside the current major line, or an update target that may
-	 * cross stable version boundaries.
+	 * Newer candidate outside the current major line or in another versioning
+	 * scheme.
 	 */
 	NEWER_MAJOR,
 
@@ -70,13 +70,12 @@ public enum VersionAge {
 
 	/**
 	 * Return how the candidate version relates to the current version.
-	 * <p>
-	 * The result is meant for presentation and should not be used to select an
-	 * upgrade candidate. Selection belongs to {@link UpgradeStrategy}; the
-	 * returned category classifies an already-known candidate according to the
-	 * comparison and version boundary contract of {@link ArtifactVersion}.
+	 * <p>The result is meant for presentation and should not be used to select an
+	 * upgrade candidate. Selection belongs to {@link UpgradeStrategy}; the returned
+	 * category classifies an already-known candidate according to the comparison
+	 * and version boundary contract of {@link ArtifactVersion}.
 	 * @param start the start version (or currently used version).
-	 * @param end the end version (or upgrade candidate version)
+	 * @param end the end version (or upgrade candidate version).
 	 * @return the end candidate version age category.
 	 * @see VersionAware
 	 */
@@ -86,13 +85,12 @@ public enum VersionAge {
 
 	/**
 	 * Return how the candidate version relates to the current version.
-	 * <p>
-	 * The result is meant for presentation and should not be used to select an
-	 * upgrade candidate. Selection belongs to {@link UpgradeStrategy}; the
-	 * returned category classifies an already-known candidate according to the
-	 * comparison and version boundary contract of {@link ArtifactVersion}.
+	 * <p>The result is meant for presentation and should not be used to select an
+	 * upgrade candidate. Selection belongs to {@link UpgradeStrategy}; the returned
+	 * category classifies an already-known candidate according to the comparison
+	 * and version boundary contract of {@link ArtifactVersion}.
 	 * @param start the start version (or currently used version).
-	 * @param end the end version (or upgrade candidate version)
+	 * @param end the end version (or upgrade candidate version).
 	 * @return the end candidate version age category.
 	 */
 	public static VersionAge between(ArtifactVersion start, ArtifactVersion end) {

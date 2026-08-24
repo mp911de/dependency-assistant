@@ -29,10 +29,13 @@ import biz.paluch.dap.support.UpgradeStrategy;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Adds the Safe Version remediation overlay: when the current version is
- * vulnerable, pins the lowest newer clean {@link Release} as the
- * {@link UpgradeStrategy#SAFE} target. The {@link UpgradeStrategy#RULE} sibling
- * of {@link ComplianceUpgradeSuggestionsFilter}.
+ * Adds the Safe Version remediation target to computed upgrade suggestions.
+ *
+ * <p>The target is the lowest release that is newer than a vulnerable current
+ * version, belongs to the same versioning scheme, and is explicitly known to be
+ * clean. Selection can cross major or minor version lines. An absent
+ * vulnerability result is not treated as clean. Suggestions remain unchanged
+ * when no Safe Version can be established.
  *
  * @author Mark Paluch
  */
@@ -55,13 +58,6 @@ class SafeUpgradeSuggestionsFilter implements UpgradeSuggestionsFilter {
 		return suggestions;
 	}
 
-	/**
-	 * Resolve the Safe Version: the lowest newer release in the current version's
-	 * scheme whose vulnerabilities are clean, or {@literal null} when the current
-	 * version is not vulnerable or no newer release is clean. {@link Releases} owns
-	 * the scheme scoping and ordering; absent or vulnerable results never read as
-	 * clean.
-	 */
 	private static @Nullable Release resolveSafeVersion(Dependency dependency, Releases releases,
 			VulnerabilityRepository vulnerabilities) {
 

@@ -27,12 +27,13 @@ import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Parsed Gradle wrapper distribution declaration exposed as a
+ * Parsed Gradle Wrapper distribution declaration exposed as a
  * {@link VersionedDependencySite}.
  *
- * <p>Bundles the wrapper {@link WrapperProperty property}, its PSI property and
- * version literals, the textual version, and the distribution flavor so the
- * wrapper version can be inspected and upgraded like any other dependency.
+ * <p>The entry retains its {@link WrapperProperty} kind, source property and
+ * value element, decoded version text, and {@code bin} or {@code all}
+ * distribution flavor. The declaration uses the synthetic
+ * {@code org.gradle:gradle} coordinate.
  *
  * @author Mark Paluch
  */

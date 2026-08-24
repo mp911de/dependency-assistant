@@ -21,6 +21,10 @@ import java.util.Locale;
 import com.intellij.util.xmlb.Converter;
 import org.jspecify.annotations.Nullable;
 
+/**
+ * XMLB converter that writes decimal values with one fractional digit using the
+ * root locale.
+ */
 class RoundingConverter extends Converter<Double> {
 
 	@Override

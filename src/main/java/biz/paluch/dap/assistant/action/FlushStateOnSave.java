@@ -27,9 +27,12 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 
 /**
- * Listener that re-collects dependency state when build files are saved,
- * complementing {@link FlushStateOnEdit} as a safety net for changes that reach
- * a document without firing PSI change events.
+ * Action-on-save listener that schedules dependency-state re-collection for
+ * saved, document-backed files.
+ *
+ * <p>The listener is enabled for supported projects. The {@link StateRefresher}
+ * filters unsupported files and provides a safety net for changes that reach a
+ * document without firing PSI change events.
  *
  * @author Mark Paluch
  * @see StateRefresher

@@ -21,8 +21,7 @@ import com.intellij.psi.PsiElement;
 /**
  * Descriptor for a resolved build property declaration.
  *
- * <p>
- * A property exposes the lookup key, the logical string value, and the PSI
+ * <p>A property exposes the lookup key, the logical string value, and the PSI
  * element that owns the value text. Placeholder expansion and fallback lookup
  * are handled by {@link PropertyResolver}.
  *
@@ -33,11 +32,15 @@ public interface Property {
 
 	/**
 	 * Return the property lookup key.
+	 *
+	 * @return the key used by a {@link PropertyResolver}.
 	 */
 	String getKey();
 
 	/**
-	 * Return the resolved textual value declared for {@link #getKey()}.
+	 * Return the logical textual value declared for {@link #getKey()}.
+	 *
+	 * @return the declared property value.
 	 */
 	String getValue();
 
@@ -54,6 +57,9 @@ public interface Property {
 
 	/**
 	 * Return the PSI element that holds the declared value.
+	 *
+	 * @return the value's PSI anchor, which may be invalid when {@link #isValid()}
+	 * is {@literal false}.
 	 */
 	PsiElement getValueLiteral();
 

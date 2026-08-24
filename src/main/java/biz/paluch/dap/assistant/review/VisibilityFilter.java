@@ -26,15 +26,15 @@ import biz.paluch.dap.upgrade.UpgradeSuggestions;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Decides what the dependency upgrade review shows: which rows are visible and
- * which release options are offered within a row.
+ * Selects either the filtered display view or the complete release and row view
+ * for a dependency upgrade review.
  *
- * <p>This is the single home for the "filtered versus all" decision that the
- * row list, the suggestion combo, and the upgrade-target buttons would
- * otherwise each re-derive.
+ * <p>The row list, release combo, and strategy buttons use the same instance so
+ * a strategy target cannot be offered when its release is hidden.
  *
- * @param hideUpToDate whether up-to-date rows and noise releases are hidden.
  * @author Mark Paluch
+ * @param hideUpToDate whether to use the filtered row set, display releases,
+ * and display strategy targets instead of the complete views.
  */
 record VisibilityFilter(boolean hideUpToDate) {
 
@@ -43,7 +43,10 @@ record VisibilityFilter(boolean hideUpToDate) {
 	static final VisibilityFilter SHOW_ALL = new VisibilityFilter(false);
 
 	/**
-	 * Return the release options to show for the given option.
+	 * Return the release options to show for the given upgrade.
+	 *
+	 * @param upgrade the candidate whose releases are requested.
+	 * @return the display releases when filtering, otherwise all known releases.
 	 */
 	Releases visibleReleases(DependencyUpgradeCandidate upgrade) {
 		return hideUpToDate ? upgrade.getDisplayReleases() : upgrade.getReleases();
@@ -52,6 +55,10 @@ record VisibilityFilter(boolean hideUpToDate) {
 	/**
 	 * Return the strategy target to offer for the given upgrade, or {@literal null}
 	 * if the strategy has no target or the target is hidden by this filter.
+	 *
+	 * @param upgrade the candidate whose target is requested.
+	 * @param strategy the strategy to resolve.
+	 * @return the offered release, or {@literal null} if none is available.
 	 */
 	@Nullable
 	Release findRelease(DependencyUpgradeCandidate upgrade, UpgradeStrategy strategy) {
@@ -59,8 +66,13 @@ record VisibilityFilter(boolean hideUpToDate) {
 	}
 
 	/**
-	 * Return whether the option's row is shown. When hiding up-to-date rows, an
-	 * upgrade is shown only if it has an update target and is not preview-only.
+	 * Return whether the upgrade's row is shown. Filtering always retains
+	 * vulnerable rows. Other rows require an actionable display target; rows whose
+	 * only targets are latest and/or preview remain hidden unless a preview current
+	 * version has a newer preview target.
+	 *
+	 * @param upgrade the candidate to test.
+	 * @return {@code true} if the candidate belongs in the active row view.
 	 */
 	boolean includes(DependencyUpgradeCandidate upgrade) {
 

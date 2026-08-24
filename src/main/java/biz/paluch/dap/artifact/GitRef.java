@@ -118,6 +118,10 @@ public class GitRef implements ArtifactVersion {
 	/**
 	 * Compare this ref lexically with another artifact version's display string.
 	 *
+	 * <p>The result is a deterministic {@link Comparable} fallback only. It does
+	 * not establish version precedence because {@link #canCompare(ArtifactVersion)}
+	 * always returns {@code false} for an opaque ref.
+	 *
 	 * @param o the artifact version to compare with.
 	 * @return the lexical comparison result.
 	 */

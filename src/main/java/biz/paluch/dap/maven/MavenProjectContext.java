@@ -45,9 +45,12 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * Maven project context. Implements {@link ProjectBuildContext} so that all
- * IDE-integration code (annotators, completion contributors, etc.) can work
- * against the build-tool-agnostic interface.
+ * {@link ProjectBuildContext} backed by an imported Maven project model.
+ *
+ * <p>The factories return an unavailable context when the file is not part of a
+ * Mavenized project or its model lacks valid group and artifact coordinates.
+ * Available contexts expose child-first POM properties, project identity and
+ * version, and mirrored remote repositories with applicable credentials.
  *
  * @author Mark Paluch
  */
@@ -56,8 +59,12 @@ interface MavenProjectContext extends ProjectBuildContext {
 	Key<MavenProjectContext> KEY = Key.create("MavenProjectContext");
 
 	/**
-	 * Lookup the {@link MavenProjectContext} for the given {@link Project} and
-	 * {@link PsiFile}.
+	 * Look up the Maven context for the given PSI file.
+	 *
+	 * @param project the IntelliJ project owning the file.
+	 * @param file the candidate Maven POM, or {@literal null}.
+	 * @return the imported Maven context, or an unavailable context when none
+	 * applies.
 	 */
 	static MavenProjectContext of(Project project, @Nullable PsiFile file) {
 
@@ -74,8 +81,12 @@ interface MavenProjectContext extends ProjectBuildContext {
 	}
 
 	/**
-	 * Lookup the {@link MavenProjectContext} for the given {@link Project} and
-	 * {@link VirtualFile}.
+	 * Look up the Maven context for the given virtual file.
+	 *
+	 * @param project the IntelliJ project owning the file.
+	 * @param file the candidate Maven POM, or {@literal null}.
+	 * @return the imported Maven context, or an unavailable context when none
+	 * applies.
 	 */
 	static MavenProjectContext of(Project project, @Nullable VirtualFile file) {
 		MavenProjectsManager projectsManager = MavenProjectsManager.getInstance(project);
@@ -83,8 +94,13 @@ interface MavenProjectContext extends ProjectBuildContext {
 	}
 
 	/**
-	 * Lookup the {@link MavenProjectContext} for the given {@link Project} and
-	 * {@link VirtualFile}.
+	 * Look up the Maven context using the given project model manager.
+	 *
+	 * @param project the IntelliJ project owning the file.
+	 * @param projectsManager the imported Maven project model manager.
+	 * @param file the candidate Maven POM, or {@literal null}.
+	 * @return the imported Maven context, or an unavailable context when none
+	 * applies.
 	 */
 	static MavenProjectContext of(Project project, MavenProjectsManager projectsManager, @Nullable VirtualFile file) {
 
@@ -109,10 +125,17 @@ interface MavenProjectContext extends ProjectBuildContext {
 		return new ProjectId(mavenId.getGroupId(), mavenId.getArtifactId(), null);
 	}
 
+	/**
+	 * Return the Maven property view for this project.
+	 *
+	 * @return child-first POM properties with imported model properties as a
+	 * fallback.
+	 * @throws IllegalStateException if this context is unavailable.
+	 */
 	MavenPomProperties getPomProperties();
 
 	/**
-	 * Maven project context.
+	 * Available context for one imported Maven project.
 	 */
 	class MavenContextImpl implements MavenProjectContext {
 
@@ -132,6 +155,11 @@ interface MavenProjectContext extends ProjectBuildContext {
 
 		/**
 		 * Create a context for the given Maven project.
+		 *
+		 * @param project the IntelliJ project.
+		 * @param projectsManager the Maven project model manager.
+		 * @param psiManager the PSI manager used to read POMs.
+		 * @param mavenProject the imported Maven project represented by this context.
 		 */
 		public MavenContextImpl(Project project, MavenProjectsManager projectsManager, BetterPsiManager psiManager,
 				MavenProject mavenProject) {

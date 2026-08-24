@@ -20,17 +20,18 @@ import biz.paluch.dap.artifact.Releases;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Outcome of resolving releases for an artifact, carrying either the resolved
- * releases, a non-fatal lookup error, or both when a source partially succeeds.
+ * Outcome of resolving releases for a package identity.
  *
- * <p>Callers treat a {@literal null} error as success.
+ * <p>A successful lookup carries the releases retained from all successful
+ * sources, including partial source success, and uses a {@literal null} error.
+ * A failed lookup carries an error and empty release sets.
  *
  * @author Mark Paluch
  * @param error the lookup error message, or {@literal null} when release lookup
  * succeeded.
  * @param releases the releases that were resolved for the artifact.
  * @param newReleases the releases newly added to the cache by this lookup,
- * empty when nothing new was fetched; used to scope an incremental
+ * empty when nothing new was fetched. These releases scope the delta
  * vulnerability scan.
  */
 public record ReleaseLookupResult(@Nullable String error, Releases releases, Releases newReleases) {

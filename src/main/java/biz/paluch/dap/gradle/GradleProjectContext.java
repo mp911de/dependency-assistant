@@ -48,7 +48,12 @@ import org.jetbrains.plugins.gradle.util.GradleConstants;
 import org.jspecify.annotations.Nullable;
 
 /**
- * {@link ProjectBuildContext} for Gradle projects.
+ * {@link ProjectBuildContext} derived from IntelliJ's imported Gradle project
+ * model for one Gradle-related file.
+ *
+ * <p>Files outside a linked Gradle project resolve to
+ * {@link EmptyGradleBuildContext}. Available contexts use imported project
+ * identity, version, and Maven repositories for dependency release lookup.
  *
  * @author Mark Paluch
  */
@@ -60,6 +65,8 @@ interface GradleProjectContext extends ProjectBuildContext {
 	 * Looks up the {@link GradleProjectContext} for the given PSI file, or returns
 	 * {@link EmptyGradleBuildContext#INSTANCE} when the file is not part of a
 	 * linked Gradle project.
+	 * @param file the Gradle-related PSI file.
+	 * @return the available project context or the absent context.
 	 */
 	static GradleProjectContext of(PsiFile file) {
 		return of(file.getProject(), file);
@@ -69,6 +76,9 @@ interface GradleProjectContext extends ProjectBuildContext {
 	 * Looks up the {@link GradleProjectContext} for the given PSI file, or returns
 	 * {@link EmptyGradleBuildContext#INSTANCE} when the file is not part of a
 	 * linked Gradle project.
+	 * @param project the IntelliJ project.
+	 * @param file the Gradle-related PSI file, or {@literal null}.
+	 * @return the available project context or the absent context.
 	 */
 	static GradleProjectContext of(Project project, @Nullable PsiFile file) {
 
@@ -138,6 +148,9 @@ interface GradleProjectContext extends ProjectBuildContext {
 	 * Looks up the {@link GradleProjectContext} for the given virtual file, or
 	 * returns {@link EmptyGradleBuildContext#INSTANCE} when no linked Gradle
 	 * project contains it.
+	 * @param project the IntelliJ project.
+	 * @param file the Gradle-related virtual file, or {@literal null}.
+	 * @return the available project context or the absent context.
 	 */
 	static GradleProjectContext of(Project project, @Nullable VirtualFile file) {
 

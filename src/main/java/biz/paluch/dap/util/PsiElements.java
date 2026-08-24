@@ -27,8 +27,9 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Utility to create {@link com.intellij.psi.PsiElement}
- * {@link com.intellij.psi.PsiElementVisitor visitors}.
+ * Utilities for normalizing PSI elements, creating recursive visitors, and
+ * walking parent chains.
+ *
  * @author Mark Paluch
  */
 public abstract class PsiElements {
@@ -45,16 +46,18 @@ public abstract class PsiElements {
 	}
 
 	/**
-	 * Create a {@link PsiRecursiveElementVisitor} to visit the entire PSI tree
-	 * recursively and invoke {@code actionAndExitCondition} (until returning
-	 * {@literal true}) only for elements that are subtypes of
-	 * {@code psiElementType}.
-	 * <p>
-	 * The visitor stops subtree navigation once {@link Predicate
-	 * actionAndExitCondition} returns {@literal true}.
-	 * @param actionAndExitCondition the action to invoke. If the conditional
-	 * returns {@literal true}, then the visitor will stop to navigate the tree.
-	 * @return a new {@link PsiRecursiveElementVisitor}.
+	 * Create a recursive visitor that applies a predicate to elements of the given
+	 * type and prunes further descent after the predicate signals completion.
+	 *
+	 * <p>Parent-controlled PSI dispatch may still pass matching sibling elements to
+	 * the predicate after it first returns {@code true}. Their descendants are not
+	 * visited.
+	 *
+	 * @param <T> the selected PSI element type.
+	 * @param psiElementType the element type passed to the predicate.
+	 * @param actionAndExitCondition the action to invoke. Returning {@code true}
+	 * requests that recursive descent stop.
+	 * @return a visitor for passing to a root {@link PsiElement}.
 	 */
 	public static <T> PsiRecursiveElementVisitor visitTreeUntil(Class<T> psiElementType,
 			Predicate<T> actionAndExitCondition) {
@@ -68,8 +71,7 @@ public abstract class PsiElements {
 	 * <p>Parent traversal stops when the parent element is a
 	 * {@link PsiFileSystemItem file}.
 	 * @param element the starting element to search from.
-	 * @param strict if true, then the {@code element} itself is excluded from the
-	 * search and search starts from its parent instead.
+	 * @param strict whether to exclude {@code element} and start at its parent.
 	 * @param condition determines whether an ancestor element satisfies the search
 	 * criteria.
 	 * @return the first ancestor of {@code element} that satisfies

@@ -26,7 +26,7 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.util.PsiTreeUtil;
 
 /**
- * {@link ArtifactReferenceResolver} for Gradle wrapper {@code distributionUrl}.
+ * {@link ArtifactReferenceResolver} for Gradle Wrapper {@code distributionUrl}.
  *
  * <p>The wrapper version is parsed directly from the property value, so this
  * resolver is stateless and reads no project state.

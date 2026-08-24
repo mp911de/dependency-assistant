@@ -48,7 +48,8 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.util.ClassUtils;
 
 /**
- * Utility methods for Gradle build files and related project metadata.
+ * File classification, project-root discovery, imported repository access, and
+ * version-text operations shared by the Gradle integration.
  *
  * @author Mark Paluch
  * @see KotlinDslUtils
@@ -69,7 +70,7 @@ class GradleUtils {
 
 	/**
 	 * Configuration name suffixes that identify custom dependency configurations
-	 * derived from the canonical ones (e.g. {@code optionalApi},
+	 * derived from the canonical ones (for example, {@code optionalApi},
 	 * {@code integrationTestImplementation}, {@code testFixturesRuntimeOnly}).
 	 */
 	private static final Set<String> DEPENDENCY_CONFIG_SUFFIXES = Set.of("Implementation", "Api", "RuntimeOnly",
@@ -291,8 +292,9 @@ class GradleUtils {
 	 * root containing the file when it is not part of a linked Gradle project, so a
 	 * stray settings file outside the project cannot expand resolution scope.
 	 *
-	 * @return the first directory containing a settings file; the linked Gradle
-	 * project root if none is found; the containing directory otherwise.
+	 * @return the first directory containing a settings file. If none is found,
+	 * returns the linked Gradle project root or, for an unlinked file, its
+	 * containing directory.
 	 * @throws IllegalStateException if the file has no parent directory.
 	 */
 	public static VirtualFile findProjectRoot(Project project, VirtualFile file) {

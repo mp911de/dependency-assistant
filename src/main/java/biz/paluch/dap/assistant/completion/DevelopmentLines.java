@@ -32,7 +32,8 @@ import biz.paluch.dap.util.Sequence;
  *
  * <p>Lines are formed by walking the history in its canonical newest-first
  * order and splitting whenever adjacent versions no longer share their major
- * and minor (or release train). Duplicate versions are skipped.
+ * and minor (or release train). Versions with the same unwrapped rendering are
+ * represented once.
  *
  * @author Mark Paluch
  * @see DevelopmentLine
@@ -48,7 +49,7 @@ class DevelopmentLines implements Sequence<DevelopmentLine> {
 	/**
 	 * Group the given release history into development lines.
 	 *
-	 * @param releases the release history to group.
+	 * @param releases the release history in canonical newest-first order.
 	 * @return the development lines, newest line first.
 	 */
 	public static DevelopmentLines of(Sequence<? extends VersionAware> releases) {
@@ -100,6 +101,8 @@ class DevelopmentLines implements Sequence<DevelopmentLine> {
 
 	/**
 	 * Return the number of development lines.
+	 *
+	 * @return the number of lines.
 	 */
 	public int size() {
 		return lines.size();
@@ -108,7 +111,9 @@ class DevelopmentLines implements Sequence<DevelopmentLine> {
 	/**
 	 * Return the development lines as a list, newest line first.
 	 *
-	 * @return the lines.
+	 * <p>The returned list is the retained backing list.
+	 *
+	 * @return the development lines.
 	 */
 	public List<DevelopmentLine> getLines() {
 		return lines;
@@ -121,6 +126,8 @@ class DevelopmentLines implements Sequence<DevelopmentLine> {
 
 	/**
 	 * Return the development lines as a stream, newest line first.
+	 *
+	 * @return a new stream over the development lines.
 	 */
 	@Override
 	public Stream<DevelopmentLine> stream() {

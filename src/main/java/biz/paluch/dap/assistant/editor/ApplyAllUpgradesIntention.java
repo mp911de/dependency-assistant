@@ -133,10 +133,8 @@ class ApplyAllUpgradesIntention implements IntentionAction, Iconable {
 		return IntentionPreviewInfo.DIFF;
 	}
 
-	/**
-	 * Apply each update at its version literal, bottom-up to keep untouched anchors
-	 * stable while earlier replacements change the document.
-	 */
+	// Apply updates bottom-up so earlier replacements do not invalidate untouched
+	// anchors later in the document.
 	private void applyUpdates(Map<PsiElement, DependencyUpdate> updates) {
 
 		List<PsiElement> versionLiterals = new ArrayList<>(updates.keySet());
@@ -147,10 +145,6 @@ class ApplyAllUpgradesIntention implements IntentionAction, Iconable {
 		}
 	}
 
-	/**
-	 * Collect one {@link DependencyUpdate} per version literal in {@code file} from
-	 * the daemon highlights already registered by the annotator.
-	 */
 	private Map<PsiElement, DependencyUpdate> collectUpdates(Project project, PsiFile file) {
 
 		Map<PsiElement, DependencyUpdate> updates = new LinkedHashMap<>();
@@ -192,12 +186,7 @@ class ApplyAllUpgradesIntention implements IntentionAction, Iconable {
 		});
 	}
 
-	/**
-	 * Fallback in case no highlights are available.
-	 * @param file the file to walk for dependency declarations.
-	 * @param updates the map collecting one update per version literal, keyed by
-	 * the version literal element.
-	 */
+	// Fall back to resolving declarations when daemon highlights are unavailable.
 	private void collectContextUpdates(PsiFile file, Map<PsiElement, DependencyUpdate> updates) {
 
 		file.accept(new PsiRecursiveElementWalkingVisitor() {

@@ -33,7 +33,14 @@ import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Parser for {@link WrapperProperty}s.
+ * Parses supported Maven Wrapper URL properties into {@link WrapperEntry}
+ * values.
+ *
+ * <p>The parser rejects unknown keys, missing or empty values, line
+ * continuations, malformed URIs, and values without the Maven coordinate shape.
+ * For trusted projects it derives the repository base and credentials from the
+ * URL. Untrusted projects use Maven Central as the release repository and do
+ * not expose URL credentials to repository resolution.
  *
  * @author Mark Paluch
  */
@@ -45,8 +52,8 @@ class WrapperPropertyParser {
 	 * @param wrapperProperty the wrapper property whose key and coordinate shape
 	 * the declaration is expected to match.
 	 * @param property the property declaration to parse.
-	 * @return the parsed wrapper entry, or {@literal null} if the property does not
-	 * match the expected wrapper property.
+	 * @return the parsed wrapper entry, or {@literal null} if the key or value is
+	 * unsupported, missing, continued, or malformed.
 	 */
 	public static @Nullable WrapperEntry parseProperty(WrapperProperty wrapperProperty, Property property) {
 

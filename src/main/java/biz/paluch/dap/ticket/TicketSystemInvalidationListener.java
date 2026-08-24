@@ -21,8 +21,8 @@ import java.util.EventListener;
 import com.intellij.util.messages.Topic;
 
 /**
- * Project notification that a previously bound ticket system may no longer be
- * usable.
+ * Project notification requesting that a previously bound ticket system be
+ * discarded after its binding inputs change.
  *
  * @author Mark Paluch
  */
@@ -36,7 +36,7 @@ public interface TicketSystemInvalidationListener extends EventListener {
 			Topic.BroadcastDirection.NONE);
 
 	/**
-	 * Notified after an account or repository was removed.
+	 * Notified after inputs to the current ticket-system binding are invalidated.
 	 */
 	void ticketSystemInvalidated();
 

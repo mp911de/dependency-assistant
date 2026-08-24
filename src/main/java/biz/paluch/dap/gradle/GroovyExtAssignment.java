@@ -30,8 +30,7 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Interface representing Groovy DSL {@code ext} property declarations.
- * <p>
- * Captures the four supported declaration shapes behind one factory:
+ * <p>Captures the four supported declaration shapes behind one factory:
  * <ul>
  * <li>{@code ext { set('key', 'value') }} {@link SetCall set-call form}</li>
  * <li>{@code ext { key = 'value' }} {@link ExtAssignment plain assignment
@@ -69,7 +68,7 @@ sealed interface GroovyExtAssignment extends ExtraDeclaration {
 	 * Detect a Groovy {@code ext} property declaration anchored at {@code element}.
 	 * {@code element} is expected to be the value literal of the declaration.
 	 *
-	 * @param element the candidate value PSI element; can be {@literal null}.
+	 * @param element the candidate value PSI element.
 	 * @return the resolved assignment, or {@literal null} if {@code element} is not
 	 * the value literal of a detected {@code ext} declaration shape.
 	 */

@@ -70,6 +70,7 @@ public interface Versioned extends VersionAware {
 
 	/**
 	 * Returns an empty (unversioned) {@link Versioned}.
+	 * @return the shared unversioned value.
 	 */
 	static Versioned unversioned() {
 		return Absent.INSTANCE;
@@ -84,8 +85,8 @@ public interface Versioned extends VersionAware {
 	boolean isVersioned();
 
 	/**
-	 * If a versio is present, perform the given action with the value, otherwise
-	 * does nothing.
+	 * If a version is present, perform the given action with the value. Otherwise,
+	 * do nothing.
 	 *
 	 * @param action the action to be performed if a version is present.
 	 */
@@ -101,8 +102,7 @@ public interface Versioned extends VersionAware {
 	 * <p>Callers must check {@link #isVersioned()} before invoking this method. The
 	 * unversioned marker throws {@link IllegalStateException}.
 	 *
-	 * @return the artifact version; never {@literal null} when
-	 * {@link #isVersioned()} is {@literal true}.
+	 * @return the artifact version.
 	 * @throws IllegalStateException if no version is present.
 	 */
 	@Override
@@ -129,8 +129,7 @@ public interface Versioned extends VersionAware {
 	 * innermost version.
 	 *
 	 * @param <U> the type of the value returned from the mapping function.
-	 * @param mapper the mapping function to apply to the version, if present; must
-	 * not be {@literal null}.
+	 * @param mapper the mapping function to apply to the version, if present.
 	 * @return an {@link Optional} describing the result of applying the mapping
 	 * function to the version of this {@code Versioned} when a version is present,
 	 * or an empty {@link Optional} when this container is unversioned or the mapper
@@ -146,9 +145,9 @@ public interface Versioned extends VersionAware {
 	 * its result.
 	 *
 	 * @param supplier the fallback supplier invoked when no version is present;
-	 *                 must not be {@literal null}.
+	 * must not be {@literal null}.
 	 * @return the version held by this container, or the value produced by the
-	 * supplier; never {@literal null} when the supplier itself is non-null.
+	 * supplier.
 	 */
 	default ArtifactVersion orElseGet(Supplier<ArtifactVersion> supplier) {
 		Assert.notNull(supplier, "Supplier must not be null");
@@ -189,6 +188,8 @@ public interface Versioned extends VersionAware {
 
 	/**
 	 * Simple versioned container backed by {@link ArtifactVersion}.
+	 *
+	 * @param version the artifact version.
 	 */
 	record DefaultVersioned(ArtifactVersion version) implements Versioned {
 

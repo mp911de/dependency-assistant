@@ -21,14 +21,14 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.HasPackageSystem;
 
 /**
- * A {@link DependencyPresentation} enriched with table rendering concerns: the
- * icon shown next to the dependency and the identity of the ecosystem the
- * dependency originates from.
+ * A {@link DependencyPresentation} paired with the integration-selected table
+ * icon for the dependency.
  *
- * <p>Instances with fully resolved names are created through
+ * <p>Instances with resolved optional names are created through
  * {@link DependencyPresentationFactory#create(Dependency, biz.paluch.dap.rule.DependencyRule, InterfaceAssistant)};
  * {@link #from(Dependency, InterfaceAssistant)} creates a coordinate-only
- * variant.
+ * variant. Package-system identity comes from the retained
+ * {@link #getPackageIdentity() package identity}, not from the assistant.
  *
  * @author Mark Paluch
  * @see DependencyPresentationFactory
@@ -37,17 +37,16 @@ import biz.paluch.dap.artifact.HasPackageSystem;
 public interface IconDependencyPresentation extends DependencyPresentation, DependencyIcons, HasPackageSystem {
 
 	/**
-	 * Create a presentation from the dependency's coordinates and the assistant's
-	 * table icon.
+	 * Create a coordinate-only presentation with the assistant-selected table icon.
 	 *
-	 * <p>The resulting presentation carries no dependency or project name. Use
+	 * <p>The result retains the selected icon and package identity, but not the
+	 * dependency or assistant. It carries no dependency or project name. Use
 	 * {@link DependencyPresentationFactory#create(Dependency, biz.paluch.dap.rule.DependencyRule, InterfaceAssistant)}
 	 * to resolve names from dependency rules and cached artifact metadata.
 	 *
 	 * @param dependency the dependency to present.
-	 * @param assistant the assistant declaring the dependency; supplies the table
-	 * icon and the ecosystem identity.
-	 * @return a coordinate-only presentation for the given dependency.
+	 * @param assistant the interface assistant that selects the table icon.
+	 * @return a detached coordinate-only presentation for the given dependency.
 	 */
 	static IconDependencyPresentation from(Dependency dependency, InterfaceAssistant assistant) {
 		return new DefaultIconDependencyPresentation(assistant.getTableIcon(dependency),

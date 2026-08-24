@@ -28,7 +28,8 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.xml.XmlFile;
 
 /**
- * Completion contributor for Maven release versions.
+ * Contributes release-version completion to supported version and property
+ * values in Maven POM and {@code .mvn/extensions.xml} files.
  *
  * @author Mark Paluch
  */

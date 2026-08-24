@@ -26,7 +26,12 @@ import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.support.ArtifactDeclaration;
 
 /**
- * Input used to resolve a dependency rule for one artifact.
+ * Immutable input for resolving the Dependency Rule of one artifact.
+ *
+ * <p>The context carries the branch lookup file and project version separately.
+ * Plugin declarations suppress inferred semver upgrading while retaining
+ * Artifact Display Name, Generation, and explicitly declared upgrade-strategy
+ * governance.
  *
  * @author Mark Paluch
  */
@@ -54,7 +59,8 @@ public class ResolutionContext {
 	 * @param declaration the artifact declaration.
 	 * @param branchSource the source used for branch lookup.
 	 * @param projectVersion the project version used for branch rule selection.
-	 * @return a resolution context using per-declaration plugin semantics.
+	 * @return a resolution context that suppresses semver inference when the
+	 * declaration is a plugin.
 	 */
 	public static ResolutionContext forDeclaration(ArtifactDeclaration declaration,
 			BranchSource branchSource, Versioned projectVersion) {
@@ -70,7 +76,8 @@ public class ResolutionContext {
 	 * @param dependency the aggregate dependency declaration.
 	 * @param branchSource the source used for branch lookup.
 	 * @param projectVersion the project version used for branch rule selection.
-	 * @return a resolution context using aggregate plugin-only semantics.
+	 * @return a resolution context that suppresses semver inference only when the
+	 * dependency has at least one declaration source and all sources are plugins.
 	 */
 	public static ResolutionContext forAggregate(DeclaredDependency dependency, BranchSource branchSource,
 			Versioned projectVersion) {
@@ -86,7 +93,8 @@ public class ResolutionContext {
 	 * @param declarationSources the declaration sources backing the artifact.
 	 * @param branchSource the source used for branch lookup.
 	 * @param projectVersion the project version used for branch rule selection.
-	 * @return a resolution context using aggregate plugin-only semantics.
+	 * @return a resolution context that suppresses semver inference only when the
+	 * source collection is non-empty and every source is a plugin.
 	 */
 	public static ResolutionContext forAggregate(ArtifactId artifactId,
 			Collection<DeclarationSource> declarationSources, BranchSource branchSource, Versioned projectVersion) {

@@ -40,7 +40,8 @@ import com.intellij.openapi.util.text.HtmlChunk;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Dialog-row presentation collapsing the members of one upgrade group.
+ * Dialog-row presentation that collapses the members of one
+ * {@link UpgradeGroup} into a single selection.
  */
 class GroupRow extends TableRow {
 

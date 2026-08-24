@@ -79,6 +79,12 @@ public class CachedRepository {
 		this.url = url;
 	}
 
+	/**
+	 * Return when this entry was last written.
+	 *
+	 * @return the epoch-millisecond write timestamp, or {@code 0} for a legacy
+	 * entry that must not be expired by age.
+	 */
 	public long getLastSeen() {
 		return lastSeen;
 	}
@@ -87,6 +93,12 @@ public class CachedRepository {
 		this.lastSeen = lastSeen;
 	}
 
+	/**
+	 * Return the tag-scan back-off field.
+	 *
+	 * @return {@code 0} before the first scan, a small consecutive-failure count,
+	 * or the epoch-millisecond timestamp of the last completed scan.
+	 */
 	public long getLastUpdateTimestamp() {
 		return lastUpdateTimestamp;
 	}
@@ -95,6 +107,11 @@ public class CachedRepository {
 		this.lastUpdateTimestamp = lastUpdateTimestamp;
 	}
 
+	/**
+	 * Return a snapshot of the known tag names.
+	 *
+	 * @return an immutable snapshot of the tags.
+	 */
 	public List<String> getTags() {
 		synchronized (this.tags) {
 			return List.copyOf(this.tags);
@@ -108,6 +125,11 @@ public class CachedRepository {
 		}
 	}
 
+	/**
+	 * Return a detached copy for persistence.
+	 *
+	 * @return a copy with an independent tag list.
+	 */
 	public CachedRepository snapshot() {
 
 		CachedRepository copy = new CachedRepository(key, url);

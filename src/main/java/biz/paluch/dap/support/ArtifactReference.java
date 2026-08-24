@@ -25,7 +25,11 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * Value object representing a reference to an artifact declaration.
+ * Result of resolving a build-file element to an {@link ArtifactDeclaration}.
+ *
+ * <p>An unresolved reference contains no declaration. A resolved reference may
+ * still contain an unversioned declaration, so {@link #isResolved()} does not
+ * imply that {@link ArtifactDeclaration#getVersion()} is available.
  *
  * @author Mark Paluch
  */
@@ -40,15 +44,20 @@ public class ArtifactReference {
 	}
 
 	/**
-	 * Empty lookup result (artifact not found or not resolvable).
+	 * Return the shared unresolved lookup result.
+	 *
+	 * @return an artifact reference containing no declaration.
 	 */
 	public static ArtifactReference unresolved() {
 		return UNRESOLVED;
 	}
 
 	/**
-	 * Create an {@code ArtifactReference} from the given builder consumer. The
-	 * consumer is used to populate the {@link ArtifactDeclaration.Builder}.
+	 * Create a resolved reference by configuring an
+	 * {@link ArtifactDeclaration.Builder}.
+	 *
+	 * @param builderConsumer the declaration builder customizations.
+	 * @return a reference containing the built declaration.
 	 */
 	public static ArtifactReference from(Consumer<ArtifactDeclaration.Builder> builderConsumer) {
 		ArtifactDeclaration.Builder builder = ArtifactDeclaration.builder();
@@ -59,6 +68,9 @@ public class ArtifactReference {
 	/**
 	 * Create an {@code ArtifactReference} from the given
 	 * {@link VersionedDependencySite}.
+	 *
+	 * @param dependencySite the versioned dependency site to adapt.
+	 * @return a reference containing the adapted declaration.
 	 */
 	public static ArtifactReference from(VersionedDependencySite dependencySite) {
 		return from(it -> {
@@ -82,7 +94,10 @@ public class ArtifactReference {
 	}
 
 	/**
-	 * Return whether the artifact reference is present and resolved.
+	 * Return whether this reference contains an artifact declaration.
+	 *
+	 * @return {@literal true} if this reference contains a declaration;
+	 * {@literal false} otherwise.
 	 */
 	public boolean isResolved() {
 		return declaration != null;
@@ -102,6 +117,9 @@ public class ArtifactReference {
 
 	/**
 	 * Return the artifact id of the resolved declaration.
+	 *
+	 * @return the resolved declaration's artifact id.
+	 * @throws IllegalStateException if this reference is unresolved.
 	 */
 	public ArtifactId getArtifactId() {
 		return getDeclaration().getArtifactId();
@@ -112,7 +130,8 @@ public class ArtifactReference {
 	 * {@link Dependency}.
 	 *
 	 * @return the dependency derived from the resolved declaration.
-	 * @throws IllegalStateException if this reference is unresolved.
+	 * @throws IllegalStateException if this reference is unresolved or its
+	 * declaration has no resolved version.
 	 */
 	public Dependency toDependency() {
 		return getDeclaration().toDependency();

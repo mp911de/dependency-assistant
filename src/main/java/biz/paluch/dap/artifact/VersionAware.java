@@ -34,7 +34,7 @@ public interface VersionAware {
 	/**
 	 * Return the artifact version exposed by this object.
 	 *
-	 * @return the artifact version; guaranteed to be not {@literal null}.
+	 * @return the artifact version.
 	 */
 	ArtifactVersion getVersion();
 

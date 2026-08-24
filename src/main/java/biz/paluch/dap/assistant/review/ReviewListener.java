@@ -28,7 +28,8 @@ interface ReviewListener extends EventListener {
 
 	/**
 	 * Called when the review changed and the table must reflect it.
-	 * @param change describes which rows to refresh and whether to reload.
+	 *
+	 * @param change the required table refresh scope.
 	 */
 	void changed(ReviewChange change);
 

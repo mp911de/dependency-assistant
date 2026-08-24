@@ -27,14 +27,14 @@ import com.intellij.patterns.PsiElementPattern;
 import com.intellij.psi.PsiElement;
 
 /**
- * Completion contributor for the version segment in Gradle wrapper URLs.
+ * Completion contributor for the version segment in Gradle Wrapper URLs.
  *
  * @author Mark Paluch
  */
 class VersionContributor extends VersionContributorSupport {
 
 	/**
-	 * Matches a caret position inside a Gradle wrapper version segment.
+	 * Matches a caret position inside a Gradle Wrapper version segment.
 	 * <pre class="code">
 	 * distributionUrl=https\://services.gradle.org/distributions/gradle-8.&lt;caret&gt;14.3-bin.zip
 	 * </pre>

@@ -50,9 +50,9 @@ public enum RepositoryType {
 	/**
 	 * Resolve the repository type from a declared provider name.
 	 * @param provider the provider name from a Maven {@code scm:<provider>:} prefix
-	 * or an npm {@code repository.type} field; can be {@literal null}.
-	 * @return the matching repository type; {@link #UNKNOWN} if the provider is
-	 * {@literal null}, blank, or not recognized.
+	 * or an npm {@code repository.type} field, or {@literal null} if undeclared.
+	 * @return the matching repository type. Returns {@link #UNKNOWN} if the
+	 * provider is {@literal null}, blank, or not recognized.
 	 */
 	public static RepositoryType of(@Nullable String provider) {
 

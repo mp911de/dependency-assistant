@@ -25,7 +25,7 @@ import biz.paluch.dap.util.MessageBundle;
 import com.intellij.openapi.project.DumbAware;
 
 /**
- * Gutter configurable for GitHub actions.
+ * Configurable upgrade line-marker provider for GitHub Actions refs.
  *
  * @author Mark Paluch
  */

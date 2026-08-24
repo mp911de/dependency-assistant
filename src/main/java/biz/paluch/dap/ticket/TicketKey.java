@@ -27,6 +27,10 @@ import org.springframework.util.Assert;
  * deliberately does not include display adornments such as {@code #} or commit
  * close keywords.
  *
+ * <p>The key carries no ticket-system or repository identity. Callers must
+ * retain its association with the bound {@link TicketSystem}. Equal identifier
+ * values from different systems therefore compare equal.
+ *
  * <p>Unlike the entity interfaces of this package, a key is constructible and
  * persistable. A key stored with a plan item can be handed back to the
  * {@link TicketSystem}, for example to

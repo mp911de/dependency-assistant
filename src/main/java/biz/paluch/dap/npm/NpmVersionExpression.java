@@ -54,7 +54,7 @@ import org.springframework.util.Assert;
  * is {@literal true}, rewrite.</li>
  * <li>{@link #renderUpdate(ArtifactVersion)} renders the expression as it would
  * look after applying a target version while preserving variant-specific syntax
- * such as modifiers, aliases, range separators, or Git URL prefixes.</li>
+ * such as modifiers, aliases, lower range bounds, or Git URL prefixes.</li>
  * </ul>
  *
  * <p>Ranges and aliases expose the version-bearing part of their nested or
@@ -131,8 +131,10 @@ sealed interface NpmVersionExpression
 
 	/**
 	 * Create an exact expression without an npm range modifier.
-	 * @param value the concrete version text; must not be empty or {@literal null}.
+	 *
+	 * @param value the concrete version text.
 	 * @return the created exact expression.
+	 * @throws IllegalArgumentException if {@code value} does not contain text.
 	 */
 	public static Exact exact(String value) {
 		Assert.hasText(value, "Exact value must not be empty or null");
@@ -141,9 +143,11 @@ sealed interface NpmVersionExpression
 
 	/**
 	 * Create an exact expression with the given npm range modifier.
+	 *
 	 * @param prefix the literal modifier to preserve when rendering updates.
-	 * @param value the concrete version text; must not be empty or {@literal null}.
+	 * @param value the concrete version text.
 	 * @return the created exact expression.
+	 * @throws IllegalArgumentException if {@code value} does not contain text.
 	 */
 	public static Exact exact(String prefix, String value) {
 		Assert.hasText(value, "Exact value must not be empty or null");
@@ -152,11 +156,11 @@ sealed interface NpmVersionExpression
 
 	/**
 	 * Create a comparator-pair range from the given lower and upper expressions.
-	 * @param lower the lower-bound expression text; must not be empty or
-	 * {@literal null}.
-	 * @param upper the upper-bound expression text; must not be empty or
-	 * {@literal null}.
+	 *
+	 * @param lower the lower-bound expression text.
+	 * @param upper the upper-bound expression text.
 	 * @return the created range expression.
+	 * @throws IllegalArgumentException if either argument does not contain text.
 	 */
 	public static Range range(String lower, String upper) {
 		Assert.hasText(lower, "Lower value must not be empty or null");
@@ -166,12 +170,12 @@ sealed interface NpmVersionExpression
 
 	/**
 	 * Classify the raw value of a {@code package.json} dependency entry.
-	 * <p>
-	 * The input must be the JSON string value without surrounding quote
+	 *
+	 * <p>The input must be the JSON string value without surrounding quote
 	 * characters. Returning {@literal null} means the value is intentionally out of
 	 * scope for this dependency model, not necessarily invalid npm syntax.
-	 * @param value the dependency value text without surrounding quotes; can be
-	 * {@literal null}.
+	 * @param value the dependency value text without surrounding quotes, or
+	 * {@literal null} to produce no expression.
 	 * @return the parsed expression, or {@literal null} if the value is out of
 	 * scope or not classifiable.
 	 */
@@ -233,21 +237,20 @@ sealed interface NpmVersionExpression
 	/**
 	 * Return the substring of the raw declared value that updaters may rewrite,
 	 * expressed as offsets into the raw value text.
-	 * <p>
-	 * The range never includes the surrounding JSON quote characters. Callers
+	 *
+	 * <p>The range never includes the surrounding JSON quote characters. Callers
 	 * that operate on PSI text must apply the literal's own offset. A range may be
-	 * zero-length for an otherwise supported but unpinned Git dependency; callers
+	 * zero-length for an otherwise supported but unpinned Git dependency. Callers
 	 * should consult {@link #isUpdatable()} before rewriting.
-	 * @param rawDeclared the original raw value as written in the file; must not be
-	 * {@literal null}.
-	 * @return the replaceable text range; guaranteed to be not {@literal null}.
+	 * @param rawDeclared the original raw value as written in the file.
+	 * @return the replaceable text range within {@code rawDeclared}.
 	 */
 	TextRange replaceableRange(String rawDeclared);
 
 	/**
 	 * Return whether this expression carries a rewritable version-bearing segment.
-	 * <p>
-	 * {@link Prefix} expressions are used for lookup and highlighting but are
+	 *
+	 * <p>{@link Prefix} expressions are used for lookup and highlighting but are
 	 * not rewritten. {@link Git} expressions without a committish are likewise not
 	 * rewritten because there is no user-selected ref to preserve.
 	 * @return {@literal true} if this expression accepts a target version;
@@ -256,13 +259,11 @@ sealed interface NpmVersionExpression
 	boolean isUpdatable();
 
 	/**
-	 * Return the verbatim version text declared in the file, used as the
-	 * {@link VersionSource} payload.
-	 * <p>
-	 * For composite expressions, the result is the single text segment used for
-	 * version lookup: the upper bound for ranges, the inner expression for aliases,
-	 * and the committish for Git dependencies.
-	 * @return the declared version text; guaranteed to be not {@literal null}.
+	 * Return the version-bearing text used as the {@link VersionSource} payload.
+	 * <p>Syntax owned by the expression is excluded. The result is the version tail
+	 * for exact expressions, the upper bound for ranges, the inner version for
+	 * aliases, and the committish for Git dependencies.
+	 * @return the version text used for lookup and source registration.
 	 */
 	String text();
 
@@ -273,14 +274,16 @@ sealed interface NpmVersionExpression
 	 * {@link #replaceableRange(String)} may use variant-specific tails instead of
 	 * this complete rendering.
 	 * @param version the target artifact version.
-	 * @return the rendered expression text; guaranteed to be not {@literal null}.
+	 * @return the complete rendered expression text.
 	 */
 	String renderUpdate(ArtifactVersion version);
 
 	/**
 	 * Return the parsed artifact version represented by {@link #text()}, if the
 	 * text can be parsed by the shared artifact version model.
-	 * @return the parsed artifact version, or an empty {@link Optional}.
+	 *
+	 * @return the parsed artifact version, or an empty {@link Optional} when the
+	 * version-bearing text is not part of the shared version model.
 	 */
 	default Optional<ArtifactVersion> artifactVersion() {
 		return ArtifactVersion.from(text());
@@ -291,8 +294,7 @@ sealed interface NpmVersionExpression
 	 * expression.
 	 * <p>The default derives the source from {@link #text()}; {@link Prefix}
 	 * overrides this to mark the source as a prefix range.
-	 * @return the version source to register for dependency analysis; guaranteed to
-	 * be not {@literal null}.
+	 * @return the version source to register for dependency analysis.
 	 */
 	default VersionSource versionSource() {
 		return VersionSource.from(text());
@@ -330,8 +332,8 @@ sealed interface NpmVersionExpression
 	 * Adjust the declared artifact coordinates for variants that route lookup
 	 * elsewhere, such as {@link Git} redirecting release lookup to its repository.
 	 * <p>The default returns the artifact ID unchanged.
-	 * @param artifactId the declared artifact ID; must not be {@literal null}.
-	 * @return the artifact ID to use for release lookup; never {@literal null}.
+	 * @param artifactId the declared artifact ID.
+	 * @return the artifact ID to use for release lookup.
 	 */
 	default ArtifactId postProcess(ArtifactId artifactId) {
 		return artifactId;
@@ -340,8 +342,7 @@ sealed interface NpmVersionExpression
 	/**
 	 * Exact version or single comparator expression.
 	 *
-	 * <p>
-	 * Examples: {@code 1.6.8} (no modifier), {@code ^3.1.2}, {@code ~1.2.3},
+	 * <p>Examples: {@code 1.6.8} (no modifier), {@code ^3.1.2}, {@code ~1.2.3},
 	 * {@code =1.0.0}, {@code <2.0.0}, {@code <=2.0.0}, {@code v2.0.0-beta.1}. The
 	 * {@code modifier} captures the literal operator (one of {@code ""},
 	 * {@code "^"}, {@code "~"}, {@code "="}, {@code "<"}, {@code "<="},
@@ -349,7 +350,7 @@ sealed interface NpmVersionExpression
 	 * {@code version} text so the user's declaration style remains visible to
 	 * lookup and rendering code.
 	 *
-	 * @param modifier the literal modifier prefix; possibly empty.
+	 * @param modifier the literal modifier prefix, possibly empty.
 	 * @param version the version tail without the modifier.
 	 */
 	record Exact(String modifier, String version) implements NpmVersionExpression {
@@ -543,11 +544,11 @@ sealed interface NpmVersionExpression
 	/**
 	 * Aliased dependency declared as {@code npm:<packageName>@<inner>}.
 	 *
-	 * <p>
-	 * The {@code inner} expression must parse as one of the non-alias variants;
-	 * nested aliases are rejected by the compact constructor. Alias expressions
-	 * preserve the target package name while delegating lookup, replacement, and
-	 * update rendering to the inner expression.
+	 * <p>The {@code inner} expression must parse as one of the non-alias variants.
+	 * Nested aliases are rejected by the compact constructor. Alias expressions
+	 * preserve the target package name while delegating version text, replacement,
+	 * and update rendering to the inner expression. Artifact lookup continues to
+	 * use the package name declared by the JSON property.
 	 *
 	 * @param packageName the aliased package name written between {@code npm:} and
 	 * {@code @}.
@@ -593,8 +594,8 @@ sealed interface NpmVersionExpression
 	}
 
 	/**
-	 * Git dependency whose URL resolves through {@link RemoteUrl} and
-	 * {@link GitRepositoryMetadata#flat(RemoteUrl)} to a GitHub repository.
+	 * Git dependency whose URL resolves through {@link RemoteUrl} to flat
+	 * host/owner/repository coordinates.
 	 *
 	 * <p>The repository metadata determines the release source used for update
 	 * lookup. The committish after {@code #} is modeled as another
@@ -709,7 +710,7 @@ sealed interface NpmVersionExpression
 		 * <li>{@code git://<host>/<owner>/<repo>(.git)?(#<ref>)?}</li>
 		 * <li>shorthand {@code <owner>/<repo>(#<ref>)?}</li>
 		 * </ul>
-		 * @param value the dependency value to inspect; can be {@literal null}.
+		 * @param value the dependency value to inspect, or {@literal null}.
 		 * @return {@literal true} if the value should be parsed as a Git dependency;
 		 * {@literal false} otherwise.
 		 */
@@ -719,9 +720,10 @@ sealed interface NpmVersionExpression
 
 		/**
 		 * Parse the given raw value as an NPM Git dependency reference.
-		 * @param raw the dependency value; must not be empty or {@literal null}.
+		 * @param raw the dependency value.
 		 * @return the parsed Git variant, or {@literal null} if the input is not a
-		 * supported Git form or does not resolve to a GitHub repository.
+		 * supported Git form or does not contain flat repository coordinates.
+		 * @throws IllegalArgumentException if {@code raw} does not contain text.
 		 */
 		public static NpmVersionExpression.@Nullable Git parse(String raw) {
 
@@ -785,7 +787,8 @@ sealed interface NpmVersionExpression
 
 		private static String normalizeForResolver(String urlPart) {
 
-			// "git+ssh://git@github.com:owner/repo.git" → "git@github.com:owner/repo.git"
+			// "git+ssh://git@github.com:owner/repo.git" becomes
+			// "git@github.com:owner/repo.git"
 			if (urlPart.startsWith("git+ssh://")) {
 				return urlPart.substring("git+ssh://".length());
 			}
@@ -800,9 +803,9 @@ sealed interface NpmVersionExpression
 
 		/**
 		 * Strip a leading {@code semver:} marker and parse the inner expression through
-		 * the NPM version classifier. {@literal null} return signals the entry should
-		 * be skipped; an unprefixed committish falls back to a raw Git ref when it is
-		 * not package-version syntax.
+		 * the NPM version classifier. An unprefixed committish that is not package
+		 * version syntax falls back to a raw Git ref. A {@literal null} result denotes
+		 * an unsupported expression following an explicit {@code semver:} marker.
 		 */
 		private static @Nullable NpmVersionExpression stripSemverPrefix(String committish) {
 
@@ -830,19 +833,19 @@ sealed interface NpmVersionExpression
 	 * {@link RemoteUrl#parse(String)}.
 	 *
 	 * <p>The {@code prefix} is the original Git URL or shorthand text up to the
-	 * committish replacement point, including {@code #}; for semver refs, the
+	 * committish replacement point, including {@code #}. For semver refs, the
 	 * {@code semver:} marker is not retained here. The {@code committish} is
 	 * modeled as an {@link NpmVersionExpression} so tag-like refs, comparator refs,
 	 * SHAs, and branch names can share the same rendering contract. An empty
 	 * committish indicates that the user did not pin the dependency to a specific
-	 * ref; downstream resolution treats that as no concrete version.
+	 * ref. Downstream resolution treats that as no concrete version.
 	 *
-	 * @param prefix the raw declaration prefix preserved when rendering an update.
-	 * @param repository the resolved GitHub repository metadata, including the
-	 * GitHub host that drives release-source routing.
-	 * @param committish the parsed ref expression written after {@code #}; may have
-	 * empty text when the user did not pin a ref.
 	 * @author Mark Paluch
+	 * @param prefix the raw declaration prefix preserved when rendering an update.
+	 * @param repository the resolved repository metadata, including the host that
+	 * drives release-source routing.
+	 * @param committish the parsed ref expression written after {@code #}. It may
+	 * have empty text when the user did not pin a ref.
 	 * @see Git
 	 */
 	record NpmGitRef(String prefix, GitRepositoryMetadata repository,

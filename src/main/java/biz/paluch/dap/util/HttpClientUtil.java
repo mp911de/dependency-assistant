@@ -39,11 +39,15 @@ import org.springframework.lang.Contract;
 import org.springframework.util.Assert;
 
 /**
- * Shared helpers for IDE-aware HTTP access.
- * <p>HTTP transport itself uses {@link com.intellij.util.io.HttpRequests},
- * which natively integrates with the IDE proxy selector, proxy authentication,
- * and progress-indicator cancellation. This class only centralizes the
- * {@code User-Agent} computation that release sources apply to their requests.
+ * Performs bounded, IDE-aware HTTP requests and validates browser targets used
+ * by plugin actions.
+ *
+ * <p>HTTP transport uses {@link HttpRequests}, which integrates with the IDE
+ * proxy selector, proxy authentication, and progress-indicator cancellation.
+ * Requests share the configured timeouts, user agent, and a 24-request
+ * concurrency limit. The string-returning fetch also enforces the response-size
+ * limit. A thread interrupted while waiting for a request permit returns an
+ * absent result with its interrupt status restored.
  *
  * @author Mark Paluch
  */
@@ -70,13 +74,17 @@ public class HttpClientUtil {
 	}
 
 	/**
-	 * Fetch the given URL using the given request function.
-	 * <p>Requests are read as UTF-8 strings, with a hard size cap at
-	 * {@link #MAX_RESPONSE_BODY_BYTES}.
+	 * Fetch the given URI as a UTF-8 string after applying the request
+	 * customization.
+	 *
+	 * <p>The response body is limited to {@link #MAX_RESPONSE_BODY_BYTES}.
+	 *
 	 * @param uri the URL to fetch.
-	 * @param requestFunction request customization function.
-	 * @return the response body as a UTF-8 string.
-	 * @throws IOException if an I/O error occurs.
+	 * @param requestFunction the request customization to apply before connecting.
+	 * @return the response body, or {@literal null} if the thread is interrupted
+	 * while waiting for a request permit.
+	 * @throws IOException if the request fails or the response exceeds the size
+	 * limit.
 	 */
 	public static @Nullable String fetchUrl(URI uri, Function<RequestBuilder, RequestBuilder> requestFunction)
 			throws IOException {
@@ -84,13 +92,15 @@ public class HttpClientUtil {
 	}
 
 	/**
-	 * Fetch the given URL using the given request function.
+	 * Fetch the given URI and process its connected response.
+	 *
+	 * @param <T> the processed response type.
 	 * @param uri the URL to fetch.
-	 * @param requestFunction request customization function.
-	 * @param responseProcessor response processing function.
-	 * @return the processed response.
-	 * @param <T> the type of the processed response.
-	 * @throws IOException if an I/O error occurs.
+	 * @param requestFunction the request customization to apply before connecting.
+	 * @param responseProcessor the function that reads the connected response.
+	 * @return the processed response, or {@literal null} if the thread is
+	 * interrupted while waiting for a request permit.
+	 * @throws IOException if the request or response processing fails.
 	 */
 	public static <T> @Nullable T fetchUrl(URI uri, Function<RequestBuilder, RequestBuilder> requestFunction,
 			HttpRequests.RequestProcessor<T> responseProcessor) throws IOException {
@@ -113,19 +123,35 @@ public class HttpClientUtil {
 		}
 	}
 
+	/**
+	 * Test whether the URI uses the HTTP or HTTPS scheme.
+	 *
+	 * @param uri the URI to inspect. It must declare a scheme.
+	 * @return {@code true} if the scheme is {@code http} or {@code https}.
+	 */
 	public static boolean isBrowsable(URI uri) {
 		String scheme = uri.getScheme().toLowerCase(Locale.ROOT);
 		return StringUtils.hasText(scheme) && (scheme.equals("http") || scheme.equals("https"));
 	}
 
+	/**
+	 * Test whether the supplied URI text starts with a lowercase HTTP or HTTPS
+	 * scheme.
+	 *
+	 * @param scheme the URI text to inspect, or {@literal null}.
+	 * @return {@code true} if the text starts with {@code http:} or {@code https:}.
+	 */
 	@Contract("null -> false")
 	public static boolean isBrowsable(@Nullable String scheme) {
 		return StringUtils.hasText(scheme) && (scheme.startsWith("http:") || scheme.startsWith("https:"));
 	}
 
 	/**
-	 * Open the given URI in the default browser.
+	 * Open the given URI text in the default browser.
+	 *
 	 * @param uri the URI to open.
+	 * @throws IllegalArgumentException if the value is blank or does not start with
+	 * an HTTP or HTTPS scheme.
 	 */
 	public static void openBrowser(String uri) {
 		Assert.hasText(uri, "URI must not be empty");
@@ -136,7 +162,9 @@ public class HttpClientUtil {
 
 	/**
 	 * Open the given URI in the default browser.
-	 * @param uri the URI to open.
+	 *
+	 * @param uri the URI to open. It must declare a scheme.
+	 * @throws IllegalArgumentException if the declared scheme is not HTTP or HTTPS.
 	 */
 	public static void openBrowser(URI uri) {
 		Assert.isTrue(isBrowsable(uri), "URI must start with http or https");
@@ -145,6 +173,7 @@ public class HttpClientUtil {
 
 	/**
 	 * Return the {@code User-Agent} for metadata requests.
+	 *
 	 * <p>The value is derived from IntelliJ product information when the
 	 * application is available and falls back to a generic IDE identifier in
 	 * non-application contexts.
@@ -164,6 +193,7 @@ public class HttpClientUtil {
 
 	/**
 	 * Read the response body as a UTF-8 string, streaming with a hard size cap.
+	 *
 	 * <p>The body is read in 8&nbsp;KB chunks and the cumulative size is checked
 	 * after each read. Reads exceeding {@link #MAX_RESPONSE_BODY_BYTES} fail with
 	 * an {@link IOException} before the full body is materialised, preventing a
@@ -195,6 +225,7 @@ public class HttpClientUtil {
 
 	/**
 	 * Return the effective port for the given URI.
+	 *
 	 * <p>When the URI specifies an explicit port, that port is returned. Otherwise
 	 * the scheme default is used: {@code 443} for {@code https} and {@code 80} for
 	 * {@code http}.

@@ -31,8 +31,8 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>Integrations are discovered through the {@code biz.paluch.dap.assistant}
  * extension point and consulted in registration order. Fan-out methods visit
- * every matching integration; first-match methods stop once a file has an
- * owner.
+ * every matching integration. Methods returning a context select the first
+ * matching integration that can provide an available context.
  *
  * @author Mark Paluch
  * @see DependencyAssistant
@@ -52,6 +52,8 @@ public class DependencyAssistantDispatcher {
 	 * {@link StateService} already holds dependency or release data, avoiding
 	 * repeated project applicability checks during UI updates.
 	 * @param project the project to inspect.
+	 * @return {@literal true} if cached state exists or an integration applies to
+	 * the project.
 	 */
 	public static boolean supports(Project project) {
 		if (StateService.getInstance(project).hasDependenciesOrReleases()) {
@@ -84,8 +86,8 @@ public class DependencyAssistantDispatcher {
 	}
 
 	/**
-	 * Return whether the first integration owning the given {@code file} exposes an
-	 * {@link ProjectDependencyContext#isAvailable() available} context, i.e. its
+	 * Return whether an integration owning the given {@code file} exposes an
+	 * {@link ProjectDependencyContext#isAvailable() available} context, meaning its
 	 * project model is imported and ready to scan or write.
 	 * <p>Stricter than {@link #supports(PsiFile)}, which only checks whether some
 	 * integration recognizes the file type. Use this method when an actual context

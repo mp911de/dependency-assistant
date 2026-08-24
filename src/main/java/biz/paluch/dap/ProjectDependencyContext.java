@@ -38,13 +38,14 @@ import org.jspecify.annotations.Nullable;
 /**
  * File-scoped operational handle for a build-tool integration.
  *
- * <p>A context is created after a {@link DependencyAssistant} has supported an
+ * <p>A context is created after a {@link DependencyAssistant} recognizes an
  * anchor file. It exposes the build-tool specific work needed by shared editor
- * features: state invalidation, dependency scanning, PSI lookup, and update
+ * features: dependency scanning, PSI lookup, dependency resolution, and update
  * application.
  *
- * <p>Contexts are lightweight and created on demand. Mutable project state
- * belongs in the project cache, not in the context itself.
+ * <p>Contexts are lightweight and created on demand. Mutable dependency state
+ * and release metadata belong to the project-scoped
+ * {@link biz.paluch.dap.state.StateService}, not to the context itself.
  *
  * @author Mark Paluch
  * @see DependencyAssistant
@@ -54,11 +55,13 @@ public interface ProjectDependencyContext extends ProjectBuildContext, HasPackag
 
 	/**
 	 * Return the associated assistant.
+	 * @return the assistant that created this context.
 	 */
 	DependencyAssistant getAssistant();
 
 	/**
 	 * Return the user-interface support for this context.
+	 * @return the interface metadata supplied by the associated assistant.
 	 */
 	default InterfaceAssistant getInterfaceAssistant() {
 		return getAssistant().getInterfaceAssistant();
@@ -72,8 +75,7 @@ public interface ProjectDependencyContext extends ProjectBuildContext, HasPackag
 	/**
 	 * Scan the build files reachable from the anchor file and return the aggregated
 	 * dependency data.
-	 * @param indicator the progress indicator to report to; must not be
-	 * {@literal null}.
+	 * @param indicator the progress and cancellation indicator for the scan.
 	 * @return the collected dependency data.
 	 */
 	DependencyCollector scanDependencies(ProgressIndicator indicator);
@@ -86,8 +88,7 @@ public interface ProjectDependencyContext extends ProjectBuildContext, HasPackag
 	 * {@link GitVersionResolver#resolveDependency(DeclaredDependency, Iterable)}.
 	 * For release lists without Git versions this yields {@literal null}, so
 	 * integrations resolving by other means override this method.
-	 * @param declaredDependency the declared dependency to resolve; must not be
-	 * {@literal null}.
+	 * @param declaredDependency the declared dependency to resolve.
 	 * @param releases current list of releases.
 	 * @return the resolved dependency or {@literal null} if the dependency could
 	 * not be resolved.
@@ -99,41 +100,41 @@ public interface ProjectDependencyContext extends ProjectBuildContext, HasPackag
 	/**
 	 * Return whether the given element represents an editable dependency version.
 	 * @param element the PSI element to inspect.
+	 * @return {@literal true} if the element can anchor a single dependency update.
 	 */
 	boolean isVersionElement(PsiElement element);
 
 	/**
 	 * Return the version-upgrade lookup for the given PSI element.
 	 *
-	 * @param element the PSI element at the cursor position; must not be
-	 * {@literal null}.
+	 * @param element the PSI element at the cursor position.
 	 * @param file the containing file.
 	 * @return the lookup for the element.
 	 */
 	VersionUpgradeLookup getLookup(PsiElement element, VirtualFile file);
 
 	/**
-	 * Apply a single dependency update at the given PSI element.
-	 * <p>The method rewrites only that literal in place and never re-traverses the
-	 * containing file.
-	 * @param versionLiteral the version PSI element that triggered the update; must
-	 * not be {@literal null}.
+	 * Apply a single dependency update at a version element recognized by
+	 * {@link #isVersionElement(PsiElement)}.
+	 * <p>The element anchors the update. Use
+	 * {@link #applyUpdates(PsiFile, DependencyUpdates)} to match updates throughout
+	 * a file.
+	 *
+	 * @param versionLiteral the version PSI element that triggered the update.
 	 * @param update the update to apply.
-	 * @throws IllegalStateException when the anchor resolves to an unexpected
-	 * element kind.
 	 */
 	void applyUpdate(PsiElement versionLiteral, DependencyUpdate update);
 
 	/**
-	 * Apply the given dependency updates to the appropriate build files.
-	 * @param psiFile the anchor PSI file used for the write action; must not be
-	 * {@literal null}.
+	 * Apply every matching dependency update to the given build file.
+	 * @param psiFile the build file to traverse and update.
 	 * @param updates the updates to apply.
 	 */
 	void applyUpdates(PsiFile psiFile, DependencyUpdates updates);
 
 	/**
 	 * Return an absent {@link ProjectDependencyContext}.
+	 * @return the shared unavailable context sentinel.
 	 */
 	static ProjectDependencyContext absent() {
 		return AbsentDependencyContext.ABSENT;

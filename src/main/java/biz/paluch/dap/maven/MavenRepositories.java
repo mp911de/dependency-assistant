@@ -39,24 +39,33 @@ import org.jetbrains.idea.maven.project.MavenProjectsManager;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Utility to obtain Maven repositories.
+ * Discovers remote repositories from imported Maven models and POM PSI.
+ *
+ * <p>Dependency and plugin repositories are combined, property expressions are
+ * resolved when possible, and {@link MavenSettings} applies mirror routing and
+ * eligible server credentials.
  *
  * @author Mark Paluch
  */
 class MavenRepositories extends MavenPomSupport {
 
 	/**
-	 * Collect all remote repositories (dependency and plugin) from the given Maven
-	 * project, decorated with credentials where available.
-	 * <p>Repositories are deduplicated by URL.
+	 * Collect the dependency and plugin repositories available to the given Maven
+	 * project.
 	 *
-	 * @param settings Maven settings.
+	 * <p>Resolved model repositories are combined with root and profile
+	 * declarations from the POM. Only declarations whose raw URL starts with
+	 * {@code http://} or {@code https://} enter mirror routing. Maven settings then
+	 * apply mirror routing and eligible credentials, and the resulting repositories
+	 * are deduplicated by value.
+	 *
+	 * @param settings the effective Maven settings.
 	 * @param project the Maven project to inspect.
-	 * @param pomFile the POM file whose declared repositories are also collected;
-	 * can be {@literal null} to inspect only the resolved project model.
-	 * @param propertyResolver
-	 * @return the deduplicated set of remote repositories; guaranteed to be not
-	 * {@literal null} but may be empty.
+	 * @param pomFile the POM whose declared repositories are also collected, or
+	 * {@literal null} to inspect only the resolved project model.
+	 * @param propertyResolver the resolver for repository ID and URL expressions,
+	 * or {@literal null} to leave them unchanged.
+	 * @return the deduplicated remote repositories in discovery order.
 	 */
 	public static Set<RemoteRepository> getRemoteRepositories(MavenSettings settings,
 			MavenProject project, @Nullable PsiFile pomFile,
@@ -100,9 +109,11 @@ class MavenRepositories extends MavenPomSupport {
 	}
 
 	/**
-	 * Parse Maven repositories from the given {@link PsiFile}.
+	 * Parse dependency and plugin repositories declared by a POM and its profiles.
+	 *
 	 * @param pomFile the Maven POM file.
-	 * @return list of repositories.
+	 * @return the repository declarations in traversal order, or an empty list for
+	 * non-XML files.
 	 */
 	static List<MavenRemoteRepository> parseRepositories(PsiFile pomFile) {
 
@@ -175,8 +186,7 @@ class MavenRepositories extends MavenPomSupport {
 	 * deduplicates them, and wraps each as a {@link ReleaseSource}.
 	 *
 	 * @param project the IntelliJ project.
-	 * @return the aggregated release sources; guaranteed to be not {@literal null}
-	 * but may be empty.
+	 * @return the aggregated release sources in repository discovery order.
 	 */
 	public static List<ReleaseSource> getReleaseSources(Project project) {
 

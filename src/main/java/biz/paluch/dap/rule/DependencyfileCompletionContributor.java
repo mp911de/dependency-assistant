@@ -54,13 +54,14 @@ import org.jspecify.annotations.Nullable;
  * Completion contributor for artifact pattern keys inside
  * {@code dependencyfile.json} {@code artifacts} sections.
  *
- * <p>Suggests artifact patterns from the {@link StateService} cache when the
- * caret is at the key position of a property inside a top-level or branch-level
- * {@code artifacts} object. Accepting a suggestion starts a live template that
- * inserts the rule object with a {@code name} tab stop (and a
- * {@code generation} tab stop for branch rules). The template reformats to the
- * file's JSON code style. Completion also fires from a whitespace position
- * between properties; in that case the template re-quotes the inserted key.
+ * <p>Suggests artifact patterns from the {@link StateService} runtime
+ * dependency state when the caret is at the key position of a property inside a
+ * top-level or branch-level {@code artifacts} object. Accepting a suggestion
+ * starts a live template that inserts the rule object with a {@code name} tab
+ * stop (and a {@code generation} tab stop for branch rules). The template
+ * reformats to the file's JSON code style. Completion also fires from a
+ * whitespace position between properties; in that case the template re-quotes
+ * the inserted key.
  *
  * @author Mark Paluch
  */

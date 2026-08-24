@@ -27,10 +27,14 @@ import org.jspecify.annotations.Nullable;
 /**
  * {@link TicketSystemProvider} contributing GitHub issue tracking.
  *
- * <p>A project is supported when the bundled GitHub plugin supplies one
- * unambiguous repository/account selection and can create an authenticated API
- * executor for it. A remembered Pull Requests selection takes precedence;
- * otherwise exactly one compatible repository/account pair is required.
+ * <p>A project is reported as supported when {@link GitHubAccountSelector} can
+ * select a hosted repository and a server-compatible account. A valid
+ * remembered Pull Requests selection takes precedence. Otherwise, a compatible
+ * current pair is used even when several pairs exist.
+ *
+ * <p>Credential lookup is deferred until creation. Consequently, creation can
+ * still fail after {@code supports(project)} succeeds if the selected account
+ * has no usable credentials.
  *
  * @author Mark Paluch
  */

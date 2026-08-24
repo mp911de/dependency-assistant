@@ -40,6 +40,10 @@ import org.jspecify.annotations.Nullable;
  * Intention that opens the issue tracker of the dependency declared at the
  * caret in the browser.
  *
+ * <p>The metadata lookup used for availability is cache-only. The intention is
+ * available only when {@link ProjectMetadataService} resolves an issue tracker
+ * from captured project metadata.
+ *
  * @author Mark Paluch
  */
 public class ReportIssueIntention extends BaseIntentionAction implements PriorityAction, Iconable {
@@ -102,8 +106,12 @@ public class ReportIssueIntention extends BaseIntentionAction implements Priorit
 	}
 
 	/**
-	 * Resolve the declaration at the caret; {@literal null} when the caret is not
-	 * on a resolved, version-defined dependency declaration.
+	 * Resolve the dependency declaration at the caret.
+	 *
+	 * @param editor the editor containing the caret.
+	 * @param psiFile the file containing the declaration.
+	 * @return the resolved context, or {@literal null} when the caret is not on a
+	 * resolved, version-defined dependency declaration.
 	 */
 	static @Nullable ArtifactReferenceContext resolveContext(Editor editor, PsiFile psiFile) {
 

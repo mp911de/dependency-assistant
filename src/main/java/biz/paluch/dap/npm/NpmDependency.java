@@ -27,21 +27,19 @@ import biz.paluch.dap.artifact.VersionSource;
  * NPM dependency declared in {@code dependencies} or {@code devDependencies}.
  *
  * <p>The {@link ArtifactId} uses the canonical NPM coordinate normalization
- * documented on {@link NpmPackageParser}: an unscoped package name produces
- * {@code groupId == artifactId == name}; a scoped name {@code @scope/name}
- * splits into {@code groupId = "@scope"} and {@code artifactId = "name"}.
+ * from {@link NpmPackageParser#toArtifactId(String)}. Git declarations retain
+ * those declared coordinates while carrying repository routing metadata.
  *
  * <p>The Git case is not a sibling type; it is the
  * {@link NpmVersionExpression.Git} variant of {@link #version()}. Anything
  * Git-specific (host, owner, repository, committish, replaceable range) lives
  * on the variant rather than on this record.
  *
- * @param artifactId the NPM coordinate; collisions with Maven artifacts are
- * permitted because lookup is content-addressed by release source.
+ * @author Mark Paluch
+ * @param artifactId the normalized declared package coordinate.
  * @param version the parsed version expression.
  * @param declarationSource the {@code package.json} section that declares the
  * dependency.
- * @author Mark Paluch
  */
 record NpmDependency(ArtifactId artifactId, NpmVersionExpression version, DeclarationSource declarationSource) {
 

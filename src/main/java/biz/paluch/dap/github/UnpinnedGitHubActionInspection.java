@@ -42,9 +42,8 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * {@link LocalInspectionTool} that flags a GitHub Actions {@code uses:}
- * reference pinned to a mutable symbolic ref (a tag or version) when an
- * immutable commit SHA is already known for the canonical Git ref resolution
- * target.
+ * reference pinned to a mutable symbolic ref when an immutable commit SHA is
+ * already known for the canonical Git ref resolution target.
  *
  * <p>Pinning third-party actions to a tag is a supply-chain risk: a tag can be
  * moved to point at different code after review. The inspection reports a
@@ -54,14 +53,14 @@ import org.jspecify.annotations.Nullable;
  * {@code v4} tag when one exists, otherwise to the newest stable SHA-backed
  * {@code v4.x} release.
  *
- * <p>Already-SHA refs (including short SHAs) and branch refs are not flagged:
- * the former are already immutable, the latter never resolve to a cached
- * release SHA. Findings depend on cached release metadata; refreshing the
- * release cache may surface additional refs.
+ * <p>Already-SHA refs, including short SHAs, are not flagged. Other symbolic
+ * refs, including branch-shaped values, are reported only when canonical Git
+ * ref resolution finds a cached release with a SHA. Findings depend on cached
+ * release metadata. Refreshing the release cache may surface additional refs.
  *
- * <p>The problem is reported on the whole {@code uses:} scalar rather than on the
- * ref token alone, so the pin quick fix is offered from any caret position within
- * the declaration.
+ * <p>The problem is reported on the whole {@code uses:} scalar rather than on
+ * the ref token alone, so the pin quick fix is offered from any caret position
+ * within the declaration.
  *
  * @author Mark Paluch
  * @see GitHubArtifactReferenceResolver

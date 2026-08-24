@@ -39,7 +39,11 @@ import com.intellij.psi.xml.XmlTag;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Parser for Maven files.
+ * Parses Maven POM and {@code .mvn/extensions.xml} PSI into artifact
+ * declarations.
+ *
+ * <p>POM parsing covers supported parents, dependencies, dependency management,
+ * plugins, build extensions, reporting plugins, and their profile-scoped forms.
  *
  * @author Mark Paluch
  */
@@ -48,24 +52,27 @@ class MavenParser extends MavenPomSupport {
 	private final MavenPomProperties propertyResolver;
 
 	/**
-	 * Create a new {@code MavenParser}.
+	 * Create a parser without fallback properties.
 	 */
 	MavenParser() {
 		this(MavenPomProperties.empty());
 	}
 
 	/**
-	 * Create a new {@code MavenParser}.
+	 * Create a parser using the given fallback properties.
 	 *
-	 * @param propertyResolver Maven property resolver.
+	 * @param propertyResolver the Maven properties used for declarations whose
+	 * values are not defined in the parsed file.
 	 */
 	MavenParser(MavenPomProperties propertyResolver) {
 		this.propertyResolver = propertyResolver;
 	}
 
 	/**
-	 * Parse dependencies, plugins, and properties from the given POM file.
+	 * Parse the supported artifact declarations from the given POM file.
+	 *
 	 * @param pomFile the POM file to parse.
+	 * @return the declarations in POM traversal order.
 	 */
 	public List<ArtifactDeclaration> parsePomFile(XmlFile pomFile) {
 
@@ -77,9 +84,11 @@ class MavenParser extends MavenPomSupport {
 	}
 
 	/**
-	 * Parse dependencies from the given extensions file.
+	 * Parse artifact declarations from the given {@code extensions.xml} file.
 	 *
 	 * @param extensionsFile the extensions file to parse.
+	 * @return the extension declarations in document order. The result is empty
+	 * when the document root is not {@code <extensions>}.
 	 */
 	public List<ArtifactDeclaration> parseExtensionsFile(XmlFile extensionsFile) {
 

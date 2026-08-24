@@ -31,9 +31,10 @@ import org.jspecify.annotations.Nullable;
  * Collects all items of a paginated GitHub REST API resource by following the
  * {@code Link: rel="next"} header of each response.
  *
- * <p>Each follow-up URL must stay on the API base the initial request was built
- * for. A {@code next} link pointing elsewhere is rejected instead of followed
- * so a redirected or spoofed header cannot send credentials to another host.
+ * <p>Each follow-up URL must start with the API base string supplied by the
+ * caller. A non-matching link is rejected. This lexical prefix check neither
+ * parses nor normalizes the URLs and must not be used as a credential or trust
+ * boundary.
  *
  * <p>This is a Java replacement for the GitHub plugin's internal
  * {@code GithubApiPagesLoader}. The page-request flavor ({@code JsonPage}
@@ -48,6 +49,7 @@ class GitHubApiPages {
 
 	/**
 	 * Load all pages, starting at {@code initialRequest}.
+	 *
 	 * @param executor the executor running the requests.
 	 * @param indicator progress indicator to cancel long-running fetches.
 	 * @param apiBase the API base URL every page request must start with.
@@ -56,7 +58,7 @@ class GitHubApiPages {
 	 * URL.
 	 * @return all items across all pages, in page order.
 	 * @throws IOException if a page request fails.
-	 * @throws IllegalStateException if a {@code next} URL points outside
+	 * @throws IllegalStateException if a {@code next} URL does not start with
 	 * {@code apiBase}.
 	 */
 	static <T> List<T> loadAll(GithubApiRequestExecutor executor, ProgressIndicator indicator, String apiBase,

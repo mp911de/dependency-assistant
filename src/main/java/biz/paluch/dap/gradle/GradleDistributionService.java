@@ -80,6 +80,11 @@ public class GradleDistributionService implements ReleaseSource {
 		this(GradleDistributionService::fetchUrl);
 	}
 
+	/**
+	 * Create a release source using the supplied Gradle versions feed fetcher.
+	 *
+	 * @param fetcher the fetcher for the Gradle versions feed.
+	 */
 	public GradleDistributionService(VersionsFetcher fetcher) {
 		this.fetcher = fetcher;
 	}
@@ -198,9 +203,22 @@ public class GradleDistributionService implements ReleaseSource {
 		return HttpClientUtil.fetchUrl(uri, requestBuilder -> requestBuilder.accept(ACCEPT_HEADER));
 	}
 
+	/**
+	 * Fetches the content of a Gradle versions feed endpoint.
+	 *
+	 * <p>Implementations may return {@literal null} when the endpoint has no
+	 * response body and propagate transport failures as {@link IOException}.
+	 */
 	@FunctionalInterface
 	public interface VersionsFetcher {
 
+		/**
+		 * Fetch the response body from the given endpoint.
+		 *
+		 * @param uri the feed endpoint.
+		 * @return the response body, or {@literal null} when no body is available.
+		 * @throws IOException if the endpoint cannot be read.
+		 */
 		@Nullable
 		String fetch(URI uri) throws IOException;
 

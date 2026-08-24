@@ -24,8 +24,10 @@ import com.intellij.psi.PsiTreeChangeEvent;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * PSI change listener that funnels edits of supported build files into the
- * {@link StateRefresher}.
+ * PSI change listener that schedules a {@link StateRefresher} pass for changes
+ * to physical build files recognized by a dependency integration.
+ *
+ * <p>Changes without an owning physical file are ignored.
  *
  * @author Mark Paluch
  * @see FlushStateOnSave

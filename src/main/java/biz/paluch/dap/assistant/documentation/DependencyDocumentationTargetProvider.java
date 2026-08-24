@@ -55,14 +55,6 @@ public class DependencyDocumentationTargetProvider implements DocumentationTarge
 		return target != null ? List.of(target) : List.of();
 	}
 
-	/**
-	 * Whether the platform's target-element machinery would find a documentation
-	 * target at the offset on its own (a reference or a named declaration starting
-	 * at the caret leaf). Returning a target from this provider suppresses the
-	 * entire PSI fallback chain, so such positions must be left alone;
-	 * {@link DependencyDocumentationProvider} still handles them through the
-	 * fallback.
-	 */
 	private static boolean hasPlatformTarget(PsiFile file, PsiElement element, int offset) {
 
 		if (file.findReferenceAt(offset) != null) {

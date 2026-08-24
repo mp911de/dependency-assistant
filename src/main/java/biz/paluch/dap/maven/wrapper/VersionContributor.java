@@ -27,16 +27,16 @@ import com.intellij.patterns.PsiElementPattern;
 import com.intellij.psi.PsiElement;
 
 /**
- * Completion contributor for version segments in Maven wrapper URLs.
+ * Completion contributor for version segments in Maven Wrapper URLs.
  *
  * @author Mark Paluch
  */
 class VersionContributor extends VersionContributorSupport {
 
 	/**
-	 * Matches a caret position inside a Maven wrapper version segment.
+	 * Matches a caret position inside a Maven Wrapper version segment.
 	 * <pre class="code">
-	 * distributionUrl=https://...maven/3.&lt;caret&gt;.9.0/.../wrapper/maven-wrapper-3.9.0.jar
+	 * distributionUrl=https://.../apache-maven/3.&lt;caret&gt;9.0/apache-maven-3.9.0-bin.zip
 	 * </pre>
 	 */
 	static final PsiElementPattern.Capture<PsiElement> WRAPPER_VERSION = PROPERTY_VALUE

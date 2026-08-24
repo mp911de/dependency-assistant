@@ -166,9 +166,12 @@ class MavenPomProperties implements PropertyResolver {
 	}
 
 	/**
-	 * Return the property view that applies to the given pomMember. Properties of
+	 * Return the property view that applies to the given POM member. Properties of
 	 * the enclosing profile take precedence over the project and inherited POM
 	 * hierarchy, and properties from unrelated profiles are excluded.
+	 *
+	 * @param pomMember the declaration whose property scope is required.
+	 * @return the profile-aware property resolver for the declaration.
 	 */
 	PropertyResolver forDeclaration(XmlTag pomMember) {
 

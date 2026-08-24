@@ -43,7 +43,7 @@ import com.intellij.psi.util.CachedValuesManager;
 import org.springframework.util.Assert;
 
 /**
- * Maven Extension implementation of {@link DependencyAssistant}.
+ * {@link DependencyAssistant} for XML files named {@code extensions.xml}.
  *
  * @author Mark Paluch
  */

@@ -243,7 +243,8 @@ class SelectorAction<T> extends DumbAwareAction implements CustomComponentAction
 	}
 
 	/**
-	 * Dropdown selector-
+	 * Custom dropdown control that opens the selector popup and exposes a separate
+	 * clear hit zone when a value is selected.
 	 *
 	 * @author Mark Paluch
 	 */

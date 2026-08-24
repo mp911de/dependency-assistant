@@ -26,8 +26,6 @@ import org.jspecify.annotations.Nullable;
  * Utility methods for testing whether local and virtual file handles refer to
  * existing files or directories.
  *
- * <p>Mainly for internal use within the plugin.
- *
  * @author Mark Paluch
  * @see File
  * @see VirtualFile
@@ -36,9 +34,9 @@ public class FileUtils {
 
 	/**
 	 * Determine whether the given virtual file is a valid, existing directory.
+	 *
 	 * @param directory the virtual file to inspect.
-	 * @return {@code true} if the virtual file is a valid, existing directory;
-	 * {@code false} otherwise.
+	 * @return {@code true} if the virtual file is a valid, existing directory.
 	 */
 	@Contract("null -> false")
 	public static boolean isDirectory(@Nullable VirtualFile directory) {
@@ -47,9 +45,10 @@ public class FileUtils {
 
 	/**
 	 * Determine whether the given virtual file is a valid, existing non-directory.
+	 *
 	 * @param file the virtual file to inspect.
 	 * @return {@code true} if the virtual file is valid, exists, and is not a
-	 * directory; {@code false} otherwise.
+	 * directory.
 	 */
 	@Contract("null -> false")
 	public static boolean isFile(@Nullable VirtualFile file) {
@@ -58,9 +57,9 @@ public class FileUtils {
 
 	/**
 	 * Determine whether the given local file is an existing directory.
+	 *
 	 * @param directory the local file to inspect.
-	 * @return {@code true} if the local file is an existing directory;
-	 * {@code false} otherwise.
+	 * @return {@code true} if the local file is an existing directory.
 	 */
 	@Contract("null -> false")
 	public static boolean isDirectory(@Nullable File directory) {
@@ -69,9 +68,9 @@ public class FileUtils {
 
 	/**
 	 * Determine whether the given local file is an existing regular file.
+	 *
 	 * @param file the local file to inspect.
-	 * @return {@code true} if the local file is an existing regular file;
-	 * {@code false} otherwise.
+	 * @return {@code true} if the local file is an existing regular file.
 	 */
 	@Contract("null -> false")
 	public static boolean isFile(@Nullable File file) {

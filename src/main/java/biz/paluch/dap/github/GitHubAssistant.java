@@ -65,9 +65,8 @@ import org.springframework.util.Assert;
  * <p>Supports YAML files under {@code .github/workflows/} and GitHub Action
  * metadata files named {@code action.yml} or {@code action.yaml}. The assistant
  * is only active when both the YAML plugin and the GitHub plugin are available,
- * which is checked via class-availability guards so that the always-loaded
- * portion of this class never triggers loading of the optional plugin types
- * eagerly.
+ * because its extension registration is conditional on the GitHub plugin and
+ * its runtime support check requires the YAML file type.
  *
  * <p>Each supported file forms its own lightweight project context keyed by the
  * file path.
@@ -255,9 +254,7 @@ public class GitHubAssistant implements DependencyAssistant {
 
 	}
 
-	/**
-	 * GitHub Actions-specific user interface support.
-	 */
+	/** GitHub Actions-specific user interface metadata. */
 	enum GitHubInterface implements InterfaceAssistant {
 
 		INSTANCE;

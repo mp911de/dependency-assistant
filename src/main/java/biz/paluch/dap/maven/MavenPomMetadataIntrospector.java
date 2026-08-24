@@ -48,7 +48,12 @@ import org.jetbrains.idea.maven.dom.model.MavenDomProjectModel;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Introspector for Maven POM files to extract project metadata.
+ * Extracts project metadata from an artifact's POM and parent POM chain.
+ *
+ * <p>Repository and issue-tracker metadata may be inherited from a parent POM.
+ * Project name and description are taken only from the artifact POM. POMs are
+ * obtained through registered {@link PomLocator} extensions without network
+ * access, and traversal stops at a cycle or {@link #MAX_CHAIN_DEPTH}.
  *
  * @author Mark Paluch
  * @see PomLocator
@@ -64,8 +69,10 @@ class MavenPomMetadataIntrospector extends MavenPomSupport {
 	private final BetterPsiManager psiManager;
 
 	/**
-	 * Create an inspector resolving POMs through the registered {@link PomLocator}
-	 * extensions.
+	 * Create an introspector resolving POMs through the registered
+	 * {@link PomLocator} extensions.
+	 *
+	 * @param project the project used to locate and read POM files.
 	 */
 	public MavenPomMetadataIntrospector(Project project) {
 		this(project, StateService.getInstance(project).getCache());
@@ -78,13 +85,14 @@ class MavenPomMetadataIntrospector extends MavenPomSupport {
 	}
 
 	/**
-	 * Inspect the POM chain of the given artifact and store the resulting project
-	 * metadata on the artifact's cache entry.
+	 * Inspect the POM chain of the given artifact.
+	 *
 	 * @param artifactId the artifact to inspect.
-	 * @param inUseVersion the currently used version probed first, or
-	 * {@literal null} to probe the cached release versions only.
-	 * @return the stored metadata; the nothing-found marker when no POM in reach
-	 * carries usable metadata.
+	 * @param inUseVersion the artifact version identifying the first POM in the
+	 * chain.
+	 * @param indicator the cancellation indicator for traversal.
+	 * @return the extracted metadata, or a nothing-found marker when no POM in
+	 * reach carries usable metadata.
 	 */
 	@RequiresBackgroundThread
 	public CachedMetadata getProjectMetadata(ArtifactId artifactId, ArtifactVersion inUseVersion,
@@ -272,8 +280,10 @@ class MavenPomMetadataIntrospector extends MavenPomSupport {
 		String issueManagementSystem;
 
 		/**
-		 * The declared SCM repository candidates in selection order: {@code url} over
-		 * {@code connection} over {@code developerConnection}.
+		 * Return the declared SCM repository candidates in selection order.
+		 *
+		 * @return the available non-empty candidates ordered as {@code url},
+		 * {@code connection}, then {@code developerConnection}.
 		 */
 		List<String> getRepositoryCandidates() {
 

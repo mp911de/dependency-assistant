@@ -28,7 +28,14 @@ import biz.paluch.dap.gradle.wrapper.GradleWrapperUrlProblem.UnknownArtifact;
 import biz.paluch.dap.util.HttpClientUtil;
 
 /**
- * Pure classifier for Gradle wrapper distribution URLs.
+ * Classifies decoded Gradle distribution URLs without modifying PSI or
+ * accessing project state.
+ *
+ * <p>A recognized URL must be absolute and end in
+ * {@code gradle-<version>-(bin|all).zip}. Custom hosts and path prefixes are
+ * accepted. Embedded credentials, invalid URLs, other artifact names, and
+ * malformed file names are reported as {@link GradleWrapperUrlProblem}s. Values
+ * containing IntelliJ's completion placeholder are left unclassified.
  *
  * @author Mark Paluch
  */

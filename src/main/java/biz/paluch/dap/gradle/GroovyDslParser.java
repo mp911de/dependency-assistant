@@ -291,8 +291,7 @@ class GroovyDslParser {
 	 * </pre>
 	 *
 	 * @param call the method call to inspect.
-	 * @param declarationSource the structural origin (direct, managed, plugin, or
-	 * profile-scoped) of the declaration.
+	 * @param declarationSource the structural origin of the declaration.
 	 * @return the parsed dependency, or {@literal null} if the call does not
 	 * contain a supported direct declaration.
 	 */
@@ -358,8 +357,7 @@ class GroovyDslParser {
 	 * </pre>
 	 *
 	 * @param call the method call to parse.
-	 * @param declarationSource the structural origin (direct, managed, plugin, or
-	 * profile-scoped) of the declaration.
+	 * @param declarationSource the structural origin of the declaration.
 	 * @return the parsed declaration, possibly incomplete.
 	 */
 	private @Nullable DependencySite parseMapDeclaration(GrMethodCall call, DeclarationSource declarationSource) {
@@ -470,8 +468,7 @@ class GroovyDslParser {
 	 *
 	 * @param call the owning method call.
 	 * @param named the named arguments to parse.
-	 * @param declarationSource the structural origin (direct, managed, plugin, or
-	 * profile-scoped) of the declaration.
+	 * @param declarationSource the structural origin of the declaration.
 	 * @return the parsed declaration, possibly incomplete.
 	 */
 	private @Nullable DependencySite parseMapDependency(GrMethodCall call, GrNamedArgument[] named,

@@ -19,7 +19,8 @@ package biz.paluch.dap.gradle;
 import biz.paluch.dap.artifact.ArtifactId;
 
 /**
- * Default {@link GradlePluginId} implementation.
+ * {@link GradlePluginId} backed by an {@link ArtifactId}, delegating identity,
+ * ordering, and rendering to that artifact.
  *
  * @author Mark Paluch
  */

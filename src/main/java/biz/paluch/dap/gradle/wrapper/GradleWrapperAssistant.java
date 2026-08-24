@@ -58,9 +58,13 @@ import icons.GradleIcons;
 import org.springframework.util.Assert;
 
 /**
- * {@link DependencyAssistant} that discovers {@code gradle-wrapper.properties}
- * files, extracts the Gradle distribution version from the
- * {@code distributionUrl}, and offers upgrades for the wrapper distribution.
+ * Gradle Wrapper {@link DependencyAssistant} for files named
+ * {@code gradle-wrapper.properties}.
+ *
+ * <p>The integration treats the version in {@code distributionUrl} as the
+ * synthetic {@code org.gradle:gradle} dependency and obtains releases from
+ * {@link GradleDistributionService}. It does not require an imported Gradle
+ * project model.
  *
  * @author Mark Paluch
  */
@@ -153,6 +157,13 @@ public class GradleWrapperAssistant implements DependencyAssistant {
 		return WrapperProperty.isWrapperProperty(property);
 	}
 
+	/**
+	 * File-scoped context for one Gradle Wrapper properties file.
+	 *
+	 * <p>Each scan resolves the anchor back to current PSI. A deleted anchor or an
+	 * anchor that is no longer a Gradle Wrapper properties file produces an empty
+	 * dependency collection.
+	 */
 	public static class GradleWrapperDependencyContext extends AbstractProjectBuildContext
 			implements ProjectDependencyContext {
 

@@ -43,7 +43,15 @@ import com.intellij.util.TimeoutUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Background task that refreshes release metadata for registered integrations.
+ * Cancellable background task that refreshes metadata for dependencies declared
+ * by every applicable integration.
+ *
+ * <p>The task re-collects declarations in a smart-mode read action and resolves
+ * releases with {@link ReleaseResolver#refresh()} consistency. Release, Bill of
+ * Materials, vulnerability, and project metadata caches are updated through the
+ * dependency-check pipeline. Successful completion reports the resolved
+ * artifacts and restarts highlighting. Task-level failures are logged and
+ * reported to the user.
  *
  * @author Mark Paluch
  */

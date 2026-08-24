@@ -22,16 +22,20 @@ import com.intellij.psi.PsiElement;
 import org.springframework.util.ObjectUtils;
 
 /**
- * Search hit during a dependency site search: a navigable PSI element together
- * with the {@link SiteRole role} it plays for the dependency's version and a
- * concise {@code label} (the version or property expression) for display.
+ * Located Dependency Site combining a navigable PSI element, its
+ * {@link SiteRole role}, and concise display text.
  *
- * <p>Instances are immutable and created through the role-named factories
- * {@link #declaration(PsiElement)} and {@link #usage(PsiElement)} (or their
- * label-carrying overloads).
+ * <p>The supplied PSI element is retained directly and remains subject to
+ * normal PSI validity rules. Equality includes the element, role, and label,
+ * which is also the identity used when aggregating
+ * {@link DependencySearchResults}.
  *
  * @author Mark Paluch
  * @see ArtifactReferenceResolver#search(DependencySiteQuery)
+ * @see #declaration(PsiElement)
+ * @see #declaration(PsiElement, String)
+ * @see #usage(PsiElement)
+ * @see #usage(PsiElement, String)
  * @see SiteRole
  */
 public class DependencySiteSearchHit {
@@ -53,7 +57,7 @@ public class DependencySiteSearchHit {
 	 * to the element's own text.
 	 *
 	 * @param element the PSI element to navigate to and preview.
-	 * @return the definition hit.
+	 * @return the declaration hit.
 	 */
 	public static DependencySiteSearchHit declaration(PsiElement element) {
 		return declaration(element, element.getText());
@@ -64,20 +68,20 @@ public class DependencySiteSearchHit {
 	 * label.
 	 *
 	 * @param element the PSI element to navigate to and preview.
-	 * @param label the concise display text (the version).
-	 * @return the definition hit.
+	 * @param label the concise display text.
+	 * @return the declaration hit.
 	 */
 	public static DependencySiteSearchHit declaration(PsiElement element, String label) {
 		return new DependencySiteSearchHit(element, SiteRole.DECLARATION, label);
 	}
 
 	/**
-	 * Create a {@link SiteRole#DECLARATION} search hit from an
-	 * {@link ArtifactDeclaration}.
+	 * Create a {@link SiteRole#DECLARATION} search hit whose label is the
+	 * declaration's version, or the element text for an unversioned declaration.
 	 *
 	 * @param element the PSI element to navigate to and preview.
 	 * @param declaration the originating {@link ArtifactDeclaration}.
-	 * @return the definition hit.
+	 * @return the declaration hit.
 	 */
 	public static DependencySiteSearchHit declaration(PsiElement element, ArtifactDeclaration declaration) {
 
@@ -101,7 +105,7 @@ public class DependencySiteSearchHit {
 	 * label.
 	 *
 	 * @param element the PSI element to navigate to and preview.
-	 * @param label the concise display text (the version-property expression).
+	 * @param label the concise display text.
 	 * @return the version-usage hit.
 	 */
 	public static DependencySiteSearchHit usage(PsiElement element, String label) {
@@ -109,10 +113,10 @@ public class DependencySiteSearchHit {
 	}
 
 	/**
-	 * Create a {@link SiteRole#VERSION_USAGE} search hit from an
-	 * {@link ArtifactDeclaration}.
+	 * Create a {@link SiteRole#VERSION_USAGE} search hit whose label is the bare
+	 * version-property name, or the element text for another version source.
 	 *
-	 * @param element the PSI element to navigate to and preview
+	 * @param element the PSI element to navigate to and preview.
 	 * @param declaration the originating {@link ArtifactDeclaration}.
 	 * @return the version-usage hit.
 	 */
@@ -124,29 +128,14 @@ public class DependencySiteSearchHit {
 		return usage(element, label);
 	}
 
-	/**
-	 * Return the PSI element to navigate to and preview.
-	 *
-	 * @return the located element.
-	 */
 	public PsiElement element() {
 		return element;
 	}
 
-	/**
-	 * Return the role the element plays for the dependency's version.
-	 *
-	 * @return the site role.
-	 */
 	public SiteRole role() {
 		return role;
 	}
 
-	/**
-	 * Return the concise display text (the version or property expression).
-	 *
-	 * @return the display label.
-	 */
 	public String label() {
 		return label;
 	}

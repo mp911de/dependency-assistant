@@ -29,8 +29,7 @@ import org.jetbrains.kotlin.psi.KtStringTemplateExpression;
 import org.jetbrains.kotlin.psi.ValueArgument;
 
 /**
- * Kotlin DSL specific update helpers. Locates and replaces version values in
- * {@code build.gradle.kts} files.
+ * Locates and rewrites version values in Kotlin DSL Gradle scripts.
  *
  * @author Mark Paluch
  */

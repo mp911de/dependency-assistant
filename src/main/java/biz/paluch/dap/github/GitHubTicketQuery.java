@@ -31,7 +31,16 @@ import org.jetbrains.plugins.github.api.data.GithubIssueLabel;
 import org.jspecify.annotations.Nullable;
 
 /**
- * GitHub {@link TicketQuery} implementation.
+ * GitHub {@link TicketQuery} that splits filtering between the search request
+ * and exact client-side matching.
+ *
+ * <p>Supported states, milestones, and labels narrow the GitHub search request.
+ * Pull requests are excluded and titles are matched exactly after retrieval.
+ * Values within each criterion use OR semantics, while criteria combine with
+ * AND semantics.
+ *
+ * <p>Foreign ticket-system values are ignored when building the request and do
+ * not match returned issues. They are not rejected with an exception.
  *
  * @author Mark Paluch
  */

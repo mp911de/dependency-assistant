@@ -107,7 +107,7 @@ class KotlinDslUtils {
 	}
 
 	// -------------------------------------------------------------------------
-	// Version catalog (Kotlin {@code libs.…})
+	// Version catalog (Kotlin accessor)
 	// -------------------------------------------------------------------------
 
 	static @Nullable KtExpression getFirstValueArgument(KtCallElement call) {

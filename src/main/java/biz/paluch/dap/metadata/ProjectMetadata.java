@@ -25,9 +25,14 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Resolved project metadata facade for one artifact, assembled by
- * {@link ProjectMetadataService} from the captured metadata and the detected
- * {@link Platform}.
+ * Resolved snapshot of upstream project metadata for one artifact, assembled by
+ * {@link ProjectMetadataService} from captured metadata, platform detection,
+ * and cached repository tags.
+ *
+ * <p>Tag names are matched to versions through
+ * {@link ArtifactVersion#fromTag(String)}. When multiple tag names represent
+ * the same version, the first supplied tag is used for release-note links. The
+ * snapshot does not observe later cache changes.
  *
  * @author Mark Paluch
  * @see ProjectMetadataService
@@ -65,7 +70,8 @@ public class ProjectMetadata {
 	/**
 	 * Return the facade for an artifact without captured metadata. All accessors
 	 * return {@literal null}.
-	 * @return the absent facade; guaranteed to be not {@literal null}.
+	 *
+	 * @return the shared absent facade.
 	 */
 	public static ProjectMetadata absent() {
 		return ABSENT;
@@ -73,12 +79,16 @@ public class ProjectMetadata {
 
 	/**
 	 * Create a facade from the resolved platform objects.
-	 * @param projectName the project name.
-	 * @param connection the detected repository connection.
-	 * @param repository the detected repository.
-	 * @param issueTracker the declared or derived issue tracker; can be
-	 * {@literal null}.
-	 * @param tags the cached repository tag names; the list is copied.
+	 *
+	 * @param projectName the project name, or {@literal null} if none was captured.
+	 * @param connection the detected repository connection, or {@literal null} if
+	 * no platform recognized the captured URL.
+	 * @param repository the platform repository handle, or {@literal null} if none
+	 * was created.
+	 * @param issueTracker the declared or derived issue tracker, or {@literal null}
+	 * if none is known.
+	 * @param tags the cached repository tag names. The list is copied into the
+	 * version-to-tag mapping.
 	 * @return the metadata facade, {@link #absent()} if nothing was resolved.
 	 */
 	public static ProjectMetadata from(@Nullable String projectName, @Nullable RepositoryConnection connection,
@@ -131,6 +141,16 @@ public class ProjectMetadata {
 		return issueTracker != null ? issueTracker.getBaseUrl().toString() : null;
 	}
 
+	/**
+	 * Resolve the release-notes URL for the tag representing the given version.
+	 *
+	 * <p>This lookup does not fall back to the repository's releases listing.
+	 *
+	 * @param version the artifact version whose release notes are requested.
+	 * @return the release-notes URL, or {@literal null} if the repository is
+	 * unknown, no cached tag represents the version, or the platform has no per-tag
+	 * page.
+	 */
 	public @Nullable URI findReleaseNotesUrl(ArtifactVersion version) {
 		if (repository != null) {
 			String tag = tags.get(version);

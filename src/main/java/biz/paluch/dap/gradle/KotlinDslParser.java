@@ -393,7 +393,7 @@ class KotlinDslParser {
 
 		private @Nullable KtStringTemplateExpression findInlineDependencyLiteral(KtCallElement call) {
 
-			// todo: GradleDependency construction just for supports(…) case
+			// todo: GradleDependency construction just for supports(...) case
 			for (ValueArgument valueArgument : call.getValueArguments()) {
 				KtExpression expression = valueArgument.getArgumentExpression();
 				if (expression instanceof KtStringTemplateExpression template) {

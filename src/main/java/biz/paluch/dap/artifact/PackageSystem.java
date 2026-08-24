@@ -17,7 +17,11 @@
 package biz.paluch.dap.artifact;
 
 /**
- * Package ecosystem a dependency belongs to.
+ * Package ecosystem that interprets dependency coordinates.
+ *
+ * <p>This classification is narrower than the build ecosystem. Maven and Gradle
+ * declarations both resolve to {@link #MAVEN}, while GitHub Actions use
+ * {@link #GITHUB}.
  *
  * @author Mark Paluch
  */
@@ -69,9 +73,9 @@ public enum PackageSystem {
 	OTHER;
 
 	/**
-	 * Return the {@link ArtifactId#artifactId()}.
-	 * @param artifactId the artifact Id.
-	 * @return the artifact Id.
+	 * Return the package name component of the given artifact coordinates.
+	 * @param artifactId the artifact coordinates.
+	 * @return the package name component.
 	 */
 	public String getArtifactId(ArtifactId artifactId) {
 		return artifactId.artifactId();
@@ -79,7 +83,7 @@ public enum PackageSystem {
 
 	/**
 	 * Return the artifact coordinates.
-	 * @param artifactId the artifact Id.
+	 * @param artifactId the artifact coordinates.
 	 * @return the artifact coordinates.
 	 */
 	public String getCoordinates(ArtifactId artifactId) {

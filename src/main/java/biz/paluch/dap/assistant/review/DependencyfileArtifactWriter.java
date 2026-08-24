@@ -51,17 +51,14 @@ import com.intellij.util.IncorrectOperationException;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Writes artifact entries into the {@code artifacts} section of a
+ * Adds review-row display names to the {@code artifacts} section of a
  * {@code dependencyfile.json}, creating the descriptor when none exists.
  *
- * <p>A regular row is written under its narrowest
- * {@link ArtifactPattern#keyFor(ArtifactId) pattern key} with its dependency
- * name. A group is written under the group name, as one wildcard entry (for
- * example {@code org.springframework.boot:spring-boot-starter-*}) when the
- * members share a groupId and a word-boundary prefix, otherwise as one entry
- * per member, all carrying the group name so the descriptor reproduces the
- * group (see {@link GroupByRule}). Existing entries get their name replaced;
- * the PSI edits themselves live in {@link DependencyfileArtifacts}.
+ * <p>A single coordinate uses its narrowest
+ * {@link ArtifactPattern#keyFor(ArtifactId) pattern key}. A grouped row passes
+ * all member coordinates to {@link DependencyfileArtifacts}, which selects a
+ * shared wildcard when possible and otherwise writes exact entries. Existing
+ * entries have their names replaced.
  *
  * @author Mark Paluch
  */

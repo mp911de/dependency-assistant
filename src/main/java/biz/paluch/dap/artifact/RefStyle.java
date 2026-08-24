@@ -50,13 +50,12 @@ public enum RefStyle {
 
 	/**
 	 * Determine a {@link RefStyle} from the given ref string.
-	 * <p>
-	 * An empty or {@literal null} ref defaults to {@link #SHA}, matching the
+	 * <p>An empty or {@literal null} ref defaults to {@link #SHA}, matching the
 	 * conservative behavior for declarations that cannot reveal their original
 	 * style. Whitespace-only input also classifies as {@link #SHA} because
 	 * {@link StringUtils#isEmpty(String)} treats blank input as empty.
 	 * @param ref the raw ref as written in the build file; can be {@literal null}.
-	 * @return the resulting {@code RefStyle}; guaranteed to be not {@literal null}.
+	 * @return the resulting {@code RefStyle}.
 	 */
 	public static RefStyle from(@Nullable String ref) {
 		return StringUtils.isEmpty(ref) || FULL_SHA.matcher(ref).matches() ? SHA : VERSION;

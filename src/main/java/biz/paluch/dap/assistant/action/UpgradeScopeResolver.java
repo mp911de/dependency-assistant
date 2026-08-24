@@ -36,7 +36,7 @@ import com.intellij.psi.PsiFile;
  * <p>Resolution follows a fixed precedence:
  * <ol>
  * <li>an explicit Project View selection of supported build files,</li>
- * <li>else the active editor's build file,</li>
+ * <li>else the active editor's build file when its context is available,</li>
  * <li>else every supported and applicable build file in the project.</li>
  * </ol>
  *
@@ -57,6 +57,12 @@ class UpgradeScopeResolver {
 
 	/**
 	 * Resolve the {@link UpgradeScope} for the given inputs.
+	 *
+	 * @param project the project containing the requested files.
+	 * @param request the selection and editor context to resolve.
+	 * @return the resolved scope. An explicit selection with no usable build file
+	 * returns an empty scope carrying the reason; project-wide discovery may return
+	 * a successful empty scope.
 	 */
 	public static UpgradeScope resolve(Project project, UpgradeRequest request) {
 

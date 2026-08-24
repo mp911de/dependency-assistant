@@ -49,18 +49,21 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * The distinct versions an artifact is declared at across its
+ * Declared-version and declaration-style facts for one artifact across its
  * {@link DeclarationSite declaration sites}.
  *
- * <p>The set drives both the upgrade baseline
- * ({@link #getHighestDeclaredVersion()}) and drift reporting: drift exists when
- * the sites declare the artifact at more than one distinct version, whether
- * across files or twice within one file. Declaration drift exists when the
- * sites mix inline versions and version properties.
+ * <p>The lowest declared version is the conservative upgrade baseline. Version
+ * drift exists when the sites resolve to more than one distinct version,
+ * whether across files or within one file. Declaration drift exists when the
+ * sites mix inline versions and version properties. The record retains and
+ * exposes the supplied sets directly, so callers must not modify them after
+ * construction. Factory-created version sets iterate in descending order;
+ * direct construction preserves the supplied set's iteration order.
  *
  * @author Mark Paluch
  * @param versions the distinct parsed versions found in the declaration sites.
- * @param entries the sortable declaration entries used for conflict display.
+ * @param entries the sortable declaration entries used for version-drift
+ * display.
  * @param declarationEntries the sortable declaration-style entries used for
  * drift display.
  */
@@ -129,9 +132,9 @@ public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> 
 	 * @param gitRefResolver the resolver used to translate Git refs into known
 	 * artifact versions.
 	 * @param project the project used to render declaration locations relative to
-	 * the project base path; can be {@literal null}.
-	 * @return the declared versions; empty when no site carries a concrete
-	 * dependency version.
+	 * the project base path, or {@literal null} to retain absolute paths.
+	 * @return the declared versions. The result is empty when no site carries a
+	 * concrete dependency version.
 	 */
 	public static DeclaredVersions from(Collection<DeclarationSite> declarationSites,
 			Function<String, @Nullable ArtifactVersion> gitRefResolver, @Nullable Project project) {
@@ -207,7 +210,7 @@ public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> 
 	/**
 	 * Return whether the declared versions disagree.
 	 *
-	 * @return {@literal true} if the inline declared versions differ;
+	 * @return {@literal true} if the resolved declared versions differ;
 	 * {@literal false} otherwise.
 	 */
 	public boolean hasVersionDrift() {
@@ -241,13 +244,16 @@ public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> 
 
 	/**
 	 * Return whether either version values or declaration styles drift.
+	 *
+	 * @return {@literal true} if version or declaration drift exists;
+	 * {@literal false} otherwise.
 	 */
 	public boolean hasDrift() {
 		return hasVersionDrift() || hasDeclarationDrift();
 	}
 
 	/**
-	 * Visit each conflicting declaration in display order.
+	 * Visit each recorded version and declaration location in display order.
 	 *
 	 * <p>File locations are rendered relative to the project base path when a
 	 * project is available.
@@ -269,8 +275,7 @@ public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> 
 	}
 
 	/**
-	 * Return the highest version the artifact is declared at, used as the upgrade
-	 * baseline.
+	 * Return the highest version the artifact is declared at.
 	 *
 	 * @return the first version according to the artifact version ordering.
 	 * @throws IllegalStateException if no version was found.
@@ -311,7 +316,7 @@ public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> 
 	 *
 	 * @param currentVersion the version shown in the current-version column,
 	 * excluded from the listed groups.
-	 * @return the version-drift tool tip markup; an empty chunk when no version
+	 * @return the version-drift tool tip markup. The chunk is empty when no version
 	 * drift exists.
 	 */
 	public HtmlChunk getVersionDriftToolTip(ArtifactVersion currentVersion) {
@@ -355,9 +360,9 @@ public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> 
 	/**
 	 * Render the declaration-drift tool tip.
 	 *
-	 * <p>Declarations are grouped by their declaration style. Both styles are
-	 * always listed, each naming up to {@link #MAX_DISPLAYED_FILES} locations
-	 * before collapsing the remainder into an overflow count.
+	 * <p>The tooltip names the declaration styles in use and lists up to
+	 * {@link #MAX_DISPLAYED_FILES} distinct locations across those styles before
+	 * collapsing the remainder into an overflow count.
 	 *
 	 * <p>Locations originate from build files and are escaped; the returned chunk
 	 * is safe to embed in HTML tooltips.
@@ -415,13 +420,14 @@ public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> 
 	 * Compute the declaration location.
 	 *
 	 * <p>Resolved eagerly at construction because rendering a path relative to the
-	 * project base path is a slow operation that must not run on the EDT. Maven
+	 * project base path is a slow operation that must not run on the EDT. Project
 	 * coordinates take precedence; otherwise the file path is rendered relative to
 	 * the project base path, or as an absolute path when no project is available.
 	 *
 	 * @param projectId the project identity associated with the declaration.
 	 * @param file the file containing the declaration.
-	 * @param project the project used for base-path resolution; can be .
+	 * @param project the project used for base-path resolution, or {@literal null}
+	 * to retain absolute file paths.
 	 * @return the declaration location.
 	 */
 	private static String getDisplayLocation(ProjectId projectId, VirtualFile file, @Nullable Project project) {

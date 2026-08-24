@@ -24,16 +24,18 @@ import org.xmlbeam.XBProjector;
 import org.xmlbeam.config.DefaultXMLFactoriesConfig;
 
 /**
- * Factory for the shared XMLBeam projector used to read and write Maven XML
- * with external entities and DOCTYPE declarations disabled.
+ * Provides the XMLBeam projector used to parse remote Maven repository
+ * metadata.
+ *
+ * <p>The projector enables secure XML processing and disables entity expansion.
+ * It also requests external DTD and schema access to be disabled and rejects
+ * DOCTYPE declarations when the active parser supports those features.
  */
 public class XmlBeamProjectorFactory {
 
 	/**
-	 * Shared, immutably configured {@link XBProjector} for reading and writing POM
-	 * and Maven metadata XML. The projector is configured for secure XML processing
-	 * (external entities and DOCTYPE declarations disabled) and is safe to reuse
-	 * across threads.
+	 * Shared {@link XBProjector} for reading {@code maven-metadata.xml} through
+	 * {@link MavenMetadataProjection}.
 	 */
 	public static final XBProjector INSTANCE = XmlBeamProjectorFactory.create();
 

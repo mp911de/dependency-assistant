@@ -23,7 +23,12 @@ import java.util.regex.Pattern;
 import biz.paluch.dap.artifact.VersionAware;
 
 /**
- * String-level transforms over Gradle wrapper distribution URLs.
+ * String-level transforms for repairing Gradle distribution URLs.
+ *
+ * <p>Targeted rewrites preserve the custom host, path prefix, and URL tail.
+ * File-name repair preserves an existing {@code all} flavor and otherwise falls
+ * back to {@code bin}. Canonical URL generation uses Gradle Services and the
+ * {@code bin} flavor.
  *
  * @author Mark Paluch
  */

@@ -31,8 +31,8 @@ import com.intellij.openapi.progress.ProgressIndicator;
  *
  * <p>Plugin declarations are represented as {@code groupId == artifactId}. Such
  * lookups are translated to the Portal marker artifact
- * {@code <pluginId>:<pluginId>.gradle.plugin}. Regular library coordinates
- * return an empty sequence.
+ * {@code <pluginId>:<pluginId>.gradle.plugin}. Other coordinates are queried
+ * unchanged against the Plugin Portal Maven repository.
  *
  * @author Mark Paluch
  */
@@ -66,7 +66,7 @@ public class GradlePluginPortalReleaseSource implements ReleaseSource {
 		}
 
 		// TODO: HEAD for individual versions? might be an overkill.
-		// but only for these, that we don't yet know 🙃
+		// but only for these, that we don't yet know.
 		// ??
 		return GRADLE_PLUGIN_PORTAL.getReleases(artifactId, indicator);
 	}

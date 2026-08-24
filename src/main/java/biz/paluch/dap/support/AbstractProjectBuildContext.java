@@ -19,12 +19,12 @@ package biz.paluch.dap.support;
 import biz.paluch.dap.state.ProjectId;
 
 /**
- * Base class for {@link ProjectBuildContext} implementations.
+ * Base class for {@link ProjectBuildContext} implementations that stores their
+ * project identity.
  *
- * <p>The context is always {@link #isAvailable() available}; integrations that
- * need an absent state use a dedicated sentinel rather than this base.
- * Subclasses pass their identity and release sources to the constructor and
- * inherit the three view methods unchanged.
+ * <p>The context is always {@link #isAvailable() available}. Subclasses supply
+ * package-system, project-version, and release-source behavior. Integrations
+ * that need an absent state use a dedicated sentinel rather than this base.
  *
  * @author Mark Paluch
  * @see ProjectBuildContext

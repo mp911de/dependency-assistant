@@ -35,7 +35,14 @@ import com.intellij.psi.ElementManipulators;
 import com.intellij.psi.PsiElement;
 
 /**
- * Completion contributor for NPM dependency version strings.
+ * Contributes release-version completion inside NPM dependency string values.
+ *
+ * <p>Completion is limited to {@code dependencies} and {@code devDependencies}
+ * entries in {@code package.json}. Insertions preserve modifiers when the caret
+ * is after them, as well as range lower bounds, alias package names, and Git
+ * URL prefixes when the current value is a supported
+ * {@link NpmVersionExpression}. Prefix ranges are replaced by the selected
+ * concrete version. An unterminated string literal is closed after insertion.
  *
  * @author Mark Paluch
  */

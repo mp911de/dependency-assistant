@@ -20,6 +20,8 @@ package biz.paluch.dap.artifact;
  * Describes how an artifact is declared and where its version originates.
  *
  * @author Mark Paluch
+ * @param declaration the structural declaration source.
+ * @param version the source of the declared version.
  */
 public record ArtifactUsage(DeclarationSource declaration, VersionSource version) {
 

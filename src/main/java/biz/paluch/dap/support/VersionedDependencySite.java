@@ -16,7 +16,6 @@
 
 package biz.paluch.dap.support;
 
-import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.PackageIdentity;
@@ -26,11 +25,10 @@ import com.intellij.psi.PsiElement;
 /**
  * Extension of {@link DependencySite} for dependency sites with a resolved
  * version.
- * <p>In addition to the artifact coordinates, version source, and declaration
- * element exposed through {@link DependencySite}, implementations provide the
- * concrete {@link #getVersion() dependency version} together with the
- * {@link PsiElement PSI} element that points to the version value within the
- * parsed file.
+ * <p>In addition to the package identity, provenance, and declaration anchor
+ * exposed through {@link DependencySite}, implementations provide the concrete
+ * {@link #getVersion() dependency version} and its separate PSI anchor. The
+ * declaration and version anchors may identify different elements.
  *
  * @author Mark Paluch
  * @see ArtifactVersion
@@ -56,16 +54,16 @@ public interface VersionedDependencySite extends DependencySite {
 	PsiElement getVersionElement();
 
 	/**
-	 * Create a new {@code VersionedDependencySite} instance given
-	 * {@link ArtifactId}, {@link ArtifactVersion}, {@link VersionSource} and its
-	 * {@link PsiElement declaration} and version elements.
-	 * @param pkg the artifact identifier.
+	 * Create a versioned dependency site from a complete package identity,
+	 * provenance, and PSI anchors.
+	 *
+	 * @param pkg the package identity.
 	 * @param version the artifact version.
 	 * @param versionSource the version source, an inline-version or a property.
 	 * @param declarationSource the declaration source.
 	 * @param declarationElement element that represents this dependency site.
 	 * @param versionElement element that represents the version literal.
-	 * @return the dependency site.
+	 * @return the versioned dependency site.
 	 */
 	static VersionedDependencySite of(PackageIdentity pkg, ArtifactVersion version,
 			VersionSource versionSource, DeclarationSource declarationSource,

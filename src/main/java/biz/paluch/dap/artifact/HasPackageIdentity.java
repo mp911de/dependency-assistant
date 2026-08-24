@@ -27,7 +27,7 @@ public interface HasPackageIdentity {
 	/**
 	 * Return the package identity.
 	 *
-	 * @return the artifact id.
+	 * @return the package identity.
 	 */
 	PackageIdentity getPackageIdentity();
 

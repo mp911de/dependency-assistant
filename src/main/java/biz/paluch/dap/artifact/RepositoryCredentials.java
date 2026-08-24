@@ -25,6 +25,11 @@ import org.jspecify.annotations.Nullable;
 /**
  * HTTP Basic-auth credentials for a Maven repository server entry.
  *
+ * <p>The repository-base list is retained and exposed directly. Callers must
+ * not modify it after construction because it controls where these credentials
+ * may be sent.
+ *
+ * @param id the Maven server id.
  * @param username server username.
  * @param password plain-text password.
  * @param settingsDeclaredRepositoryBases when not {@literal null}, credentials
@@ -55,6 +60,14 @@ public record RepositoryCredentials(String id, String username, String password,
 	}
 
 	/**
+	 * Return whether these credentials may be sent to the given effective
+	 * repository URL.
+	 *
+	 * <p>A bound credential requires the same scheme, host, effective port, and a
+	 * path below one of the declared repository bases. Malformed URLs and an empty
+	 * binding list are rejected. A {@literal null} binding list preserves the
+	 * legacy id-only behavior and accepts any URL.
+	 *
 	 * @param repositoryUrl the repository URL from the effective POM (typically
 	 * with a trailing slash).
 	 * @return {@literal true} if credentials may be sent to that URL.

@@ -53,15 +53,19 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>Searches use the GitHub search API through the IntelliJ Platform search
  * page request shape. Repository, issue type, state, and grouped label or
- * milestone criteria narrow the request; everything else is matched
+ * milestone criteria narrow the request. Everything else is matched
  * client-side, including exact titles. Pull requests are filtered out.
  *
  * <p>Label and milestone listings refresh the {@link GitHubTicketCache} on
- * success and fall back to its stored entries when GitHub cannot be reached;
- * without stored entries the failure propagates.
+ * success and fall back to its stored entries when GitHub cannot be reached.
+ * Without stored entries, the failure propagates.
  *
  * <p>The account-bound request executor is supplied by the caller so account
  * resolution and request execution share the same lifecycle.
+ *
+ * <p>The {@link #cached()} view exposes stored labels and open milestones plus
+ * the static ticket states. It does not search tickets and does not support
+ * ticket creation.
  *
  * @author Mark Paluch
  */
@@ -210,6 +214,15 @@ class GitHubTicketRepository implements TicketRepository {
 		return labels;
 	}
 
+	/**
+	 * Return the offline metadata view of this repository.
+	 *
+	 * <p>Ticket search returns an empty list. Ticket creation throws
+	 * {@link UnsupportedOperationException}. Labels and milestones come only from
+	 * {@link GitHubTicketCache}.
+	 *
+	 * @return the reusable cached repository view.
+	 */
 	@Override
 	public TicketRepository cached() {
 		return new TicketRepository() {

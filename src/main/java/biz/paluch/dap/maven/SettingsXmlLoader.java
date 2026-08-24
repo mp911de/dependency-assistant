@@ -46,11 +46,16 @@ import org.jetbrains.idea.maven.utils.MavenUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Loader for repository credentials declared in Maven {@code settings.xml}.
+ * Loads the effective Maven {@code settings.xml} state used for repository
+ * access.
  *
- * <p>Uses the active Maven installation to merge global and user settings and
- * decrypt encrypted server passwords, matching Maven's own credential handling
- * as closely as possible.
+ * <p>For trusted projects, the loader uses the active Maven installation to
+ * merge global and user settings, decrypt server passwords, and retain mirror
+ * declarations. Credentials are URL-bound when matching repository declarations
+ * are present in settings, and the {@code central} server is bound to the
+ * standard Maven Central endpoints. Other server credentials remain eligible by
+ * repository ID alone. The result is cached on the project until explicitly
+ * invalidated.
  *
  * @author Mark Paluch
  */
@@ -72,8 +77,13 @@ class SettingsXmlLoader {
 	}
 
 	/**
-	 * Obtains credentials from the Maven settings files applicable to the given
-	 * project. Settings are cached upon first invocation.
+	 * Load the Maven settings applicable to the given project.
+	 *
+	 * <p>Untrusted projects and projects without a usable Maven installation yield
+	 * empty settings. Results returned for trusted projects, including handled
+	 * empty results, are cached until {@link #invalidate(Project)} is called.
+	 * Failures that escape loading are not cached.
+	 *
 	 * @param project the IntelliJ project.
 	 * @return the merged server credentials and mirrors, or
 	 * {@link MavenSettings#empty()} when no settings apply.
@@ -100,6 +110,8 @@ class SettingsXmlLoader {
 
 	/**
 	 * Invalidate the cached settings for the given project.
+	 *
+	 * @param project the project whose cached settings are cleared.
 	 */
 	static void invalidate(Project project) {
 		project.putUserData(SETTINGS_KEY, null);

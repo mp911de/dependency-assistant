@@ -26,6 +26,9 @@ import biz.paluch.dap.util.StringUtils;
 /**
  * Numeric components of a version.
  *
+ * <p>Comparison and equality ignore trailing zero components, so {@code 1.2},
+ * {@code 1.2.0}, and {@code 1.2.0.0} represent the same value.
+ *
  * @author Mark Paluch
  */
 public class NumericVersionComponents implements Comparable<NumericVersionComponents> {
@@ -77,6 +80,9 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 	/**
 	 * Create version components from the given parts.
 	 * @param parts the numeric version parts.
+	 * @return the numeric version components.
+	 * @throws IllegalArgumentException if no parts are supplied or the major or
+	 * minor component is negative.
 	 */
 	public static NumericVersionComponents of(int... parts) {
 		return new NumericVersionComponents(
@@ -87,6 +93,9 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 	 * Parse the given string representation of a version into a
 	 * {@link NumericVersionComponents} object.
 	 * @param version the version string to parse.
+	 * @return the parsed numeric components.
+	 * @throws IllegalArgumentException if the value is blank, contains a
+	 * non-numeric component, or has a negative major or minor component.
 	 */
 	public static NumericVersionComponents parse(String version) {
 
@@ -121,6 +130,7 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 
 	/**
 	 * Return the major component.
+	 * @return the major component, or zero when absent.
 	 */
 	public int getMajor() {
 		return parts.length > 0 ? parts[0].intValue() : 0;
@@ -128,6 +138,7 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 
 	/**
 	 * Return the minor component.
+	 * @return the minor component, or zero when absent.
 	 */
 	public int getMinor() {
 		return parts.length > 1 ? parts[1].intValue() : 0;
@@ -135,6 +146,7 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 
 	/**
 	 * Return the bugfix component.
+	 * @return the bugfix component, or zero when absent.
 	 */
 	public int getBugfix() {
 		return parts.length > 2 ? parts[2].intValue() : 0;
@@ -142,6 +154,7 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 
 	/**
 	 * Return the build component.
+	 * @return the build component, or zero when absent.
 	 */
 	public int getBuild() {
 		return parts.length > 3 ? parts[3].intValue() : 0;
@@ -151,6 +164,7 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 	 * Return whether the current {@link NumericVersionComponents} is the same as
 	 * the given one.
 	 * @param version the version to compare with.
+	 * @return {@code true} if both values have the same canonical components.
 	 */
 	public boolean is(NumericVersionComponents version) {
 		return equals(version);
@@ -195,7 +209,7 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see java.lang.Comparable#compareTo(java.lang.Object)
 	 */
 	public int compareTo(NumericVersionComponents that) {
@@ -261,7 +275,7 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see java.lang.Object#toString()
 	 */
 	@Override

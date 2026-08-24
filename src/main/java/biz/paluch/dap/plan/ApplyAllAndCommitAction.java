@@ -32,9 +32,10 @@ import com.intellij.util.ui.UIUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Apply all planned upgrades and create one commit per upgrade. When touched
- * files already carry uncommitted changes the run offers to shelve them and
- * continue on the clean scope.
+ * Apply planned upgrades and create one commit per changed plan item. A plan
+ * selection narrows the run to the selected items; without a selection the
+ * whole plan is applied. When touched files already carry uncommitted changes,
+ * the run offers to shelve them and continue on the clean scope.
  *
  * @author Mark Paluch
  */

@@ -32,7 +32,7 @@ import java.util.stream.StreamSupport;
  *
  * <p>Implementations provide a repeatable {@link #iterator()} so a sequence can
  * be consumed multiple times. The {@link #stream()}, {@link #isEmpty()}, and
- * {@link #toList()} defaults derive from iteration; override them when the
+ * {@link #toList()} defaults derive from iteration. Override them when the
  * backing collection offers a cheaper form.
  *
  * @author Mark Paluch

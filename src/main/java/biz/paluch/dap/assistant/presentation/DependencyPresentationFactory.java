@@ -29,8 +29,18 @@ import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
 
 /**
- * Creates {@link DependencyPresentation}s, resolving the dependency name with
- * the precedence rule name.
+ * Creates detached {@link DependencyPresentation} snapshots from package
+ * identity, dependency rules, remembered name hints, and cached project
+ * metadata.
+ *
+ * <p>A non-blank name supplied by the resolved {@link DependencyRule} takes
+ * precedence over a name remembered in {@link ApplicationSettings}. The cached
+ * project name is carried separately as {@link ProjectName} and does not
+ * participate in {@link DependencyPresentation#getDisplayName()}.
+ *
+ * <p>The factory retains its metadata and settings collaborators. Created
+ * presentations retain only immutable presentation values and, for
+ * {@link IconDependencyPresentation}, the selected table icon.
  *
  * @author Mark Paluch
  */
@@ -40,22 +50,37 @@ public class DependencyPresentationFactory {
 
 	private final ApplicationSettings settings;
 
+	/**
+	 * Create a factory backed by the given project's metadata service and the
+	 * application-level settings service.
+	 *
+	 * @param project the project whose cached metadata should be used.
+	 */
 	public DependencyPresentationFactory(Project project) {
 		this.metadataService = ProjectMetadataService.getInstance(project);
 		this.settings = ApplicationSettings.getInstance();
 	}
 
+	/**
+	 * Create a factory backed by the given collaborators.
+	 *
+	 * @param metadataService the source of cached project names.
+	 * @param settings the source of remembered dependency names.
+	 */
 	public DependencyPresentationFactory(ProjectMetadataService metadataService, ApplicationSettings settings) {
 		this.metadataService = metadataService;
 		this.settings = settings;
 	}
 
 	/**
-	 * Create a {@link DependencyPresentation} for the given package.
+	 * Create a detached presentation for the given package.
 	 *
-	 * @param pkg the package to create a presentation for.
-	 * @param rule a rule governing the dependency.
-	 * @return a new presentation.
+	 * <p>The result captures the rule-provided or remembered dependency name and
+	 * the current cached project-name policy.
+	 *
+	 * @param pkg the package identity to present.
+	 * @param rule the resolved rule supplying the preferred dependency name.
+	 * @return a detached presentation of the package and its resolved names.
 	 */
 	public DependencyPresentation create(PackageIdentity pkg, DependencyRule rule) {
 
@@ -70,11 +95,15 @@ public class DependencyPresentationFactory {
 	}
 
 	/**
-	 * Create a {@link IconDependencyPresentation} for the given dependency.
-	 * @param dependency the dependency to create a presentation for.
-	 * @param rule a rule governing the dependency.
-	 * @param assistant the interface assistant associated with the project.
-	 * @return a new icon dependency presentation.
+	 * Create a detached presentation for the given dependency with the table icon
+	 * selected by the interface assistant.
+	 *
+	 * @param dependency the dependency whose identity and declaration kind should
+	 * be presented.
+	 * @param rule the resolved rule supplying the preferred dependency name.
+	 * @param assistant the interface assistant that selects the table icon.
+	 * @return a detached presentation of the dependency, resolved names, and table
+	 * icon.
 	 */
 	public IconDependencyPresentation create(Dependency dependency, DependencyRule rule, InterfaceAssistant assistant) {
 

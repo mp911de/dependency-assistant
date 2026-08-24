@@ -63,9 +63,9 @@ import com.intellij.openapi.vfs.VirtualFile;
 /**
  * Aggregates dependency declarations found while scanning an upgrade scope.
  *
- * <p>The aggregator groups declarations by artifact coordinate, keeps every
- * declaration site for drift reporting, and retains the build files that
- * contributed to the final result.
+ * <p>The aggregator groups declarations by {@link PackageIdentity}, keeps every
+ * declaration site for drift reporting, combines release sources and project
+ * contexts, and retains the build files that contributed to the final result.
  *
  * @author Mark Paluch
  */
@@ -81,6 +81,14 @@ public class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 
 	private final ApplicationSettings settings;
 
+	/**
+	 * Create an aggregator for one project-scoped dependency check.
+	 *
+	 * @param project the project whose build files are scanned.
+	 * @param stateService the project state and cache owner.
+	 * @param settings the application settings used to derive candidate
+	 * presentations.
+	 */
 	public DependencyCheckAggregator(Project project, StateService stateService, ApplicationSettings settings) {
 		this.project = project;
 		this.stateService = stateService;
@@ -127,8 +135,8 @@ public class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 	/**
 	 * Apply the given consumer to each unique artifact and its release sources.
 	 *
-	 * @param consumer the consumer receiving artifact identifiers and release
-	 * sources in encounter order.
+	 * @param consumer the consumer receiving package identities and release sources
+	 * in encounter order.
 	 */
 	public void forEachArtifact(BiConsumer<PackageIdentity, Collection<ReleaseSource>> consumer) {
 		entries.forEach((pkg, entry) -> consumer.accept(pkg, entry.releaseSources));
@@ -137,7 +145,7 @@ public class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 	/**
 	 * Apply the given consumer to each unique artifact and its declaration sites.
 	 *
-	 * @param consumer the consumer receiving artifact identifiers and declaration
+	 * @param consumer the consumer receiving package identities and declaration
 	 * sites in encounter order.
 	 */
 	public void forEachDeclaration(BiConsumer<PackageIdentity, Collection<DeclarationSite>> consumer) {
@@ -153,6 +161,11 @@ public class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 		return files;
 	}
 
+	/**
+	 * Return one release-source group per package identity.
+	 *
+	 * @return the release sources in package encounter order.
+	 */
 	public List<ReleaseSources> getReleaseSources() {
 		List<ReleaseSources> sources = new ArrayList<>();
 		forEachArtifact((pkg, releaseSources) -> {
@@ -165,7 +178,7 @@ public class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 	 * Merge the declaration and version sources of every site for the given
 	 * artifact into a single declaration.
 	 *
-	 * @param pkg the artifact represented by the merged declaration.
+	 * @param pkg the package identity represented by the merged declaration.
 	 * @param entry the aggregated declaration data for the artifact.
 	 * @return a new declaration carrying all known source locations.
 	 */
@@ -240,11 +253,11 @@ public class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 	/**
 	 * Create a dependency-check result from the resolved releases.
 	 *
-	 * <p>Artifacts without resolved releases are skipped. Release lookup errors are
-	 * copied into the result so the UI can display them alongside the candidates
-	 * that were resolved successfully.
+	 * <p>Packages absent from the lookup map and declarations without a concrete
+	 * version are skipped. A failed lookup still produces a candidate anchored at
+	 * its current version, and its error is copied into the result for the UI.
 	 *
-	 * @param releases the resolved releases keyed by artifact.
+	 * @param releases the lookup results keyed by package identity.
 	 * @param evaluator the rule service used to resolve governing dependency rules.
 	 * @return a new dependency-check result with candidates sorted by artifact.
 	 */
@@ -313,6 +326,11 @@ public class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 		return errors;
 	}
 
+	/**
+	 * Return the collected current versions used for project metadata indexing.
+	 *
+	 * @return one current version per package identity.
+	 */
 	public Map<PackageIdentity, ArtifactVersion> getDependencyVersions() {
 		Map<PackageIdentity, ArtifactVersion> versions = new HashMap<>();
 		forEachDeclaration((packageIdentity, declarationSites) -> {

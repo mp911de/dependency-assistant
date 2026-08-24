@@ -50,6 +50,8 @@ class GitHubMilestone implements Milestone {
 
 	/**
 	 * Return the repository-scoped milestone number.
+	 *
+	 * @return the number used by GitHub issue requests.
 	 */
 	long getNumber() {
 		return number;

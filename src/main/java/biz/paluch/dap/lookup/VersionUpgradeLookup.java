@@ -30,10 +30,14 @@ import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Per-file module that resolves a build-file element to its
- * {@link ArtifactReference} and current version.
+ * Per-file facade for artifact-reference resolution, Dependency Site Find, and
+ * current project-state lookup.
  *
- * <p>Lookup methods are cache-only and never trigger remote repository access.
+ * <p>PSI resolution and search are delegated to the configured
+ * {@link ArtifactReferenceResolver}. Current-version lookup uses runtime
+ * project state and declaration data. Property lookup follows
+ * {@link ProjectState} correlation semantics. These operations never fetch
+ * remote release metadata.
  *
  * @author Mark Paluch
  * @see ArtifactReferenceResolver
@@ -60,6 +64,14 @@ public class VersionUpgradeLookup {
 		this.resolver = resolver;
 	}
 
+	/**
+	 * Create a lookup from the state associated with the given project identity.
+	 *
+	 * @param project the IntelliJ project owning the file.
+	 * @param projectId the project-state identity.
+	 * @param referenceResolver the build-tool-specific resolver for the file.
+	 * @return the configured lookup.
+	 */
 	public static VersionUpgradeLookup of(Project project, ProjectId projectId,
 			ArtifactReferenceResolver referenceResolver) {
 
@@ -69,28 +81,27 @@ public class VersionUpgradeLookup {
 				referenceResolver);
 	}
 
-	/**
-	 * Return the state service backing this lookup.
-	 */
 	public StateService getStateService() {
 		return this.stateService;
 	}
 
 	/**
-	 * Resolve the given PSI element into artifact declaration metadata.
+	 * Resolve the given PSI element into artifact declaration metadata through the
+	 * configured resolver.
+	 *
 	 * @param element the PSI element under inspection.
-	 * @return a resolved artifact reference, or
-	 * {@link ArtifactReference#unresolved()}.
+	 * @return the resolved artifact reference, or
+	 * {@link ArtifactReference#unresolved()} if no declaration can be resolved.
 	 */
 	public ArtifactReference resolveArtifactReference(PsiElement element) {
 		return resolver.resolveArtifactReference(element);
 	}
 
 	/**
-	 * Locate every site in this lookup's file that participates in the given
-	 * query's version, for a Dependency Site Find.
-	 * @param query the version this find is centered on .
-	 * @return the hits in this lookup's file, possibly empty.
+	 * Locate the dependency sites in this lookup's file that match the given query.
+	 *
+	 * @param query the Dependency Site Find criteria.
+	 * @return the matching hits in this lookup's file, possibly empty.
 	 */
 	public DependencySearchResults search(DependencySiteQuery query) {
 		return resolver.search(query);
@@ -99,6 +110,7 @@ public class VersionUpgradeLookup {
 	/**
 	 * Return the current version of the dependency with the given artifact
 	 * reference.
+	 *
 	 * <p>The {@link ProjectState} version wins when present; on a project-state
 	 * miss the reference's own declared version is returned, so versions resolved
 	 * by the resolver are reported even before the dependency is scanned into
@@ -122,6 +134,16 @@ public class VersionUpgradeLookup {
 		return declaration.isVersioned() ? declaration.getVersion() : null;
 	}
 
+	/**
+	 * Find an artifact-associated version property by its bare name.
+	 *
+	 * <p>The matching correlation may come from another project entry in the
+	 * persisted project cache.
+	 *
+	 * @param property the property name to locate.
+	 * @return the matching property, or {@literal null} if no correlated property
+	 * is known.
+	 */
 	public @Nullable VersionProperty findProperty(String property) {
 		return projectState.findProperty(property);
 	}
@@ -129,6 +151,7 @@ public class VersionUpgradeLookup {
 	/**
 	 * Return the current version of the first artifact associated with the given
 	 * property.
+	 *
 	 * @param property the property whose artifact association should be inspected.
 	 * @return the current artifact version, or {@literal null} if the property has
 	 * no artifact association or project state does not contain the dependency.

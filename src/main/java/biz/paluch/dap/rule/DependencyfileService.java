@@ -44,17 +44,18 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.util.ClassUtils;
 
 /**
- * Project-level service that discovers and resolves rules from a
- * {@code dependencyfile.json} descriptor.
+ * Project-level service that discovers a {@code dependencyfile.json} descriptor
+ * and resolves its effective Dependency Rules.
  *
  * <p>Descriptors are discovered in a fixed order: the project root, the
  * project's {@code .idea/} directory, and, for trusted projects only, the
  * immediate parent directory and the user home directory. The first descriptor
  * wins; descriptors are never merged.
  *
- * <p>Rules are loaded lazily and cached. Changes to in-project descriptors
- * invalidate the cache and restart highlighting. Descriptors outside the
- * project are intentionally not watched.
+ * <p>Rules are loaded lazily and cached in memory. Changes to descriptors in
+ * the project root or {@code .idea/} directory invalidate the cache and restart
+ * highlighting. Parent-directory and user-home descriptors are intentionally
+ * not watched.
  *
  * @author Mark Paluch
  */
@@ -84,6 +85,7 @@ public class DependencyfileService implements Disposable, DependencyRuleService 
 
 	/**
 	 * Return the rule service for the given project.
+	 *
 	 * @param project the project.
 	 * @return the project rule service.
 	 */
@@ -115,7 +117,9 @@ public class DependencyfileService implements Disposable, DependencyRuleService 
 	}
 
 	/**
-	 * Install the active rules directly, bypassing descriptor discovery.
+	 * Install the active rules directly, bypassing descriptor discovery until the
+	 * override is cleared.
+	 *
 	 * @param rules the rules to use, or {@literal null} to restore discovery.
 	 */
 	public void setRules(@Nullable Rules rules) {
@@ -174,6 +178,7 @@ public class DependencyfileService implements Disposable, DependencyRuleService 
 	 * <p>In-project locations are always searched; the parent directory and the
 	 * user home directory are searched only when the project is trusted. The first
 	 * existing descriptor wins; candidates are never merged.
+	 *
 	 * @param projectRoot the project root directory.
 	 * @param userHome the user home directory.
 	 * @param trusted whether the project is trusted.
@@ -223,6 +228,10 @@ public class DependencyfileService implements Disposable, DependencyRuleService 
 	 * Detect the active branch name for the supplied file, degrading to
 	 * {@literal null} when no repository governs the file or no DVCS integration is
 	 * present.
+	 *
+	 * @param project the project used for repository lookup.
+	 * @param file the branch lookup file, or {@literal null} when unavailable.
+	 * @return the active branch name, or {@literal null} when unavailable.
 	 */
 	private static @Nullable String currentBranchName(Project project, @Nullable VirtualFile file) {
 		if (file == null) {

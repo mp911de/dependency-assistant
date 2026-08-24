@@ -32,16 +32,18 @@ import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Aggregate of artifact dependency rules and branch rules.
+ * Resolution model for default Artifact Rules and branch-specific overrides.
  *
- * <p>Resolution selects a branch rule first by branch name, then by project
- * version; without a match, the top-level artifact rules apply with
- * upgrade-strategy limits derived from the project version. Within a branch,
- * the most specific artifact pattern wins.
+ * <p>Resolution selects the most specific branch rule first by branch name,
+ * then by the displayed or unwrapped project version. Within the selected
+ * branch, the most specific matching artifact pattern wins.
  *
  * <p>Branch rules inherit the top-level artifact rules: an artifact without a
  * matching branch-level artifact rule falls back to the top-level rules, still
- * subject to the branch's upgrade-strategy limits.
+ * subject to the branch's upgrade-strategy limits. When semver updating is
+ * active, a three-segment project version with a non-zero patch segment limits
+ * an otherwise unrestricted rule to patch and release upgrades. Explicit branch
+ * upgrade strategies take precedence over that inference.
  *
  * @author Mark Paluch
  * @see BranchRule
@@ -73,6 +75,7 @@ public class DependencyRules implements Rules {
 
 	/**
 	 * Create a builder for {@code DependencyRules}.
+	 *
 	 * @return a new {@code DependencyRules} builder.
 	 */
 	public static Builder builder() {
@@ -81,6 +84,7 @@ public class DependencyRules implements Rules {
 
 	/**
 	 * Create a branch-rule builder.
+	 *
 	 * @param pattern the branch or project-version pattern.
 	 * @return a new branch-rule builder.
 	 */
@@ -90,6 +94,7 @@ public class DependencyRules implements Rules {
 
 	/**
 	 * Create an artifact-rule builder.
+	 *
 	 * @param pattern the artifact pattern.
 	 * @return a new artifact-rule builder.
 	 */
@@ -100,7 +105,7 @@ public class DependencyRules implements Rules {
 	/**
 	 * Create {@code DependencyRules} from artifact dependency rules.
 	 *
-	 * @param artifacts the artifact dependency rules.
+	 * @param artifacts the artifact dependency rules. The collection is retained.
 	 * @return the dependency rules.
 	 */
 	public static DependencyRules of(Collection<ArtifactRule> artifacts) {
@@ -108,10 +113,11 @@ public class DependencyRules implements Rules {
 	}
 
 	/**
-	 * Create {@code DependencyRules} from artifact dependency rules and branch rules.
+	 * Create {@code DependencyRules} from artifact dependency rules and branch
+	 * rules.
 	 *
-	 * @param artifacts the artifact dependency rules.
-	 * @param branches the branch rules.
+	 * @param artifacts the artifact dependency rules. The collection is retained.
+	 * @param branches the branch rules. The collection is snapshotted.
 	 * @return the dependency rules.
 	 */
 	public static DependencyRules of(Collection<ArtifactRule> artifacts, Collection<BranchRule> branches) {
@@ -119,11 +125,16 @@ public class DependencyRules implements Rules {
 	}
 
 	/**
-	 * Resolve a dependency rule for the given artifact.
-	 * @param artifactId the artifact id.
-	 * @param branchName the active branch name.
-	 * @param projectVersion the project version.
-	 * @return the resolved dependency rule, or an absent rule.
+	 * Resolve the effective Dependency Rule for the given artifact and branch
+	 * context.
+	 *
+	 * @param artifactId the artifact to resolve.
+	 * @param branchName the active branch name, or {@literal null} when
+	 * unavailable.
+	 * @param projectVersion the project version used for branch matching and semver
+	 * inference, or {@literal null} when unavailable.
+	 * @return the governing dependency rule, or {@link DependencyRule#absent()}
+	 * when no artifact rule applies.
 	 */
 	@Override
 	public DependencyRule resolve(ArtifactId artifactId, @Nullable String branchName,
@@ -138,13 +149,14 @@ public class DependencyRules implements Rules {
 	 * <p>When {@code suppressSemanticUpgrading} is {@literal true} the
 	 * project-version derived (inferred) upgrade-strategy limits are skipped and
 	 * {@link DependencyRule#isSemanticUpgradingEnabled()} reports {@literal false}.
-	 * Generations, dependency names, and author-written {@code upgrades(...)}
-	 * limits are unaffected. This is how a plugin declaration is kept under naming
-	 * and generation governance while leaving semVer.
+	 * Generations, Artifact Display Names, and explicitly declared {@code upgrades}
+	 * limits are unaffected. This allows plugin declarations to remain governed
+	 * without applying dependency-oriented semver inference.
 	 *
-	 * @param artifactId the artifact id.
+	 * @param artifactId the artifact to resolve.
 	 * @param branchName the active branch name; can be {@literal null}.
-	 * @param projectVersion the project version; can be {@literal null}.
+	 * @param projectVersion the project version used for branch matching and semver
+	 * inference, or {@literal null} when unavailable.
 	 * @param suppressSemanticUpgrading whether to suppress inferred semantic
 	 * upgrading.
 	 * @return the resolved dependency rule, or an absent rule.
@@ -158,18 +170,18 @@ public class DependencyRules implements Rules {
 	}
 
 	/**
-	 * Resolve the active branch rule, matching the branch name before the
-	 * project version.
+	 * Resolve the active branch rule, matching the branch name before the project
+	 * version.
 	 *
-	 * <p>Without a matching branch rule, a semantic fallback rule is created
-	 * whose upgrade-strategy limits derive from the project version: service
-	 * releases (patch segment other than zero) permit only patch and release
+	 * <p>Without a matching branch rule, the returned rule carries the default
+	 * Artifact Rules. When semver updating is active, a three-segment project
+	 * version with a non-zero patch segment limits that rule to patch and release
 	 * upgrades.
 	 *
 	 * @param branchName the active branch name; can be {@literal null}.
 	 * @param projectVersion the project version; can be {@literal null}.
-	 * @return the resolved branch rule, or an absent branch rule; never
-	 * {@literal null}.
+	 * @return the effective branch rule carrying any inherited default Artifact
+	 * Rules and inferred upgrade-strategy limits.
 	 */
 	public BranchRule resolveBranchRule(@Nullable String branchName, @Nullable ArtifactVersion projectVersion) {
 		return resolveBranchRule(branchName, projectVersion, false);
@@ -262,6 +274,7 @@ public class DependencyRules implements Rules {
 
 		/**
 		 * Add an artifact dependency rule.
+		 *
 		 * @param pattern the artifact pattern.
 		 * @param generations the generation sources.
 		 * @return this builder.
@@ -273,6 +286,7 @@ public class DependencyRules implements Rules {
 
 		/**
 		 * Add a configured artifact dependency rule.
+		 *
 		 * @param pattern the artifact pattern.
 		 * @param customizer customizes the artifact rule.
 		 * @return this builder.
@@ -287,6 +301,7 @@ public class DependencyRules implements Rules {
 
 		/**
 		 * Configure a branch rule.
+		 *
 		 * @param pattern the branch or project-version pattern.
 		 * @param customizer customizes the branch rule.
 		 * @return this builder.
@@ -302,6 +317,7 @@ public class DependencyRules implements Rules {
 		/**
 		 * Set the semver updating mode that controls whether upgrade strategy limits
 		 * are derived from the project version.
+		 *
 		 * @param semVerUpdating the semver updating mode.
 		 * @return this builder.
 		 */
@@ -312,6 +328,7 @@ public class DependencyRules implements Rules {
 
 		/**
 		 * Build the {@code DependencyRules}.
+		 *
 		 * @return the dependency rules.
 		 */
 		public DependencyRules build() {
@@ -340,6 +357,7 @@ public class DependencyRules implements Rules {
 
 		/**
 		 * Add an artifact rule to this branch rule.
+		 *
 		 * @param pattern the artifact pattern.
 		 * @param generations the generation sources.
 		 * @return this builder.
@@ -351,6 +369,7 @@ public class DependencyRules implements Rules {
 
 		/**
 		 * Add a configured artifact rule to this branch rule.
+		 *
 		 * @param pattern the artifact pattern.
 		 * @param customizer customizes the artifact rule.
 		 * @return this builder.
@@ -365,6 +384,7 @@ public class DependencyRules implements Rules {
 
 		/**
 		 * Limit this branch rule to the given upgrade strategies.
+		 *
 		 * @param upgradeStrategies the supported upgrade strategies.
 		 * @return this builder.
 		 */
@@ -377,6 +397,7 @@ public class DependencyRules implements Rules {
 
 		/**
 		 * Build a branch rule.
+		 *
 		 * @return the branch rule.
 		 */
 		public BranchRule build() {
@@ -402,8 +423,9 @@ public class DependencyRules implements Rules {
 		}
 
 		/**
-		 * Set the friendly display name.
-		 * @param name the friendly display name.
+		 * Set the Artifact Display Name.
+		 *
+		 * @param name the Artifact Display Name.
 		 * @return this builder.
 		 */
 		public ArtifactRuleBuilder name(String name) {
@@ -413,6 +435,7 @@ public class DependencyRules implements Rules {
 
 		/**
 		 * Set the generations.
+		 *
 		 * @param generations the generation sources.
 		 * @return this builder.
 		 */
@@ -422,6 +445,7 @@ public class DependencyRules implements Rules {
 
 		/**
 		 * Set the generations.
+		 *
 		 * @param generations the generations.
 		 * @return this builder.
 		 */
@@ -432,6 +456,7 @@ public class DependencyRules implements Rules {
 
 		/**
 		 * Build an artifact rule.
+		 *
 		 * @return the artifact rule.
 		 */
 		public ArtifactRule build() {

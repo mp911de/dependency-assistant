@@ -24,10 +24,17 @@ import biz.paluch.dap.rule.DependencyRule;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Presentation model providing the display names for a dependency.
+ * Detached display facts for a dependency package.
  *
- * <p>Presentations are immutable value objects and safe to share across
- * threads.
+ * <p>A presentation retains the {@link PackageIdentity}, its package-system
+ * coordinate labels, an optional curated dependency name, and a possibly empty
+ * {@link ProjectName}. The dependency name is the canonical display name when
+ * present. The project name remains a separate facet for surfaces that choose
+ * to show metadata provenance.
+ *
+ * <p>Instances created through this interface or
+ * {@link DependencyPresentationFactory} are immutable snapshots. They do not
+ * retain dependencies, rules, settings, or metadata services.
  *
  * @author Mark Paluch
  * @see IconDependencyPresentation
@@ -37,33 +44,38 @@ public interface DependencyPresentation extends HasArtifactId, HasPackageIdentit
 
 	/**
 	 * Return the canonical display name: the {@link #getDependencyName() dependency
-	 * name} when present, the {@link #getShortArtifactId()} rendered artifact
-	 * coordinates} otherwise.
+	 * name} when present, or the {@link #getShortArtifactId() short artifact
+	 * identifier} otherwise.
 	 *
 	 * @return the resolved display name.
 	 */
 	String getDisplayName();
 
 	/**
-	 * Return the dependency name as HTML-ready text.
-	 * <p>Favors {@link #getDependencyName()} if present, otherwise
-	 * {@link #getDisplayName()} wrapped in quotes to indicate the raw artifact
-	 * coordinates.
-	 * @return the dependency name.
+	 * Return the display name used in HTML message templates.
+	 *
+	 * <p>The curated dependency name is returned unchanged. A fallback artifact
+	 * identifier is wrapped in single quotes. The result is not HTML-escaped.
+	 * Callers embedding it as raw HTML must escape untrusted names.
+	 *
+	 * @return the dependency display name for an HTML message template.
 	 */
 	default String getHtmlDisplayName() {
 		return hasDependencyName() ? getDependencyName() : "'" + getDisplayName() + "'";
 	}
 
 	/**
-	 * @return the short {@link #getArtifactId() artifact id} without the group id.
+	 * Return the package-system-specific name component of the
+	 * {@link #getArtifactId() artifact coordinates}.
+	 *
+	 * @return the short artifact identifier without its group component.
 	 */
 	String getShortArtifactId();
 
 	/**
-	 * Fully qualified artifact coordinates.
+	 * Return the artifact coordinates in the notation of the package system.
 	 *
-	 * @return fully qualified artifact coordinates.
+	 * @return the rendered artifact coordinates.
 	 */
 	String getCoordinates();
 
@@ -87,18 +99,19 @@ public interface DependencyPresentation extends HasArtifactId, HasPackageIdentit
 	String getDependencyName();
 
 	/**
-	 * Return the project name as captured from the artifact's metadata.
+	 * Return the display policy for the project name captured from artifact
+	 * metadata.
 	 *
-	 * @return the project name.
+	 * @return the project-name policy, possibly empty when no name was captured.
 	 */
 	ProjectName getProjectName();
 
 	/**
-	 * Create a presentation from the artifact coordinates of the given source,
-	 * without dependency or project names.
+	 * Create a coordinate-only presentation from the package identity of the given
+	 * source.
 	 *
-	 * @param aware the source providing the artifact coordinates.
-	 * @return a presentation rendering the plain artifact coordinates.
+	 * @param aware the source providing the package identity.
+	 * @return a detached presentation without dependency or project names.
 	 * @see #of(PackageIdentity)
 	 */
 	public static DependencyPresentation of(HasPackageIdentity aware) {
@@ -106,24 +119,23 @@ public interface DependencyPresentation extends HasArtifactId, HasPackageIdentit
 	}
 
 	/**
-	 * Create a presentation for the given artifact coordinates, without dependency
-	 * or project names. {@link #getDisplayName()} falls back to the coordinate
-	 * representation.
+	 * Create a coordinate-only presentation for the given package identity.
+	 * {@link #getDisplayName()} falls back to the short artifact identifier.
 	 *
-	 * @param pkg the artifact coordinates to present.
-	 * @return a presentation rendering the plain artifact coordinates.
+	 * @param pkg the package identity to present.
+	 * @return a detached presentation without dependency or project names.
 	 */
 	public static DependencyPresentation of(PackageIdentity pkg) {
 		return SimpleDependencyPresentation.of(pkg, null, ProjectName.empty(pkg.getArtifactId()));
 	}
 
 	/**
-	 * Create a fully populated presentation.
+	 * Create a presentation carrying the given detached name facets.
 	 *
-	 * @param pkg the artifact coordinates to present.
-	 * @param dependencyName the curated dependency name; can be {@literal null} if
-	 * no curated name is known.
-	 * @param projectName the project name from the artifact's metadata.
+	 * @param pkg the package identity to present.
+	 * @param dependencyName the curated dependency name, or {@literal null} when no
+	 * name is known.
+	 * @param projectName the project-name policy derived from artifact metadata.
 	 * @return the presentation carrying the given name facets.
 	 */
 	static DependencyPresentation of(PackageIdentity pkg, @Nullable String dependencyName, ProjectName projectName) {
@@ -131,4 +143,3 @@ public interface DependencyPresentation extends HasArtifactId, HasPackageIdentit
 	}
 
 }
-

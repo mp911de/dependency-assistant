@@ -27,7 +27,8 @@ import biz.paluch.dap.util.MessageBundle;
 import com.intellij.psi.PsiElement;
 
 /**
- * Gutter configurable for Maven.
+ * Upgrade-availability gutter provider for Maven POM, extension, and wrapper
+ * version sites.
  *
  * @author Mark Paluch
  */

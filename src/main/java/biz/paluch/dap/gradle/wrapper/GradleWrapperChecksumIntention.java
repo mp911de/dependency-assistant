@@ -36,7 +36,13 @@ import com.intellij.util.IncorrectOperationException;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Intention that computes and inserts a missing Gradle wrapper checksum.
+ * Adds a missing {@code distributionSha256Sum} from cached Gradle release
+ * metadata.
+ *
+ * <p>The intention is available only for a recognized distribution URL whose
+ * published checksum is already cached. It does not fetch or compute a
+ * checksum. The property replaces a blank caret line or is inserted after the
+ * non-blank caret line inside a write command.
  *
  * @author Mark Paluch
  */

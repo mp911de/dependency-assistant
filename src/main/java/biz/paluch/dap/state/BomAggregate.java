@@ -30,9 +30,9 @@ import biz.paluch.dap.checker.Vulnerability;
 /**
  * Aggregated {@link Vulnerabilities} of a Bill of Materials declaration line
  * over the used members whose effective version is managed by the BOM.
- * <p>The aggregate holds only vulnerable members and reports each advisory
- * once, even when several members are affected by the same advisory. Instances
- * are created through a {@link Builder} that enforces both invariants.
+ * <p>The builder retains only vulnerable members and the resulting aggregate
+ * reports each advisory once, even when several members are affected by the
+ * same advisory.
  *
  * @author Mark Paluch
  */
@@ -66,6 +66,8 @@ public class BomAggregate extends Vulnerabilities {
 	/**
 	 * Return the BOM artifact coordinates of the declaration line this aggregate
 	 * was created for.
+	 *
+	 * @return the BOM artifact coordinates.
 	 */
 	public ArtifactId getArtifactId() {
 		return artifactId;
@@ -122,7 +124,7 @@ public class BomAggregate extends Vulnerabilities {
 	}
 
 	/**
-	 * One vulnerable member with its managed version and advisories.
+	 * Advisories associated with one vulnerable member during aggregation.
 	 */
 	public static class MemberAdvisories {
 

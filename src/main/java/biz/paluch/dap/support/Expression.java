@@ -27,10 +27,13 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * Value object representing either a property expression such as
- * {@code ${name}} or {@code $name} or a literal value.
- * <p>Use {@link #from(String)} to create an instance and inspect its actual
- * type through {@link #isProperty()} or subtype checks.
+ * Parsed build-file value that is either a whole-value property reference or a
+ * literal.
+ *
+ * <p>{@link #from(String)} recognizes only values consisting entirely of
+ * {@code ${name}} or {@code $name}. It does not interpolate placeholders within
+ * a larger literal. Callers distinguish the two forms through
+ * {@link #isProperty()}.
  *
  * @author Mark Paluch
  */
@@ -48,12 +51,14 @@ public abstract class Expression {
 	/**
 	 * Create a {@link Expression} from the given value.
 	 * <p>A value is a property expression when it consists entirely of a braced
-	 * ({@code ${name}}) or unbraced ({@code $name}) placeholder; any other value is
-	 * treated as a literal.
+	 * ({@code ${name}}) or unbraced ({@code $name}) placeholder. Any other
+	 * non-blank value is preserved as a literal, while a blank value becomes an
+	 * empty literal.
 	 *
 	 * @param value the source value.
-	 * @return a {@link Reference} if the value is a property expression; otherwise
-	 * a {@link LiteralValue}.
+	 * @return a property-reference expression when the whole value is a
+	 * placeholder, or a literal expression otherwise.
+	 * @throws IllegalArgumentException if {@code value} is {@literal null}.
 	 */
 	@Contract("null -> fail; _ -> new")
 	public static Expression from(@Nullable String value) {
@@ -79,7 +84,8 @@ public abstract class Expression {
 	 * it contains placeholder syntax.
 	 *
 	 * @param value the property name.
-	 * @return a {@link Reference} for the given property name.
+	 * @return a property-reference expression for the given property name.
+	 * @throws IllegalArgumentException if {@code value} is {@literal null}.
 	 */
 	@Contract("null -> fail; _ -> new")
 	public static Expression property(@Nullable String value) {
@@ -97,14 +103,17 @@ public abstract class Expression {
 	public abstract boolean isProperty();
 
 	/**
-	 * Return the property name.
+	 * Return the property name represented by this expression.
 	 *
 	 * @return the property name.
+	 * @throws IllegalStateException if this expression is a literal.
 	 */
 	public abstract String getPropertyName();
 
 	/**
 	 * Return the version source represented by this expression.
+	 *
+	 * @return a property source for a reference or a declared source for a literal.
 	 */
 	public abstract VersionSource asVersionSource();
 
@@ -115,7 +124,8 @@ public abstract class Expression {
 	 * value will be returned as-is.
 	 * @param propertyResolver the property resolver to use for resolving property
 	 * references.
-	 * @return the resolved value.
+	 * @return the resolved property value, the literal value, or {@literal null}
+	 * when a referenced property is absent.
 	 */
 	public @Nullable String resolve(PropertyResolver propertyResolver) {
 		return isProperty() ? propertyResolver.getProperty(getPropertyName()) : toString();

@@ -25,12 +25,13 @@ import biz.paluch.dap.state.HasProjectMetadata;
 import biz.paluch.dap.util.Sequence;
 
 /**
- * Releases parsed from an npm packument, carrying the {@link CachedMetadata}
- * captured from the document's {@code repository} and {@code bugs} fields.
+ * Releases parsed from an NPM Registry Package Document, carrying the
+ * {@link CachedMetadata} captured from its {@code repository} and {@code bugs}
+ * fields.
  *
  * <p>The metadata rides along with the fetch result so the cache-write path can
- * store it without any source-instance state; {@literal null} metadata means
- * the document carried no inspectable version listing.
+ * store it without source-instance state. The metadata value can represent an
+ * inspected document with no usable repository or issue-tracker declaration.
  *
  * @author Mark Paluch
  * @see NpmRegistry

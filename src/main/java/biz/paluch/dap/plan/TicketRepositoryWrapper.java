@@ -31,6 +31,9 @@ import biz.paluch.dap.ticket.TicketState;
 import com.intellij.openapi.progress.ProgressIndicator;
 
 /**
+ * Delegating {@link TicketRepository} base for wrappers that override selected
+ * repository operations.
+ *
  * @author Mark Paluch
  */
 class TicketRepositoryWrapper implements TicketRepository {

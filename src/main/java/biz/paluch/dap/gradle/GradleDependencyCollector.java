@@ -50,13 +50,17 @@ class GradleDependencyCollector {
 
 	/**
 	 * Create a collector with no predefined Gradle properties.
+	 * @param project the IntelliJ project owning the Gradle file.
 	 */
 	public GradleDependencyCollector(Project project) {
 		this(project, Map.of());
 	}
 
 	/**
-	 * Create a collector using properties already known for the project.
+	 * Create a collector using project properties as a fallback after properties
+	 * discovered from the file tree.
+	 * @param project the IntelliJ project owning the Gradle file.
+	 * @param properties the fallback project properties.
 	 */
 	public GradleDependencyCollector(Project project, Map<String, String> properties) {
 		this.properties = properties;
@@ -70,8 +74,8 @@ class GradleDependencyCollector {
 	 * <p>Script anchors resolve project-root Gradle properties and version-catalog
 	 * accessors without treating unused catalog entries as dependency usages.
 	 *
-	 * @param buildFile the Gradle file.
-	 * @param collector the collector to populate in place, must not be .
+	 * @param buildFile the Gradle-related file to parse.
+	 * @param collector the collector to populate in place.
 	 */
 	public void collect(PsiFile buildFile, DependencyCollector collector) {
 		doCollect(buildFile, collector);
@@ -80,6 +84,8 @@ class GradleDependencyCollector {
 	/**
 	 * Collect declarations from the given Gradle-related PSI file into
 	 * {@code collector}.
+	 * @param psiFile the Gradle-related file to parse.
+	 * @param collector the collector to populate in place.
 	 */
 	protected void doCollect(PsiFile psiFile, DependencyCollector collector) {
 
@@ -102,7 +108,12 @@ class GradleDependencyCollector {
 	}
 
 	/**
-	 * Register the given artifact declaration with the dependency collector.
+	 * Register an artifact declaration with the dependency collector.
+	 *
+	 * <p>A concrete, non-prefix, non-catalog version is registered as a usage. The
+	 * declaration and any BOM metadata are registered for every version shape.
+	 * @param collector the collector to populate.
+	 * @param declaration the artifact declaration to register.
 	 */
 	void register(DependencyCollector collector, ArtifactDeclaration declaration) {
 
@@ -123,6 +134,12 @@ class GradleDependencyCollector {
 		BomUtil.registerBillOfMaterials(service.getCache(), project, declaration, collector);
 	}
 
+	/**
+	 * Register a version-catalog declaration as a declaration and, when versioned,
+	 * as a usage.
+	 * @param collector the collector to populate.
+	 * @param declaration the catalog declaration to register.
+	 */
 	void registerCatalog(DependencyCollector collector, ArtifactDeclaration declaration) {
 
 		if (declaration.isVersioned()) {

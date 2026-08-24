@@ -36,7 +36,13 @@ import com.intellij.openapi.project.Project;
 import com.intellij.util.text.DateFormatUtil;
 
 /**
- * Utility to manage Dependency Assistant notifications.
+ * Notification facade for dependency checks, release metadata, and applied
+ * updates.
+ *
+ * <p>Notification operations dispatch to the group registered for their
+ * lifecycle. Release-cache prompts own their refresh and dismissal actions.
+ * Applied-update notifications own the platform Undo action and, when needed, a
+ * separate flagged-entry reversal action supplied by the caller.
  *
  * @author Mark Paluch
  */
@@ -51,7 +57,10 @@ public class Notifications {
 	private static final String UPGRADE_NOTIFICATIONS = "biz.paluch.dependency-assistant.upgrades";
 
 	/**
-	 * Notify the user about an error.
+	 * Notify the user about an error under the default error title.
+	 *
+	 * @param project the project to notify.
+	 * @param content the error content.
 	 */
 	public static void error(Project project, String content) {
 		error(project, MessageBundle.message("error.title"), content);
@@ -59,6 +68,10 @@ public class Notifications {
 
 	/**
 	 * Notify the user about an error.
+	 *
+	 * @param project the project to notify.
+	 * @param title the error title.
+	 * @param content the error content.
 	 */
 	public static void error(Project project, String title, String content) {
 
@@ -68,6 +81,7 @@ public class Notifications {
 
 	/**
 	 * Notify the user with an informational balloon.
+	 *
 	 * @param project the project to notify in.
 	 * @param title the balloon title.
 	 * @param content the balloon body text.
@@ -81,6 +95,10 @@ public class Notifications {
 
 	/**
 	 * Return a displayable message for the given error.
+	 *
+	 * @param error the failure to describe.
+	 * @return the non-blank exception message, or the exception class name when no
+	 * message is available.
 	 */
 	public static String errorMessage(Throwable error) {
 
@@ -92,9 +110,8 @@ public class Notifications {
 	 * Notify the user that release metadata was refreshed, reporting how many
 	 * artifacts were updated and how long the refresh took.
 	 *
-	 * @param project the project to notify; must not be {@literal null}.
-	 * @param updates the artifacts whose release metadata was refreshed; must not
-	 * be {@literal null}.
+	 * @param project the project to notify.
+	 * @param updates the artifacts whose release metadata was refreshed.
 	 * @param durationMs the refresh duration in milliseconds.
 	 */
 	public static void releaseMetadataRefreshed(Project project, List<ArtifactId> updates, long durationMs) {
@@ -114,6 +131,13 @@ public class Notifications {
 	/**
 	 * Notify the user that release metadata is unavailable and offer to update the
 	 * cache.
+	 *
+	 * <p>The task factory is evaluated only when the user chooses refresh. Choosing
+	 * not now invokes the dismissal callback and expires the notification.
+	 *
+	 * @param project the project to notify.
+	 * @param taskFunction the factory for the refresh task.
+	 * @param notNow the callback that records dismissal of the prompt.
 	 */
 	public static void releaseMetadataUnavailable(Project project, Function<Project, Task> taskFunction,
 			Runnable notNow) {
@@ -139,12 +163,16 @@ public class Notifications {
 	}
 
 	/**
-	 * Notify that a bulk dependency upgrade has been applied, offering to reverse
-	 * only the flagged entries (out of bounds or major crossing) when at least one
-	 * is flagged.
+	 * Notify that dependency updates have been applied.
 	 *
-	 * @param updates the applied updates; an empty collection is a no-op.
-	 * @param undoFlagged reverse-applies only the flagged entries.
+	 * <p>An empty accumulator produces no notification. Every emitted notification
+	 * offers the platform's current Undo operation. When at least one summary is
+	 * flagged for compliance or a major crossing, the notification also offers the
+	 * caller-supplied operation that reverses only flagged entries.
+	 *
+	 * @param project the project to notify.
+	 * @param updates the applied updates. An empty accumulator is a no-op.
+	 * @param undoFlagged the operation that reverse-applies only flagged entries.
 	 */
 	public static void updatesApplied(Project project, AppliedUpdates updates,
 			Runnable undoFlagged) {
@@ -210,6 +238,13 @@ public class Notifications {
 		return notification;
 	}
 
+	/**
+	 * Return the localized applied-update title for the given summaries.
+	 *
+	 * @param updates the summaries whose title is requested.
+	 * @return a dependency-specific title for one summary, or a counted title for
+	 * several summaries.
+	 */
 	public static String getTitle(AppliedUpdates updates) {
 		if (updates.size() == 1) {
 			AppliedDependencyUpdate item = updates.iterator().next();
@@ -221,6 +256,14 @@ public class Notifications {
 	/**
 	 * Notify the user that release metadata is probably old and offer to update the
 	 * cache.
+	 *
+	 * <p>The task factory is evaluated only when the user chooses refresh. Choosing
+	 * not now invokes the dismissal callback and expires the notification.
+	 *
+	 * @param project the project to notify.
+	 * @param cacheUpdate when the release cache was last updated.
+	 * @param taskFunction the factory for the refresh task.
+	 * @param notNow the callback that records dismissal of the prompt.
 	 */
 	public static void releaseMetadataStale(Project project, Instant cacheUpdate,
 			Function<Project, Task> taskFunction, Runnable notNow) {

@@ -21,12 +21,11 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Interface for implementing a {@link DependencyRule} resolution.
+ * Package-level resolution view over parsed Dependency Rules.
  *
- * <p>A {@code Rules} service resolves a {@link DependencyRule} for a single
- * artifact. Rules can be fully defined or
- * {@link DependencyRule#absent() absent}, in which case there is effectively
- * no governance.
+ * <p>A view resolves the governing {@link DependencyRule} for a single artifact
+ * and branch context. The resolved rule can be {@link DependencyRule#absent()
+ * absent}, meaning no governance applies.
  *
  * @author Mark Paluch
  * @see DependencyRules
@@ -35,7 +34,8 @@ interface Rules {
 
 	/**
 	 * Return an empty {@code Rules} instance.
-	 * @return empty (absent) rules.
+	 *
+	 * @return the absent resolution view.
 	 */
 	static Rules absent() {
 		return (a, b, c) -> DependencyRule.absent();
@@ -45,12 +45,11 @@ interface Rules {
 	 * Resolve the {@link DependencyRule} for the given {@link ArtifactId} and
 	 * context.
 	 *
-	 * @param artifactId the artifact to resolve a rule for; must not be
-	 * {@literal null}.
-	 * @param branchName the active branch name, matched against branch rules; can
-	 * be {@literal null}.
+	 * @param artifactId the artifact to resolve a rule for.
+	 * @param branchName the active branch name matched against branch rules, or
+	 * {@literal null} when unavailable.
 	 * @param projectVersion the project version, used to select a branch rule when
-	 * no branch name matches; can be {@literal null}.
+	 * no branch name matches, or {@literal null} when unavailable.
 	 * @return the governing dependency rule, or {@link DependencyRule#absent()}
 	 * when no rule applies.
 	 */

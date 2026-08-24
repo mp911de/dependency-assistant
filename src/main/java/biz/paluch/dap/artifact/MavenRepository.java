@@ -51,7 +51,16 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.util.CollectionUtils;
 
 /**
- * Release source that fetches releases from a remote Maven repository.
+ * Release source backed by a remote Maven repository.
+ *
+ * <p>The source reads {@code maven-metadata.xml} and uses a repository
+ * directory listing, when available, to attach release dates. When metadata is
+ * available, versions ending in {@code -SNAPSHOT} and unparseable versions are
+ * omitted. Invalid Maven coordinates fail with
+ * {@link ArtifactNotFoundException} before any request is made.
+ *
+ * <p>HTTP Basic credentials are added only while a request remains on the
+ * repository host and effective port, including after redirects.
  *
  * @author Mark Paluch
  */
@@ -86,6 +95,7 @@ public class MavenRepository implements ReleaseSource {
 
 	/**
 	 * Create a release source backed by the given repository.
+	 * @param repository the remote Maven repository.
 	 */
 	public MavenRepository(RemoteRepository repository) {
 		this.repository = repository;
@@ -248,6 +258,15 @@ public class MavenRepository implements ReleaseSource {
 		}
 	}
 
+	/**
+	 * Return whether two URIs have the same host and effective port.
+	 *
+	 * <p>Host comparison is case-insensitive. Scheme and path are not compared.
+	 *
+	 * @param repositoryBase the configured repository URI.
+	 * @param requestTarget the effective request URI.
+	 * @return {@code true} if host and effective port match.
+	 */
 	public static boolean hasSameBaseUri(URI repositoryBase, URI requestTarget) {
 
 		String baseHost = repositoryBase.getHost();

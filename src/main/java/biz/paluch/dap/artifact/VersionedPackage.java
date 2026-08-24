@@ -1,7 +1,11 @@
 package biz.paluch.dap.artifact;
 
 /**
- * A versioned package.
+ * Version state associated with a {@link PackageIdentity}.
+ *
+ * <p>Implementations may be unversioned as defined by {@link Versioned}. The
+ * {@link #of(PackageIdentity, ArtifactVersion)} factory always creates a
+ * versioned value.
  *
  * @author Mark Paluch
  * @see VersionedArtifact

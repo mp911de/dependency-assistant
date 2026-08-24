@@ -33,8 +33,10 @@ import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
 public interface PlannedUpgrade {
 
 	/**
-	 * Return the display name for this upgrade.
-	 * <p>The name identifies the item across sessions and drives its display label.
+	 * Return the initial display name captured for this upgrade.
+	 *
+	 * <p>The name is persisted and may later be renamed. It does not define item
+	 * identity, which is derived from the captured members.
 	 *
 	 * @return the upgrade item name.
 	 */

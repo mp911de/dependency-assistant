@@ -59,6 +59,8 @@ class UpgradeSelection {
 	/**
 	 * Select the given target version and arm the apply flag when it differs from
 	 * the current version.
+	 *
+	 * @param targetVersion the selected target, or {@literal null} to clear it.
 	 */
 	void setTargetVersion(@Nullable ArtifactVersion targetVersion) {
 		this.targetVersion = targetVersion;
@@ -67,6 +69,8 @@ class UpgradeSelection {
 
 	/**
 	 * Return whether this selection should be applied.
+	 *
+	 * @return {@code true} if the row is armed.
 	 */
 	boolean isApplyUpdate() {
 		return applyUpdate;
@@ -74,6 +78,8 @@ class UpgradeSelection {
 
 	/**
 	 * Set whether this selection should be applied.
+	 *
+	 * @param applyUpdate whether the row is armed.
 	 */
 	void setApplyUpdate(boolean applyUpdate) {
 		this.applyUpdate = applyUpdate;

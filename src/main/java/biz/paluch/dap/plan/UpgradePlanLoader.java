@@ -37,6 +37,11 @@ import org.jspecify.annotations.Nullable;
  * Loader that validates persisted Upgrade Plan facts and resolves the interface
  * metadata needed by {@link UpgradePlanItem}.
  *
+ * <p>An invalid target version, invalid member, or unavailable assistant yields
+ * no materialized item. The persisted item remains in
+ * {@link UpgradePlanState.Content} so a later reload can resolve it. Ticket
+ * materialization is delegated to the persisted ticket value.
+ *
  * @author Mark Paluch
  */
 class UpgradePlanLoader {
@@ -58,6 +63,13 @@ class UpgradePlanLoader {
 		this.ticketSystem = ticketSystem;
 	}
 
+	/**
+	 * Materialize the given persisted item.
+	 *
+	 * @param item the persisted item to validate and materialize.
+	 * @return the materialized item, or {@literal null} when its target version or
+	 * a member is invalid, or an assistant is unavailable.
+	 */
 	public @Nullable UpgradePlanItem create(Item item) {
 
 		if (ArtifactVersion.from(item.getToVersion()).isEmpty() || item.getMembers().isEmpty()) {

@@ -24,7 +24,7 @@ import org.jspecify.annotations.Nullable;
  * sharing the confirmation, shelving, commit, and push behavior of
  * {@link ApplyAllAndCommitAction}. Unlike its parent this action never expands
  * to the whole plan: it stays disabled without a plan-item selection and does
- * nothing when invoked regardless.
+ * nothing when invoked without one.
  *
  * @author Mark Paluch
  */

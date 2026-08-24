@@ -24,12 +24,8 @@ import org.jetbrains.yaml.psi.YAMLScalar;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Utilities for identifying Antora playbook files.
- *
- * <p>This type is exposed as {@code public} because
- * {@code GitHubWorkflowCompletionContributor} in the sibling
- * {@code biz.paluch.dap.github} package must consult it to suppress GitHub
- * workflow completions inside Antora playbook files.
+ * PSI utilities for identifying Antora playbooks and locating the version
+ * segment of their UI bundle URLs.
  *
  * @author Mark Paluch
  */
@@ -43,14 +39,13 @@ public class AntoraUtils {
 	}
 
 	/**
-	 * Return whether the given file is an Antora playbook supported by this
-	 * integration.
+	 * Return whether the given PSI file has the Antora playbook file shape.
 	 *
 	 * <p>A file qualifies when it carries an injected
 	 * {@link AntoraProjectContext#KEY} user-data entry (used by tests) or when its
 	 * name matches {@link #PLAYBOOK_FILE_NAME}.
 	 *
-	 * @param file the PSI file to test; can be {@literal null}.
+	 * @param file the PSI file to test. May be {@literal null}.
 	 * @return {@literal true} if the file is an Antora playbook; {@literal false}
 	 * otherwise.
 	 */
@@ -68,8 +63,7 @@ public class AntoraUtils {
 	}
 
 	/**
-	 * Return whether the given file is an Antora playbook supported by this
-	 * integration.
+	 * Return whether the given virtual file has the Antora playbook file shape.
 	 * @param file the file to test.
 	 * @return {@literal true} if this file is supported.
 	 */
@@ -81,9 +75,7 @@ public class AntoraUtils {
 	 * Compute the {@link TextRange} that covers only the version segment of the
 	 * {@code ui.bundle.url} scalar that owns the given element.
 	 *
-	 * <p>Used by the annotator and the line marker provider so they highlight only
-	 * the version slice between {@code /releases/download/} and the next path
-	 * separator.
+	 * <p>The returned range uses absolute file offsets.
 	 *
 	 * @param element the PSI element that lives inside (or is) the
 	 * {@code ui.bundle.url} value scalar.

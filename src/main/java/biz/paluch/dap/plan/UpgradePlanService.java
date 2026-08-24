@@ -354,10 +354,10 @@ public final class UpgradePlanService implements Disposable {
 	}
 
 	/**
-	 * Merge a copied plan fragment into the plan as one undoable transition.
-	 * Fragment items whose members and target are already planned are skipped; the
-	 * fragment's scope files join the plan scope. The live plan rebuilds through
-	 * the published change event.
+	 * Merge a copied plan fragment into the plan as one undoable transition. Pasted
+	 * items replace current items with the same {@link ItemId}; other pasted items
+	 * are appended in fragment order. The fragment's scope files join the plan
+	 * scope. The live plan rebuilds through the published change event.
 	 */
 	void pasteItems(Content pasted) {
 

@@ -24,7 +24,14 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.lang.Contract;
 
 /**
- * Common contract for semantic and release-train artifact versions.
+ * Comparable representation of an artifact version.
+ *
+ * <p>Numeric and release-train versions expose semantic version relationships.
+ * {@link GitRef} represents an opaque ref and must be guarded through
+ * {@link #canCompare(ArtifactVersion)} before its lexical
+ * {@link Comparable#compareTo(Object)} result is treated as version precedence.
+ * Wrappers retain the scheme and comparison behavior of their inner version.
+ *
  * <p>{@link Object#toString()} returns the version string.
  *
  * @author Mark Paluch
@@ -109,6 +116,8 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion> {
 	/**
 	 * Return whether this version is strictly newer than the given version.
 	 * @param other the version to compare with.
+	 * @return {@code true} if the versions are comparable and this version is
+	 * newer.
 	 */
 	default boolean isNewer(ArtifactVersion other) {
 		return canCompare(other) && compareTo(other) > 0;
@@ -117,11 +126,15 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion> {
 	/**
 	 * Return whether the given version is a newer minor in the same version line.
 	 * @param other the version to compare with.
+	 * @return {@code true} if the given version is a newer minor.
 	 */
 	boolean isNewerMinor(ArtifactVersion other);
 
 	/**
-	 * Whether this version is strictly older than the given version.
+	 * Return whether this version is strictly older than the given version.
+	 * @param other the version to compare with.
+	 * @return {@code true} if the versions are comparable and this version is
+	 * older.
 	 */
 	default boolean isOlder(ArtifactVersion other) {
 		return canCompare(other) && compareTo(other) < 0;
@@ -130,6 +143,8 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion> {
 	/**
 	 * Return whether this version shares the same major line or release train.
 	 * @param other the version to compare with.
+	 * @return {@code true} if both versions share the same major line or release
+	 * train.
 	 */
 	boolean hasSameMajor(ArtifactVersion other);
 
@@ -137,6 +152,8 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion> {
 	 * Return whether this version shares the same major/minor line or release
 	 * train.
 	 * @param other the version to compare with.
+	 * @return {@code true} if both versions share the same major/minor line or
+	 * release train.
 	 */
 	boolean hasSameMajorMinor(ArtifactVersion other);
 
@@ -144,26 +161,31 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion> {
 	 * Return whether this version shares the same base version as the given
 	 * version, ignoring any suffix or qualifier.
 	 * @param other the version to compare with.
+	 * @return {@code true} if both versions share the same base version.
 	 */
 	boolean hasSameBaseVersion(ArtifactVersion other);
 
 	/**
 	 * Return whether this version is a snapshot.
+	 * @return {@code true} if this is a snapshot version.
 	 */
 	boolean isSnapshotVersion();
 
 	/**
 	 * Return whether this version is a milestone.
+	 * @return {@code true} if this is a milestone version.
 	 */
 	boolean isMilestoneVersion();
 
 	/**
 	 * Return whether this version is a release candidate.
+	 * @return {@code true} if this is a release candidate.
 	 */
 	boolean isReleaseCandidateVersion();
 
 	/**
 	 * Return whether this version is a preview release.
+	 * @return {@code true} if this is a milestone or release candidate.
 	 */
 	default boolean isPreview() {
 		return isMilestoneVersion() || isReleaseCandidateVersion();
@@ -171,11 +193,13 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion> {
 
 	/**
 	 * Return whether this version is a general-availability release.
+	 * @return {@code true} if this is a general-availability release.
 	 */
 	boolean isReleaseVersion();
 
 	/**
 	 * Return whether this version is a service or bugfix release.
+	 * @return {@code true} if this is a service or bugfix release.
 	 */
 	boolean isBugFixVersion();
 
@@ -186,7 +210,7 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion> {
 	 * independent of any other version. Wrapped versions report the scheme of the
 	 * wrapped version.
 	 *
-	 * @return the versioning scheme; guaranteed to be not {@literal null}.
+	 * @return the versioning scheme.
 	 */
 	VersioningScheme scheme();
 
@@ -196,11 +220,24 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion> {
 	 * <p>Two versions are comparable only when they share the same
 	 * {@link VersioningScheme} and the scheme is not
 	 * {@link VersioningScheme#OPAQUE}.
+	 *
+	 * @param other the version to test.
+	 * @return {@code true} if semantic ordering is defined between the versions.
 	 */
 	default boolean canCompare(ArtifactVersion other) {
 		return scheme() != VersioningScheme.OPAQUE && scheme() == other.scheme();
 	}
 
+	/**
+	 * Return whether this version and the given version compare as the same
+	 * version.
+	 *
+	 * <p>This is comparison equivalence, not necessarily
+	 * {@link Object#equals(Object) value identity}.
+	 *
+	 * @param other the version to match, or {@literal null}.
+	 * @return {@code true} if the versions compare as equal.
+	 */
 	@Contract("null -> false")
 	default boolean matches(@Nullable ArtifactVersion other) {
 		return other != null && compareTo(other) == 0;
@@ -210,8 +247,7 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion> {
 	 * Return a human-readable rendering of this version for documentation and popup
 	 * display.
 	 *
-	 * @return the documentation display string; guaranteed to be not
-	 * {@literal null}.
+	 * @return the documentation display string.
 	 */
 	default String toDocumentationString() {
 		return toString();
@@ -236,7 +272,7 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion> {
 	 * <p>Follows {@link #getVersion()} while {@link #isWrapped()} returns
 	 * {@literal true}. Unwrapped versions return themselves.
 	 *
-	 * @return the innermost artifact version; guaranteed to be not {@literal null}.
+	 * @return the innermost artifact version.
 	 */
 	default ArtifactVersion unwrap() {
 

@@ -58,7 +58,7 @@ public interface Ticket {
 	TicketState getState();
 
 	/**
-	 * Return the browser link for this ticket.
+	 * Return the browser link supplied for this ticket.
 	 *
 	 * @return the browser link for this ticket.
 	 */
@@ -71,14 +71,14 @@ public interface Ticket {
 	 * {@link TicketRepository#getMilestones(com.intellij.openapi.progress.ProgressIndicator)}
 	 * lists open milestones only.
 	 *
-	 * @return the milestones this ticket is attached to; empty if none.
+	 * @return the milestones this ticket is attached to, or an empty list if none.
 	 */
 	List<Milestone> getMilestones();
 
 	/**
 	 * Return the labels attached to this ticket.
 	 *
-	 * @return the labels attached to this ticket; empty if none.
+	 * @return the labels attached to this ticket, or an empty list if none.
 	 */
 	List<Label> getLabels();
 

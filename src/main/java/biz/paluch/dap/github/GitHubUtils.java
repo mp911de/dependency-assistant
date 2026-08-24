@@ -31,7 +31,8 @@ import org.jetbrains.yaml.psi.YAMLScalar;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Utilities for identifying GitHub Actions files.
+ * Utilities for identifying GitHub Actions files and locating repository-backed
+ * {@code uses:} refs in YAML PSI.
  *
  * @author Mark Paluch
  */
@@ -42,7 +43,10 @@ class GitHubUtils {
 	private static final Predicate<YAMLKeyValue> IS_USES_KEY = kv -> "uses".equals(kv.getKeyText());
 
 	/**
-	 * Render ArtifactId as string.
+	 * Render an artifact as GitHub {@code owner/repository} coordinates.
+	 *
+	 * @param artifactId the artifact to render.
+	 * @return the rendered repository coordinates.
 	 */
 	static String toString(ArtifactId artifactId) {
 		if (artifactId instanceof GitHubAction action) {
@@ -53,6 +57,7 @@ class GitHubUtils {
 
 	/**
 	 * Return whether the given file is supported by the GitHub Actions integration.
+	 *
 	 * <p>A supported file must be a YAML file and either live under
 	 * {@code .github/workflows/} or be named {@code action.yml} or
 	 * {@code action.yaml}.
@@ -68,6 +73,7 @@ class GitHubUtils {
 
 	/**
 	 * Return whether the given file is supported by the GitHub Actions integration.
+	 *
 	 * <p>A supported file must be a YAML file and either live under
 	 * {@code .github/workflows/} or be named {@code action.yml} or
 	 * {@code action.yaml}.
@@ -131,6 +137,7 @@ class GitHubUtils {
 
 	/**
 	 * Return the {@link YAMLScalar} that is the value of a {@code uses:} key.
+	 *
 	 * @param element the element at the cursor position.
 	 * @return the scalar, or {@literal null} if it is not the value of such a key.
 	 */

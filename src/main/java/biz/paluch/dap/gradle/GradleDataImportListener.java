@@ -26,12 +26,16 @@ import org.jetbrains.plugins.gradle.settings.GradleSettings;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Declarative project listener re-indexing the Gradle assistant's project state
- * after a completed Gradle data import so members resolved from the persisted
- * dependency graph surface in highlighting.
+ * Re-indexes Gradle project state after a linked Gradle project finishes
+ * importing.
+ *
+ * <p>Each accepted import advances {@link GradleModelModificationTracker} and
+ * refreshes only the Gradle assistant in a cancellable background task. Imports
+ * for paths that are no longer linked are ignored.
  *
  * @author Mark Paluch
- * @see ProjectStateIndexer#refreshAfterImport
+ * @see ProjectStateIndexer#refreshAfterImport(Project, ProgressIndicator,
+ * java.util.function.Predicate)
  */
 class GradleDataImportListener implements ProjectDataImportListener {
 

@@ -31,14 +31,14 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * Value object representing an artifact declaration and its associated
- * metadata.
- * <p>Captures the artifact identifier, the origin of the version, whether the
- * version is defined in the same file, and optional PSI elements for the
- * declaration and version.
+ * Transient representation of one dependency site discovered in a build file.
  *
- * <p>A declaration is a {@link VersionedPackage} whose version may be absent,
- * so callers check {@link #isVersioned()} before reading {@link #getVersion()}.
+ * <p>A declaration carries package identity, declaration and version sources,
+ * and the PSI anchors for the declaration and version literal. The version
+ * literal may belong to another file, such as a version catalog. The resolved
+ * version and version literal are independently optional. Callers must check
+ * {@link #isVersioned()} before {@link #getVersion()} and
+ * {@link #getVersionLiteral()} before requiring an editable version anchor.
  *
  * @author Mark Paluch
  */
@@ -76,6 +76,7 @@ public class ArtifactDeclaration implements DependencySite, VersionedPackage {
 
 	/**
 	 * Create a new {@link ArtifactDeclaration.Builder}.
+	 *
 	 * @return a new builder.
 	 */
 	public static Builder builder() {
@@ -92,10 +93,8 @@ public class ArtifactDeclaration implements DependencySite, VersionedPackage {
 	 * declaration source} at the consuming call site. Whether the version is
 	 * defined in the same file is re-derived from the resulting declaration element
 	 * and version literal, see {@link Builder#build()}.
-	 * @param customizer customizes the pre-populated builder; must not be
-	 * {@literal null}.
-	 * @return a new declaration carrying the customized state; never
-	 * {@literal null}.
+	 * @param customizer the customizations to apply to the pre-populated builder.
+	 * @return a new declaration carrying the customized state.
 	 */
 	public ArtifactDeclaration mutate(Consumer<Builder> customizer) {
 
@@ -130,6 +129,9 @@ public class ArtifactDeclaration implements DependencySite, VersionedPackage {
 
 	/**
 	 * Return whether this declaration has a concrete version source.
+	 *
+	 * @return {@literal true} if the version source is defined; {@literal false}
+	 * otherwise.
 	 */
 	public boolean hasVersionSource() {
 		return getVersionSource().isDefined();
@@ -137,6 +139,8 @@ public class ArtifactDeclaration implements DependencySite, VersionedPackage {
 
 	/**
 	 * Return the source from which the version is obtained.
+	 *
+	 * @return the version source.
 	 */
 	public VersionSource getVersionSource() {
 		return versionSource;
@@ -144,6 +148,8 @@ public class ArtifactDeclaration implements DependencySite, VersionedPackage {
 
 	/**
 	 * Return the source from which the declaration is obtained.
+	 *
+	 * @return the declaration source.
 	 */
 	public DeclarationSource getDeclarationSource() {
 		return declarationSource;
@@ -161,6 +167,9 @@ public class ArtifactDeclaration implements DependencySite, VersionedPackage {
 
 	/**
 	 * Return whether a resolved version is available.
+	 *
+	 * @return {@literal true} if {@link #getVersion()} is available;
+	 * {@literal false} otherwise.
 	 */
 	@Override
 	public boolean isVersioned() {
@@ -169,6 +178,8 @@ public class ArtifactDeclaration implements DependencySite, VersionedPackage {
 
 	/**
 	 * Return the resolved version.
+	 *
+	 * @return the resolved version.
 	 * @throws IllegalStateException if no version is available.
 	 */
 	@Override
@@ -211,6 +222,7 @@ public class ArtifactDeclaration implements DependencySite, VersionedPackage {
 	 *
 	 * @return a dependency carrying this declaration's artifact, version, version
 	 * source, and declaration source.
+	 * @throws IllegalStateException if this declaration has no resolved version.
 	 */
 	public Dependency toDependency() {
 
@@ -231,7 +243,10 @@ public class ArtifactDeclaration implements DependencySite, VersionedPackage {
 	}
 
 	/**
-	 * Builder for {@link ArtifactDeclaration}.
+	 * Builder for a transient {@link ArtifactDeclaration}.
+	 *
+	 * <p>{@link #build()} derives same-file ownership from the containing files of
+	 * the declaration element and optional version literal.
 	 */
 	public static class Builder {
 
@@ -333,9 +348,9 @@ public class ArtifactDeclaration implements DependencySite, VersionedPackage {
 		/**
 		 * Build a new {@link ArtifactDeclaration}.
 		 *
-		 * @return a new {@link ArtifactDeclaration}.
-		 * @throws IllegalArgumentException if the artifact id, version source,
-		 * declaration source, or declaration element is not configured.
+		 * @return a new declaration.
+		 * @throws IllegalArgumentException if the package system, artifact id, version
+		 * source, declaration source, or declaration element is not configured.
 		 */
 		public ArtifactDeclaration build() {
 

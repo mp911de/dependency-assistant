@@ -62,7 +62,11 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * Maven implementation of {@link DependencyAssistant}.
+ * {@link DependencyAssistant} for imported Maven POMs.
+ *
+ * <p>The integration enumerates POMs from the Maven project model, collects
+ * dependency and plugin declarations, and creates per-POM contexts for lookup
+ * and updates.
  *
  * @author Mark Paluch
  */

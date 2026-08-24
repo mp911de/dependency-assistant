@@ -32,8 +32,18 @@ import com.intellij.lang.properties.psi.Property;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Parser for {@code .mvn/wrapper/maven-wrapper.properties}.
- * <p>Supports {@code distributionUrl} and {@code wrapperUrl} properties.
+ * Parses {@code distributionUrl} and {@code wrapperUrl} declarations from
+ * {@code .mvn/wrapper/maven-wrapper.properties}.
+ *
+ * <p>Parsing accepts a declaration only when its unescaped value is a
+ * single-line URI containing the expected Maven coordinate shape. A parsed
+ * entry retains both version occurrences and the release repository selected
+ * from the URL and project trust state.
+ *
+ * <p>Collection requires the path and file-name versions to agree. It registers
+ * the declaration even when the shared version is not a recognized
+ * {@link ArtifactVersion}, but registers a dependency usage only for a parsed
+ * version. Each distinct parsed repository is added as a release source.
  *
  * @author Mark Paluch
  */
@@ -47,8 +57,10 @@ class MavenWrapperParser {
 
 	/**
 	 * Parse the supported properties from the given wrapper {@link PropertiesFile}.
+	 *
 	 * @param propertiesFile the wrapper properties file.
-	 * @return the supported entries, in declaration order; possibly empty.
+	 * @return the parseable supported entries in declaration order, or an empty
+	 * list when none are present.
 	 */
 	public static List<WrapperEntry> parse(PropertiesFile propertiesFile) {
 		return Properties.from(propertiesFile).filterMap(MavenWrapperParser::parse).toList();
@@ -57,6 +69,7 @@ class MavenWrapperParser {
 	/**
 	 * Attempt to parse a {@link Property} into a {@link WrapperEntry} by matching
 	 * it against every supported wrapper URL property.
+	 *
 	 * @param property the property to parse.
 	 * @return the parsed wrapper entry, or {@literal null} if no supported wrapper
 	 * property matches or the value cannot be parsed.
@@ -74,6 +87,9 @@ class MavenWrapperParser {
 	/**
 	 * Parse supported properties from the given wrapper {@link PropertiesFile} and
 	 * register them with the {@link DependencyCollector} passed at construction.
+	 *
+	 * <p>Entries whose two version occurrences differ are ignored completely.
+	 *
 	 * @param propertiesFile the wrapper properties file.
 	 */
 	public void collect(PropertiesFile propertiesFile) {

@@ -31,10 +31,9 @@ import org.jspecify.annotations.Nullable;
 /**
  * PSI-backed {@link Properties} view for Java {@code .properties} files.
  *
- * <p>
- * The view traverses the PSI tree to include nested property elements in the
- * order reported by IntelliJ's syntax traverser. It is useful for parsers that
- * want filtering and mapping without exposing traversal details.
+ * <p>The live view traverses the PSI tree when consumed and includes nested
+ * property elements in the order reported by IntelliJ's syntax traverser.
+ * Consumption must occur inside a read action.
  *
  * @author Mark Paluch
  */
@@ -48,6 +47,7 @@ public class PropertyFile implements Properties<PropertyImpl> {
 
 	/**
 	 * Return a PSI-backed property view for the given properties file.
+	 *
 	 * @param file the properties file to adapt.
 	 * @return a property view over the file.
 	 */
@@ -55,22 +55,12 @@ public class PropertyFile implements Properties<PropertyImpl> {
 		return new PropertyFile((PsiFile) file);
 	}
 
-	/**
-	 * Invoke the consumer for each property in declaration order.
-	 * @param consumer the consumer to invoke.
-	 */
 	@Override
 	public void forEach(Consumer<PropertyImpl> consumer) {
 		traverse()
 				.forEach(consumer);
 	}
 
-	/**
-	 * Return a mapped view that omits {@literal null} mapping results.
-	 * @param function the mapping function to apply.
-	 * @return a property view containing only non-null mapped values.
-	 * @param <T> the mapped item type.
-	 */
 	@Override
 	public <T> Properties<T> filterMap(Function<? super PropertyImpl, ? extends @Nullable T> function) {
 
@@ -96,10 +86,6 @@ public class PropertyFile implements Properties<PropertyImpl> {
 		};
 	}
 
-	/**
-	 * Return the properties as a list.
-	 * @return the properties in declaration order.
-	 */
 	@Override
 	public List<PropertyImpl> toList() {
 		return toList(this);

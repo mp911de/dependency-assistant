@@ -23,8 +23,8 @@ import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A partially typed version steering release proposals: the sanitized stem of a
- * completion prefix such as {@code 3.}, {@code 3.0-}, or {@code Hox}.
+ * A partially typed version steering release proposals: the normalized stem of
+ * a completion prefix such as {@code 3.}, {@code 3.0-}, or {@code Hox}.
  *
  * <p>Trailing separators are stripped ({@code 3.0-} yields the stem
  * {@code 3.0}); a stripped trailing hyphen additionally signals

@@ -60,7 +60,16 @@ import icons.MavenIcons;
 import org.springframework.util.Assert;
 
 /**
- * Maven Wrapper implementation of {@link DependencyAssistant}.
+ * {@link DependencyAssistant} for Maven Wrapper property files.
+ *
+ * <p>This integration treats {@code distributionUrl} and {@code wrapperUrl} as
+ * Maven dependency declarations for the Maven distribution and Maven Wrapper
+ * artifacts. For trusted projects, release repositories are derived from the
+ * declared URLs. Untrusted projects use Maven Central. No imported Maven
+ * project model is required.
+ *
+ * <p>Contexts are cached on the wrapper PSI file and become unavailable only
+ * when the file has no backing {@link VirtualFile}.
  *
  * @author Mark Paluch
  */
@@ -145,8 +154,13 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 	/**
 	 * Return the wrapper-derived release sources for the given wrapper file,
 	 * deduplicated by repository URL.
+	 *
+	 * <p>The result is cached until the PSI file changes. Non-properties files and
+	 * files without parseable supported URL properties produce an empty list.
+	 *
 	 * @param wrapperFile the wrapper properties file.
-	 * @return the release sources declared by supported wrapper URL properties.
+	 * @return the release sources declared by parseable supported wrapper URL
+	 * properties.
 	 */
 	public static List<ReleaseSource> collectReleaseSources(PsiFile wrapperFile) {
 
@@ -164,6 +178,14 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 		});
 	}
 
+	/**
+	 * File-scoped Maven Wrapper context backed by one physical wrapper properties
+	 * file.
+	 *
+	 * <p>The context retains the release-source snapshot derived when it is
+	 * created. PSI-dependent context caching recreates it after the anchor file
+	 * changes.
+	 */
 	public static class MavenWrapperDependencyContext extends AbstractProjectBuildContext
 			implements ProjectDependencyContext {
 

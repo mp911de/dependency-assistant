@@ -76,10 +76,14 @@ import org.jetbrains.annotations.NotNull;
  * the project's modules.
  *
  * <p>The current file's declaration is read live from PSI; cross-module
- * versions come from the runtime dependency state.
- * {@link biz.paluch.dap.assistant.action.StateRefresher} keeps that state fresh
- * on edits and saves of build files and restarts highlighting afterwards, so
- * open editors re-run this inspection against the latest declarations.
+ * versions come from the runtime dependency state. {@link StateRefresher} keeps
+ * that state fresh on edits and saves of build files and restarts highlighting
+ * afterwards, so open editors re-run this inspection against the latest
+ * declarations.
+ *
+ * <p>Only declarations whose version literal is defined in the inspected file
+ * are reported. Shared version-catalog definitions are reported on their
+ * referencing aliases rather than on the {@code [versions]} entry itself.
  *
  * @author Mark Paluch
  */

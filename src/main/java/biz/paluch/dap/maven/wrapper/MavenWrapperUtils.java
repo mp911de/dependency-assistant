@@ -33,7 +33,7 @@ import com.intellij.psi.PsiFile;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Package-local utilities for Maven wrapper property files.
+ * Package-local utilities for Maven Wrapper property files.
  *
  * <p>This class keeps Maven wrapper PSI concerns in one place, in particular
  * decoded property-value matching, range mapping, and wrapper-file checks.
@@ -73,10 +73,15 @@ class MavenWrapperUtils {
 	public static final String WRAPPER_FILENAME = "maven-wrapper.properties";
 
 	/**
-	 * Return file-absolute ranges for the version segments in a wrapper URL.
+	 * Return file-absolute ranges for the two version segments in a Maven
+	 * coordinate-shaped URL value.
+	 *
+	 * <p>This method inspects only the property value. It does not require a
+	 * supported wrapper property key or a Maven Wrapper file.
+	 *
 	 * @param property the wrapper property to inspect.
-	 * @return the version ranges, or an empty list if the property value cannot be
-	 * parsed as a supported wrapper URL.
+	 * @return the version ranges, or an empty list if the property value does not
+	 * match the bounded Maven artifact pattern.
 	 */
 	public static List<TextRange> getVersionRanges(Property property) {
 
@@ -134,26 +139,14 @@ class MavenWrapperUtils {
 	private MavenWrapperUtils() {
 	}
 
-	/**
-	 * Return whether the given file is a Maven Wrapper properties file named
-	 * {@code maven-wrapper.properties}.
-	 */
 	static boolean isWrapperFile(PropertiesFile file) {
 		return WRAPPER_FILENAME.equals(file.getName());
 	}
 
-	/**
-	 * Return whether the given file is a Maven Wrapper properties file named
-	 * {@code maven-wrapper.properties}.
-	 */
 	static boolean isWrapperFile(@Nullable VirtualFile file) {
 		return file != null && WRAPPER_FILENAME.equals(file.getName());
 	}
 
-	/**
-	 * Return whether the given file is a Maven Wrapper properties file named
-	 * {@code maven-wrapper.properties}.
-	 */
 	static boolean isWrapperFile(@Nullable PsiFile file) {
 		return file instanceof PropertiesFile && WRAPPER_FILENAME.equals(file.getName());
 	}

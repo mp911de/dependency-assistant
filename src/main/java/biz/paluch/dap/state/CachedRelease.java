@@ -34,12 +34,13 @@ import com.intellij.util.xmlb.annotations.XCollection;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Persistent representation of a cached artifact release.
- * <p>The serialized form stores the release version, an optional ISO-8601 date
- * string, and optional source-provided sha metadata. The version attribute is
- * materialized into an {@link ArtifactVersion} while the state is loaded;
- * conversion to the domain {@link Release} type is performed lazily and
- * memoized for repeated access within the same JVM instance.
+ * Persistent representation of an artifact release and its vulnerability scan.
+ *
+ * <p>The serialized form stores the release version, optional ISO-8601 date and
+ * source-provided hash, vulnerability advisories, and the overloaded scan field
+ * interpreted by {@link #scanState()}. Conversion to {@link Release} and
+ * {@link Vulnerabilities} is lazy and memoized for repeated access within the
+ * same JVM instance.
  *
  * @author Mark Paluch
  */
@@ -49,7 +50,7 @@ public class CachedRelease {
 	/**
 	 * Highest {@link #lastScanned} value that is a scan-attempt counter rather than
 	 * a real scan timestamp. Values {@code 0..MAX_SCAN_ATTEMPTS} encode the
-	 * {@link ScanState} lifecycle; a larger value is an epoch-millisecond scan
+	 * {@link ScanState} lifecycle. A larger value is an epoch-millisecond scan
 	 * timestamp. See the {@code lastScanned} note in {@code CONTEXT.md}.
 	 */
 	public static final int MAX_SCAN_ATTEMPTS = 5;
@@ -71,7 +72,7 @@ public class CachedRelease {
 	/**
 	 * Overloaded scan field, read through {@link #scanState()} rather than by raw
 	 * value. A value of {@code 0..}{@link #MAX_SCAN_ATTEMPTS} is the scan-attempt
-	 * counter ({@code 0} never scanned, {@link #MAX_SCAN_ATTEMPTS} unresolvable); a
+	 * counter ({@code 0} never scanned, {@link #MAX_SCAN_ATTEMPTS} unresolvable). A
 	 * larger value is the epoch-millisecond timestamp of a completed scan, from
 	 * which the scan is derived.
 	 */
@@ -152,6 +153,9 @@ public class CachedRelease {
 	/**
 	 * Create a cached release representation.
 	 *
+	 * @param version the release version.
+	 * @param releaseDate the release date, or {@literal null} if unknown.
+	 * @param sha the source-provided content hash, or {@literal null} if unknown.
 	 * @return the corresponding cached release representation.
 	 */
 	public static CachedRelease from(ArtifactVersion version, @Nullable LocalDateTime releaseDate,
@@ -189,8 +193,13 @@ public class CachedRelease {
 	}
 
 	/**
-	 * Return the timestamp at which this version was last scanned for
-	 * vulnerabilities.
+	 * Return the raw persisted vulnerability-scan field.
+	 *
+	 * <p>Values through {@link #MAX_SCAN_ATTEMPTS} are attempt counters. Larger
+	 * values are epoch-millisecond timestamps of successful scans. Use
+	 * {@link #scanState()} when the lifecycle state is required.
+	 *
+	 * @return the attempt counter or successful-scan timestamp.
 	 */
 	public long getLastScanned() {
 		return lastScanned;
@@ -200,7 +209,7 @@ public class CachedRelease {
 	 * Return the {@link ScanState} of this release, derived from
 	 * {@link #lastScanned} by magnitude.
 	 *
-	 * @return the scan state; never {@literal null}.
+	 * @return the scan state.
 	 */
 	@Transient
 	public ScanState scanState() {
@@ -252,8 +261,7 @@ public class CachedRelease {
 	/**
 	 * Return whether there are known vulnerabilities for this version.
 	 *
-	 * @return {@literal true} if there are known vulnerabilities; {@literal false}
-	 * otherwise.
+	 * @return {@code true} if there are known vulnerabilities.
 	 */
 	@Transient
 	public boolean hasVulnerabilities() {
@@ -290,9 +298,9 @@ public class CachedRelease {
 	/**
 	 * Return the {@link Vulnerabilities} derived from the stored scan timestamp and
 	 * vulnerability list.
-	 * <p>A release that was never scanned is absent; a scanned release with no
-	 * vulnerabilities is clean; a scanned release with vulnerabilities is
-	 * vulnerable. The returned instance is memoized after the first derivation.
+	 * <p>Any release without a successful scan is absent. A successful scan with no
+	 * advisories is clean, and one with advisories is vulnerable. The returned
+	 * instance is memoized after the first derivation.
 	 *
 	 * @return the vulnerabilities object.
 	 */
@@ -323,7 +331,7 @@ public class CachedRelease {
 	 * Return an isolated copy safe to serialize while the original may still be
 	 * mutated by a concurrent vulnerability scan.
 	 *
-	 * @return an independent copy of this release; never {@literal null}.
+	 * @return an independent copy of this release.
 	 */
 	CachedRelease snapshot() {
 

@@ -99,8 +99,8 @@ public class GitVersionResolver {
 	 * Resolve the effective {@link ArtifactVersion} for an already-parsed version
 	 * or {@link GitRef} against the given releases.
 	 * <p>A {@link GitRef} is resolved through
-	 * {@link #resolveVersion(String, Iterable)}, falling back to the ref itself; a
-	 * SHA-style version is wrapped as a {@link GitRef}; any other version is
+	 * {@link #resolveVersion(String, Iterable)}, falling back to the ref itself. A
+	 * SHA-style version is wrapped as a {@link GitRef}. Any other version is
 	 * returned unchanged.
 	 *
 	 * @param version the current version or {@link GitRef} to resolve.

@@ -40,8 +40,9 @@ import com.intellij.util.IncorrectOperationException;
  * the browser.
  *
  * <p>Availability is cache-only and version-specific: the intention shows up
- * only when the {@link ProjectMetadataService} facade resolves a release-notes
- * URL for exactly the declared version.
+ * only when the {@link ProjectMetadataService} facade finds a cached repository
+ * tag representing the declared version and the hosting platform can render a
+ * release-notes URL for that tag.
  *
  * @author Mark Paluch
  * @see ReportIssueIntention

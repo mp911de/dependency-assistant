@@ -21,8 +21,11 @@ import com.intellij.psi.SmartPointerManager;
 import com.intellij.psi.SmartPsiElementPointer;
 
 /**
- * Location of a resolved property value, pairing its key and value with the PSI
- * element from which it originates.
+ * Property binding that pairs a key and logical value with its declaration PSI.
+ *
+ * <p>The declaration is tracked through a smart pointer. If the pointer can no
+ * longer resolve, {@link #getValueLiteral()} returns the original element so
+ * callers can observe the invalid state through {@link #isValid()}.
  *
  * @author Mark Paluch
  */
@@ -36,6 +39,13 @@ public class PropertyValue implements Property {
 
 	private final PsiElement originalElement;
 
+	/**
+	 * Create a property binding for the given declaration element.
+	 *
+	 * @param key the property lookup key.
+	 * @param value the logical property value.
+	 * @param element the PSI element that holds the declared value.
+	 */
 	public PropertyValue(String key, String value, PsiElement element) {
 		this.key = key;
 		this.value = value;

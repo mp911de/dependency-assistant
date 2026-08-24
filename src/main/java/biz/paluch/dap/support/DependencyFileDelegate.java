@@ -13,8 +13,6 @@ import com.intellij.psi.PsiFile;
  * Per-file context for inspecting the dependencies declared in a single build
  * file.
  *
- * <p>Bundles the {@link Project} and the target {@link VirtualFile}.
- *
  * <p>The delegate holds no mutable state; the bound file may become invalid
  * over the delegate's lifetime, in which case {@link #collectDependencies}
  * yields an empty result.
@@ -37,7 +35,7 @@ public class DependencyFileDelegate {
 	 *
 	 * @param project the owning project.
 	 * @param file the build file to inspect.
-	 * @return a new delegate instance; guaranteed to be not {@literal null}.
+	 * @return a new delegate bound to the file.
 	 */
 	public static DependencyFileDelegate of(Project project, VirtualFile file) {
 		return new DependencyFileDelegate(project, file);
@@ -59,11 +57,12 @@ public class DependencyFileDelegate {
 	 * empty {@link DependencyCollector} is returned and the function is not
 	 * invoked. Must be called inside a read action.
 	 *
-	 * @param packageSystem
+	 * @param packageSystem the package system for an empty collector when the file
+	 * cannot be resolved.
 	 * @param collectorFunction the format-specific collector applied to the
 	 * resolved {@link PsiFile}.
 	 * @return the collected dependencies, or an empty {@link DependencyCollector}
-	 * when the file cannot be resolved; guaranteed to be not {@literal null}.
+	 * when the file cannot be resolved.
 	 */
 	public DependencyCollector collectDependencies(PackageSystem packageSystem,
 			Function<PsiFile, DependencyCollector> collectorFunction) {

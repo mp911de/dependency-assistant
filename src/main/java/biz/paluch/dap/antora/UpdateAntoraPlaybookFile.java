@@ -34,11 +34,10 @@ import org.jspecify.annotations.Nullable;
 /**
  * PSI updater for Antora playbook {@code ui.bundle.url} declarations.
  *
- * <p>
- * Applies dependency updates by rewriting only the version segment between
- * {@code /releases/download/} and the next path separator. Host, owner,
- * repository, asset path, YAML quoting style, and unrelated content are left
- * untouched.
+ * <p>Rewrites only the version segment between {@code /releases/download/} and
+ * the next path separator. Host, owner, repository, asset path, YAML quote
+ * style, and unrelated content remain unchanged. The caller retains write
+ * action and command ownership as defined by {@link FileDependencyUpdater}.
  *
  * @author Mark Paluch
  */
@@ -50,7 +49,7 @@ class UpdateAntoraPlaybookFile implements FileDependencyUpdater {
 
 	/**
 	 * Create a new {@code UpdateAntoraPlaybookFile}.
-	 * @param project the IntelliJ project that owns the write action.
+	 * @param project the IntelliJ project used to create replacement YAML PSI.
 	 */
 	UpdateAntoraPlaybookFile(Project project) {
 		this.factory = new YAMLElementGenerator(project);
@@ -58,9 +57,9 @@ class UpdateAntoraPlaybookFile implements FileDependencyUpdater {
 
 	/**
 	 * Apply matching dependency updates to the given Antora playbook file.
-	 * <p>
-	 * Only the {@code ui.bundle.url} value's version segment is changed.
-	 * Declarations without a matching update are left as-is.
+	 * <p>Only an update whose artifact identity equals the parsed bundle identity
+	 * and whose target is a {@link GitVersion} changes the {@code ui.bundle.url}.
+	 * Malformed URLs and all other updates leave the declaration unchanged.
 	 * @param psiFile the Antora playbook PSI file.
 	 * @param updates the dependency updates to apply.
 	 */
@@ -77,9 +76,9 @@ class UpdateAntoraPlaybookFile implements FileDependencyUpdater {
 	}
 
 	/**
-	 * Apply a single update at the given Antora playbook scalar.
+	 * Apply a matching Git version update at the given bundle URL scalar.
 	 * @param scalar the {@code ui.bundle.url} scalar containing the URL.
-	 * @param update the update to apply.
+	 * @param update the update to apply if its identity and target type match.
 	 */
 	void applyUpdate(YAMLScalar scalar, DependencyUpdate update) {
 
@@ -97,7 +96,7 @@ class UpdateAntoraPlaybookFile implements FileDependencyUpdater {
 	}
 
 	/**
-	 * Update an Antora playbook {@code ui.bundle.url} scalar with the version
+	 * Update an Antora playbook {@code ui.bundle.url} scalar with the version text
 	 * rendered from the given Git release.
 	 * @param scalar the scalar containing a parseable bundle URL.
 	 * @param newVersion the resolved release version to render.

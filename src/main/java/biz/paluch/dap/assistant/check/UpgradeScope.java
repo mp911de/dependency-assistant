@@ -28,24 +28,32 @@ import com.intellij.psi.PsiFile;
  * The outcome of resolving the build files a single {@link DependencyCheck}
  * runs over.
  *
- * @param entries the in-scope build files; empty when nothing could be
- * resolved.
- * @param reason the reason for resolution results.
+ * <p>The entries list is retained and exposed directly. Callers must not modify
+ * it after construction.
+ *
  * @author Mark Paluch
+ * @param entries the in-scope build files. Empty when nothing could be
+ * resolved.
+ * @param reason how the scope was resolved or why it is empty.
  */
 public record UpgradeScope(List<Entry> entries, Reason reason) implements Sequence<UpgradeScope.Entry> {
 
 	/**
 	 * Create a discovery scope from the given entries, gathered without an explicit
 	 * selection.
+	 *
+	 * @param entries the discovered build files and their contexts.
+	 * @return a scope classified as {@link Reason#DISCOVERY}.
 	 */
 	public static UpgradeScope discover(List<Entry> entries) {
 		return new UpgradeScope(entries, Reason.DISCOVERY);
 	}
 
 	/**
-	 * Create a resolved scope from the given entries, resolved from an explicit
-	 * selection.
+	 * Create a successfully resolved scope from the given entries.
+	 *
+	 * @param entries the resolved build files and their contexts.
+	 * @return a scope classified as {@link Reason#SUCCESS}.
 	 */
 	public static UpgradeScope resolved(List<Entry> entries) {
 		return new UpgradeScope(entries, Reason.SUCCESS);
@@ -53,6 +61,9 @@ public record UpgradeScope(List<Entry> entries, Reason reason) implements Sequen
 
 	/**
 	 * Create an empty scope carrying why nothing was resolved.
+	 *
+	 * @param reason why no build file was resolved.
+	 * @return an empty scope carrying the given reason.
 	 */
 	public static UpgradeScope notFound(Reason reason) {
 		return new UpgradeScope(List.of(), reason);
@@ -83,6 +94,8 @@ public record UpgradeScope(List<Entry> entries, Reason reason) implements Sequen
 
 	/**
 	 * Return the in-scope build files as a stream.
+	 *
+	 * @return a stream over the in-scope entries.
 	 */
 	@Override
 	public Stream<Entry> stream() {
@@ -102,7 +115,7 @@ public record UpgradeScope(List<Entry> entries, Reason reason) implements Sequen
 		DISCOVERY,
 
 		/**
-		 * Upgrade scope resolved from an explicit selection.
+		 * Upgrade scope resolved successfully.
 		 */
 		SUCCESS,
 
@@ -122,7 +135,7 @@ public record UpgradeScope(List<Entry> entries, Reason reason) implements Sequen
 	 * One in-scope build file paired with the {@link ProjectDependencyContext
 	 * context} that operates on it.
 	 *
-	 * @param context the dependency context for the file; always
+	 * @param context the dependency context for the file. The context is always
 	 * {@link ProjectDependencyContext#isAvailable() available}.
 	 * @param buildFile the build file to scan and write back to.
 	 */

@@ -24,8 +24,8 @@ import com.intellij.openapi.util.ScalableIcon;
 import com.intellij.openapi.util.text.HtmlChunk;
 
 /**
- * A presentation icon that carries both its Swing rendering and the reflective
- * path the platform re-resolves for documentation HTML.
+ * Presentation value that carries both a Swing icon and the reflective path the
+ * platform re-resolves for documentation HTML.
  *
  * <p>The two halves cannot be derived from each other: a loaded {@link Icon}
  * does not expose the {@code AllIcons.Nodes.Library} style field path that the
@@ -33,10 +33,8 @@ import com.intellij.openapi.util.text.HtmlChunk;
  * value keeps the registry that declares an icon the single place that also
  * declares its reflective path, so the two cannot drift apart.
  *
- * <p>Implements {@link Icon} by delegating to the wrapped icon, so a
- * {@code ResolvableIcon} can be handed to any Swing surface directly. Callers
- * that downcast to {@link ScalableIcon} (scaling, layering) must use
- * {@link #getIcon()} to reach the underlying icon instead.
+ * <p>Use {@link #getIcon()} for Swing presentation, including operations that
+ * require {@link ScalableIcon}, and {@link #asHtml()} for quick documentation.
  *
  * @author Mark Paluch
  */
@@ -47,11 +45,13 @@ public class ResolvableIcon {
 	private final String reference;
 
 	/**
+	 * Create an icon binding for Swing and quick documentation presentation.
+	 *
 	 * @param icon the Swing icon for components (gutter, combo, lookup, table).
-	 * @param reference the reflective field path (e.g.
+	 * @param reference the reflective field path (for example,
 	 * {@code AllIcons.Nodes.Library} or
-	 * {@code biz.paluch.dap.checker.CheckerIcons.HIGH}) the documentation icon
-	 * resolver re-resolves; never blank.
+	 * {@code biz.paluch.dap.checker.CheckerIcons.HIGH}) resolved by the
+	 * documentation icon renderer.
 	 */
 	public ResolvableIcon(Icon icon, String reference) {
 		this.icon = icon;

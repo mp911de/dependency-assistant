@@ -24,7 +24,7 @@ import biz.paluch.dap.artifact.RemoteUrl;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Recognizes Bitbucket Cloud ({@code bitbucket.org}) only; self-hosted
+ * Recognizes Bitbucket Cloud ({@code bitbucket.org}) only. Self-hosted
  * Bitbucket Server uses different URL shapes and is not supported. Bitbucket is
  * a flat {@code workspace/repo} host, so coordinates are minted from the first
  * two path segments via {@link GitRepositoryMetadata#flat(RemoteUrl)}.
@@ -40,8 +40,8 @@ public class BitbucketPlatform extends PlatformSupport {
 
 	/**
 	 * Bitbucket workspace IDs: alphanumerics, hyphen, and underscore, starting with
-	 * an alphanumeric. Canonically lowercase; case is tolerated because Bitbucket
-	 * redirects.
+	 * an alphanumeric. Workspace IDs are canonically lowercase, but case is
+	 * tolerated because Bitbucket redirects.
 	 */
 	private static final Pattern WORKSPACE = Pattern.compile("[A-Za-z0-9][A-Za-z0-9_-]*");
 

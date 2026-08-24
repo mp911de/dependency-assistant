@@ -34,7 +34,17 @@ import com.intellij.psi.PsiFile;
 import com.intellij.psi.SyntaxTraverser;
 
 /**
- * Applies dependency updates to {@code .mvn/wrapper/maven-wrapper.properties}.
+ * Applies Maven distribution and Maven Wrapper dependency updates to
+ * {@code .mvn/wrapper/maven-wrapper.properties} PSI.
+ *
+ * <p>A matching update replaces both version occurrences in the URL while
+ * preserving the remaining property text and escaping. The corresponding
+ * checksum property is commented out because it no longer describes the updated
+ * artifact.
+ *
+ * <p>Unsupported files, properties, artifact ids, and URL shapes are left
+ * unchanged. Callers must provide the IntelliJ write-action context required
+ * for PSI mutation.
  *
  * @author Mark Paluch
  */
@@ -42,8 +52,8 @@ class UpdateMavenWrapperProperties {
 
 	/**
 	 * Apply a single update at the given wrapper version literal.
-	 * @param versionLiteral the PSI element that owns the URL value; must not be
-	 * {@literal null}.
+	 *
+	 * @param versionLiteral the PSI element that owns the URL value.
 	 * @param update the update to apply.
 	 */
 	public static void applyUpdate(PsiElement versionLiteral, DependencyUpdate update) {
@@ -64,6 +74,7 @@ class UpdateMavenWrapperProperties {
 
 	/**
 	 * Apply updates to the given wrapper PSI file.
+	 *
 	 * @param psiFile the wrapper PSI file.
 	 * @param updates the updates to apply.
 	 */

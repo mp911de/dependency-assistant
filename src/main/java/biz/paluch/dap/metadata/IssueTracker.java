@@ -40,29 +40,39 @@ public interface IssueTracker {
 
 	/**
 	 * Return the issue-tracker entry URL.
+	 *
+	 * @return the tracker entry URL.
 	 */
 	URI getBaseUrl();
 
 	/**
 	 * Return the URL of the open-issues listing, the target for browsing existing
 	 * issues.
+	 *
+	 * @return the open-issues listing URL.
 	 */
 	URI getOpenIssuesUrl();
 
 	/**
 	 * Return the URL for filing a new issue about the given artifact.
+	 *
+	 * <p>Trackers without a dedicated issue-creation page return their entry URL.
+	 *
 	 * @param artifactId the artifact the issue is about.
 	 * @param version the artifact version the issue applies to.
-	 * @return the new-issue page URL; trackers without a dedicated new-issue page.
+	 * @return the issue-creation page or tracker entry URL.
 	 */
 	URI getCreateNewIssueUrl(ArtifactId artifactId, ArtifactVersion version);
 
 	/**
 	 * Create a tracker for a declared issue-tracker URL.
-	 * <p>Declared values arrive from remote project metadata and are not guaranteed
-	 * to be well-formed.
+	 *
+	 * <p>Declared values arrive from remote project metadata. Callers must supply
+	 * an absolute HTTP(S) URI; malformed or unsupported values are rejected.
+	 *
 	 * @param url the declared issue-tracker URL.
-	 * @return the tracker, or {@literal null} if the value is not a parseable URI.
+	 * @return the tracker, or {@literal null} if the value is malformed, has no
+	 * host, or uses a scheme other than HTTP(S).
 	 */
 	static @Nullable IssueTracker parse(String url) {
 		try {

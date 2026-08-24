@@ -60,6 +60,12 @@ public abstract class CachedArtifactSupport implements ArtifactId {
 		return getArtifactId();
 	}
 
+	/**
+	 * Return the persisted package system.
+	 *
+	 * @return the package system, or {@literal null} for a legacy entry written
+	 * before ecosystem tracking.
+	 */
 	public abstract @Nullable PackageSystem getPackageSystem();
 
 	/**
@@ -78,8 +84,9 @@ public abstract class CachedArtifactSupport implements ArtifactId {
 	 * persisted before ecosystem tracking still match.
 	 *
 	 * @param artifactId the artifact to compare with.
-	 * @param packageSystem the ecosystem to compare; may be {@literal null}.
-	 * @return {@literal true} if the entry matches; {@literal false} otherwise.
+	 * @param packageSystem the ecosystem to compare. A {@literal null} value
+	 * matches any ecosystem.
+	 * @return {@code true} if the entry matches.
 	 */
 	public boolean matches(ArtifactId artifactId, @Nullable PackageSystem packageSystem) {
 		PackageSystem ecosystem = getPackageSystem();
@@ -100,6 +107,10 @@ public abstract class CachedArtifactSupport implements ArtifactId {
 
 	/**
 	 * Return the package identity represented by this cache entry.
+	 *
+	 * <p>A legacy entry without a package system is represented as
+	 * {@link PackageSystem#OTHER}.
+	 *
 	 * @return the package identity.
 	 */
 	@Transient

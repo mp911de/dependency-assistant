@@ -27,7 +27,13 @@ import com.intellij.psi.PsiFile;
 import com.intellij.psi.xml.XmlFile;
 
 /**
- * Collects dependency coordinates from Maven POM and extensions build files.
+ * Collects Maven artifact declarations from POM and {@code extensions.xml}
+ * files.
+ *
+ * <p>Resolved inline versions and property versions defined in the inspected
+ * file are registered as usages. Declaration and version sources are preserved,
+ * and BOM imports are enriched with cached or locally available managed
+ * membership.
  *
  * @author Mark Paluch
  */
@@ -54,7 +60,13 @@ class MavenDependencyCollector {
 	}
 
 	/**
-	 * Collects artifact declarations from {@code buildFile}.
+	 * Collect artifact declarations from the given Maven build file into a new
+	 * collector.
+	 *
+	 * @param packageSystem the package system assigned to collected declarations.
+	 * @param buildFile the POM or {@code extensions.xml} file to inspect.
+	 * @param propertyResolver the properties used to resolve declaration versions.
+	 * @return the populated collector.
 	 */
 	public DependencyCollector collect(PackageSystem packageSystem, PsiFile buildFile,
 			MavenPomProperties propertyResolver) {
@@ -65,7 +77,12 @@ class MavenDependencyCollector {
 	}
 
 	/**
-	 * Collect declarations from the given Maven PSI file into {@code collector}.
+	 * Collect declarations from the given Maven PSI file into an existing
+	 * collector.
+	 *
+	 * @param psiFile the POM or {@code extensions.xml} file to inspect.
+	 * @param propertyResolver the properties used to resolve declaration versions.
+	 * @param collector the collector receiving declarations and usages.
 	 */
 	protected void doCollect(PsiFile psiFile, MavenPomProperties propertyResolver, DependencyCollector collector) {
 

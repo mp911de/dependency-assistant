@@ -22,7 +22,8 @@ import com.intellij.psi.PsiFile;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Source file used to resolve branch-specific dependency rules.
+ * File anchor used to locate the VCS repository for branch-specific rule
+ * resolution.
  *
  * @author Mark Paluch
  */
@@ -31,12 +32,15 @@ public interface BranchSource {
 	/**
 	 * Return the file used for branch lookup, or {@literal null} when no branch
 	 * context is available.
+	 *
+	 * @return the branch lookup file, or {@literal null} when unavailable.
 	 */
 	@Nullable
 	VirtualFile getFile();
 
 	/**
 	 * Create a branch source from the given virtual file.
+	 *
 	 * @param file the file used for branch lookup, can be {@literal null}.
 	 * @return a branch source for the file.
 	 */
@@ -46,6 +50,7 @@ public interface BranchSource {
 
 	/**
 	 * Create a branch source from the containing file of the given element.
+	 *
 	 * @param element the PSI element used for branch lookup.
 	 * @return a branch source for the element's containing file.
 	 */

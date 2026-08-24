@@ -45,8 +45,8 @@ import org.toml.lang.psi.TomlLiteral;
 /**
  * Gradle implementation of {@link ArtifactReferenceResolver}.
  *
- * <p>Supports version lookups in Groovy and Kotlin build scripts,
- * {@code gradle.properties}, and {@code libs.versions.toml}. Version catalog
+ * <p>Supports version lookups in Groovy and Kotlin Gradle scripts,
+ * {@code gradle.properties}, and TOML version catalogs. Version catalog
  * accessors are resolved back to the catalog entry that owns the version.
  *
  * @author Mark Paluch

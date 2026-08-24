@@ -34,7 +34,8 @@ interface UpgradePlanListener extends EventListener {
 	Topic<UpgradePlanListener> TOPIC = new Topic<>(UpgradePlanListener.class, Topic.BroadcastDirection.NONE);
 
 	/**
-	 * Notified after a reversible structural plan transition.
+	 * Notified when the live plan must be rebuilt from persisted state, after a
+	 * structural transition or an explicit reload request.
 	 */
 	default void planChanged() {
 	}

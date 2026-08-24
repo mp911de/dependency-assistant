@@ -30,8 +30,8 @@ import com.intellij.openapi.vfs.VirtualFile;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Resolves the managed member map of a Bill of Materials, consulting the cache
- * before locating and parsing the BOM POM from a local repository.
+ * Resolves the managed members of a Maven Bill of Materials (BOM), consulting
+ * cached membership before locating and parsing the BOM POM.
  *
  * @author Mark Paluch
  * @see PomLocator
@@ -43,13 +43,12 @@ public class BomUtil {
 	}
 
 	/**
-	 * Resolve the managed members of the given declaration and register them with
-	 * the collector, provided the declaration is a Bill of Materials import
-	 * carrying a fully resolved version.
-	 * <p>A BOM whose contents cannot be resolved is registered without members, so
-	 * the artifact is still recorded as a BOM. Declarations whose version literal
-	 * retains an unresolved property reference are skipped: their coordinates
-	 * cannot be located and would only produce a phantom artifact entry.
+	 * Resolve and register the managed members of the given BOM import.
+	 *
+	 * <p>Non-BOM declarations, unversioned declarations, and versions retaining a
+	 * property reference are ignored. If neither cached membership nor a local POM
+	 * is available, no BOM is registered. A located POM with no resolvable managed
+	 * entries produces a BOM with empty membership.
 	 *
 	 * @param cache the cache holding previously resolved memberships.
 	 * @param project the project providing repository configuration.
@@ -75,17 +74,17 @@ public class BomUtil {
 	}
 
 	/**
-	 * Resolve the Bill of Materials for the given BOM version, preferring cached
-	 * membership over locating and parsing the BOM POM.
-	 * <p>An unresolvable BOM yields {@literal null} rather than a member-less Bill
-	 * of Materials, so callers can tell an empty membership apart from a BOM that
-	 * could not be located.
+	 * Resolve the Bill of Materials for the given BOM version.
+	 *
+	 * <p>Cached membership takes precedence. Otherwise, the BOM POM is located
+	 * through the registered {@link PomLocator} extensions and parsed. A located
+	 * POM with no resolvable managed entries produces a BOM with empty membership.
 	 *
 	 * @param cache the cache holding previously resolved memberships.
 	 * @param project the project providing repository configuration.
 	 * @param bom the BOM identity and version to resolve members for.
-	 * @return the resolved Bill of Materials, or {@literal null} when the BOM
-	 * cannot be located or parsed.
+	 * @return the resolved Bill of Materials, or {@literal null} when no locator
+	 * finds its POM.
 	 */
 	public static @Nullable BillOfMaterials resolveBillOfMaterials(Cache cache, Project project,
 			VersionedPackage bom) {

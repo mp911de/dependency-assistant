@@ -37,8 +37,8 @@ import com.intellij.psi.PsiFile;
  * <p>Reports its unavailable state without failing: {@link #isAvailable()} and
  * {@link #isVersionElement(PsiElement)} return {@literal false} and
  * {@link #getReleaseSources()} returns an empty list. Operations that require a
- * live context (resolving the assistant, scanning, applying updates) throw
- * {@link IllegalStateException}.
+ * context metadata or behavior throw {@link IllegalStateException}.
+ *
  * @author Mark Paluch
  */
 enum AbsentDependencyContext implements ProjectDependencyContext {

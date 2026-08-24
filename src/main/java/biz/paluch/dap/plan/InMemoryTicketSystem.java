@@ -21,6 +21,9 @@ import biz.paluch.dap.ticket.TicketRepository;
 import biz.paluch.dap.ticket.TicketSystem;
 
 /**
+ * Ticket-system facade exposing the session-local
+ * {@link InMemoryTicketRepository} for offline development.
+ *
  * @author Mark Paluch
  */
 class InMemoryTicketSystem implements TicketSystem {

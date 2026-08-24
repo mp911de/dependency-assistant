@@ -22,7 +22,7 @@ import java.time.LocalDateTime;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Release descriptor attached to tickets in a repository.
+ * Release bucket attached to tickets in a repository.
  *
  * <p>For GitHub and GitLab this maps to a milestone. Systems may expose a
  * release or fix-version concept through the same interface. Instances are
@@ -71,8 +71,9 @@ public interface Milestone {
 	LocalDateTime getReleaseDate();
 
 	/**
-	 * Return the day of the {@link #getReleaseDate() release date}, the resolution
-	 * milestone scheduling is presented and ordered at.
+	 * Return the calendar day of the {@link #getReleaseDate() release date} used to
+	 * present and order milestone schedules.
+	 *
 	 * @return the release day, or {@literal null} if the milestone is unscheduled.
 	 */
 	@Nullable

@@ -30,10 +30,14 @@ import biz.paluch.dap.util.StringUtils;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.util.text.HtmlBuilder;
 import com.intellij.openapi.util.text.HtmlChunk;
+import com.intellij.openapi.util.text.StringUtil;
 
 /**
- * Outcome of testing a {@link DependencyRule} against a concrete artifact
- * version, paired with the presentation an upgrade view needs to surface it.
+ * Evaluated Dependency Rule for one concrete artifact version.
+ *
+ * <p>The outcome is absent, satisfied, or violated. The evaluator retains the
+ * governing {@link DependencyRule} so callers can test candidate versions and
+ * render the same governance state without resolving the rule again.
  *
  * @author Mark Paluch
  */
@@ -81,6 +85,9 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 	/**
 	 * Evaluate the governing rule of the given candidate against its current
 	 * version.
+	 *
+	 * @param rule the governing dependency rule.
+	 * @param version the version to evaluate.
 	 * @return the evaluation outcome for the candidate's current version.
 	 */
 	public static DependencyRuleEvaluator create(DependencyRule rule, ArtifactVersion version) {
@@ -88,8 +95,7 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 	}
 
 	/**
-	 * Return the shared sentinel for an artifact that no rule governs while the
-	 * project still defines rules.
+	 * Return the shared sentinel for an unavailable or ungoverned evaluation.
 	 *
 	 * @return a sentinel that reports {@link #isPresent() not present} with a
 	 * neutral icon and an explanatory tooltip.
@@ -103,6 +109,11 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 		return rule.test(artifactVersion);
 	}
 
+	/**
+	 * Return the governing rule retained by this evaluation.
+	 *
+	 * @return the governing dependency rule.
+	 */
 	public DependencyRule getRule() {
 		return rule;
 	}
@@ -110,7 +121,8 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 	/**
 	 * Return the gutter icon for this outcome.
 	 *
-	 * @return the icon for a passed rule, otherwise the warning icon.
+	 * @return the compliant or lock icon for a satisfied rule, the warning icon for
+	 * a violated rule, or the neutral icon for the absent evaluation.
 	 */
 	public Icon getIcon() {
 		if (isPassed()) {
@@ -155,9 +167,11 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 	 * Render the tool tip describing the rule outcome and whether semantic
 	 * upgrading is enabled.
 	 *
-	 * <p>Dependency name, version, and generation range originate from build files
-	 * and rule definitions and are escaped; the returned chunk is safe to embed in
-	 * HTML tooltips.
+	 * <p>Version and generation text are escaped. {@code displayName} is embedded
+	 * as supplied and must already be safe for HTML.
+	 *
+	 * @param displayName the HTML-safe dependency display name.
+	 * @return the tooltip fragment, possibly empty when no detail applies.
 	 */
 	public HtmlChunk getToolTipText(String displayName) {
 
@@ -170,12 +184,12 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 
 			if (result == EvaluationState.NOT_PASSED) {
 				tooltip.appendRaw(MessageBundle.message("inspection.dependency-rule.problem",
-						displayName, version, generations));
+						StringUtil.escapeXmlEntities(displayName), version, generations));
 			}
 
 			if (isPassed()) {
 				tooltip.appendRaw(MessageBundle.message("inspection.dependency-rule.description",
-						displayName, generations));
+						StringUtil.escapeXmlEntities(displayName), generations));
 			}
 		}
 
@@ -190,6 +204,13 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 		return tooltip.toFragment();
 	}
 
+	/**
+	 * Return the localized accessible description derived from the rule outcome,
+	 * enabled non-remediation strategies, or semver governance mode.
+	 *
+	 * @return the derived accessible description, or an empty string when no
+	 * description applies.
+	 */
 	public String getAccessibleName() {
 
 		if (isLocked()) {
@@ -211,6 +232,12 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 		return "";
 	}
 
+	/**
+	 * Return whether constrained Generations govern the evaluated dependency.
+	 *
+	 * @return {@literal true} when the dependency is locked to at least one
+	 * generation; {@literal false} when generations are unconstrained.
+	 */
 	public boolean isLocked() {
 		return rule.getGenerations().isConstrained();
 	}

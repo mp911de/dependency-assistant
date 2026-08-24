@@ -19,14 +19,17 @@ package biz.paluch.dap.maven.wrapper;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.assistant.completion.PropertyContributorSupport;
 import biz.paluch.dap.state.Cache;
-import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionResultSet;
 import com.intellij.lang.properties.psi.Property;
 import com.intellij.psi.PsiFileFactory;
 
 /**
- * {@link CompletionContributor} for Maven {@link WrapperProperty wrapper
- * properties}.
+ * Completion provider for inserting complete Maven {@link WrapperProperty
+ * wrapper property} lines.
+ *
+ * <p>Each completion uses the latest cached non-preview release. When the cache
+ * has none, it uses the property's built-in fallback version. Generated URLs
+ * use the canonical Maven Central location and default archive extension.
  *
  * @author Mark Paluch
  */

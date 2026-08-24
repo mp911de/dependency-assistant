@@ -47,13 +47,14 @@ import org.jetbrains.concurrency.Promises;
  * {@link DependencyAssistant} run.
  *
  * <p>The indexer enumerates anchor files through the assistant, derives a
- * {@link biz.paluch.dap.support.ProjectBuildContext} per anchor on demand, runs
- * phase-one collection for available anchors, then applies phase-two completion
- * via {@link IntrospectedDependencies}, and finally invalidates and stores the
- * resulting collectors per project in the
+ * {@link ProjectDependencyContext} per anchor on demand, runs phase-one
+ * collection for available anchors, then applies phase-two completion via
+ * {@link IntrospectedDependencies}, and finally invalidates and stores the
+ * resulting collectors per project identity in the
  * {@link biz.paluch.dap.state.ProjectState}. Read-action wrapping, progress
  * reporting, availability guards, and cancellation are handled here so
- * build-tool integrations contribute only the source component.
+ * build-tool integrations contribute only ecosystem-specific enumeration and
+ * collection behavior.
  *
  * @author Mark Paluch
  * @see DependencyAssistant
@@ -101,9 +102,12 @@ public class ProjectStateIndexer {
 	}
 
 	/**
-	 * Composed action running the collect-complete-store flow for all registered
-	 * assistants and restarting highlighting so state derived from the import model
-	 * surfaces in the editor.
+	 * Composed action running the collect-complete-store flow for selected
+	 * registered assistants and restarting highlighting so state derived from the
+	 * import model surfaces in the editor.
+	 * @param project the project whose state should be refreshed.
+	 * @param indicator the progress and cancellation indicator for the refresh.
+	 * @param filter the predicate selecting integrations to refresh.
 	 */
 	public static void refreshAfterImport(Project project, ProgressIndicator indicator,
 			Predicate<DependencyAssistant> filter) {
@@ -145,8 +149,7 @@ public class ProjectStateIndexer {
 
 	/**
 	 * Re-run the collect-complete-store flow for the given assistant after a
-	 * build-system import and restart highlighting so state derived from the import
-	 * model surfaces without plugin-side scheduling.
+	 * build-system import.
 	 * <p>The re-index runs as a non-blocking read action in smart mode, coalesced
 	 * per assistant so bursts of import events collapse into one pass.
 	 *
@@ -280,6 +283,15 @@ public class ProjectStateIndexer {
 		return active;
 	}
 
+	/**
+	 * Invoke the given action for every anchor whose file-scoped context is
+	 * available.
+	 * <p>This method owns enumeration and context creation. It does not complete or
+	 * store dependency state; work performed by the callback is caller-defined.
+	 *
+	 * @param assistant the assistant whose anchors should be enumerated.
+	 * @param action the callback for each available anchor and context.
+	 */
 	public void forEachAvailableEntry(DependencyAssistant assistant,
 			BiConsumer<PsiFile, ProjectDependencyContext> action) {
 

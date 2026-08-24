@@ -21,7 +21,7 @@ import com.intellij.openapi.project.Project;
 import org.jspecify.annotations.Nullable;
 
 /**
- * SPI for contributing a ticket system implementation.
+ * SPI for binding IntelliJ projects to external ticket systems.
  *
  * <p>Providers are stateless: the platform may share a single instance across
  * projects and threads.
@@ -45,12 +45,16 @@ public interface TicketSystemProvider {
 	 * registered providers in order and creating the first that supports the
 	 * project.
 	 *
-	 * <p>Provider resolution may access credentials and block. The returned
-	 * system's repository operations may also block and belong on background work.
+	 * <p>Provider resolution may access credentials and block. A selected
+	 * provider's creation failure is propagated; later providers are not consulted.
+	 * The returned system's repository operations may also block and belong on
+	 * background work.
 	 *
 	 * @param project the project to resolve against.
 	 * @return the bound ticket system, or {@literal null} when no provider supports
 	 * the project.
+	 * @throws IllegalStateException if the selected provider cannot create its
+	 * ticket-system binding.
 	 */
 	static @Nullable TicketSystem find(Project project) {
 
@@ -67,7 +71,8 @@ public interface TicketSystemProvider {
 	 * Determine whether this provider can create a usable ticket system for the
 	 * given project.
 	 *
-	 * <p>This method may access credentials and block.
+	 * <p>Returning {@literal true} selects this provider without consulting later
+	 * providers. This method may access credentials and block.
 	 *
 	 * @param project the project to probe.
 	 * @return {@literal true} if {@link #create(Project)} may be called;

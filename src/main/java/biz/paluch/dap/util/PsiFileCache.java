@@ -37,8 +37,13 @@ import com.intellij.psi.util.PsiModificationTracker;
  * file. {@link #withProjectRoot(PsiFile, Function, ModificationTracker...)} is
  * invalidated by any project PSI edit or project-root change.
  *
- * <p>Mainly for internal use when parsed or derived file content is requested
- * repeatedly. Each provider class identifies one cached computation per file.
+ * <p>Each provider class identifies one cached computation per file. The first
+ * provider instance for that class and file is retained for recomputation.
+ * later instances of the same class do not replace it. Providers must therefore
+ * derive current state from the supplied file and declared dependencies instead
+ * of capturing request-specific or mutable project context. Use distinct
+ * provider classes for computations with different values or invalidation
+ * policies.
  *
  * @author Mark Paluch
  * @see CachedValuesManager
@@ -51,7 +56,8 @@ public abstract class PsiFileCache {
 	 * @param <F> the PSI file type.
 	 * @param <T> the value type.
 	 * @param file the file that owns and invalidates the cached value.
-	 * @param provider the computation based on {@code file}.
+	 * @param provider the file-derived computation. Its class identifies the cache
+	 * entry.
 	 * @return the value shared for the provider and file until that file changes.
 	 */
 	public static <F extends PsiFile, T> T get(F file,
@@ -69,9 +75,10 @@ public abstract class PsiFileCache {
 	 * @param <T> the value type.
 	 * @param file the file that owns the cached value.
 	 * @param provider the computation based on the current file and project model.
+	 * Its class identifies the cache entry.
 	 * @param additionalDependencies additional project-model modification sources.
 	 * @return the value shared for the provider and file while project PSI and
-	 * roots and the additional dependencies remain unchanged.
+	 * roots, and the additional dependencies remain unchanged.
 	 */
 	public static <F extends PsiFile, T> T withProjectRoot(F file,
 			Function<? super F, ? extends T> provider, ModificationTracker... additionalDependencies) {

@@ -35,14 +35,16 @@ import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
 
 /**
- * {@link ArtifactReferenceResolver} implementation for NPM {@code package.json}
- * dependency entries.
+ * NPM {@link ArtifactReferenceResolver} for dependency values in
+ * {@code package.json}.
  *
- * <p>Resolves the {@link JsonStringLiteral} value beneath
- * {@code dependencies}/{@code devDependencies} into an
- * {@link ArtifactReference} by classifying the value through
- * {@link NpmPackageParser}. {@code Prefix} entries report a defined version so
- * suggestions can still be displayed even though no update is ever applied.
+ * <p>A dependency {@link JsonStringLiteral} produces an
+ * {@link ArtifactReference} with its declared package coordinate. Git
+ * declarations retain that coordinate while routing release lookup through
+ * their repository. Prefix ranges contribute a concrete baseline for
+ * suggestions but remain non-updatable by {@link UpdatePackageJsonFile}. When
+ * the literal does not carry a parseable current version, collected project
+ * state provides the fallback.
  *
  * @author Mark Paluch
  */

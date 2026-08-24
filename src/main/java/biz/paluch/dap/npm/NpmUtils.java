@@ -27,14 +27,12 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 
 /**
- * Utilities for identifying NPM {@code package.json} files.
+ * Identifies NPM {@code package.json} files and renders package coordinates.
  *
- * <p>
- * Detection requires the file to be a JSON file named {@code package.json}
- * whose root object contains a {@code dependencies} or {@code devDependencies}
- * property whose value is a JSON object. Files without those keys, with
- * malformed JSON, or whose value is non-object are silently skipped so that
- * unrelated JSON content (settings, schemas) never produces highlights.
+ * <p>PSI detection requires a JSON file named {@code package.json} whose root
+ * object contains a {@code dependencies} or {@code devDependencies} property
+ * whose value is a JSON object. Files without such an object are outside the
+ * integration.
  *
  * @author Mark Paluch
  */
@@ -51,7 +49,10 @@ class NpmUtils {
 	}
 
 	/**
-	 * Render ArtifactId as string.
+	 * Render an artifact coordinate as an NPM package name.
+	 *
+	 * @param artifactId the normalized package coordinate.
+	 * @return the unscoped name or {@code @scope/name} representation.
 	 */
 	static String toString(ArtifactId artifactId) {
 		if (artifactId.groupId().equals(artifactId.artifactId())) {
@@ -63,6 +64,7 @@ class NpmUtils {
 	/**
 	 * Return whether the given file is a {@code package.json} that the integration
 	 * should manage.
+	 *
 	 * @param file the PSI file to test.
 	 * @return {@literal true} when the file qualifies.
 	 */
@@ -77,9 +79,13 @@ class NpmUtils {
 
 	/**
 	 * Return whether the given virtual file is named {@code package.json}.
-	 * <p>
-	 * This is a name check only; the IDE caller still needs to inspect the PSI
+	 *
+	 * <p>This is a name check only. The IDE caller still needs to inspect the PSI
 	 * to verify the document carries dependency keys.
+	 *
+	 * @param file the virtual file to test.
+	 * @return {@literal true} when the file has the NPM package descriptor name;
+	 * {@literal false} otherwise.
 	 */
 	static boolean isPackageJson(VirtualFile file) {
 		return PACKAGE_JSON.equals(file.getName());

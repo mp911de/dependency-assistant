@@ -38,6 +38,7 @@ public interface DependencyRuleService {
 
 	/**
 	 * Return the rule service for the given project.
+	 *
 	 * @param project the project.
 	 * @return the project rule service.
 	 */

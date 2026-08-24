@@ -23,20 +23,24 @@ import org.jspecify.annotations.Nullable;
 /**
  * Persistent project metadata captured for one artifact.
  *
+ * <p>Every descriptive field is optional. An instance with no descriptive
+ * values is a nothing-found marker whose retrieval time still participates in
+ * metadata refresh back-off.
+ *
  * @author Mark Paluch
  */
 @Tag("projectMetadata")
 public class CachedMetadata {
 
 	/**
-	 * The human-readable project name declared by the artifact's own POM
-	 * ({@code project/name}), or {@literal null} when no name was declared.
+	 * Human-readable project name, or {@literal null} when none was reported by the
+	 * metadata source.
 	 */
 	private @Nullable @Attribute String projectName;
 
 	/**
-	 * The human-readable project name declared by the artifact's own POM
-	 * ({@code project/name}), or {@literal null} when no name was declared.
+	 * Human-readable project description, or {@literal null} when none was reported
+	 * by the metadata source.
 	 */
 	private @Nullable @Attribute String projectDescription;
 
@@ -58,6 +62,12 @@ public class CachedMetadata {
 
 	/**
 	 * Create a metadata entry from an inspection result.
+	 *
+	 * @param repositoryUrl the source repository URL, or {@literal null}.
+	 * @param issueTrackerUrl the issue tracker URL, or {@literal null}.
+	 * @param projectName the project name, or {@literal null}.
+	 * @param projectDescription the project description, or {@literal null}.
+	 * @return the unstamped metadata entry.
 	 */
 	public static CachedMetadata of(@Nullable String repositoryUrl, @Nullable String issueTrackerUrl,
 			@Nullable String projectName,
@@ -88,6 +98,12 @@ public class CachedMetadata {
 		return issueTrackerUrl;
 	}
 
+	/**
+	 * Return when metadata inspection completed.
+	 *
+	 * @return the epoch-millisecond retrieval timestamp, or a small legacy retry
+	 * counter for a nothing-found marker.
+	 */
 	public long getRetrievedAt() {
 		return retrievedAt;
 	}

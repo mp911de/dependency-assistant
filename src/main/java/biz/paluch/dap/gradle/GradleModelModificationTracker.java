@@ -21,7 +21,11 @@ import com.intellij.openapi.util.NotNullLazyKey;
 import com.intellij.openapi.util.SimpleModificationTracker;
 
 /**
- * Project-scoped modification source for imported Gradle model changes.
+ * Project-scoped modification source advanced after a linked Gradle model is
+ * imported.
+ *
+ * <p>Gradle-model-backed caches use this tracker in addition to PSI and project
+ * roots so a sync can invalidate them without requiring a file edit.
  *
  * @author Mark Paluch
  */

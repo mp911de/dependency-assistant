@@ -43,20 +43,21 @@ import org.jspecify.annotations.Nullable;
  * {@link Platform} for GitHub ({@code github.com}) and, hint-aided, GitHub
  * Enterprise hosts.
  *
+ * <p>Repository detection requires valid GitHub owner and repository names.
+ * Enterprise hosts are accepted only when the caller supplies a GitHub hint.
+ * Detected repositories provide browsable issue and release URLs and use the
+ * project's GitHub accounts for tag access when available.
+ *
  * @author Mark Paluch
  */
 public class GitHubPlatform implements Platform {
 
-	/**
-	 * GitHub owner names: alphanumerics with single inner hyphens, at most 39
-	 * characters.
-	 */
+	// GitHub owner names: alphanumerics with single inner hyphens, at most 39
+	// characters.
 	private static final Pattern OWNER = Pattern.compile("[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}");
 
-	/**
-	 * GitHub repository names: alphanumerics, dot, hyphen, and underscore, at most
-	 * 100 characters; {@code .} and {@code ..} are reserved.
-	 */
+	// GitHub repository names permit dot, hyphen, and underscore, but reserve dot
+	// and double dot.
 	private static final Pattern REPOSITORY = Pattern.compile("(?!\\.\\.?$)[A-Za-z0-9._-]{1,100}");
 
 	@Override

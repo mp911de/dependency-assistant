@@ -24,14 +24,24 @@ import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.state.ProjectId;
 
 /**
- * Wrapper for {@link ProjectBuildContext} that delegates all methods to a
- * {@link ProjectBuildContext delegate}.
+ * Base wrapper that delegates the complete {@link ProjectBuildContext}
+ * contract.
+ *
+ * <p>Integration-specific operational contexts extend this type to add
+ * scanning, lookup, or update behavior without copying project metadata
+ * delegation.
+ *
  * @author Mark Paluch
  */
 public class ProjectBuildContextWrapper implements ProjectBuildContext {
 
 	private final ProjectBuildContext delegate;
 
+	/**
+	 * Create a wrapper for the given build context.
+	 *
+	 * @param delegate the context receiving all delegated calls.
+	 */
 	public ProjectBuildContextWrapper(ProjectBuildContext delegate) {
 		this.delegate = delegate;
 	}

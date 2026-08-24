@@ -35,7 +35,8 @@ import com.intellij.openapi.vcs.VcsException;
 /**
  * Apply-and-commit transaction that creates one commit per changed plan item.
  *
- * <p>Items are applied in plan order, ticketed ones first.
+ * <p>Ticketed items are applied before unticketed items. Plan Order is
+ * preserved within each partition.
  *
  * @author Mark Paluch
  */

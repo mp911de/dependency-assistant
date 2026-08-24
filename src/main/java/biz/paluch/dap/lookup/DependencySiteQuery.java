@@ -27,18 +27,16 @@ import biz.paluch.dap.artifact.VersionSource;
 import org.springframework.util.ObjectUtils;
 
 /**
- * What a Dependency Site Find is centered on: the version backing a dependency.
+ * Immutable criteria for a Dependency Site Find.
  *
- * <p>A query names the {@link ArtifactId artifacts} whose declarations are of
- * interest, and the bare version-property names backing their version. The
- * version-property names drive discovery of definition and version-usage sites
- * (including sites that belong to other artifacts sharing the property); the
- * artifact ids drive discovery of inline definitions and accessor usages. A
- * query with no version properties is inline: there is no property to follow,
- * so the find reduces to the artifacts' own declaration sites.
+ * <p>Artifact coordinates identify declaration sites and artifact-addressable
+ * usages, including inline definitions and version-catalog accessors. Bare
+ * version-property names identify their definition and usage sites, including
+ * sites for other artifacts sharing the property. A query may contain either or
+ * both kinds of criteria.
  *
- * <p>Instances are immutable. Build them through {@link #create(Consumer)} with
- * a builder-configuring lambda.
+ * <p>Artifact and property sets preserve insertion order and are exposed as
+ * unmodifiable snapshots. Build instances through {@link #create(Consumer)}.
  *
  * @author Mark Paluch
  * @see ArtifactReferenceResolver#search(DependencySiteQuery)
@@ -70,8 +68,7 @@ public class DependencySiteQuery {
 	/**
 	 * Create a query centered on a single version property.
 	 *
-	 * @param propertyName the bare version-property name; must not be
-	 * {@literal null}.
+	 * @param propertyName the bare version-property name.
 	 * @return a query with no artifacts and the given property.
 	 */
 	public static DependencySiteQuery ofProperty(String propertyName) {
@@ -79,8 +76,8 @@ public class DependencySiteQuery {
 	}
 
 	/**
-	 * Create an inline query centered on a single artifact, with no version
-	 * property.
+	 * Create a query centered on a single artifact, with no version-property
+	 * criteria.
 	 *
 	 * @param groupId the artifact group Id.
 	 * @param artifactId the artifact Id.
@@ -95,8 +92,7 @@ public class DependencySiteQuery {
 	 * properties in encounter order.
 	 *
 	 * @param queries the queries to combine.
-	 * @return a query covering every artifact and version property of the inputs;
-	 * never {@literal null}.
+	 * @return a query covering every artifact and version property of the inputs.
 	 */
 	public static DependencySiteQuery union(Iterable<DependencySiteQuery> queries) {
 		return create(builder -> {
@@ -109,8 +105,7 @@ public class DependencySiteQuery {
 	/**
 	 * Return the artifact coordinates of interest.
 	 *
-	 * @return the artifacts in encounter order; never {@literal null}, may be
-	 * empty.
+	 * @return the unmodifiable artifacts in encounter order, possibly empty.
 	 */
 	public Set<ArtifactId> artifacts() {
 		return artifacts;
@@ -119,8 +114,7 @@ public class DependencySiteQuery {
 	/**
 	 * Return the bare version-property names backing the version.
 	 *
-	 * @return the property names in encounter order; never {@literal null}, empty
-	 * for an inline query.
+	 * @return the unmodifiable property names in encounter order, possibly empty.
 	 */
 	public Set<String> versionProperties() {
 		return versionProperties;
@@ -128,8 +122,9 @@ public class DependencySiteQuery {
 
 	/**
 	 * Return whether the given property is a version property of interest.
+	 *
 	 * @param property the property to check.
-	 * @return
+	 * @return {@code true} if the query contains the property's bare name.
 	 */
 	public boolean matches(VersionSource.VersionProperty property) {
 		return versionProperties().contains(property.getProperty());
@@ -214,7 +209,7 @@ public class DependencySiteQuery {
 		}
 
 		/**
-		 * Build a new immutable {@link DependencySiteQuery}.
+		 * Build a new immutable {@link DependencySiteQuery} snapshot.
 		 *
 		 * @return the configured query.
 		 */

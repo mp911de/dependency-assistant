@@ -25,14 +25,13 @@ import com.intellij.openapi.project.Project;
 import com.intellij.util.concurrency.annotations.RequiresBackgroundThread;
 
 /**
- * Strategy for capturing project metadata (source repository and issue tracker
- * URLs) of an artifact from locally available build metadata.
+ * Strategy for capturing project metadata, such as its display name, source
+ * repository, and issue tracker, from locally available build metadata.
  *
  * <p>Implementations inspect ecosystem-specific stores such as the local Maven
- * repository and persist their result themselves, including a nothing-found
- * marker so unsuccessful inspections are not retried on every pass. Inspection
- * may touch the filesystem, so callers must invoke inspectors from a background
- * thread; staleness gating is the caller's responsibility.
+ * repository and return metadata or a nothing-found marker. The caller owns
+ * staleness gating and persistence. Inspection may touch the filesystem, so
+ * callers must invoke inspectors from a background thread.
  *
  * @author Mark Paluch
  */
@@ -49,20 +48,20 @@ public interface ProjectMetadataInspector {
 	 * ecosystem.
 	 *
 	 * @param packageSystem the ecosystem the artifact belongs to.
-	 * @return {@literal true} if {@link #inspect} understands the ecosystem;
-	 * {@literal false} otherwise.
+	 * @return {@code true} if {@link #inspect} understands the ecosystem.
 	 */
 	boolean supports(PackageSystem packageSystem);
 
 	/**
-	 * Inspect the artifact's locally available build metadata and store the
-	 * captured project metadata.
+	 * Inspect the artifact's locally available build metadata.
 	 *
-	 * @param project the project providing repository configuration and the
-	 * metadata store.
+	 * @param project the project providing repository configuration and local build
+	 * models.
 	 * @param artifactId the artifact to inspect.
 	 * @param version the currently used version.
 	 * @param indicator the progress indicator.
+	 * @return the captured metadata, including an empty nothing-found marker when
+	 * inspection completed without usable metadata.
 	 */
 	@RequiresBackgroundThread
 	CachedMetadata inspect(Project project, ArtifactId artifactId, ArtifactVersion version,

@@ -73,10 +73,11 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 	private final boolean candidate;
 
 	/**
-	 * Create a resolver for the given project state and build context.
-	 * @param project
-	 * @param pomFile
-	 * @param projectContext
+	 * Create a resolver for a POM and its current imported Maven project context.
+	 *
+	 * @param project the IntelliJ project owning the POM.
+	 * @param pomFile the POM to resolve references in.
+	 * @param projectContext the Maven model and property context for the POM.
 	 */
 	MavenArtifactReferenceResolver(Project project, XmlFile pomFile,
 			MavenProjectContext projectContext) {
@@ -175,8 +176,8 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 	/**
 	 * Resolution is anchored to the {@link XmlText} value of a version or property
 	 * tag. Line markers and highlighting fire on every element of a tag (the angle
-	 * brackets, the tag name, the value text, and the surrounding text node);
-	 * pinning to the single text node keeps the gutter from duplicating across
+	 * brackets, the tag name, the value text, and the surrounding text node).
+	 * Pinning to the single text node keeps the gutter from duplicating across
 	 * them. Completion and documentation resolve against this same text node.
 	 */
 	private boolean isResolvableElement(PsiElement element) {

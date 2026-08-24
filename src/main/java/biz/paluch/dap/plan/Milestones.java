@@ -26,7 +26,13 @@ import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Value object for milestones.
+ * Ticket milestone catalog with persisted-selection rebinding and default
+ * selection by the project's version line.
+ *
+ * <p>An exact, case-sensitive title match preserves a persisted selection. When
+ * none exists, the branch supplies the first readable major-minor line and the
+ * project version is the fallback. The default is the first open matching
+ * milestone under {@link MilestoneComparator}.
  *
  * @author Mark Paluch
  */

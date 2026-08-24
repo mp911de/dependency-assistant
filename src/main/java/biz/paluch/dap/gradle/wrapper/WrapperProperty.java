@@ -29,14 +29,21 @@ import com.intellij.lang.properties.IProperty;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Supported Gradle wrapper URL property.
+ * Version-bearing Gradle Wrapper property and its checksum companion.
+ *
+ * <p>The only supported property is {@code distributionUrl}, represented as the
+ * synthetic {@code org.gradle:gradle} artifact. Canonical file names accept the
+ * {@code bin} and {@code all} flavors, while default URLs use Gradle Services
+ * and {@code bin}. Release selection uses the newest cached non-preview release
+ * and falls back to the built-in default version when no non-preview release is
+ * cached.
  *
  * @author Mark Paluch
  */
 enum WrapperProperty {
 
 	/**
-	 * {@literal distributionUrl} property.
+	 * {@code distributionUrl} paired with {@code distributionSha256Sum}.
 	 */
 	DISTRIBUTION("distributionUrl", "distributionSha256Sum", "9.5.1");
 

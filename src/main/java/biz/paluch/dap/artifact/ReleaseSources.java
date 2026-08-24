@@ -54,8 +54,7 @@ public record ReleaseSources(PackageIdentity pkg, Collection<ReleaseSource> sour
 	/**
 	 * Retain only the sources accepted by the given predicate.
 	 * @param predicate the predicate selecting the sources to query.
-	 * @return release sources narrowed to the accepted sources, or {@code this}
-	 * when none would remain.
+	 * @return release sources narrowed to the accepted sources, possibly empty.
 	 */
 	public ReleaseSources filter(Predicate<ReleaseSource> predicate) {
 		return new ReleaseSources(pkg, sources.stream().filter(predicate).toList());
@@ -77,7 +76,8 @@ public record ReleaseSources(PackageIdentity pkg, Collection<ReleaseSource> sour
 	 * Check whether the release sources contain only the given
 	 * {@link ReleaseSource#getId() identifiers}.
 	 * @param ids collection of release source identifiers.
-	 * @return {@literal true} if the sources contain only the given identifiers.
+	 * @return {@code true} if the source count matches and every source identifier
+	 * is contained in {@code ids}.
 	 */
 	public boolean containsOnlyReleaseSourceIds(Collection<String> ids) {
 		if (ids.size() != sources.size()) {

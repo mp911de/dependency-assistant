@@ -55,14 +55,11 @@ public interface MatchFunction {
 	 * Return a match result covering a named group from a matcher that already
 	 * matched.
 	 *
-	 * <p>
-	 * The named group must have participated in the current match. Use the
+	 * <p>The named group must have participated in the current match. Use the
 	 * original matcher when access to additional groups is needed.
 	 *
-	 * @param group the name of the capturing group to expose; must not be
-	 * {@literal null}.
-	 * @param matcher the matcher positioned on a successful match; must not be
-	 * {@literal null}.
+	 * @param group the name of the capturing group to expose.
+	 * @param matcher the matcher positioned on a successful match.
 	 * @return a match result whose only exposed group is the named group.
 	 * @throws IllegalStateException if no successful match is available.
 	 * @throws IllegalArgumentException if {@code group} is not defined by the
@@ -75,11 +72,10 @@ public interface MatchFunction {
 	/**
 	 * Return a match function that treats the supplied string as a literal token.
 	 *
-	 * <p>
-	 * The returned function delegates to {@link String#indexOf(String, int)};
-	 * pattern syntax and case folding are not applied.
+	 * <p>The returned function delegates to {@link String#indexOf(String, int)}.
+	 * Pattern syntax and case folding are not applied.
 	 *
-	 * @param str the literal text to locate; must contain at least one
+	 * @param str the literal text to locate. It must contain at least one
 	 * non-whitespace character.
 	 * @return a match function that returns each occurrence of {@code str} at or
 	 * after the supplied start index.

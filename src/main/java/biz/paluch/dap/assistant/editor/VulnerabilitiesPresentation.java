@@ -27,7 +27,9 @@ import com.intellij.openapi.editor.colors.TextAttributesKey;
 import org.springframework.util.Assert;
 
 /**
- * User-facing wording for a vulnerable dependency.
+ * User-facing wording and highlight attributes for a vulnerable dependency.
+ * Instances are created only when {@link Vulnerabilities#isVulnerable()} is
+ * {@literal true}.
  *
  * @author Mark Paluch
  */

@@ -17,7 +17,11 @@
 package biz.paluch.dap.rule;
 
 /**
- * Dependency rule for an artifact pattern.
+ * Declared rule associating an {@link ArtifactPattern} with an optional
+ * Artifact Display Name and the permitted {@link Generations}.
+ *
+ * <p>Natural ordering follows pattern specificity and determines which of
+ * several matching artifact rules governs a dependency.
  *
  * @author Mark Paluch
  */
@@ -52,7 +56,7 @@ public class ArtifactRule implements Comparable<ArtifactRule> {
 	 * Create a named artifact rule.
 	 *
 	 * @param pattern the artifact pattern.
-	 * @param name the friendly display name.
+	 * @param name the Artifact Display Name, or an empty string when unnamed.
 	 * @param generations the required generations, see
 	 * {@link Generations#from(String...)}.
 	 * @return the artifact rule.

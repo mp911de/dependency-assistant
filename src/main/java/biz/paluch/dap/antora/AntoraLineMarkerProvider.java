@@ -24,7 +24,7 @@ import biz.paluch.dap.assistant.editor.DependencyLineMarkerProvider;
 import biz.paluch.dap.util.MessageBundle;
 
 /**
- * Gutter configurable for Antora playbook UI bundles.
+ * Gutter line-marker descriptor for Antora playbook UI bundle upgrades.
  *
  * @author Mark Paluch
  */

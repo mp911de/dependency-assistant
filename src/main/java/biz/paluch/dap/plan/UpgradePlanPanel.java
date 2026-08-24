@@ -420,8 +420,8 @@ class UpgradePlanPanel extends SimpleToolWindowPanel implements Disposable, Upgr
 	}
 
 	/**
-	 * Retain resolvable plan files located lexically and canonically below one of
-	 * the project base directories.
+	 * Retain resolvable, non-directory plan files whose VFS location is below one
+	 * of the project base directories.
 	 */
 	@RequiresReadLock
 	static List<String> filterAffectedFiles(UpgradePlanState.Content content,

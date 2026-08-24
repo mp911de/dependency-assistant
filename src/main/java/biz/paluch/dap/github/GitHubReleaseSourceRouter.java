@@ -37,8 +37,9 @@ import org.jspecify.annotations.Nullable;
  * <p>This type sits one level above {@link GitHubReleases}. It accepts the
  * common {@link ArtifactId} contract used by dependency collectors and routes
  * Git-backed artifacts to a host-specific GitHub release source. The actual API
- * access, authentication, and release/tag aggregation remain the responsibility
- * of {@link GitHubReleases}.
+ * access and release/tag aggregation remain the responsibility of
+ * {@link GitHubReleases}. Account and executor resolution is performed through
+ * {@link GithubApiRequestExecutorFactory}.
  *
  * <p>{@link GitArtifactId} carries the split between the dependency identity
  * declared in a build file and the repository coordinates used for release
@@ -100,7 +101,12 @@ public class GitHubReleaseSourceRouter implements ReleaseSource {
 	 * therefore yield no releases.
 	 *
 	 * @param artifactId dependency identity or Git-backed repository identity.
-	 * @return releases obtained from the selected GitHub release source.
+	 * @param indicator progress indicator used for cancellation.
+	 * @return releases obtained from the selected GitHub release source, or an
+	 * empty sequence when the artifact is outside strict mode or no executor is
+	 * available.
+	 * @throws IOException if the selected release source cannot complete its
+	 * request.
 	 */
 	@Override
 	public Sequence<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException {

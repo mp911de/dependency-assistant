@@ -28,10 +28,9 @@ import biz.paluch.dap.util.Sequence;
  * {@link GroupRow} rows through the {@link GroupByRule governed} and
  * {@link InferredGrouping inferred} grouping policies.
  *
- * <p>Each group replaces its members at the position of the first member; all
- * other candidates remain individual rows in their original order. Iterate the
- * result to obtain the rows in display order; build it from a complete
- * candidate list through {@link #of(List)}.
+ * <p>Each group replaces its members, while ungrouped candidates remain
+ * individual rows. The result is sorted by row name for display. Build it from
+ * a complete candidate list through {@link #of(List)}.
  *
  * @author Mark Paluch
  * @see GroupRow
@@ -49,9 +48,9 @@ class UpgradeRows implements Sequence<TableRow> {
 	 * Collapse groupable candidates into {@link GroupRow} rows, keeping all other
 	 * candidates as individual rows.
 	 *
-	 * @param candidates the aggregated candidates in display order.
-	 * @return the rows with each group replacing its members at the position of the
-	 * first member.
+	 * @param candidates the complete individual candidate rows. Candidate order is
+	 * retained within each formed group.
+	 * @return the grouped and name-sorted rows.
 	 */
 	static UpgradeRows of(List<SingleTableRow> candidates) {
 

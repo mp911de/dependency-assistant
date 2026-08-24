@@ -35,9 +35,12 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.lang.Contract;
 
 /**
- * Base class for {@link MavenParser} and {@link MavenBomParser}, providing
- * shared POM tag traversal, property extraction, and artifact-coordinate
- * parsing.
+ * Shared POM PSI support for Maven declaration parsers such as
+ * {@link MavenParser} and {@link MavenBomParser}, metadata readers, repository
+ * discovery, and update writers.
+ *
+ * <p>The support provides tag traversal, property extraction, and
+ * artifact-coordinate parsing without retaining PSI state.
  *
  * @author Mark Paluch
  */
@@ -88,12 +91,16 @@ class MavenPomSupport {
 	static final String ISSUE_MANAGEMENT = "issueManagement";
 
 	/**
-	 * Return whether the given {@code parent} tag is a candidate for being a parent
-	 * dependency declaration. A parent tag is a candidate if it declares a groupId
-	 * that is not inherited from the current project and does not specify a
-	 * relativePath, which would indicate a local multi-module project.
-	 * @param root project root tag.
-	 * @param parent parent tag.
+	 * Return whether the given {@code parent} tag is a supported parent dependency
+	 * declaration.
+	 *
+	 * <p>A candidate requires a non-empty project group ID distinct from the parent
+	 * group ID. It remains eligible when {@code relativePath} is omitted or empty;
+	 * an explicitly configured non-empty relative path identifies a local
+	 * multi-module parent and is excluded.
+	 *
+	 * @param root the project root tag.
+	 * @param parent the parent tag.
 	 * @return {@literal true} if the given {@code parent} tag is a supported
 	 * dependency candidate.
 	 */
@@ -123,6 +130,19 @@ class MavenPomSupport {
 				: null;
 	}
 
+	/**
+	 * Parse Maven artifact coordinates, resolving property placeholders where
+	 * present.
+	 *
+	 * <p>A missing group ID defaults to {@code org.apache.maven.plugins}. A missing
+	 * artifact ID produces no coordinates.
+	 *
+	 * @param groupId the declared group ID, or {@literal null} when omitted.
+	 * @param artifactId the declared artifact ID, or {@literal null} when omitted.
+	 * @param propertyResolver the resolver for coordinate placeholders.
+	 * @return the parsed coordinates, or {@literal null} when the artifact ID is
+	 * absent.
+	 */
 	public static @Nullable ArtifactId parseArtifactId(@Nullable String groupId, @Nullable String artifactId,
 			PropertyResolver propertyResolver) {
 
@@ -145,8 +165,10 @@ class MavenPomSupport {
 
 
 	/**
-	 * Parse Maven properties from the given {@link XmlFile}, returning each
-	 * property mapped to its plain {@link String} value.
+	 * Parse root and profile Maven properties from the given POM.
+	 *
+	 * @param pomFile the POM to inspect.
+	 * @return each property name mapped to its plain value.
 	 */
 	public static Map<String, String> getProperties(XmlFile pomFile) {
 
@@ -157,8 +179,11 @@ class MavenPomSupport {
 	}
 
 	/**
-	 * Parse Maven properties from the given {@link XmlFile}, retaining the
-	 * declaring PSI element of each property as a {@link PropertyValue}.
+	 * Parse root and profile Maven properties from the given POM, retaining each
+	 * declaring PSI element.
+	 *
+	 * @param pomFile the POM to inspect.
+	 * @return each property name mapped to its value and declaration element.
 	 */
 	public static Map<String, PropertyValue> parseProperties(XmlFile pomFile) {
 
@@ -278,8 +303,12 @@ class MavenPomSupport {
 		}
 
 		/**
-		 * Return the subtag text with {@code ${...}} placeholders resolved; values that
-		 * stay unresolved are dropped.
+		 * Return the subtag text with {@code ${...}} placeholders resolved. Values that
+		 * remain unresolved are omitted.
+		 *
+		 * @param qname the subtag name.
+		 * @param resolver the resolver for property placeholders.
+		 * @return the resolved text, or {@literal null} when absent or unresolved.
 		 */
 		public @Nullable String getText(String qname, PropertyResolver resolver) {
 			return subtag(qname).getText(resolver);
@@ -301,7 +330,8 @@ class MavenPomSupport {
 	}
 
 	/**
-	 * Trimmed text of a named subtag; present only when the subtag holds text.
+	 * Trimmed text of a named subtag. The value is present only when the subtag
+	 * holds text.
 	 */
 	static class Subtag {
 
@@ -321,8 +351,11 @@ class MavenPomSupport {
 		}
 
 		/**
-		 * Return the subtag text with {@code ${...}} placeholders resolved; values that
-		 * stay unresolved are dropped.
+		 * Return the subtag text with {@code ${...}} placeholders resolved. Values that
+		 * remain unresolved are omitted.
+		 *
+		 * @param resolver the resolver for property placeholders.
+		 * @return the resolved text, or {@literal null} when absent or unresolved.
 		 */
 		public @Nullable String getText(PropertyResolver resolver) {
 

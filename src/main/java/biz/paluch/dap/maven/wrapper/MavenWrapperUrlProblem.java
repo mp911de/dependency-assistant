@@ -23,9 +23,10 @@ import com.intellij.lang.properties.psi.Property;
 import com.intellij.modcommand.PsiUpdateModCommandAction;
 
 /**
- * A specific way a {@code WrapperProperty} URL is malformed or unsafe.
+ * A problem reported for a Maven {@link WrapperProperty} URL declaration.
+ *
  * <p>Each variant captures only the user-visible deviation payload required to
- * render the inspection message; canonical and suggested values are derived
+ * render the inspection message. Canonical and suggested values are derived
  * from the {@link WrapperProperty} kind at fix-construction time.
  *
  * @author Mark Paluch
@@ -165,7 +166,7 @@ sealed interface MavenWrapperUrlProblem {
 	 * kind.
 	 * @param actualFileName the file-name segment observed in the URL.
 	 * @param sharedVersion the version shared by both URL segments, used by the
-	 * file-name fix; never {@literal null} and never empty.
+	 * file-name fix.
 	 */
 	record MalformedFileName(String actualFileName, String sharedVersion) implements MavenWrapperUrlProblem {
 

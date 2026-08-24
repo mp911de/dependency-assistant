@@ -29,13 +29,14 @@ import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.VirtualFile;
 
 /**
- * {@link ProjectBuildContext} for a single Antora playbook file.
+ * Available {@link ProjectBuildContext} for one Antora playbook file.
  *
- * <p>
- * Each {@code antora-playbook.yml} file produces its own context so that
- * dependency state for independent playbooks remains isolated. Release lookup
- * uses a strict {@link GitHubReleaseSourceRouter} keyed on the host parsed from the
- * declared {@code ui.bundle.url}.
+ * <p>Each {@code antora-playbook.yml} file produces its own path-keyed context,
+ * keeping dependency state for independent playbooks isolated without an
+ * imported build model. Release lookup uses a strict
+ * {@link GitHubReleaseSourceRouter}: only
+ * {@link biz.paluch.dap.artifact.GitArtifactId} values participate, and their
+ * host selects the GitHub server.
  *
  * @author Mark Paluch
  */
@@ -49,9 +50,8 @@ class AntoraProjectContext extends AbstractProjectBuildContext {
 	private final Project project;
 
 	/**
-	 * Create a context for the given project identity and release sources.
-	 *
-	 * @param project
+	 * Create an available Antora context for the given project identity.
+	 * @param project the IntelliJ project used for GitHub account resolution.
 	 * @param projectId the project identity.
 	 */
 	AntoraProjectContext(Project project, ProjectId projectId) {

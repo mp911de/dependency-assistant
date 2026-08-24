@@ -32,10 +32,11 @@ import org.jspecify.annotations.Nullable;
  * The plan items a user action targets, resolved from an {@link AnActionEvent}
  * selection or handed over directly from the plan tree.
  *
- * <p>Holds the selected items in tree order and adds first-item and fallback
+ * <p>Holds the selected items in source order and adds first-item and fallback
  * access for actions that operate on the selection, or on a supplied fallback
- * when nothing is selected. Non-plan-item entries in the source selection (such
- * as member rows) are dropped during resolution.
+ * when nothing is selected. The plan tree supplies selections in Plan Order,
+ * independent of its current view sorting. Non-plan-item entries in an action
+ * event (such as member rows) are dropped during resolution.
  *
  * @author Mark Paluch
  */
@@ -61,7 +62,8 @@ class PlanSelection implements Sequence<UpgradePlanItem> {
 	/**
 	 * Wrap an already-resolved selection, such as the plan tree's selected items.
 	 *
-	 * @param items the selected plan items in tree order.
+	 * @param items the selected plan items in the order actions should process
+	 * them.
 	 * @return the plan selection.
 	 */
 	static PlanSelection of(List<UpgradePlanItem> items) {
@@ -92,7 +94,7 @@ class PlanSelection implements Sequence<UpgradePlanItem> {
 	}
 
 	/**
-	 * Return the selected plan items in tree order; empty without a selection.
+	 * Return the selected plan items in source order; empty without a selection.
 	 */
 	List<UpgradePlanItem> items() {
 		return items;

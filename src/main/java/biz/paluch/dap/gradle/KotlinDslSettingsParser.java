@@ -35,21 +35,23 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Parses {@code settings.gradle.kts} to discover version-catalog declarations
- * in a {@code dependencyResolutionManagement { versionCatalogs { … } }} block.
+ * in a {@code dependencyResolutionManagement { versionCatalogs { ... } }}
+ * block.
  *
- * <p>
- * Only {@code from(files("path/to/catalog.toml"))} forms are handled; other
- * {@code from} forms (e.g. {@code from(uri(…))}) are silently skipped.
+ * <p>Only {@code from(files("path/to/catalog.toml"))} forms are handled. Other
+ * {@code from} forms, such as {@code from(uri(...))}, are skipped.
  *
  * @author Mark Paluch
  */
 class KotlinDslSettingsParser {
 
 	/**
-	 * Parses the given {@code settings.gradle.kts} file and returns a
-	 * {@link VersionCatalogRegistry}. Falls back to
-	 * {@link VersionCatalogRegistry#defaults()} if no
-	 * {@code dependencyResolutionManagement} block is found.
+	 * Parse the given {@code settings.gradle.kts} file into a catalog registry.
+	 *
+	 * <p>The configured default alias is always registered. If it has no explicit
+	 * catalog declaration, it uses {@code gradle/libs.versions.toml}.
+	 * @param file the Kotlin DSL settings file to parse.
+	 * @return the configured catalogs and default alias.
 	 */
 	static VersionCatalogRegistry parseRegistry(PsiFile file) {
 

@@ -31,19 +31,15 @@ import org.jspecify.annotations.Nullable;
 /**
  * {@link ProjectBuildContext} for a single supported GitHub Actions YAML file.
  *
- * <p>The project identity uses the owning repository coordinates and the
- * absolute file path. There is one context per file so independent declarations
- * in the same repository can maintain independent dependency state.
+ * <p>The project identity contains the absolute file path. Production contexts
+ * obtain a GitHub API executor each time release sources are requested and
+ * expose no source when executor resolution fails. Injected contexts expose
+ * their supplied release source directly.
  *
  * @author Mark Paluch
  */
 class GitHubProjectContext extends AbstractProjectBuildContext {
 
-	/**
-	 * User-data key under which {@link #of(Project, VirtualFile)} caches the
-	 * resolved context on the anchor {@link VirtualFile} so it is computed once per
-	 * file.
-	 */
 	static final Key<GitHubProjectContext> KEY = Key.create("GitHubProjectContext");
 
 	private final @Nullable GithubApiRequestExecutorFactory factory;
@@ -51,9 +47,11 @@ class GitHubProjectContext extends AbstractProjectBuildContext {
 	private final List<ReleaseSource> releaseSources;
 
 	/**
-	 * Create a context for the given project identity and release source.
-	 * @param project the project identity.
-	 * @param projectId the project identity.
+	 * Create a context that resolves GitHub release sources through the project
+	 * service.
+	 *
+	 * @param project the IntelliJ project used for account resolution.
+	 * @param projectId the file-scoped project identity.
 	 */
 	GitHubProjectContext(Project project, ProjectId projectId) {
 		super(projectId);
@@ -69,9 +67,10 @@ class GitHubProjectContext extends AbstractProjectBuildContext {
 
 	/**
 	 * Create a context for the given project and anchor file.
+	 *
 	 * @param project the IntelliJ project.
 	 * @param anchor the supported GitHub Actions file.
-	 * @return the context to be used.
+	 * @return a context scoped to the anchor file.
 	 */
 	public static GitHubProjectContext of(Project project, VirtualFile anchor) {
 

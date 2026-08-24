@@ -29,8 +29,7 @@ import org.jspecify.annotations.Nullable;
 /**
  * YAML PSI parser for GitHub Actions {@code uses:} declarations.
  *
- * <p>
- * Scans a YAML file for all {@code uses:} key-value pairs, parses the scalar
+ * <p>Scans a YAML file for all {@code uses:} key-value pairs, parses the scalar
  * value into a {@link UsesRepositoryAction}, and collects the results.
  * References that represent local paths ({@code ./} or {@code ../}) or Docker
  * images ({@code docker://}) are silently ignored. References outside the
@@ -43,6 +42,7 @@ class GitHubWorkflowParser {
 
 	/**
 	 * Collect all {@code uses:} references from the given YAML file.
+	 *
 	 * @param file the YAML PSI file to scan.
 	 * @return the parsed references, possibly empty.
 	 */
@@ -65,8 +65,10 @@ class GitHubWorkflowParser {
 	/**
 	 * Parse a single {@code uses:} key-value pair into a
 	 * {@link UsesRepositoryAction}.
+	 *
 	 * @param keyValue the YAML key-value PSI element.
-	 * @return the parsed reference, or {@literal null} if the value cannot be parsed.
+	 * @return the parsed reference, or {@literal null} if the value cannot be
+	 * parsed.
 	 */
 	public static @Nullable UsesRepositoryAction parseUses(YAMLKeyValue keyValue) {
 
@@ -80,8 +82,10 @@ class GitHubWorkflowParser {
 
 	/**
 	 * Parse the scalar text of a {@code uses:} value.
+	 *
 	 * @param text the raw uses value string.
-	 * @return the parsed reference, or {@literal null} if the value should be ignored.
+	 * @return the parsed reference, or {@literal null} if the value should be
+	 * ignored.
 	 */
 	public static @Nullable UsesRepositoryAction parseUses(String text) {
 		return GitHubAction.isValidUsage(text) ? new UsesRepositoryAction(GitHubAction.from(text)) : null;

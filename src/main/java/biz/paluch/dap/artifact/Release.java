@@ -28,15 +28,24 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.util.ObjectUtils;
 
 /**
- * A release that consists of a version and an optional release date.
+ * A release consisting of a version and an optional release date.
+ *
+ * <p>The version may carry source-provided hash metadata through
+ * {@link GitVersion}. Equality uses the version and whether a date is present;
+ * the concrete date value does not participate.
  *
  * @author Mark Paluch
+ * @param version the released version.
+ * @param releaseDate the release date, may be {@code null}.
  */
 public record Release(ArtifactVersion version,
 		@Nullable LocalDateTime releaseDate) implements Comparable<Release>, Versioned {
 
 	/**
 	 * Create a {@code Release} from a version string.
+	 * @param version the version string.
+	 * @return an undated release.
+	 * @throws IllegalArgumentException if the version cannot be parsed.
 	 */
 	public static Release of(String version) {
 		return of(ArtifactVersion.of(version));
@@ -44,6 +53,8 @@ public record Release(ArtifactVersion version,
 
 	/**
 	 * Create a {@code Release} without release date metadata.
+	 * @param version the artifact version.
+	 * @return an undated release.
 	 */
 	public static Release of(ArtifactVersion version) {
 		return new Release(version, null);
@@ -51,6 +62,9 @@ public record Release(ArtifactVersion version,
 
 	/**
 	 * Create a {@code Release} from a {@link ArtifactVersion} and release date.
+	 * @param version the artifact version.
+	 * @param date the release date.
+	 * @return the dated release.
 	 */
 	public static Release of(ArtifactVersion version, LocalDateTime date) {
 		return new Release(version, date);
@@ -58,6 +72,11 @@ public record Release(ArtifactVersion version,
 
 	/**
 	 * Create a {@code Release} from a version string and optional ISO date.
+	 * @param version the version string.
+	 * @param date the ISO date or date-time, or {@literal null}.
+	 * @return the release.
+	 * @throws IllegalArgumentException if the version cannot be parsed.
+	 * @throws DateTimeParseException if the date cannot be parsed.
 	 */
 	public static Release from(String version, @Nullable String date) {
 		return from(ArtifactVersion.of(version), date);
@@ -65,6 +84,8 @@ public record Release(ArtifactVersion version,
 
 	/**
 	 * Create a {@code Release} from a {@link ArtifactVersion}.
+	 * @param version the artifact version.
+	 * @return an undated release.
 	 */
 	public static Release from(ArtifactVersion version) {
 		return new Release(version, null);
@@ -73,6 +94,10 @@ public record Release(ArtifactVersion version,
 	/**
 	 * Create a {@code Release} from a {@link ArtifactVersion} and optional ISO
 	 * date.
+	 * @param version the artifact version.
+	 * @param date the ISO date or date-time, or {@literal null}.
+	 * @return the release.
+	 * @throws DateTimeParseException if the date cannot be parsed.
 	 */
 	public static Release from(ArtifactVersion version, @Nullable String date) {
 		return new Release(version, parseReleaseDate(date));
@@ -82,15 +107,15 @@ public record Release(ArtifactVersion version,
 	 * Attempt to build a {@code Release} from a raw registry row.
 	 *
 	 * <p>Centralises the parse-or-skip path used by release-source adapters: a
-	 * blank or unparseable {@code rawVersion} yields an empty result, a
-	 * non-blank {@code sha} wraps the parsed version in a {@link GitVersion},
-	 * and a non-null {@code date} is attached to the resulting release.
+	 * blank or unparseable {@code rawVersion} yields an empty result, a non-blank
+	 * {@code sha} wraps the parsed version in a {@link GitVersion}, and a non-null
+	 * {@code date} is attached to the resulting release.
 	 *
-	 * @param rawVersion the raw version string as reported by the source; can
-	 * be {@literal null} or blank.
+	 * @param rawVersion the raw version string as reported by the source; can be
+	 * {@literal null} or blank.
 	 * @param date the release date to attach; can be {@literal null}.
-	 * @param sha the commit SHA backing the version; can be {@literal null} or
-	 * blank, in which case the version is left unwrapped.
+	 * @param sha the source-provided hash backing the version; can be
+	 * {@literal null} or blank, in which case the version is left unwrapped.
 	 * @return the parsed release, or {@link Optional#empty()} when
 	 * {@code rawVersion} is blank or cannot be parsed.
 	 */
@@ -111,6 +136,8 @@ public record Release(ArtifactVersion version,
 	 *
 	 * @param date the ISO-8601 date or date-time string, or {@literal null}.
 	 * @return the parsed date-time, or {@literal null} if {@code date} is blank.
+	 * @throws DateTimeParseException if a non-blank value is neither an ISO local
+	 * date nor an ISO local date-time.
 	 */
 	public static @Nullable LocalDateTime parseReleaseDate(@Nullable String date) {
 		if (!StringUtils.hasText(date)) {
@@ -130,6 +157,8 @@ public record Release(ArtifactVersion version,
 
 	/**
 	 * Return whether this release is newer than the given release.
+	 * @param option the release to compare with.
+	 * @return {@code true} if this release is newer.
 	 */
 	public boolean isNewer(Release option) {
 		return compareTo(option) > 0;
@@ -137,6 +166,8 @@ public record Release(ArtifactVersion version,
 
 	/**
 	 * Return whether this release is newer than the given version.
+	 * @param version the version to compare with.
+	 * @return {@code true} if this release is newer.
 	 */
 	public boolean isNewer(ArtifactVersion version) {
 		return this.version.isNewer(version);
@@ -144,6 +175,8 @@ public record Release(ArtifactVersion version,
 
 	/**
 	 * Return whether this release is older than the given version.
+	 * @param version the version to compare with.
+	 * @return {@code true} if this release is older.
 	 */
 	public boolean isOlder(ArtifactVersion version) {
 		return this.version.isOlder(version);
@@ -151,6 +184,8 @@ public record Release(ArtifactVersion version,
 
 	/**
 	 * Return whether this release belongs to the same major/minor line.
+	 * @param current the version to compare with.
+	 * @return {@code true} if both versions share a major/minor line.
 	 */
 	public boolean hasSameMajorMinor(ArtifactVersion current) {
 		return this.version.hasSameMajorMinor(current);
@@ -159,6 +194,8 @@ public record Release(ArtifactVersion version,
 	/**
 	 * Return whether this release shares the same numeric version, ignoring any
 	 * suffix or qualifier.
+	 * @param current the version to compare with.
+	 * @return {@code true} if both versions share a base version.
 	 */
 	public boolean hasSameBaseVersion(ArtifactVersion current) {
 		return this.version.hasSameBaseVersion(current);
@@ -166,6 +203,7 @@ public record Release(ArtifactVersion version,
 
 	/**
 	 * Return whether this release is a development (snapshot) version.
+	 * @return {@code true} if this is a snapshot release.
 	 */
 	public boolean isSnapshotVersion() {
 		return this.version.isSnapshotVersion();
@@ -173,6 +211,7 @@ public record Release(ArtifactVersion version,
 
 	/**
 	 * Return whether this release is a preview release.
+	 * @return {@code true} if this is a preview release.
 	 */
 	public boolean isPreview() {
 		return this.version.isPreview();
@@ -180,6 +219,7 @@ public record Release(ArtifactVersion version,
 
 	/**
 	 * Return whether this release is a general-availability release.
+	 * @return {@code true} if this is a general-availability release.
 	 */
 	public boolean isReleaseVersion() {
 		return this.version.isReleaseVersion();
@@ -187,6 +227,7 @@ public record Release(ArtifactVersion version,
 
 	/**
 	 * Return whether this release is a bugfix release.
+	 * @return {@code true} if this is a bugfix release.
 	 */
 	public boolean isBugFixVersion() {
 		return this.version.isBugFixVersion();

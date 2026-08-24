@@ -35,10 +35,10 @@ import com.intellij.psi.PsiFile;
  * repository-backed {@code uses:} references with a
  * {@link DependencyCollector}.
  *
- * <p>This collector is intentionally syntax-only. It records the repository
- * identity and declared ref as found in the workflow and leaves cache-based
- * version resolution to the project context and lookup services. This keeps
- * workflow scanning independent of release metadata availability.
+ * <p>The collector always registers the repository identity and declared ref.
+ * It resolves the ref through cached release metadata when possible and falls
+ * back to a lenient version or Git ref representation without performing remote
+ * API access.
  *
  * @author Mark Paluch
  */
@@ -59,7 +59,7 @@ class GitHubDependencyCollector {
 	 * Collect repository-backed {@code uses:} references from the given GitHub
 	 * Actions file.
 	 *
-	 * @param packageSystem
+	 * @param packageSystem the package system assigned to collected dependencies.
 	 * @param file the YAML PSI file to scan.
 	 * @return the populated dependency collector.
 	 */
@@ -74,6 +74,7 @@ class GitHubDependencyCollector {
 	/**
 	 * Collect repository-backed {@code uses:} references from the given GitHub
 	 * Actions file and register them as declarations.
+	 *
 	 * @param file the YAML PSI file to scan.
 	 * @param collector the collector to populate with the discovered dependencies.
 	 */

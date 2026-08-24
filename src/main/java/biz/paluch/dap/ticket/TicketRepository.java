@@ -37,12 +37,13 @@ import com.intellij.openapi.progress.ProgressIndicator;
  *
  * <p>Search and create are separate operations by design. Reuse-by-title,
  * default milestone or label selection, and open-state filtering are caller
- * policy. The repository never closes or mutates existing tickets; closing is
+ * policy. The repository never closes or mutates existing tickets. Closing is
  * expressed later through commit messages via
  * {@link TicketSystem#getCloseReference(TicketKey)}.
  *
  * <p>Operations may perform blocking network IO and should be invoked from
- * cancelable background work.
+ * cancelable background work. Ticket-reference rendering is local and must not
+ * perform network IO.
  *
  * @author Mark Paluch
  * @see TicketSystem#getRepository()
@@ -113,9 +114,14 @@ public interface TicketRepository {
 	List<? extends Label> getLabels(ProgressIndicator indicator) throws IOException;
 
 	/**
-	 * Return a cached version of this repository. Cached repositories are
-	 * guaranteed to be thread-safe but not all methods are able to serve requests
-	 * from cache.
+	 * Return a thread-safe repository view for non-refreshing reads.
+	 *
+	 * <p>Milestone and label listings from this view must not refresh remote data.
+	 * An empty cached listing means no cached entries are available, not that the
+	 * remote repository has none. Search and creation are outside the portable
+	 * cached contract and may be unsupported.
+	 *
+	 * @return a repository view backed by already available data.
 	 */
 	TicketRepository cached();
 
@@ -135,7 +141,7 @@ public interface TicketRepository {
 	 *
 	 * <p>Systems with close keywords may return a closing phrase, for example
 	 * {@code Closes #1234}. Systems without commit-based closing can return a plain
-	 * display reference; an empty string means that no meaningful commit reference
+	 * display reference. An empty string means that no meaningful commit reference
 	 * exists for the key.
 	 *
 	 * @param key the persisted or live ticket key to render.

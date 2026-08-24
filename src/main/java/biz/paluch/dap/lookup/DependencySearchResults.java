@@ -26,14 +26,14 @@ import java.util.stream.Stream;
 import biz.paluch.dap.util.Sequence;
 
 /**
- * Immutable, ordered collection of the {@link DependencySiteSearchHit hits} a
- * Dependency Site Find located.
+ * Ordered collection of the {@link DependencySiteSearchHit hits} located by a
+ * Dependency Site Find.
  *
- * <p>Results carry no query of their own; they are the outcome of
- * {@link ArtifactReferenceResolver#search(DependencySiteQuery)} for one file,
- * of {@link ArtifactReferenceResolver#inlineDefinitions inlineDefinitions} for
- * the inline-only find, or of {@link #concat(Iterable)} aggregating several
- * per-file results.
+ * <p>Results retain no query or input iterable. They can represent one
+ * {@link ArtifactReferenceResolver#search(DependencySiteQuery) per-file
+ * search}, a fallback PSI traversal performed by the site-find orchestration,
+ * or the aggregation of several per-file results through
+ * {@link #concat(Iterable)}.
  *
  * @author Mark Paluch
  * @see DependencySiteSearchHit
@@ -59,11 +59,10 @@ public class DependencySearchResults implements Sequence<DependencySiteSearchHit
 	}
 
 	/**
-	 * Create results wrapping the given hits in iteration order.
+	 * Create results from the given hits in iteration order.
 	 *
 	 * @param hits the located hits, may be empty.
-	 * @return the results holding a defensive copy of the hits; never
-	 * {@literal null}.
+	 * @return the results holding a defensive copy of the hits.
 	 */
 	public static DependencySearchResults of(Iterable<DependencySiteSearchHit> hits) {
 
@@ -76,12 +75,11 @@ public class DependencySearchResults implements Sequence<DependencySiteSearchHit
 	}
 
 	/**
-	 * Combine several per-file results into one, unioning their hits in encounter
-	 * order and dropping sites seen through more than one file.
+	 * Combine several per-file results into one, retaining the first occurrence of
+	 * each equal hit.
 	 *
-	 * @param results the per-file results to aggregate; must not be
-	 * {@literal null}.
-	 * @return the deduplicated union of all hits.
+	 * @param results the per-file results to aggregate in encounter order.
+	 * @return the deduplicated union of all hits in encounter order.
 	 */
 	public static DependencySearchResults concat(Iterable<DependencySearchResults> results) {
 
@@ -93,11 +91,6 @@ public class DependencySearchResults implements Sequence<DependencySiteSearchHit
 		return hits.isEmpty() ? EMPTY : new DependencySearchResults(List.copyOf(hits));
 	}
 
-	/**
-	 * Return whether no hits were located.
-	 *
-	 * @return {@literal true} if there are no hits; {@literal false} otherwise.
-	 */
 	@Override
 	public boolean isEmpty() {
 		return hits.isEmpty();
@@ -108,11 +101,6 @@ public class DependencySearchResults implements Sequence<DependencySiteSearchHit
 		return hits.iterator();
 	}
 
-	/**
-	 * Return a stream of the hits in iteration order.
-	 *
-	 * @return a stream over the hits.
-	 */
 	@Override
 	public Stream<DependencySiteSearchHit> stream() {
 		return hits.stream();

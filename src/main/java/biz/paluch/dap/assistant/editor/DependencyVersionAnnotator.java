@@ -42,7 +42,14 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 
 /**
- * Annotator that marks outdated dependency versions in supported build files.
+ * Annotator that highlights upgrade suggestions and known vulnerabilities for
+ * resolved dependency declarations in supported build files.
+ *
+ * <p>Resolution uses live PSI together with project-cached releases,
+ * vulnerabilities, and dependency rules. It performs no remote lookups. Upgrade
+ * quick fixes are registered only when the declaration's version literal is
+ * defined in the annotated file; references to versions defined elsewhere
+ * remain informational.
  *
  * @author Mark Paluch
  */

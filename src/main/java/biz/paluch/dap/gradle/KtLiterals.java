@@ -158,7 +158,7 @@ class KtLiterals {
 	 * Extract text from supported Kotlin DSL literal forms in value position,
 	 * rendering property references as {@code ${name}} placeholders.
 	 * <p>Unsupported element shapes yield an empty string rather than an exception.
-	 * @param element the Kotlin PSI element to inspect .
+	 * @param element the Kotlin PSI element to inspect.
 	 * @return the rendered text, or the empty string for unsupported shapes.
 	 * @throws IllegalArgumentException if {@code element} is {@literal null}.
 	 */
@@ -267,8 +267,7 @@ class KtLiterals {
 
 	/**
 	 * Return the first property reference represented by this instance.
-	 * <p>
-	 * If multiple property fragments are present, the first fragment in
+	 * <p>If multiple property fragments are present, the first fragment in
 	 * encounter order is returned.
 	 *
 	 * @return the referenced property name without decoration.

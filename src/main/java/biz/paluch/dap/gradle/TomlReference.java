@@ -28,18 +28,19 @@ import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
 /**
+ * Value object identifying a library or plugin entry referenced through a
+ * Gradle version-catalog accessor.
  *
- * Value class representing a TOML entry reference within a Gradle build file.
+ * <p>The identity consists of the catalog alias, the target TOML table, and
+ * normalized key segments. Gradle treats {@code -}, {@code _}, and {@code .} as
+ * equivalent separators when generating type-safe accessors.
  *
- * <p>
- * Gradle treats '-', '_' and '.' as identifier separators when generating
- * type-safe accessors. For example:
- *
- * <pre>
- * "groovy-core"         -> ["groovy", "core"]
- * "androidx.awesome.lib" -> ["androidx", "awesome", "lib"]
- * "my_lib"              -> ["my", "lib"]
+ * <pre class="code">
+ * groovy-core:          [groovy, core]
+ * androidx.awesome.lib: [androidx, awesome, lib]
+ * my_lib:               [my, lib]
  * </pre>
+ *
  * @author Mark Paluch
  */
 class TomlReference {
@@ -59,21 +60,32 @@ class TomlReference {
 	}
 
 	/**
-	 * Create a reference to a library.
+	 * Create a library reference in the default {@code libs} catalog.
+	 * @param library the library alias.
+	 * @return the normalized library reference.
+	 * @throws IllegalArgumentException if {@code library} is {@literal null}.
 	 */
 	public static TomlReference libs(String library) {
 		return new TomlReference(TomlParser.LIBS, null, split(library));
 	}
 
 	/**
-	 * Create a reference to a plugin.
+	 * Create a plugin reference in the default {@code libs} catalog.
+	 * @param plugin the plugin alias.
+	 * @return the normalized plugin reference.
+	 * @throws IllegalArgumentException if {@code plugin} is {@literal null}.
 	 */
 	public static TomlReference plugin(String plugin) {
 		return new TomlReference(TomlParser.LIBS, TomlParser.PLUGINS, split(plugin));
 	}
 
 	/**
-	 * Parse a TOML identifier alias.
+	 * Parse a default-catalog accessor such as {@code libs.spring.boot} or
+	 * {@code libs.plugins.spring.boot}.
+	 * @param identifier the accessor text.
+	 * @return the parsed reference, or {@literal null} for a blank, incomplete,
+	 * non-default, version, or bundle accessor.
+	 * @throws IllegalArgumentException if {@code identifier} is {@literal null}.
 	 */
 	public static @Nullable TomlReference from(String identifier) {
 		return from(split(identifier));
@@ -82,6 +94,8 @@ class TomlReference {
 	/**
 	 * Create a reference from a list of segments using only the default
 	 * {@code libs} catalog alias.
+	 * @param segments the accessor segments, including the catalog alias.
+	 * @return the parsed reference, or {@literal null} for unsupported segments.
 	 */
 	public static @Nullable TomlReference from(List<String> segments) {
 		return from(segments, Set.of(TomlParser.LIBS));
@@ -90,6 +104,9 @@ class TomlReference {
 	/**
 	 * Create a reference from a list of segments, accepting the given set of known
 	 * catalog aliases as the first segment.
+	 * @param segments the accessor segments, including the catalog alias.
+	 * @param knownAliases the catalog aliases accepted as the first segment.
+	 * @return the parsed reference, or {@literal null} for unsupported segments.
 	 */
 	static @Nullable TomlReference from(List<String> segments, Set<String> knownAliases) {
 
@@ -112,7 +129,12 @@ class TomlReference {
 	}
 
 	/**
-	 * Create a reference for the given alias, section, and dot/dash-separated key.
+	 * Create a reference for the given alias, section, and separator-delimited key.
+	 * @param alias the catalog alias.
+	 * @param section the explicit catalog section, or {@literal null} for
+	 * {@code libraries}.
+	 * @param key the catalog entry key.
+	 * @return the normalized catalog reference.
 	 */
 	static TomlReference of(String alias, @Nullable String section, String key) {
 		return new TomlReference(alias, section, split(key));
@@ -129,7 +151,7 @@ class TomlReference {
 	}
 
 	/**
-	 * @return the catalog alias (e.g. {@code libs} or {@code tools}).
+	 * @return the catalog alias, such as {@code libs} or {@code tools}.
 	 */
 	String getCatalogAlias() {
 		return key;

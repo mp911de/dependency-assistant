@@ -59,9 +59,11 @@ import org.toml.lang.psi.TomlValue;
 import org.springframework.util.Assert;
 
 /**
- * Parser for TOML version catalog ({@code libs.versions.toml}) files, including
- * mapping Gradle {@code libs.…} accessor chains to catalog table names and
- * entry keys.
+ * Parser for Gradle TOML version catalogs.
+ *
+ * <p>Library and plugin entries become {@link ArtifactDeclaration artifact
+ * declarations}. Entries in {@code [versions]} become PSI-backed properties
+ * used to resolve {@code version.ref} declarations.
  *
  * @author Mark Paluch
  */
@@ -108,8 +110,7 @@ class TomlParser {
 	public static final String MODULE = "module";
 
 	/**
-	 * Parse a {@code libs.versions.toml} version catalog into artifact
-	 * declarations.
+	 * Parse a TOML version catalog into artifact declarations.
 	 * @param file the version catalog file.
 	 * @return the artifact declarations in catalog order.
 	 */
@@ -364,7 +365,7 @@ class TomlParser {
 	/**
 	 * Return the required text associated with {@code element}.
 	 *
-	 * @param element the PSI element to inspect; must not be {@literal null}.
+	 * @param element the PSI element to inspect.
 	 * @return the required text.
 	 * @throws IllegalArgumentException if {@code element} is {@literal null}.
 	 */
@@ -482,8 +483,8 @@ class TomlParser {
 
 		/**
 		 * Resolve a {@link GradleDependency} from this declaration.
-		 * <p>As declarations can be incomplete (e.g. missing version information), make
-		 * sure to check {@link #isComplete()} before calling it.
+		 * <p>As declarations can be incomplete (for example, missing version
+		 * information), make sure to check {@link #isComplete()} before calling it.
 		 *
 		 * @return the resolved dependency.
 		 */
@@ -504,8 +505,8 @@ class TomlParser {
 
 		/**
 		 * Resolve an {@link ArtifactDeclaration} from this catalog entry.
-		 * <p>As declarations can be incomplete (e.g. missing version information), make
-		 * sure to check {@link #isComplete()} before calling it.
+		 * <p>As declarations can be incomplete (for example, missing version
+		 * information), make sure to check {@link #isComplete()} before calling it.
 		 *
 		 * @return the resolved artifact declaration.
 		 */

@@ -29,13 +29,13 @@ import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.util.StringUtils;
 
 /**
- * Groups candidates governed by the same named {@link DependencyRule} within
- * one build ecosystem when they agree on one effective current version.
+ * Groups candidates whose {@link DependencyRule} supplies the same non-empty
+ * dependency name and whose packages use the same {@link PackageSystem} when
+ * they agree on one effective current version.
  *
- * <p>Per rule name only the largest agreeing cohort forms the group, extended
- * by drifting candidates that share a version property with a cohort member. A
- * candidate that is alone under its rule name is labeled by the dependency name
- * instead of forming a group.
+ * <p>Per dependency name and package system, only the largest agreeing cohort
+ * forms a group. Drifting candidates that share a version property with a
+ * cohort member join that group.
  *
  * @author Mark Paluch
  */
@@ -74,7 +74,10 @@ class GroupByRule implements GroupingPolicy<SingleTableRow, GroupRow> {
 	}
 
 	/**
-	 * Return whether this policy is applicable to the given {@link TableRow}.
+	 * Return whether the row is governed by a rule with a dependency name.
+	 *
+	 * @param candidate the row to inspect.
+	 * @return {@code true} if the row is eligible for governed grouping.
 	 */
 	static boolean isApplicable(TableRow candidate) {
 		DependencyRule rule = candidate.getRule();
@@ -100,14 +103,10 @@ class GroupByRule implements GroupingPolicy<SingleTableRow, GroupRow> {
 	}
 
 	/**
-	 * Grouping identity: the rule's dependency name within one build ecosystem.
+	 * Grouping identity: the rule's dependency name within one package system.
 	 */
 	private record GroupKey(String dependencyName, PackageSystem packageSystem) {
 
-		/**
-		 * Return the group key for the candidate, or {@literal null} if the candidate
-		 * is not governed by a named rule.
-		 */
 		static GroupKey of(SingleTableRow candidate) {
 
 			DependencyRule rule = candidate.getRule();

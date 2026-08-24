@@ -41,11 +41,12 @@ import org.jspecify.annotations.Nullable;
  * {@link UpgradePlanService} drives them and owns the surrounding machinery: it
  * opens the platform command, advances the plan generation, runs
  * {@link #apply()}, registers the undo adapter, and publishes the change event
- * chosen by {@link #materialization()}. An implementation therefore only
- * mutates the persisted {@link UpgradePlanState.Content} or
+ * chosen by {@link #materialization()}. An implementation mutates its
+ * transition-owned {@link UpgradePlanState.Content} or
  * {@link UpgradePlanState.Plan} and reports its command name and
- * materialization; it does not touch the command boundary, the undo stack, or
- * the UI.
+ * materialization. Rename transitions also update the associated
+ * application-level name hint when requested. Implementations do not touch the
+ * command boundary, the undo stack, or the UI.
  *
  * <p>{@link #apply()} and {@link #undo()} must be exact inverses: undo restores
  * the state that apply changed, and redo re-runs apply. An instance is
@@ -104,7 +105,9 @@ interface PlanAction {
 
 	/**
 	 * Create the transition that merges a copied plan fragment into the current
-	 * content, unioning affected files and appending items not already present.
+	 * content. A pasted item replaces the current item with the same
+	 * {@link ItemId}; other pasted items are appended in fragment order. Affected
+	 * files are unioned.
 	 *
 	 * @param pasteContent the copied plan fragment to merge in.
 	 * @param content the current plan content to merge into.
@@ -206,9 +209,8 @@ interface PlanAction {
 
 		/**
 		 * Re-materialize the live plan from persisted state, resolving interface
-		 * metadata and the build-file scope and rebuilding the tree. Used when the item
-		 * set or scope gains entries that need fresh materialization: capture, paste,
-		 * and discard.
+		 * metadata and the build-file scope and rebuilding the tree. Used when capture,
+		 * paste, or discard changes the content that must be materialized.
 		 */
 		REBUILD,
 
@@ -337,8 +339,10 @@ interface PlanAction {
 	}
 
 	/**
-	 * Renames one plan item by replacing its persisted display name, capturing the
-	 * prior name at construction for undo.
+	 * Renames one plan item by replacing its persisted display name. When
+	 * requested, also replaces the remembered name for the item's member
+	 * constellation. The prior display name and remembered name are restored on
+	 * undo.
 	 */
 	class RenameItem implements PlanAction {
 
@@ -560,9 +564,9 @@ interface PlanAction {
 	}
 
 	/**
-	 * Merges a copied plan fragment into the current content, unioning the affected
-	 * files and appending fragment items not already present, keeping the prior
-	 * content for undo.
+	 * Merges a copied plan fragment into the current content. Equal-identity items
+	 * are replaced by their pasted form, other fragment items are appended, and
+	 * affected files are unioned. Keeps the prior content for undo.
 	 */
 	class PasteItems implements PlanAction {
 

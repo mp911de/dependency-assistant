@@ -52,14 +52,17 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * Resolution context for one {@link ArtifactReference}, built from the
- * {@link PsiElement} under a dependency declaration in a build file.
+ * Element-anchored resolution of an {@link ArtifactReference} and the facts
+ * required by editor dependency operations.
  *
- * <p>Resolution always returns a context. Callers use {@link #isPresent()} or
- * {@link #isAbsent()} to distinguish a resolved declaration from an element
- * that cannot participate in dependency operations. The regular element lookup
- * requires a version-defined declaration; the copied-PSI lookup can retain a
- * resolved declaration without a current version for completion.
+ * <p>Resolution always returns a context. The absent sentinel represents an
+ * element that cannot participate in dependency operations. The regular element
+ * lookup requires a version-defined declaration. The copied-PSI lookup can
+ * retain a resolved declaration without a current version for completion.
+ *
+ * <p>Declaration, rule, presentation, and project metadata are captured during
+ * resolution. Releases and upgrade suggestions are loaded lazily and retained
+ * by the context after their first successful lookup.
  *
  * @author Mark Paluch
  */
@@ -226,14 +229,20 @@ public class ArtifactReferenceContext implements HasArtifactId, HasPackageIdenti
 		return !isPresent();
 	}
 
+	/**
+	 * Return the build-tool context used for resolution.
+	 *
+	 * @return the resolved project dependency context, or the absent context when
+	 * this reference context is absent.
+	 */
 	public ProjectDependencyContext getDependencyContext() {
 		return dependencyContext;
 	}
 
 	/**
-	 * Return the artifact id of the resolved package identity.
+	 * Return the package identity of the resolved declaration.
 	 *
-	 * @return the resolved package id.
+	 * @return the resolved package identity.
 	 * @throws IllegalStateException if this context is {@link #isAbsent() absent}.
 	 */
 	@Override
@@ -242,7 +251,7 @@ public class ArtifactReferenceContext implements HasArtifactId, HasPackageIdenti
 	}
 
 	/**
-	 * Return the artifact id of the resolved artifact Id.
+	 * Return the artifact id of the resolved declaration.
 	 *
 	 * @return the resolved artifact id.
 	 * @throws IllegalStateException if this context is {@link #isAbsent() absent}.
@@ -264,9 +273,12 @@ public class ArtifactReferenceContext implements HasArtifactId, HasPackageIdenti
 	}
 
 	/**
-	 * Return the version of the resolved declaration.
+	 * Return the version defined by the resolved declaration.
 	 *
-	 * @return the non-null version established by {@link #from(PsiElement)}.
+	 * <p>A present context created for copied PSI may have no defined version. Use
+	 * {@link #getCurrentVersion()} when absence is meaningful to the caller.
+	 *
+	 * @return the declaration's defined version.
 	 * @throws IllegalStateException if this context is {@link #isAbsent() absent}
 	 * or the declaration has no version.
 	 */
@@ -293,10 +305,25 @@ public class ArtifactReferenceContext implements HasArtifactId, HasPackageIdenti
 		return rule;
 	}
 
+	/**
+	 * Return the governing rule evaluated against the current version.
+	 *
+	 * @return the evaluated rule. The evaluation is absent when no rule applies or
+	 * no current version is available.
+	 */
 	public DependencyRuleEvaluator getEvaluator() {
 		return evaluator;
 	}
 
+	/**
+	 * Return the cached release history for the resolved artifact.
+	 *
+	 * <p>The first access reads the project cache and this context retains that
+	 * immutable snapshot. An absent context returns an empty history.
+	 *
+	 * @return the retained release history, or an empty history when absent or no
+	 * cache entry exists.
+	 */
 	public Releases getReleases() {
 
 		if (isAbsent()) {
@@ -312,7 +339,8 @@ public class ArtifactReferenceContext implements HasArtifactId, HasPackageIdenti
 	 * Return upgrade suggestions for the resolved declaration.
 	 *
 	 * <p>Suggestions are computed when first requested so reference-only editor
-	 * surfaces do not pay for upgrade policy evaluation.
+	 * surfaces do not pay for upgrade policy evaluation. An unversioned declaration
+	 * or one without a defined version source has no suggestions.
 	 *
 	 * @return the computed suggestions, or empty suggestions when this context is
 	 * absent.
@@ -346,10 +374,23 @@ public class ArtifactReferenceContext implements HasArtifactId, HasPackageIdenti
 		return stateService;
 	}
 
+	/**
+	 * Return the upstream project metadata captured during resolution.
+	 *
+	 * @return the metadata snapshot, or absent metadata when this context is
+	 * absent.
+	 */
 	public ProjectMetadata getProjectMetadata() {
 		return projectMetadata;
 	}
 
+	/**
+	 * Return the dependency presentation captured during resolution.
+	 *
+	 * <p>This accessor is defined only for a {@link #isPresent() present} context.
+	 *
+	 * @return the resolved dependency presentation.
+	 */
 	public DependencyPresentation getPresentation() {
 		return presentation;
 	}
@@ -372,6 +413,7 @@ public class ArtifactReferenceContext implements HasArtifactId, HasPackageIdenti
 	/**
 	 * Return the {@link Vulnerabilities} for the given version of the resolved
 	 * artifact.
+	 *
 	 * @param artifactVersion the version to check.
 	 * @return the {@link Vulnerabilities} for the given version, or absent when
 	 * this context is {@link #isAbsent() absent} or the given version was never
@@ -387,8 +429,10 @@ public class ArtifactReferenceContext implements HasArtifactId, HasPackageIdenti
 	/**
 	 * Return the status of the given candidate version within this resolved
 	 * reference context.
+	 *
 	 * @param artifactVersion the candidate version to describe.
-	 * @return the candidate version status.
+	 * @return the candidate version status. An absent context produces an absent
+	 * rule and vulnerability state, with preview or same-or-unknown version age.
 	 */
 	public VersionStatus getStatus(ArtifactVersion artifactVersion) {
 
@@ -410,6 +454,7 @@ public class ArtifactReferenceContext implements HasArtifactId, HasPackageIdenti
 	 * @param element the element to highlight, which may be a navigation anchor
 	 * distinct from the resolved element.
 	 * @return the range to highlight.
+	 * @throws IllegalStateException if this context is {@link #isAbsent() absent}.
 	 */
 	public TextRange getHighlightRange(PsiElement element) {
 		return dependencyContext.getInterfaceAssistant().getHighlightRange(element);

@@ -55,13 +55,15 @@ import com.intellij.refactoring.rename.RenameHandler;
  * touches no index.
  *
  * <p>Beyond the plan transition the handler acts on the dialog's two choices:
- * "remember name" stores the name as a
+ * "remember name" stores the accepted name as a
  * {@link ApplicationSettings#addNameHint(String, List) name hint} for the
- * item's explicit-member constellation (or drops the hint when unchecked, or
- * when the name is one of the item's derived names), and "update
- * dependencyfile.json" writes the name into the project's descriptor. Both
+ * item's member constellation, including implicit group members, when the
+ * accepted name differs from the current name. Clearing the choice suppresses
+ * this hint update but does not remove an existing hint. "Update
+ * dependencyfile.json" writes the name into the project's descriptor. The
  * choices are persisted in {@link ApplicationSettings} as the preselection for
- * the next rename.
+ * the next rename; the descriptor choice is stored only while a descriptor is
+ * available.
  *
  * @author Mark Paluch
  */
@@ -124,7 +126,7 @@ public class RenameItemHandler implements RenameHandler, TitledHandler, DumbAwar
 	}
 
 	/**
-	 * Coordinates of the item's explicit members, excluding implicit group members.
+	 * Coordinates of all item members, including implicit group members.
 	 */
 	private static List<ArtifactId> getArtifactIds(UpgradePlanItem item) {
 
@@ -167,9 +169,9 @@ public class RenameItemHandler implements RenameHandler, TitledHandler, DumbAwar
 	}
 
 	/**
-	 * Set {@code name} on the descriptor entries covering the item's explicit
-	 * members (see {@link DependencyfileArtifacts#setName}). Never creates the
-	 * descriptor and does not open it in the editor.
+	 * Set {@code name} on the descriptor entries covering all item members (see
+	 * {@link DependencyfileArtifacts#setName}). Never creates the descriptor and
+	 * does not open it in the editor.
 	 */
 	private static void updateDependencyfile(Project project, UpgradePlanItem item, String name) {
 

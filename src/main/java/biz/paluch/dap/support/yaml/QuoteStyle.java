@@ -20,19 +20,19 @@ import org.jetbrains.yaml.psi.YAMLQuotedText;
 import org.jetbrains.yaml.psi.YAMLScalar;
 
 /**
- * YAML scalar quoting style.
+ * Rendering style for a YAML scalar.
  *
- * <p>Detected from a {@link YAMLScalar} and used to wrap replacement text so the
- * original quoting form survives a PSI rewrite. {@link #wrap(String)} applies
- * YAML quote-escaping rules so a replacement value that contains the wrapping
- * quote character round-trips through the YAML parser.
+ * <p>{@link #of(YAMLScalar)} detects the source scalar's style, and
+ * {@link #wrap(String)} renders replacement content in that same style. Quoted
+ * styles escape their delimiter syntax. {@link #NONE} leaves the replacement
+ * unchanged and does not select a quoted style when the content requires one.
  *
  * @author Mark Paluch
  */
 public enum QuoteStyle {
 
 	/**
-	 * Unquoted plain scalar.
+	 * Plain scalar style. Replacement content is returned unchanged.
 	 */
 	NONE {
 		@Override
@@ -42,8 +42,7 @@ public enum QuoteStyle {
 	},
 
 	/**
-	 * Single-quoted scalar. Single quotes inside the value are escaped by
-	 * doubling them, per the YAML 1.2 single-quoted style.
+	 * Single-quoted scalar style. Single quotes in the content are doubled.
 	 */
 	SINGLE {
 		@Override
@@ -53,8 +52,8 @@ public enum QuoteStyle {
 	},
 
 	/**
-	 * Double-quoted scalar. Backslashes and double quotes inside the value are
-	 * escaped, per the YAML 1.2 double-quoted style.
+	 * Double-quoted scalar style. Backslashes and double quotes in the content are
+	 * escaped.
 	 */
 	DOUBLE {
 		@Override
@@ -64,9 +63,9 @@ public enum QuoteStyle {
 	};
 
 	/**
-	 * Detect the quoting style of a YAML scalar.
+	 * Determine the rendering style of the given YAML scalar.
 	 * @param scalar the scalar to inspect.
-	 * @return the detected style.
+	 * @return the corresponding quoted style, or {@link #NONE} for a plain scalar.
 	 */
 	public static QuoteStyle of(YAMLScalar scalar) {
 
@@ -77,10 +76,9 @@ public enum QuoteStyle {
 	}
 
 	/**
-	 * Wrap a raw value in the quoting characters for this style, escaping any
-	 * occurrences of the wrapping quote character per YAML rules.
-	 * @param rawValue the unwrapped value.
-	 * @return the value formatted for direct insertion into a YAML scalar.
+	 * Render scalar content using this style.
+	 * @param rawValue the unquoted scalar content to render.
+	 * @return the rendered YAML scalar text.
 	 */
 	public abstract String wrap(String rawValue);
 

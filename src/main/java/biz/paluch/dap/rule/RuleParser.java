@@ -35,13 +35,13 @@ import org.jspecify.annotations.Nullable;
  * Parses a {@code dependencyfile.json} descriptor into a {@link Rules}
  * resolution view.
  *
- * <p>Parsing is lenient: an artifact or branch entry that cannot be interpreted
- * is logged and skipped rather than failing the whole descriptor, so a
- * partially valid file still yields the rules it can express. Generation values
- * (a single string or an array of strings) are salvaged entry by entry: invalid
- * entries are logged and dropped, and a rule whose generations all fail to
- * parse stays present but unconstrained. Unknown upgrade strategies are
- * ignored. A descriptor whose top-level value is not a JSON object resolves to
+ * <p>Parsing is lenient: non-object branch entries are ignored, and failures in
+ * an individual artifact or branch entry are logged and skipped rather than
+ * failing the whole descriptor. Generation values (a single string or an array
+ * of strings) are salvaged entry by entry. Invalid or unsupported generation
+ * values are logged and dropped, and a rule whose generations all fail to parse
+ * stays present but unconstrained. Unknown upgrade strategies are ignored. A
+ * descriptor whose top-level value is not a JSON object resolves to
  * {@link Rules#absent()}.
  *
  * <p>The parser reads PSI and must be invoked inside a read action.
@@ -58,16 +58,16 @@ class RuleParser {
 
 	/**
 	 * Create a parser for the given descriptor.
-	 * @param file the {@code dependencyfile.json} PSI file to parse; must not be
-	 * {@literal null}.
+	 *
+	 * @param file the {@code dependencyfile.json} PSI file to parse.
 	 */
 	RuleParser(JsonFile file) {
 		this.file = file;
 	}
 
 	/**
-	 * Parse the descriptor into a resolution view, skipping any individual rule
-	 * that cannot be interpreted.
+	 * Parse the descriptor into a resolution view using the lenient entry handling
+	 * described for this parser.
 	 *
 	 * @return the parsed rules, or {@link Rules#absent()} when the descriptor has
 	 * no JSON object root.

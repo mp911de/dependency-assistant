@@ -22,9 +22,12 @@ import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.rule.DependencyRule;
 
 /**
- * Strategy that refines the {@link UpgradeSuggestions} computed for a the
- * materialized upgrade facts, for example by adding a remediation target or
- * dropping suggestions a {@link biz.paluch.dap.rule.DependencyRule} disallows.
+ * Strategy for refining {@link UpgradeSuggestions} from materialized upgrade
+ * facts.
+ *
+ * <p>A filter may add or replace a remediation target, remove a disallowed
+ * target, or return the input unchanged. Composite filters receive the result
+ * of the preceding filter.
  *
  * @author Mark Paluch
  */
@@ -38,8 +41,8 @@ public interface UpgradeSuggestionsFilter {
 	 * @param releases the available releases.
 	 * @param vulnerabilities the vulnerability results.
 	 * @param rule the governing dependency rule.
-	 * @param suggestions the suggestions to refine.
-	 * @return the refined suggestions; never {@literal null}.
+	 * @param suggestions the suggestions produced so far.
+	 * @return the refined suggestions.
 	 */
 	UpgradeSuggestions filter(Dependency dependency, Releases releases, VulnerabilityRepository vulnerabilities,
 			DependencyRule rule, UpgradeSuggestions suggestions);

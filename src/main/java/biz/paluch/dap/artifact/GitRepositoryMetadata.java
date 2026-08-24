@@ -23,13 +23,13 @@ import org.jspecify.annotations.Nullable;
 /**
  * Hosted Git repository coordinates: host, owner, and repository name.
  *
+ * @author Mark Paluch
  * @param host the repository host name (e.g. {@code github.com} or a
  * self-hosted instance).
  * @param owner the owner path: a user or organization, or a GitLab group path
  * whose subgroup segments are preserved (e.g.
  * {@code gitlab-org/security-products/analyzers}).
  * @param repository the repository name.
- * @author Mark Paluch
  * @see RemoteUrl
  */
 public record GitRepositoryMetadata(String host, String owner, String repository) {
@@ -56,6 +56,8 @@ public record GitRepositoryMetadata(String host, String owner, String repository
 	/**
 	 * Strip a trailing {@code .git} left inside the path by scm-inheritance debris
 	 * (e.g. {@code assertj/assertj.git/assertj-parent}).
+	 * @param segment the repository path segment.
+	 * @return the segment without a trailing {@code .git} suffix.
 	 */
 	public static String stripDotGit(String segment) {
 		return segment.endsWith(".git") ? segment.substring(0, segment.length() - 4) : segment;
@@ -63,13 +65,18 @@ public record GitRepositoryMetadata(String host, String owner, String repository
 
 	/**
 	 * Return the canonical cache and connection key of these coordinates.
-	 * @return the key in {@code host/owner/repository} form; guaranteed to be not
-	 * {@literal null}.
+	 * @return the key in {@code host/owner/repository} form.
 	 */
 	public String key() {
 		return host + "/" + owner + "/" + repository;
 	}
 
+	/**
+	 * Attach these repository coordinates as release-routing metadata to the
+	 * declared artifact identity.
+	 * @param originalArtifactId the identity declared in the build file.
+	 * @return the Git-backed artifact identity.
+	 */
 	public GitArtifactId toArtifactId(ArtifactId originalArtifactId) {
 		return GitArtifactId.of(host(), owner(), repository(), originalArtifactId);
 	}

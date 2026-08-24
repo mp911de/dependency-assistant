@@ -48,9 +48,18 @@ import com.intellij.psi.PsiElementVisitor;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Thin PSI adapter that runs {@link MavenWrapperUrlAnalyzer} over Maven wrapper
- * property files and reports each detected {@link MavenWrapperUrlProblem} as a
- * warning with problem-specific quick fixes.
+ * Inspection for malformed, unsafe, or unverified Maven Wrapper URL
+ * declarations.
+ *
+ * <p>URL problems reported by {@link MavenWrapperUrlAnalyzer} are warnings with
+ * problem-specific rewrite actions. When the cache contains a non-preview
+ * release, each URL problem also offers replacement with its canonical Maven
+ * Central URL.
+ *
+ * <p>A clean, browsable URL without its sibling SHA-256 property receives a
+ * weak warning only in trusted projects. Completion placeholders, non-authority
+ * interpolation, existing checksum properties, and URLs with another reported
+ * problem do not produce the missing-checksum warning.
  *
  * @author Mark Paluch
  */

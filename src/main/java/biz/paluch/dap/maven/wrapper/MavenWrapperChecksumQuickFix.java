@@ -31,7 +31,15 @@ import com.intellij.psi.SmartPsiElementPointer;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Quick-fix that computes and inserts a missing Maven wrapper checksum.
+ * Inspection quick fix that downloads the artifact referenced by a Maven
+ * Wrapper URL and inserts its missing SHA-256 checksum property after the URL
+ * property.
+ *
+ * <p>The download runs outside the write action. The resulting write command
+ * inserts the checksum only while the project remains open, the target URL is
+ * unchanged, and the checksum property is still absent. Failures are reported
+ * through a project notification. Cancellation and stale results make no PSI
+ * change.
  *
  * @author Mark Paluch
  */

@@ -49,7 +49,13 @@ import com.intellij.util.EventDispatcher;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Editable state of the dependency upgrade review dialog.
+ * Mutable, dialog-scoped review session over grouped dependency upgrade rows.
+ *
+ * <p>The session owns the active visibility filter and each row's selected
+ * target and apply mark. Selections propagate through the transitive closure of
+ * rows sharing a version property. Confirmation projects the armed rows either
+ * into apply-ready {@link DependencyUpdate}s or {@link PlannedUpgrade} targets
+ * without exposing the mutable selection state.
  *
  * @author Mark Paluch
  */
@@ -90,6 +96,7 @@ class UpgradeReview {
 
 	/**
 	 * Create a new {@code UpgradeReview}.
+	 *
 	 * @param candidates the update candidates to display.
 	 */
 	UpgradeReview(TableRow... candidates) {
@@ -98,6 +105,7 @@ class UpgradeReview {
 
 	/**
 	 * Create a new {@code UpgradeReview}.
+	 *
 	 * @param candidates the update candidates to display.
 	 * @param errors release-fetch errors collected while resolving.
 	 */
@@ -153,9 +161,12 @@ class UpgradeReview {
 	}
 
 	/**
-	 * Return whether the row's bare name collides with another row labeled by its
-	 * coordinate. Computed once over the full row set so labels stay stable while
-	 * filters toggle.
+	 * Return whether another row has the same name. The result is computed once
+	 * over the full row set so disambiguating labels stay stable while filters
+	 * toggle.
+	 *
+	 * @param row the row to inspect.
+	 * @return {@code true} if the row name is ambiguous.
 	 */
 	boolean isAmbiguous(TableRow row) {
 		return ambiguousNames.contains(row.getName());
@@ -164,6 +175,7 @@ class UpgradeReview {
 	/**
 	 * Return the other rows coupled to the row through a Shared Version Property.
 	 *
+	 * @param row the row whose peers are requested.
 	 * @return the coupled rows in row order; empty when the row's version
 	 * properties back no other row.
 	 */
@@ -173,6 +185,9 @@ class UpgradeReview {
 
 	/**
 	 * Return the fully rendered coordinate-column tooltip for the row.
+	 *
+	 * @param row the row whose tooltip is requested.
+	 * @return the rendered HTML tooltip.
 	 */
 	String getCoordinateToolTip(TableRow row) {
 		return toolTips.computeIfAbsent(row, this::renderCoordinateToolTip);
@@ -215,6 +230,9 @@ class UpgradeReview {
 	/**
 	 * Register a listener notified when the review state changes. The listener is
 	 * removed when {@code parent} is disposed.
+	 *
+	 * @param listener the listener to notify.
+	 * @param parent the disposable that owns the registration.
 	 */
 	void addListener(ReviewListener listener, Disposable parent) {
 		listeners.addListener(listener, parent);
@@ -222,6 +240,8 @@ class UpgradeReview {
 
 	/**
 	 * Return the candidates currently shown by the dialog under the active filter.
+	 *
+	 * @return the visible rows in display order.
 	 */
 	List<TableRow> getCandidates() {
 		return candidates.stream().filter(this::isVisible).toList();
@@ -229,6 +249,8 @@ class UpgradeReview {
 
 	/**
 	 * Return all candidates regardless of the active visibility filter.
+	 *
+	 * @return all rows in display order.
 	 */
 	List<TableRow> getAllCandidates() {
 		return candidates;
@@ -239,9 +261,12 @@ class UpgradeReview {
 	}
 
 	/**
-	 * Return the release options shown for the given row under the active filter. A
-	 * vulnerable row's Safe Version is pinned in so it stays selectable even when
-	 * the filter would otherwise hide every newer release.
+	 * Return the release options shown for the given row under the active filter.
+	 * The filtered view retains remediation targets even when ordinary display
+	 * filtering would omit them.
+	 *
+	 * @param row the row whose releases are requested.
+	 * @return the row's active release view.
 	 */
 	Releases getReleases(TableRow row) {
 		return filter.visibleReleases(row.getUpgrade());
@@ -251,6 +276,10 @@ class UpgradeReview {
 	 * Return the strategy target for the row, or {@literal null} if no target
 	 * exists or it is hidden by the active filter. Keeps strategy selection
 	 * consistent with what the buttons and combo offer.
+	 *
+	 * @param row the row whose target is requested.
+	 * @param strategy the strategy to resolve.
+	 * @return the visible target, or {@literal null} if none is available.
 	 */
 	@Nullable
 	Release findRelease(TableRow row, UpgradeStrategy strategy) {
@@ -269,7 +298,9 @@ class UpgradeReview {
 	}
 
 	/**
-	 * Return whether up-to-date rows and noise releases are hidden.
+	 * Return whether the filtered display view is active.
+	 *
+	 * @return {@code true} when the filtered row and release views are active.
 	 */
 	boolean isHideUpToDate() {
 		return filter.hideUpToDate();
@@ -277,6 +308,8 @@ class UpgradeReview {
 
 	/**
 	 * Return the active upgrade strategy selection.
+	 *
+	 * @return the active bulk strategy selection.
 	 */
 	StrategySelection getUpgradeStrategy() {
 		return upgradeStrategy;
@@ -284,6 +317,8 @@ class UpgradeReview {
 
 	/**
 	 * Return errors reported while checking dependencies.
+	 *
+	 * @return the non-fatal dependency-check errors.
 	 */
 	List<String> getErrors() {
 		return errors;
@@ -291,6 +326,9 @@ class UpgradeReview {
 
 	/**
 	 * Return the row's selected target version, or {@literal null} if cleared.
+	 *
+	 * @param row the row whose target is requested.
+	 * @return the target version, or {@literal null} if cleared.
 	 */
 	@Nullable
 	ArtifactVersion getUpdateTo(TableRow row) {
@@ -301,6 +339,9 @@ class UpgradeReview {
 	 * Return the release matching the row's selected target version, falling back
 	 * to a synthetic release when that version is absent from the row's release
 	 * history.
+	 *
+	 * @param row the row whose selection is requested.
+	 * @return the selected release or its synthetic representation.
 	 */
 	Release getSelectedRelease(TableRow row) {
 		return selectedReleases.computeIfAbsent(row, this::resolveSelectedRelease);
@@ -317,6 +358,13 @@ class UpgradeReview {
 		return release != null ? release : Release.of(shown);
 	}
 
+	/**
+	 * Return the release options for the row, retaining a selected synthetic or
+	 * otherwise hidden release as the first option.
+	 *
+	 * @param row the row whose options are requested.
+	 * @return the selectable releases.
+	 */
 	List<Release> getReleaseOptions(TableRow row) {
 
 		Releases current = getReleases(row);
@@ -330,6 +378,9 @@ class UpgradeReview {
 
 	/**
 	 * Return the row's selected target version.
+	 *
+	 * @param row the row whose target is required.
+	 * @return the selected target version.
 	 * @throws IllegalStateException if no target version is selected.
 	 */
 	ArtifactVersion getRequiredUpdateTo(TableRow row) {
@@ -344,6 +395,9 @@ class UpgradeReview {
 
 	/**
 	 * Return whether the row is selected to be applied.
+	 *
+	 * @param row the row to inspect.
+	 * @return {@code true} if the row is armed for apply or transfer.
 	 */
 	boolean isApplyUpdate(TableRow row) {
 		return getSelection(row).isApplyUpdate();
@@ -379,6 +433,7 @@ class UpgradeReview {
 	 * form handed to the Upgrade Plan; review-internal selection state does not
 	 * leave the review.
 	 *
+	 * @return the armed rows and their target versions in row order.
 	 * @throws IllegalStateException if an armed row has no target version.
 	 */
 	Map<PlannedUpgrade, ArtifactVersion> getSelectedUpgrades() {
@@ -396,6 +451,9 @@ class UpgradeReview {
 	 * Select the given target version for the row. A version absent from the row's
 	 * release universe is kept as-is: shared-property propagation and persisted
 	 * plans legitimately carry versions the row has never released.
+	 *
+	 * @param row the row whose target is selected.
+	 * @param version the target version.
 	 */
 	void setVersion(TableRow row, ArtifactVersion version) {
 
@@ -412,6 +470,9 @@ class UpgradeReview {
 
 	/**
 	 * Select the row's target for the given strategy, if one is visible.
+	 *
+	 * @param row the row to update.
+	 * @param strategy the strategy whose target is selected.
 	 */
 	void applyStrategyTarget(TableRow row, UpgradeStrategy strategy) {
 
@@ -423,6 +484,8 @@ class UpgradeReview {
 
 	/**
 	 * Apply the given strategy selection to every visible row.
+	 *
+	 * @param selection the bulk strategy selection.
 	 */
 	void applyStrategyToAll(StrategySelection selection) {
 
@@ -440,7 +503,9 @@ class UpgradeReview {
 	}
 
 	/**
-	 * Set whether up-to-date rows and noise releases are hidden.
+	 * Select the filtered display view or the complete view.
+	 *
+	 * @param hide whether the filtered display view is active.
 	 */
 	void setHideUpToDate(boolean hide) {
 
@@ -451,6 +516,9 @@ class UpgradeReview {
 
 	/**
 	 * Set whether the row should be applied.
+	 *
+	 * @param row the row whose selection cohort is changed.
+	 * @param apply whether the cohort is armed.
 	 */
 	void setSelected(TableRow row, boolean apply) {
 
@@ -472,6 +540,8 @@ class UpgradeReview {
 
 	/**
 	 * Set whether all visible candidates should be applied.
+	 *
+	 * @param apply whether the visible rows are armed.
 	 */
 	void selectAll(boolean apply) {
 
@@ -587,9 +657,11 @@ class UpgradeReview {
 		}
 
 		/**
-		 * Same visual language as
-		 * {@link DependencyUpdateTable.VersionOptionCellRenderer} / {@link VersionAge}
-		 * for version steps.
+		 * Return the icon used for this bulk selection. Version steps use the same
+		 * visual language as {@link DependencyUpdateTable.VersionOptionCellRenderer}
+		 * and {@link VersionAge}.
+		 *
+		 * @return the bulk strategy icon.
 		 */
 		Icon getIcon() {
 

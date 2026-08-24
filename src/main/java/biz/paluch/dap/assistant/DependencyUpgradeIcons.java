@@ -18,10 +18,8 @@ package biz.paluch.dap.assistant;
 
 import javax.swing.Icon;
 
-import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.artifact.VersionAge;
-import biz.paluch.dap.assistant.presentation.DependencyIcons;
 import biz.paluch.dap.checker.CheckerIcons;
 import biz.paluch.dap.support.UpgradeStrategy;
 import biz.paluch.dap.util.ResolvableIcon;
@@ -36,6 +34,9 @@ import com.intellij.openapi.util.ScalableIcon;
  * reflective documentation path in one place. This keeps {@link VersionAge} a
  * pure version classifier and removes the parallel icon/icon-name lookups that
  * could drift.
+ *
+ * <p>Tier strategies reuse the patch, minor, major, and preview age bands.
+ * Remediation strategies use their safe or rule-compliance icons.
  *
  * @author Mark Paluch
  */
@@ -70,10 +71,24 @@ public class DependencyUpgradeIcons {
 	private DependencyUpgradeIcons() {
 	}
 
+	/**
+	 * Resolve the Swing icon for the given upgrade strategy.
+	 *
+	 * @param strategy the strategy to present.
+	 * @return the mapped Swing icon.
+	 * @see #resolve(UpgradeStrategy)
+	 */
 	public static Icon resolveIcon(UpgradeStrategy strategy) {
 		return resolve(strategy).getIcon();
 	}
 
+	/**
+	 * Resolve the presentation icon and documentation reference for the given
+	 * upgrade strategy.
+	 *
+	 * @param strategy the strategy to present.
+	 * @return the mapped resolvable icon.
+	 */
 	public static ResolvableIcon resolve(UpgradeStrategy strategy) {
 		return switch (strategy) {
 		case SAFE -> SAFE;
@@ -85,10 +100,24 @@ public class DependencyUpgradeIcons {
 		};
 	}
 
+	/**
+	 * Resolve the Swing icon for the given version-age category.
+	 *
+	 * @param age the candidate's version-age category.
+	 * @return the mapped Swing icon.
+	 * @see #resolve(VersionAge)
+	 */
 	public static Icon resolveIcon(VersionAge age) {
 		return resolve(age).getIcon();
 	}
 
+	/**
+	 * Resolve the presentation icon and documentation reference for the given
+	 * version-age category.
+	 *
+	 * @param age the candidate's version-age category.
+	 * @return the mapped resolvable icon.
+	 */
 	public static ResolvableIcon resolve(VersionAge age) {
 		return switch (age) {
 		case OLDER -> OLDER;

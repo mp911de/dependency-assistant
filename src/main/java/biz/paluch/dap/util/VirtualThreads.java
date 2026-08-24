@@ -25,18 +25,22 @@ import kotlinx.coroutines.Dispatchers;
 import kotlinx.coroutines.ExecutorsKt;
 
 /**
- * Mirror of {@code IntelliJVirtualThreads}.
+ * Creates virtual-thread builders backed by IntelliJ's coroutine scheduler when
+ * the running JDK permits that integration.
+ *
+ * <p>The integration uses a non-public JDK constructor. If reflective access is
+ * unavailable or invocation fails, builders fall back to
+ * {@link Thread#ofVirtual()}.
  */
 public final class VirtualThreads {
 
 	private VirtualThreads() {
 	}
 
-	/**
-	 * By default, virtual threads run on top of Fork-Join Pool. We use coroutine
-	 * scheduler as the main scheduler of IntelliJ Platform, so we need to replace
-	 * FJP in default constructors of virtual thread factories.
-	 * <p>Until JDK gets an API for setting custom executors, we use reflection.
+	/*
+	 * Attempt to install IntelliJ's coroutine scheduler through the JDK's internal
+	 * virtual-thread builder constructor. Public JDK builders do not accept an
+	 * executor.
 	 */
 	private static final MethodHandle virtualThreadBuilderConstructor;
 
@@ -66,9 +70,10 @@ public final class VirtualThreads {
 	}
 
 	/**
-	 * Returns a virtual thread builder.
-	 * <p>This method is preferable to {@link Thread#ofVirtual()}, as it allows
-	 * IntelliJ Platform to perform modifications to virtual threads.
+	 * Return a virtual-thread builder using the IntelliJ coroutine scheduler when
+	 * available, otherwise the JDK default scheduler.
+	 *
+	 * @return a new virtual-thread builder.
 	 */
 	public static Thread.Builder ofVirtual() {
 		return getVirtualBuilder();

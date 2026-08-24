@@ -60,7 +60,7 @@ class UpdateGradleFile implements FileDependencyUpdater {
 	}
 
 	/**
-	 * Applies the selected version updates to the Gradle build file.
+	 * Apply the selected version updates to the Gradle-related file.
 	 *
 	 * @param buildFile the Gradle file to update.
 	 * @param updates dependency updates to apply.
@@ -96,8 +96,7 @@ class UpdateGradleFile implements FileDependencyUpdater {
 	 * Apply a single update at the given Gradle version literal. The literal must
 	 * be one of the supported PSI shapes (Properties value, TOML literal, Groovy
 	 * literal, or Kotlin string template).
-	 * @param literal the version PSI element to rewrite; must not be
-	 * {@literal null}.
+	 * @param literal the version PSI element to rewrite.
 	 * @param update the update to apply.
 	 */
 	public void applyUpdate(PsiElement literal, DependencyUpdate update) {
@@ -161,8 +160,8 @@ class UpdateGradleFile implements FileDependencyUpdater {
 	}
 
 	/**
-	 * Update a version entry inside the {@code [versions]} table of a
-	 * {@code libs.versions.toml} catalog.
+	 * Update a version entry inside the {@code [versions]} table of a TOML version
+	 * catalog.
 	 */
 	public void updateProperty(TomlFile file, String propertyKey, String newVersion) {
 
@@ -217,7 +216,7 @@ class UpdateGradleFile implements FileDependencyUpdater {
 	}
 
 	/**
-	 * Updates {@code version = "…"} inside a {@code [libraries]} or
+	 * Update {@code version = "..."} inside a {@code [libraries]} or
 	 * {@code [plugins]} inline table when the entry matches {@code artifactId} and
 	 * uses a literal version (not {@code version.ref}).
 	 */

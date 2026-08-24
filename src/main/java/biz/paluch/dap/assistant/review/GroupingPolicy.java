@@ -23,8 +23,8 @@ import java.util.List;
  *
  * <p>Each policy selects the candidates it applies to and returns the groups it
  * forms; candidates it does not claim remain untouched. Implementations must
- * keep each group's members in candidate order so the {@link Grouper} can place
- * the group at its first member's position.
+ * keep each group's members in candidate order so update fan-out remains
+ * deterministic.
  *
  * @author Mark Paluch
  * @see GroupByRule
@@ -36,7 +36,7 @@ interface GroupingPolicy<T, G> {
 	 * Form groups from the given candidates.
 	 *
 	 * @param candidates all candidates in display order.
-	 * @return the formed groups; each group's members appear in candidate order.
+	 * @return the formed groups. Each group's members appear in candidate order.
 	 */
 	List<G> group(List<T> candidates);
 

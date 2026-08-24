@@ -25,11 +25,13 @@ import biz.paluch.dap.support.UpgradeStrategy;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Resolved rule for one governed dependency.
+ * Resolved governance for one dependency.
  *
  * <p>A rule {@linkplain #test(Object) tests} whether an {@link ArtifactVersion}
- * falls within the required generations; an {@linkplain #absent() absent} rule
- * accepts every version.
+ * falls within the required generations and exposes the permitted Upgrade
+ * Strategies, optional Artifact Display Name, and any available
+ * rule-remediation target. An {@linkplain #absent() absent} rule accepts every
+ * version and enables every strategy.
  *
  * @author Mark Paluch
  * @see DependencyRules
@@ -111,21 +113,36 @@ public interface DependencyRule extends Predicate<ArtifactVersion> {
 	 * Return the required generations, or the
 	 * {@linkplain Generations#unconstrained() unconstrained} instance if this rule
 	 * is {@linkplain #absent() absent} or unconstrained.
+	 *
+	 * @return the permitted generations.
 	 */
 	Generations getGenerations();
 
 	/**
-	 * Return the friendly dependency name, or an empty string if this rule is
-	 * {@linkplain #absent() absent}.
+	 * Return the Artifact Display Name, or an empty string when this rule is
+	 * unnamed or {@linkplain #absent() absent}.
+	 *
+	 * @return the Artifact Display Name, or an empty string when none is defined.
 	 */
 	String getDependencyName();
 
 	/**
 	 * Return whether the given upgrade strategy is enabled.
+	 *
 	 * @param upgradeStrategy the upgrade strategy.
+	 * @return {@literal true} if the strategy is enabled; {@literal false}
+	 * otherwise.
 	 */
 	boolean isEnabled(UpgradeStrategy upgradeStrategy);
 
+	/**
+	 * Suggest a release from the given history that realigns a version with this
+	 * rule.
+	 *
+	 * @param releases the available release history.
+	 * @return a compliant remediation release, or {@literal null} when this rule
+	 * has no available remediation target.
+	 */
 	@Nullable
 	Release suggestRemediation(Releases releases);
 

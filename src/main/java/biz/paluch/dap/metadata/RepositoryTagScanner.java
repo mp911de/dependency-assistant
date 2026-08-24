@@ -25,7 +25,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 
 import biz.paluch.dap.artifact.ArtifactNotFoundException;
-import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.TagSource;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
@@ -51,7 +50,7 @@ import com.intellij.util.concurrency.AppExecutorUtil;
  * the connection's canonical key and URL. The scan phase selects up to
  * {@link #MAX_CANDIDATES} repositories whose last scan lies beyond the
  * {@link #SCAN_INTERVAL} and fetches their tags through the platform's
- * {@link ReleaseSource}, processed by virtual-thread workers.
+ * {@link TagSource}, processed by virtual-thread workers.
  *
  * <p>Failure back-off mirrors the cached artifact's empty-lookup scheme on the
  * repository's {@code lastUpdateTimestamp}: a failed lookup advances a small
@@ -91,6 +90,11 @@ public class RepositoryTagScanner {
 	/**
 	 * Run the sweep: populate repository entries from captured project metadata,
 	 * then scan due repositories for their tags.
+	 *
+	 * <p>A successful scan replaces the cached tag list and records the scan time.
+	 * Cancellation is not recorded as a failed lookup. Failed remote lookups
+	 * advance the repository's back-off state.
+	 *
 	 * @param indicator the progress indicator to report cancellation through.
 	 */
 	public void scan(ProgressIndicator indicator) {
@@ -102,7 +106,7 @@ public class RepositoryTagScanner {
 	/**
 	 * Ensure a {@link CachedRepository} exists for every artifact whose captured
 	 * metadata carries a platform-detectable repository URL. Entries are keyed and
-	 * addressed by the canonical connection key and URL; timestamps stay untouched.
+	 * addressed by the canonical connection key and URL. Timestamps stay untouched.
 	 */
 	private void populateRepositories(ProgressIndicator indicator) {
 

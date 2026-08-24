@@ -58,10 +58,10 @@ import org.springframework.util.ObjectUtils;
 /**
  * Project-level service persisting the Upgrade Plan across IDE restarts.
  *
- * <p>The plan is stored in {@code .idea/dependency-assistant-plan.xml}. That
- * location is committed to version control by default, so a plan can be shared
- * and reviewed like any other project artifact; a team that prefers a
- * local-only plan adds the file to {@code .gitignore}.
+ * <p>The plan is stored in {@code .idea/dependency-assistant-plan.xml}. Whether
+ * it is shared follows the project's version-control ignore rules. A team can
+ * track that file to share and review the plan, or ignore it to keep the plan
+ * local.
  *
  * @author Mark Paluch
  */
@@ -145,15 +145,32 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 		return project.getService(UpgradePlanState.class);
 	}
 
+	/**
+	 * Return a detached snapshot for platform persistence.
+	 *
+	 * @return a detached snapshot of the current plan.
+	 */
 	@Override
 	public synchronized Plan getState() {
 		return state.snapshot();
 	}
 
+	/**
+	 * Return the live plan owned by this service. Structural content changes are
+	 * coordinated by {@link UpgradePlanService}.
+	 *
+	 * @return the live plan.
+	 */
 	public Plan getPlan() {
 		return state;
 	}
 
+	/**
+	 * Replace the live plan from persisted state, advance its generation, and
+	 * notify listeners that prior materialization and undo history are stale.
+	 *
+	 * @param state the persisted plan to install.
+	 */
 	@Override
 	public synchronized void loadState(Plan state) {
 		this.tracker.next();
@@ -179,6 +196,9 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 
 	/**
 	 * Persisted upgrade plan.
+	 *
+	 * <p>The milestone and label names are persisted. Their selected objects are
+	 * transient bindings to the currently available ticket-system catalogs.
 	 */
 	@Tag("plan")
 	static class Plan implements Cloneable {
@@ -267,7 +287,11 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 	}
 
 	/**
-	 * The persisted and optionally materialized content of an Upgrade Plan.
+	 * The persisted and optionally materialized content of an Upgrade Plan: its
+	 * ordered items and captured build-file scope paths.
+	 *
+	 * <p>Items that cannot currently be materialized remain in this content but are
+	 * omitted from the live {@link UpgradePlan} until they resolve again.
 	 */
 	@Tag("content")
 	static class Content implements Iterable<Item> {
@@ -345,6 +369,9 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 
 	/**
 	 * XML-serialized state of one planned upgrade unit.
+	 *
+	 * <p>Equality is member-derived {@link ItemId} identity. The display name,
+	 * target version, vulnerability facts, and ticket do not participate.
 	 *
 	 * @author Mark Paluch
 	 */
@@ -541,6 +568,10 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 
 	}
 
+	/**
+	 * Persisted ticket link. The display reference is resolved from the currently
+	 * bound ticket system when the plan is materialized and falls back to the key.
+	 */
 	@Tag("ticket")
 	static class Ticket {
 

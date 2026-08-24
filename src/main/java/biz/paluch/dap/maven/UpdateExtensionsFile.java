@@ -43,9 +43,6 @@ class UpdateExtensionsFile implements FileDependencyUpdater {
 
 	private static final Logger LOG = Logger.getInstance(UpdateExtensionsFile.class);
 
-	/**
-	 * Apply updates to the extensions file.
-	 */
 	@Override
 	public void applyUpdates(PsiFile extensionsFile, DependencyUpdates updates) {
 
@@ -63,7 +60,8 @@ class UpdateExtensionsFile implements FileDependencyUpdater {
 
 	/**
 	 * Apply a single update at the given version literal. The literal must be the
-	 * {@code <version>} XML tag.
+	 * {@code <version>} XML tag. Other PSI elements are ignored.
+	 *
 	 * @param versionLiteral the version PSI element.
 	 * @param update the update to apply.
 	 */

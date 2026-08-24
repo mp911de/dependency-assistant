@@ -31,14 +31,12 @@ import org.springframework.util.StringUtils;
  * GitHub repository action referenced from a workflow {@code uses:}
  * declaration.
  *
- * <p>
- * The dependency identity of a GitHub action is the repository that
+ * <p>The dependency identity of a GitHub action is the repository that
  * publishes it: {@code owner/repository}. Any workflow-local action path is
  * deliberately ignored for identity and release lookup, since tags and SHAs
  * belong to the Git repository rather than to a subdirectory inside it.
  *
- * <p>
- * The {@linkplain #version() version} is the raw ref after {@code @}. It is
+ * <p>The {@linkplain #version() version} is the raw ref after {@code @}. It is
  * retained as workflow metadata so callers can resolve, compare, and rewrite
  * the declaration without conflating repository identity with the selected ref.
  *
@@ -67,9 +65,11 @@ interface GitHubAction extends HasArtifactId {
 
 	/**
 	 * Return the raw workflow ref for this action.
-	 * <p>
-	 * The ref may represent a tag, branch, semantic version, or commit SHA and
+	 *
+	 * <p>The ref may represent a tag, branch, semantic version, or commit SHA and
 	 * is not normalized by this abstraction.
+	 *
+	 * @return the ref text after {@code @}.
 	 */
 	String version();
 
@@ -78,9 +78,10 @@ interface GitHubAction extends HasArtifactId {
 	 * {@code uses:} declaration.
 	 * <p>A {@literal false} result does not mean the workflow entry is invalid
 	 * YAML; it means the entry is outside the dependency model handled here.
-	 * @param uses the workflow value to inspect
+	 *
+	 * @param uses the workflow value to inspect.
 	 * @return {@literal true} if the value can be represented as a
-	 * {@code GitHubAction}
+	 * {@code GitHubAction}.
 	 */
 	static boolean isValidUsage(@Nullable String uses) {
 		return StringUtils.hasText(uses) && USES.matcher(uses).matches();
@@ -88,9 +89,10 @@ interface GitHubAction extends HasArtifactId {
 
 	/**
 	 * Return a repository action identity without a selected ref.
-	 * @param owner the GitHub repository owner
-	 * @param repository the GitHub repository name
-	 * @return the repository action identity
+	 *
+	 * @param owner the GitHub repository owner.
+	 * @param repository the GitHub repository name.
+	 * @return the repository action identity.
 	 */
 	static GitHubAction of(String owner, String repository) {
 		return new DefaultGitHubAction(owner, repository, "");
@@ -98,15 +100,15 @@ interface GitHubAction extends HasArtifactId {
 
 	/**
 	 * Parse a repository-backed GitHub Action from a workflow {@code uses:} value.
-	 * <p>
-	 * The returned action keeps the repository owner, repository name, and raw
+	 *
+	 * <p>The returned action keeps the repository owner, repository name, and raw
 	 * ref. Path segments after the repository name and trailing workflow comments
 	 * are accepted by the parser but are not part of the dependency identity.
 	 *
-	 * @param uses the workflow {@code uses:} value
-	 * @return the parsed action
+	 * @param uses the workflow {@code uses:} value.
+	 * @return the parsed action.
 	 * @throws IllegalArgumentException if the value is not a valid {@code uses:}
-	 * reference for this dependency model
+	 * reference for this dependency model.
 	 */
 	public static GitHubAction from(String uses) {
 

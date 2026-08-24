@@ -58,7 +58,9 @@ public class FetchPlan implements Predicate<String> {
 	}
 
 	/**
-	 * Unconditional (full) fetch plan.
+	 * Return the unconditional plan that queries every configured source.
+	 *
+	 * @return the full-fetch plan.
 	 */
 	public static FetchPlan fullFetch() {
 		return FULL_FETCH;
@@ -80,8 +82,8 @@ public class FetchPlan implements Predicate<String> {
 	 * {@link ReleaseSource#getId() release sources}.
 	 * @param onlySource the only source to query (the preferred source), or
 	 * {@literal null} to query all sources except {@code excludedSources}.
-	 * @param excludedSources identifiers of sources to skip; ignored when
-	 * {@code onlySource} is set.
+	 * @param excludedSources identifiers of sources to skip. The set is ignored
+	 * when {@code onlySource} is set.
 	 * @return the fetching plan.
 	 */
 	static FetchPlan partial(@Nullable String onlySource, Set<String> excludedSources) {
@@ -91,12 +93,12 @@ public class FetchPlan implements Predicate<String> {
 	/**
 	 * Return a fetching plan, optionally narrowing to a single source and excluding
 	 * known-empty sources.
-	 * @param fullQuery whether every configured source is queried (no source
-	 * skipped); only then is the artifact's re-check clock advanced.
+	 * @param fullQuery whether every configured source is queried with no source
+	 * skipped. Only a full query advances the artifact's re-check clock.
 	 * @param onlySource the only source to query (the preferred source), or
 	 * {@literal null} to query all sources except {@code excludedSources}.
-	 * @param excludedSources identifiers of sources to skip; ignored when
-	 * {@code onlySource} is set.
+	 * @param excludedSources identifiers of sources to skip. The set is ignored
+	 * when {@code onlySource} is set.
 	 * @return the fetching plan.
 	 */
 	static FetchPlan fetch(boolean fullQuery, @Nullable String onlySource, Set<String> excludedSources) {
@@ -105,7 +107,7 @@ public class FetchPlan implements Predicate<String> {
 
 	/**
 	 * Return whether fetching should be skipped in favor of the cached result.
-	 * @return {@literal true} to skip fetching; {@literal false} otherwise.
+	 * @return {@code true} to skip fetching.
 	 */
 	public boolean isSkip() {
 		return skip;
@@ -113,14 +115,21 @@ public class FetchPlan implements Predicate<String> {
 
 	/**
 	 * Return whether this plan queries every configured source.
-	 * @return {@literal true} if no source is skipped; {@literal false} otherwise.
+	 * @return {@code true} if no source is skipped.
 	 */
 	public boolean isFullFetch() {
 		return fullFetch;
 	}
 
 	/**
-	 * Test whether the given release source should be queried under this plan.
+	 * Test whether the given release source is selected by this plan's source
+	 * filter.
+	 *
+	 * <p>The skip plan does not encode its decision in this predicate. Callers must
+	 * check {@link #isSkip()} before applying the source filter.
+	 *
+	 * @param sourceId the release source identifier.
+	 * @return {@code true} if the source is selected by the source filter.
 	 */
 	@Override
 	public boolean test(String sourceId) {

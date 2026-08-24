@@ -22,11 +22,8 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiRecursiveElementVisitor;
 
 /**
- * Extension to {@link PsiRecursiveElementVisitor} that simplifies usage and
- * declaration so that visitors that want to visit the entire tree can be
- * constructed simpler and feature a less error-prone implementation for
- * entering the recursion loop. Allows for exiting the tree once an action has
- * been performed.
+ * Recursive PSI visitor that applies an action to selected elements and prunes
+ * further descent after the action signals completion.
  *
  * @author Mark Paluch
  */

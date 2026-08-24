@@ -49,7 +49,17 @@ import kotlin.coroutines.Continuation;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Startup activity that initializes all registered dependency integrations.
+ * Project startup activity that waits for smart mode and queues initial
+ * dependency-state population for each applicable integration.
+ *
+ * <p>The background pass prepares and indexes the integrations, resolves Bill
+ * of Materials membership, and restarts highlighting. Outside power-save mode
+ * it also performs the configured vulnerability and project-metadata scans.
+ * Missing or stale release metadata is reported after initialization when the
+ * dependency state has been used.
+ *
+ * <p>Repository-tag discovery runs as a separate background task and does not
+ * delay completion of the startup pass.
  *
  * @author Mark Paluch
  */
@@ -137,10 +147,6 @@ public class PostStartup implements ProjectActivity {
 		}
 	}
 
-	/**
-	 * Queue the repository-tag sweep as its own background task so tag fetching
-	 * never delays startup completion.
-	 */
 	private void scanRepositoryTags(Project project, StateService service) {
 
 		RepositoryTagScanner scanner = new RepositoryTagScanner(project, service.getCache());

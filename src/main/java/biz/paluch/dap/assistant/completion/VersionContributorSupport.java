@@ -49,8 +49,14 @@ import com.intellij.util.ProcessingContext;
  *
  * <p>Subclasses provide the format-specific version-range detection and update
  * application. Shared logic covers the prefix matcher, insert handler that
- * applies the selected release, and caret restoration after the wrapper URL is
- * rewritten.
+ * restores the property value from before completion, applies the selected
+ * release to every version segment, and places the caret behind the
+ * corresponding updated segment.
+ *
+ * <p>A {@link CompletionPrefix} snapshot is computed once per provider
+ * invocation and passed between synchronous hooks through
+ * {@link ProcessingContext}. The context is never retained; the prepared insert
+ * handler captures only the snapshot and a smart pointer to the live property.
  *
  * @author Mark Paluch
  */
@@ -113,7 +119,11 @@ public abstract class VersionContributorSupport extends ReleaseCompletionProvide
 
 	/**
 	 * Return whether completion should open automatically after typing a version
-	 * character in a supported wrapper URL.
+	 * character in a property value.
+	 *
+	 * <p>Subclasses should combine this base condition with a format-specific
+	 * wrapper-version pattern.
+	 *
 	 * @param position the PSI position at the caret.
 	 * @param typeChar the typed character.
 	 * @return {@literal true} if completion should open automatically.
@@ -126,13 +136,21 @@ public abstract class VersionContributorSupport extends ReleaseCompletionProvide
 	 * Return file-absolute ranges of the version segments in the wrapper URL of
 	 * {@code property}, or an empty list when the value is not a supported wrapper
 	 * URL.
+	 *
+	 * @param property the wrapper property to inspect.
+	 * @return the version ranges in file coordinates, or an empty list when the
+	 * value is unsupported.
 	 */
 	protected abstract List<TextRange> getVersionRanges(Property property);
 
 	/**
-	 * Apply the dependency update at {@code versionLiteral}. Called from the insert
-	 * handler after the property value has been restored to the original
-	 * (pre-completion) text.
+	 * Apply the dependency update to the restored wrapper property.
+	 *
+	 * <p>The insert handler calls this hook after removing IntelliJ's tentative
+	 * completion edit and resolving the property again through its smart pointer.
+	 *
+	 * @param versionLiteral the restored wrapper property to update.
+	 * @param update the selected dependency update.
 	 */
 	protected abstract void applyVersionUpdate(PsiElement versionLiteral, DependencyUpdate update);
 
@@ -147,10 +165,12 @@ public abstract class VersionContributorSupport extends ReleaseCompletionProvide
 	}
 
 	/**
-	 * Completion prefix for the wrapper URL version segment at the caret.
+	 * Request snapshot for the wrapper URL version segment at the caret.
 	 *
-	 * <p>The prefix also keeps the original value text and all version ranges so
-	 * the insert handler can update every wrapper URL version occurrence.
+	 * <p>The snapshot keeps the typed prefix, original property value, completion
+	 * offset, and all version ranges so an insert handler can restore the tentative
+	 * completion edit and update every version occurrence. Instances belong to one
+	 * completion request and must not be reused for another request.
 	 */
 	protected static class CompletionPrefix {
 
@@ -174,11 +194,12 @@ public abstract class VersionContributorSupport extends ReleaseCompletionProvide
 		/**
 		 * Return the completion prefix for the current parameters, using the supplied
 		 * function to obtain the version ranges of the property at the caret.
+		 *
 		 * @param parameters the completion parameters.
 		 * @param getVersionRanges function returning file-absolute version ranges for a
 		 * wrapper property.
-		 * @return the calculated prefix, or an empty prefix when completion is outside
-		 * a supported version segment.
+		 * @return the calculated request snapshot, or an absent snapshot when
+		 * completion is outside a supported version segment.
 		 */
 		public static CompletionPrefix from(CompletionParameters parameters,
 				Function<Property, List<TextRange>> getVersionRanges) {
@@ -218,6 +239,8 @@ public abstract class VersionContributorSupport extends ReleaseCompletionProvide
 
 		/**
 		 * Return the caret offset at which completion started.
+		 *
+		 * @return the file-absolute completion offset.
 		 */
 		public int getStartOffset() {
 			return startOffset;
@@ -225,6 +248,8 @@ public abstract class VersionContributorSupport extends ReleaseCompletionProvide
 
 		/**
 		 * Return the property value text before the completion placeholder was added.
+		 *
+		 * @return the original property value text.
 		 */
 		public String getOriginalText() {
 			return originalText;
@@ -232,6 +257,8 @@ public abstract class VersionContributorSupport extends ReleaseCompletionProvide
 
 		/**
 		 * Return all version ranges in the wrapper URL.
+		 *
+		 * @return the ranges captured for this completion request.
 		 */
 		public List<TextRange> getRanges() {
 			return ranges;
@@ -239,6 +266,9 @@ public abstract class VersionContributorSupport extends ReleaseCompletionProvide
 
 		/**
 		 * Return whether the caret is inside a supported version range.
+		 *
+		 * @return {@literal true} if this snapshot represents a supported range;
+		 * {@literal false} otherwise.
 		 */
 		public boolean isPresent() {
 			return !ranges.isEmpty();

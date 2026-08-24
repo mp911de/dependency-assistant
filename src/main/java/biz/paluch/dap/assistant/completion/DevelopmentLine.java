@@ -58,7 +58,10 @@ class DevelopmentLine implements Sequence<ArtifactVersion> {
 	/**
 	 * Return the versions of this line, newest first.
 	 *
-	 * @return the versions of this line; never empty.
+	 * <p>The returned list is the retained backing list. Mutating it can invalidate
+	 * the line's cached stable-version result.
+	 *
+	 * @return the versions of this line. The list is never empty.
 	 */
 	public List<ArtifactVersion> getVersions() {
 		return versions;
@@ -66,6 +69,8 @@ class DevelopmentLine implements Sequence<ArtifactVersion> {
 
 	/**
 	 * Return the newest version of this line, stable or pre-release.
+	 *
+	 * @return the newest version.
 	 */
 	public ArtifactVersion getLatest() {
 		return versions.getFirst();
@@ -110,6 +115,8 @@ class DevelopmentLine implements Sequence<ArtifactVersion> {
 
 	/**
 	 * Return the versions of this line as a stream, newest first.
+	 *
+	 * @return a new stream over the versions.
 	 */
 	@Override
 	public Stream<ArtifactVersion> stream() {

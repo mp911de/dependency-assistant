@@ -39,14 +39,14 @@ import org.jspecify.annotations.Nullable;
 /**
  * PSI updater for NPM {@code package.json} dependency entries.
  *
- * <p>
- * The updater dispatches on the {@link NpmVersionExpression} variant of the
- * original declaration and replaces only the variant's
- * {@link NpmVersionExpression#replaceableRange(String) replaceable range} via
- * the JSON PSI factory. JSON quoting style, whitespace, and trailing commas are
- * preserved by leaving the surrounding string-literal element intact and only
- * rewriting the literal's text. NPM JSON does not permit comments, so this
- * updater never appends explanatory metadata.
+ * <p>The updater dispatches on the {@link NpmVersionExpression} variant of the
+ * original declaration and changes only the variant's
+ * {@link NpmVersionExpression#replaceableRange(String) replaceable range} in
+ * the reconstructed string value. The surrounding property layout and trailing
+ * comma remain unchanged. Prefix ranges and unsupported expressions are not
+ * rewritten. Git declarations require a {@link GitVersion} target and preserve
+ * the declared tag or SHA ref style. The writer does not append explanatory
+ * comments because NPM package descriptors use JSON syntax.
  *
  * @author Mark Paluch
  * @see NpmVersionExpression
@@ -61,6 +61,9 @@ class UpdatePackageJsonFile implements FileDependencyUpdater {
 
 	/**
 	 * Apply matching dependency updates to the given {@code package.json} PSI file.
+	 * Files with another PSI shape and entries outside the supported expression
+	 * model remain unchanged.
+	 *
 	 * @param psiFile the {@code package.json} PSI file.
 	 * @param updates the dependency updates to apply.
 	 */

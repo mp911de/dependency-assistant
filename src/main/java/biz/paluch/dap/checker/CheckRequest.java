@@ -27,12 +27,14 @@ import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.PackageSystem;
 
 /**
- * A bulk request to check several {@link PackageIdentity packages} for
- * vulnerabilities in one pass, each mapped to the exact versions to evaluate.
+ * Bulk vulnerability-check request mapping each {@link PackageIdentity} to the
+ * exact {@link ArtifactVersion versions} to evaluate.
  *
- * <p>A request can span multiple artifacts and ecosystems so a single
+ * <p>A request can span multiple artifacts and package systems so a single
  * {@link VulnerabilitySource#check(com.intellij.openapi.project.Project, CheckRequest)
- * check} resolves the whole batch. Build it through {@link #builder()}.
+ * check} can process the whole batch. Create it through {@link #builder()}. The
+ * builder snapshots the package mappings when {@link Builder#build()} is called
+ * but retains the supplied version lists.
  *
  * @author Mark Paluch
  * @see VulnerabilitySource
@@ -58,10 +60,9 @@ public class CheckRequest {
 	}
 
 	/**
-	 * Return whether the request carries no package to check.
+	 * Return whether the request contains no package mapping.
 	 *
-	 * @return {@literal true} if there is nothing to check; {@literal false}
-	 * otherwise.
+	 * @return {@literal true} if no package is mapped; {@literal false} otherwise.
 	 */
 	public boolean isEmpty() {
 		return packages.isEmpty();
@@ -70,18 +71,19 @@ public class CheckRequest {
 	/**
 	 * Apply the given action to each package and its versions to check.
 	 *
-	 * @param consumer the action to apply to each package .
+	 * @param consumer the action to apply to each package and version list.
 	 */
 	public void forEach(BiConsumer<PackageIdentity, List<ArtifactVersion>> consumer) {
 		packages.forEach(consumer);
 	}
 
 	/**
-	 * Return the subset of this request whose ecosystem the given predicate
-	 * accepts, used to scope a request to the ecosystems a single source supports.
+	 * Return the subset of this request whose package system the given predicate
+	 * accepts.
 	 *
-	 * @param supported tests whether a package's ecosystem is supported; must not
-	 * be {@literal null}.
+	 * <p>The returned request shares its version lists with this request.
+	 *
+	 * @param supported tests whether a package system is supported.
 	 * @return a request holding only the accepted packages.
 	 */
 	public CheckRequest filter(Predicate<PackageSystem> supported) {
@@ -95,10 +97,20 @@ public class CheckRequest {
 		return new CheckRequest(filtered);
 	}
 
+	/**
+	 * Return the request creation time used for scan-duration diagnostics.
+	 *
+	 * @return the creation time in epoch milliseconds.
+	 */
 	public long getTimestamp() {
 		return timestamp;
 	}
 
+	/**
+	 * Return the total number of versions in this request.
+	 *
+	 * @return the number of mapped versions.
+	 */
 	public int size() {
 		int size = 0;
 		for (List<ArtifactVersion> value : packages.values()) {
@@ -113,7 +125,7 @@ public class CheckRequest {
 	}
 
 	/**
-	 * Builder collecting packages and their versions into a {@link CheckRequest}.
+	 * Builder that collects package versions for a {@link CheckRequest}.
 	 */
 	public static class Builder {
 
@@ -123,8 +135,13 @@ public class CheckRequest {
 		}
 
 		/**
-		 * Add an artifact and the versions to check for it.
+		 * Add the versions to check for a package.
 		 *
+		 * <p>A later call for the same package replaces its previous version list. The
+		 * supplied list is retained by the built request.
+		 *
+		 * @param pkg the package to check.
+		 * @param versions the exact versions to check.
 		 * @return this builder.
 		 */
 		public Builder add(PackageIdentity pkg, List<ArtifactVersion> versions) {
@@ -132,6 +149,11 @@ public class CheckRequest {
 			return this;
 		}
 
+		/**
+		 * Return the total number of versions currently collected.
+		 *
+		 * @return the number of collected versions.
+		 */
 		public int size() {
 			int size = 0;
 			for (List<ArtifactVersion> value : packages.values()) {
@@ -141,9 +163,12 @@ public class CheckRequest {
 		}
 
 		/**
-		 * Build the request.
+		 * Build a request from the current package mappings.
 		 *
-		 * @return the request.
+		 * <p>Subsequent changes to the builder's mappings do not affect the request.
+		 * The version lists themselves remain shared.
+		 *
+		 * @return a new request.
 		 */
 		public CheckRequest build() {
 			return new CheckRequest(new LinkedHashMap<>(packages));

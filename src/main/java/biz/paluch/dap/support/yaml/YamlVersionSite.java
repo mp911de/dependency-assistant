@@ -27,31 +27,41 @@ import org.jetbrains.yaml.psi.YAMLScalar;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A YAML scalar value that holds a versioned reference and the surrounding
- * {@code key: value} pair it lives in.
+ * A version-bearing YAML scalar and its enclosing {@code key: value} pair.
+ *
+ * <p>The site retains the live PSI elements together with snapshots of the
+ * scalar's decoded text value and quote style. Ecosystem-specific code remains
+ * responsible for interpreting the text as an artifact and version.
  *
  * <p>Use {@link #locate(PsiElement, Predicate)} to find the site from any PSI
  * element produced by a caret position, completion parameter, or annotator
- * visit. The locator walks up to the nearest {@link YAMLScalar}, stops at any
- * enclosing {@link YAMLMapping}, requires the scalar's parent to be a
- * {@link YAMLKeyValue}, and applies the caller-supplied predicate to the key.
+ * visit. The locator walks up to the nearest {@link YAMLScalar}, stops before
+ * crossing an enclosing {@link YAMLMapping}, requires the scalar's direct
+ * parent to be a {@link YAMLKeyValue}, and applies the caller-supplied
+ * predicate to that key-value pair.
  *
- * <p>Use {@link #replaceRawValue(String, YAMLElementGenerator)} from inside a
- * write command to swap the scalar value while preserving the original
- * {@link QuoteStyle}.
+ * <p>{@link #replaceRawValue(String, YAMLElementGenerator)} recreates and
+ * replaces the enclosing key-value pair. The returned PSI element owns the
+ * replacement scalar, and this site must not be reused after replacement.
  *
  * @author Mark Paluch
+ * @param scalar the version-bearing scalar.
+ * @param keyValue the scalar's direct enclosing key-value pair.
+ * @param quoteStyle the rendering style captured from the scalar.
+ * @param rawValue the decoded scalar text captured when the site was created.
  */
 public record YamlVersionSite(YAMLScalar scalar, YAMLKeyValue keyValue, QuoteStyle quoteStyle, String rawValue) {
 
 	/**
-	 * Walk up from the given element to the nearest version site whose key matches
-	 * the predicate.
+	 * Locate the nearest version-bearing scalar accepted by the key-value
+	 * predicate.
 	 * @param element the PSI element at the cursor or completion position; may be
 	 * {@literal null}.
-	 * @param keyMatcher predicate applied to the enclosing {@link YAMLKeyValue};
-	 * must not be {@literal null}.
-	 * @return the site, or {@literal null} if no matching site exists.
+	 * @param keyMatcher predicate applied to the enclosing {@link YAMLKeyValue}.
+	 * @return a site containing the scalar's current decoded value and quote style,
+	 * or {@literal null} if the element is absent, no scalar is found before a
+	 * mapping boundary, the scalar is not a direct key-value value, or the
+	 * predicate rejects its key-value pair.
 	 */
 	public static @Nullable YamlVersionSite locate(@Nullable PsiElement element, Predicate<YAMLKeyValue> keyMatcher) {
 
@@ -70,13 +80,15 @@ public record YamlVersionSite(YAMLScalar scalar, YAMLKeyValue keyValue, QuoteSty
 	}
 
 	/**
-	 * Replace the scalar value with the given raw text while preserving the
-	 * detected {@link QuoteStyle}. Must be invoked from a write command.
-	 * @param newRawValue the unwrapped replacement value; must not be
-	 * {@literal null}.
+	 * Replace the enclosing key-value pair with one containing the given scalar
+	 * value in the detected {@link QuoteStyle}.
+	 *
+	 * <p>This method must be invoked from a write command. The replacement
+	 * invalidates the PSI elements held by this site.
+	 * @param newRawValue the decoded scalar value to render.
 	 * @param generator the YAML element generator used to build the replacement
 	 * key/value pair.
-	 * @return the replacement {@link YAMLKeyValue}.
+	 * @return the replacement {@link YAMLKeyValue}, which owns the new scalar.
 	 */
 	public YAMLKeyValue replaceRawValue(String newRawValue, YAMLElementGenerator generator) {
 

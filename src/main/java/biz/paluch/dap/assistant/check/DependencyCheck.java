@@ -54,13 +54,14 @@ import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 
 /**
- * Package service that collects declared dependencies and resolves available
- * releases for a project.
+ * Coordinates a dependency check for an IntelliJ project.
  *
- * <p>A check first scans the selected build files, then resolves release
- * metadata for the collected artifacts. Release resolution uses the project
- * cache according to the requested {@link ReleaseResolver.Consistency};
- * cancellation is propagated through the supplied progress indicator.
+ * <p>A check scans the selected build files, aggregates declarations by package
+ * identity, resolves and caches release metadata, updates BOM membership and
+ * project metadata, and performs a best-effort delta vulnerability scan for
+ * newly fetched releases. Release resolution honors the requested
+ * {@link ReleaseResolver.Consistency}. Cancellation is propagated through the
+ * supplied progress indicator.
  *
  * @author Mark Paluch
  */
@@ -94,7 +95,8 @@ public class DependencyCheck {
 	 *
 	 * @param indicator the progress indicator.
 	 * @param scope the in-scope build files with their contexts.
-	 * @return the merged dependency check result.
+	 * @return the sorted upgrade candidates, checked file scope, and non-fatal
+	 * lookup errors.
 	 */
 	public DependencyCheckResult findDependencyUpgrades(ProgressIndicator indicator,
 			UpgradeScope scope) {
@@ -147,7 +149,8 @@ public class DependencyCheck {
 	 * @param indicator the progress indicator used for cancellation and user
 	 * feedback.
 	 * @param assistant the dependency assistant that provides project entries.
-	 * @return one release-source group per collected artifact.
+	 * @return the aggregated declarations, build files, contexts, and release
+	 * sources.
 	 */
 	public DependencyCheckAggregator collectDependencies(ProgressIndicator indicator,
 			DependencyAssistant assistant) {
@@ -163,14 +166,16 @@ public class DependencyCheck {
 	/**
 	 * Resolve available releases for the given artifact groups.
 	 *
-	 * <p>Artifacts whose release lookup fails are omitted from the returned map;
-	 * errors remain available only to the full dependency-check flow.
+	 * <p>Artifacts whose release lookup fails are omitted from the returned map.
+	 * Errors remain available only to the full dependency-check flow.
 	 *
 	 * @param indicator the progress indicator used for cancellation and user
 	 * feedback.
-	 * @param aggregators the artifacts and release sources to query.
+	 * @param aggregators the aggregated scans whose release sources should be
+	 * queried.
 	 * @param consistency the release-cache consistency to use.
-	 * @return successfully resolved releases keyed by artifact, in encounter order.
+	 * @return successfully resolved releases keyed by package identity, in
+	 * encounter order.
 	 */
 	public Map<PackageIdentity, Releases> getReleases(ProgressIndicator indicator,
 			List<DependencyCheckAggregator> aggregators, ReleaseResolver.Consistency consistency) {
@@ -203,8 +208,8 @@ public class DependencyCheck {
 	 * @param indicator the progress indicator.
 	 * @param artifactSources the release sources to query per artifact.
 	 * @param consistency the release-cache consistency to use.
-	 * @return the resolver result per artifact, in encounter order; a run aborted
-	 * by timeout or interruption yields a partial map.
+	 * @return the resolver result per artifact, in encounter order. An artifact
+	 * timeout is represented as a failed result; interruption yields a partial map.
 	 */
 	protected Map<PackageIdentity, ReleaseLookupResult> resolveReleases(ProgressIndicator indicator,
 			List<ReleaseSources> artifactSources, ReleaseResolver.Consistency consistency) {

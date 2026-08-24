@@ -35,7 +35,12 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.util.ObjectUtils;
 
 /**
- * Per-project cache entry that stores property-to-artifact mappings.
+ * Persistent property-to-artifact correlations for one {@link ProjectId}.
+ *
+ * <p>The XML-serializable property list is authoritative. A transient name
+ * index is rebuilt lazily after deserialization. Collection accessors return
+ * snapshots, and {@link #snapshot()} copies each mutable
+ * {@link VersionProperty}.
  *
  * @author Mark Paluch
  */
@@ -71,6 +76,8 @@ public class ProjectCache {
 
 	/**
 	 * Create a cache entry for the given project identity.
+	 *
+	 * @param identity the project identity to persist.
 	 */
 	public ProjectCache(ProjectId identity) {
 		this.artifactId = identity.artifactId();
@@ -163,6 +170,12 @@ public class ProjectCache {
 		this.descriptor = descriptor;
 	}
 
+	/**
+	 * Return when this project entry was last populated.
+	 *
+	 * @return the epoch-millisecond write timestamp, or {@code 0} for a legacy
+	 * entry that must not be expired by age.
+	 */
 	public long getLastSeen() {
 		return lastSeen;
 	}
@@ -170,6 +183,8 @@ public class ProjectCache {
 	/**
 	 * Return all known property-to-artifact mappings. Each {@link VersionProperty}
 	 * carries the property name and the artifact(s) whose version it controls.
+	 *
+	 * @return an immutable snapshot containing the live property entries.
 	 */
 	public synchronized List<VersionProperty> getProperties() {
 		return List.copyOf(properties);
@@ -187,6 +202,7 @@ public class ProjectCache {
 	 *
 	 * @param collector the collector whose declarations and properties should be
 	 * used.
+	 * @param timestamp the current epoch-millisecond timestamp for expiry tracking.
 	 */
 	@Transient
 	public synchronized void setProperties(DependencyCollector collector, long timestamp) {
@@ -276,7 +292,7 @@ public class ProjectCache {
 	/**
 	 * Return a deep snapshot of this cache entry safe to hand off to the platform
 	 * serializer while concurrent mutations may still be in progress.
-	 * <p>{@link VersionProperty} entries are mutable; each is copied so that the
+	 * <p>{@link VersionProperty} entries are mutable. Each is copied so that the
 	 * snapshot does not share state with the live cache.
 	 *
 	 * @return a snapshot suitable for serialization.

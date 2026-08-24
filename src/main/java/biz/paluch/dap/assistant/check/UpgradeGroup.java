@@ -35,8 +35,8 @@ import org.springframework.util.Assert;
  *
  * <p>The group recomputes one {@link DependencyUpgradeCandidate} from the
  * intersection of member releases, the composite vulnerability repository, the
- * oldest member version, the first member's governing rule and assistant, and
- * the merged declared versions of all members. Member order is retained for
+ * lowest member version, the first member's rule, presentation, and assistant,
+ * and the merged declared versions of all members. Member order is retained for
  * update fan-out.
  *
  * @author Mark Paluch
@@ -57,8 +57,13 @@ public class UpgradeGroup implements Sequence<DependencyUpgradeCandidate> {
 	/**
 	 * Create a group from the given member upgrades.
 	 *
-	 * @param members the upgrades to group, in member order.
-	 * @return a group with a complete upgrade recomputed from all members.
+	 * <p>The member list is retained as supplied and must not be mutated after this
+	 * call.
+	 *
+	 * @param members the upgrades to group, in member order. At least two are
+	 * required.
+	 * @return a group with a candidate recomputed from all members.
+	 * @throws IllegalArgumentException if fewer than two members are supplied.
 	 */
 	public static UpgradeGroup of(List<DependencyUpgradeCandidate> members) {
 		return new UpgradeGroup(members);
@@ -103,7 +108,7 @@ public class UpgradeGroup implements Sequence<DependencyUpgradeCandidate> {
 	/**
 	 * Return the grouped member upgrades in their original order.
 	 *
-	 * @return the immutable member list.
+	 * @return the retained member list.
 	 */
 	public List<DependencyUpgradeCandidate> getMembers() {
 		return members;

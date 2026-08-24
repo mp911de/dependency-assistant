@@ -27,9 +27,10 @@ import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.Sequence;
 
 /**
- * Immutable live Upgrade Plan: materialized plan items paired with the
- * build-file scope they were captured from. Its serialized counterpart is
- * {@link UpgradePlanState.Content}.
+ * Immutable Upgrade Plan container: materialized plan items paired with the
+ * build-file scope they were captured from. The scope and item sequence are
+ * fixed, while item display names and ticket associations may be updated in
+ * place. Its serialized counterpart is {@link UpgradePlanState.Content}.
  *
  * @author Mark Paluch
  */
@@ -56,10 +57,11 @@ class UpgradePlan implements Sequence<UpgradePlanItem> {
 	}
 
 	/**
-	 * Return a plan with the given items, keeping this plan's scope. Used by the
-	 * remove flow, which narrows the items but not the scope.
+	 * Return a plan with the given items, keeping this plan's scope.
+	 * Selection-based apply, preview, and copy operations narrow the items but
+	 * retain the captured scope.
 	 *
-	 * @param items the remaining plan items in order.
+	 * @param items the plan items to include, in processing order.
 	 * @return the derived plan.
 	 */
 	UpgradePlan withItems(Iterable<UpgradePlanItem> items) {

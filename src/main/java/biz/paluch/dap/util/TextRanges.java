@@ -20,10 +20,23 @@ import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiElement;
 
 /**
+ * Coordinate conversions for PSI {@link TextRange TextRanges}.
+ *
  * @author Mark Paluch
  */
 public class TextRanges {
 
+	/**
+	 * Convert a range in the element's parent coordinate system to a range local to
+	 * the element.
+	 *
+	 * <p>The range and {@link PsiElement#getStartOffsetInParent()} must use the
+	 * same parent coordinate system.
+	 *
+	 * @param inFile the range to convert.
+	 * @param localElement the element that defines the local origin.
+	 * @return the range shifted to the element's local coordinates.
+	 */
 	public static TextRange toLocal(TextRange inFile, PsiElement localElement) {
 		return inFile.shiftLeft(localElement.getStartOffsetInParent());
 	}

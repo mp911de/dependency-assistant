@@ -20,6 +20,10 @@ import biz.paluch.dap.artifact.Versioned;
 import org.jspecify.annotations.Nullable;
 
 /**
+ * Project context used to choose a default ticket milestone. The current branch
+ * takes precedence when it contains a version line; otherwise the project
+ * version supplies the line.
+ *
  * @author Mark Paluch
  */
 class MilestoneSelector {

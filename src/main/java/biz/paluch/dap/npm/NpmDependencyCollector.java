@@ -28,9 +28,13 @@ import biz.paluch.dap.state.GitVersionResolver;
 import com.intellij.psi.PsiFile;
 
 /**
- * Scans a single {@code package.json} file and registers each accepted
- * {@code dependencies}/{@code devDependencies} entry with a
+ * Registers dependencies parsed from one {@code package.json} file with a
  * {@link DependencyCollector}.
+ *
+ * <p>Every accepted entry contributes a declaration. Concrete versions also
+ * contribute a usage. Prefix ranges remain declaration-only, while unresolved
+ * Git refs are retained as {@link GitRef} values until release metadata can
+ * resolve them.
  *
  * @author Mark Paluch
  */
@@ -47,7 +51,8 @@ class NpmDependencyCollector {
 	/**
 	 * Collect NPM dependencies from the given {@code package.json} file.
 	 *
-	 * @param packageSystem
+	 * @param packageSystem the package system assigned to the collected
+	 * dependencies.
 	 * @param file the JSON PSI file to scan.
 	 * @return the populated dependency collector.
 	 */
@@ -61,6 +66,7 @@ class NpmDependencyCollector {
 	/**
 	 * Parse the given {@code package.json} file and register each accepted entry
 	 * with the given collector.
+	 *
 	 * @param file the JSON PSI file to scan.
 	 * @param collector the collector to populate with declarations and usages.
 	 */

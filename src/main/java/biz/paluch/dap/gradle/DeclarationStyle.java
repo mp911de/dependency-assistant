@@ -94,8 +94,8 @@ interface DeclarationStyle {
 	/**
 	 * Create a {@link Kind#INLINE_NOTATION} style.
 	 * @param versionElement the coordinate literal.
-	 * @param owningCall the owning dependency or platform call; can be
-	 * {@literal null}.
+	 * @param owningCall the owning dependency or platform call, or {@literal null}
+	 * when it cannot be resolved.
 	 * @return the declaration style.
 	 */
 	static DeclarationStyle inline(PsiElement versionElement, @Nullable PsiElement owningCall) {
@@ -105,7 +105,8 @@ interface DeclarationStyle {
 	/**
 	 * Create a {@link Kind#NAMED_ARGUMENT} (map-notation {@code version}) style.
 	 * @param versionElement the version literal or reference.
-	 * @param owningCall the owning dependency call; can be {@literal null}.
+	 * @param owningCall the owning dependency call, or {@literal null} when it
+	 * cannot be resolved.
 	 * @return the declaration style.
 	 */
 	static DeclarationStyle mapNotation(PsiElement versionElement, @Nullable PsiElement owningCall) {
@@ -116,9 +117,9 @@ interface DeclarationStyle {
 	 * Create a version-block constraint style.
 	 * @param kind {@link Kind#VERSION_BLOCK_PREFER} or
 	 * {@link Kind#VERSION_BLOCK_STRICTLY}.
-	 * @param versionElement the constraint version literal or reference; must not
-	 * be {@literal null}.
-	 * @param owningCall the owning dependency call; can be {@literal null}.
+	 * @param versionElement the constraint version literal or reference.
+	 * @param owningCall the owning dependency call, or {@literal null} when it
+	 * cannot be resolved.
 	 * @return the declaration style.
 	 * @throws IllegalArgumentException if {@code kind} is not a version-block kind.
 	 */
@@ -131,10 +132,9 @@ interface DeclarationStyle {
 
 	/**
 	 * Create a {@link Kind#PLUGIN_VERSION} style.
-	 * @param versionElement the plugin version literal; must not be
-	 * {@literal null}.
-	 * @param owningCall the owning plugin {@code id(...)} call; can be
-	 * {@literal null}.
+	 * @param versionElement the plugin version literal.
+	 * @param owningCall the owning plugin {@code id(...)} call, or {@literal null}
+	 * when it cannot be resolved.
 	 * @return the declaration style.
 	 */
 	static DeclarationStyle pluginVersion(PsiElement versionElement, @Nullable PsiElement owningCall) {
@@ -144,8 +144,7 @@ interface DeclarationStyle {
 	/**
 	 * Create a {@link Kind#BACKING_PROPERTY} style. Backing properties carry no
 	 * owning call; they are resolved through the property declaration.
-	 * @param versionElement the backing property value literal; must not be
-	 * {@literal null}.
+	 * @param versionElement the backing property value literal.
 	 * @return the declaration style.
 	 */
 	static DeclarationStyle backingProperty(PsiElement versionElement) {
@@ -154,9 +153,9 @@ interface DeclarationStyle {
 
 	/**
 	 * Create a {@link Kind#COMMAND_PLATFORM} style.
-	 * @param versionElement the command-style platform string element; must not be
-	 * {@literal null}.
-	 * @param owningCall the owning dependency call; can be {@literal null}.
+	 * @param versionElement the command-style platform string element.
+	 * @param owningCall the owning dependency call, or {@literal null} when it
+	 * cannot be resolved.
 	 * @return the declaration style.
 	 */
 	static DeclarationStyle commandPlatform(PsiElement versionElement, @Nullable PsiElement owningCall) {
@@ -169,12 +168,12 @@ interface DeclarationStyle {
 	enum Kind {
 
 		/**
-		 * Compact coordinate notation, e.g. {@code implementation("g:a:1.0")}.
+		 * Compact coordinate notation, for example {@code implementation("g:a:1.0")}.
 		 */
 		INLINE_NOTATION(true),
 
 		/**
-		 * Map-style {@code version} argument, e.g. {@code version = "1.0"}.
+		 * Map-style {@code version} argument, for example {@code version = "1.0"}.
 		 */
 		NAMED_ARGUMENT(true),
 
@@ -189,7 +188,8 @@ interface DeclarationStyle {
 		VERSION_BLOCK_STRICTLY(true),
 
 		/**
-		 * Plugin DSL {@code version} operand, e.g. {@code id("x") version "1.0"}.
+		 * Plugin DSL {@code version} operand, for example
+		 * {@code id("x") version "1.0"}.
 		 */
 		PLUGIN_VERSION(true),
 
@@ -199,7 +199,7 @@ interface DeclarationStyle {
 		BACKING_PROPERTY(false),
 
 		/**
-		 * Groovy command-style platform string, e.g.
+		 * Groovy command-style platform string, for example
 		 * {@code implementation platform "g:a:1.0"}.
 		 */
 		COMMAND_PLATFORM(false);

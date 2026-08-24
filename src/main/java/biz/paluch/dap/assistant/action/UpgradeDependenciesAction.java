@@ -38,12 +38,17 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 
 /**
- * Action to upgrade dependencies across an {@link UpgradeScope upgrade scope},
- * surfaced both in the Tools menu and the Project View popup.
+ * Tools menu and Project View action that launches a dependency check over an
+ * {@link UpgradeScope}.
  *
- * <p>The scope is resolved by {@link UpgradeScopeResolver}: an explicit Project
- * View selection, else the active editor's build file, else the whole project.
- * The action is a thin shell; all resolution logic lives in the resolver.
+ * <p>The action is visible and enabled when the project has an applicable
+ * dependency integration or existing dependency or release state. Selected
+ * directories are discarded before {@link UpgradeScopeResolver} applies its
+ * precedence: selected files, the active editor's build file, then the whole
+ * project.
+ *
+ * <p>The check opens an upgrade review. Build files are modified only after the
+ * user confirms direct updates in that review.
  *
  * @author Mark Paluch
  */

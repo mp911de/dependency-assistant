@@ -24,8 +24,7 @@ import org.jspecify.annotations.Nullable;
 /**
  * Structural location where a dependency or plugin is declared.
  *
- * <p>
- * Marker interfaces classify the artifact kind, whether the declaration is
+ * <p>Marker interfaces classify the artifact kind, whether the declaration is
  * managed, and whether it belongs to a Maven profile.
  *
  * @author Mark Paluch
@@ -129,9 +128,9 @@ public abstract class DeclarationSource {
 	}
 
 	/**
-	 * Return {@literal true} if all the given sources are plugins. This is useful
-	 * to determine whether an artifact is solely used as plugin or addtionally as
-	 * dependency.
+	 * Return whether all the given sources are plugin declarations.
+	 *
+	 * <p>An empty collection is not considered plugin-only.
 	 * @param declarationSources the declaration sources to check.
 	 * @return {@literal true} if the collection is non-empty and every source is a
 	 * plugin; {@literal false} otherwise, including for an empty collection.

@@ -25,7 +25,8 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 
 /**
- * IntelliJ completion contributor for Maven wrapper property files.
+ * Completion contributor for Maven Wrapper property names, complete URL lines,
+ * and the two version segments within supported wrapper URLs.
  *
  * @author Mark Paluch
  */

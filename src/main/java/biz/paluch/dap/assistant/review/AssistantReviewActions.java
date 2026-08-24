@@ -49,9 +49,12 @@ import com.intellij.psi.PsiFile;
 import com.intellij.util.Consumer;
 
 /**
- * Effects triggered from the dependency review dialog: applying updates to
- * build files with undo, adding entries to {@code dependencyfile.json}, and
- * handing the armed upgrades to the Upgrade Plan.
+ * Executes effects requested from the dependency review dialog.
+ *
+ * <p>Selected updates run as a globally undoable batch, and only writes that
+ * change file text are recorded for the completion notification and its undo
+ * action. Armed upgrades can instead be handed to the Upgrade Plan without
+ * changing build files.
  *
  * @author Mark Paluch
  */

@@ -27,8 +27,8 @@ import org.jetbrains.annotations.Contract;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Internal utilities for Maven POM file detection and remote repository
- * assembly.
+ * Classifies Maven POM and extension files and their recognized version PSI
+ * elements.
  *
  * @author Mark Paluch
  */
@@ -39,9 +39,8 @@ class MavenUtils {
 	 * <p>This is a lightweight check suitable for action-visibility guards. It does
 	 * not inspect file content or PSI structure.
 	 *
-	 * @param file the file to test; can be {@literal null}.
-	 * @return {@literal true} if the file is an XML file named {@code pom.xml};
-	 * {@literal false} otherwise.
+	 * @param file the file to test, or {@literal null}.
+	 * @return {@code true} if the file is an XML file named {@code pom.xml}.
 	 */
 	public static boolean isMavenPomFile(@Nullable PsiFile file) {
 		return file instanceof XmlFile && "pom.xml".equals(file.getName());
@@ -53,9 +52,8 @@ class MavenUtils {
 	 * inspects the filename and does not check the file type, content, or PSI
 	 * structure.
 	 *
-	 * @param file the file to test; can be {@literal null}.
-	 * @return {@literal true} if the file is named {@code extensions.xml};
-	 * {@literal false} otherwise.
+	 * @param file the file to test, or {@literal null}.
+	 * @return {@code true} if the file is named {@code extensions.xml}.
 	 */
 	public static boolean isMavenExtensionsFile(@Nullable VirtualFile file) {
 		return file != null && "extensions.xml".equals(file.getName());
@@ -66,9 +64,8 @@ class MavenUtils {
 	 * <p>This is a lightweight check suitable for action-visibility guards. It does
 	 * not inspect file content or PSI structure.
 	 *
-	 * @param file the file to test; can be {@literal null}.
-	 * @return {@literal true} if the file is an XML file named
-	 * {@code extensions.xml}; {@literal false} otherwise.
+	 * @param file the file to test, or {@literal null}.
+	 * @return {@code true} if the file is an XML file named {@code extensions.xml}.
 	 */
 	public static boolean isMavenExtensionsFile(@Nullable PsiFile file) {
 		return file instanceof XmlFile && "extensions.xml".equals(file.getName());
@@ -78,8 +75,8 @@ class MavenUtils {
 	 * Return whether the given XML file is a Maven POM by root element structure.
 	 *
 	 * @param xmlFile the XML file to inspect.
-	 * @return {@literal true} if the root element identifies the file as a Maven
-	 * POM; {@literal false} otherwise.
+	 * @return {@code true} if the root element is {@code project} with no namespace
+	 * or the Maven POM 4.0.0 namespace.
 	 */
 	public static boolean isMavenPomFile(XmlFile xmlFile) {
 
@@ -95,6 +92,18 @@ class MavenUtils {
 		return namespace.isEmpty() || "http://maven.apache.org/POM/4.0.0".equals(namespace);
 	}
 
+	/**
+	 * Return whether the element is the text of a recognized Maven version or
+	 * property value.
+	 *
+	 * <p>Recognized version owners are dependencies, plugins, build extensions, and
+	 * parents. Any direct child of a {@code properties} tag is a supported property
+	 * value.
+	 *
+	 * @param element the PSI element to classify, or {@literal null}.
+	 * @return {@code true} if the element is recognized as a Maven version
+	 * candidate.
+	 */
 	@Contract("null -> false")
 	public static boolean isVersionElement(@Nullable PsiElement element) {
 

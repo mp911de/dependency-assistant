@@ -37,9 +37,16 @@ import org.jetbrains.plugins.github.util.GHHostedRepositoriesManager;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Selector for the GitHub account and hosted-repository sets for removals that
- * invalidate an already bound ticket system. Additions become visible when the
- * Upgrade Plan content is reconstructed.
+ * Selects the GitHub account and hosted repository used by the ticket system.
+ *
+ * <p>A valid remembered Pull Requests selection takes precedence. Otherwise,
+ * the selector returns the first repository/account pair whose server paths
+ * match. It does not require the pair to be unique and does not resolve
+ * credentials.
+ *
+ * <p>The service observes account and hosted-repository state. Removing an
+ * entry invalidates an already bound ticket system. Additions become visible
+ * when Upgrade Plan content is reconstructed.
  *
  * @author Mark Paluch
  */
@@ -64,6 +71,13 @@ final class GitHubAccountSelector {
 		observe(repositoriesManager.getKnownRepositoriesState(), this::repositoriesChanged, coroutineScope);
 	}
 
+	/**
+	 * Select the remembered compatible pair or fall back to a compatible current
+	 * pair.
+	 *
+	 * @return the selected repository and account, or {@literal null} when no
+	 * compatible pair exists.
+	 */
 	public @Nullable Selection select() {
 
 		Pair<String, GithubAccount> remembered = GithubPullRequestsProjectUISettings.getInstance(project)

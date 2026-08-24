@@ -25,11 +25,11 @@ import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The shared coordinate shape of the artifact ids in one upgrade group: the
- * word-boundary base, prefix, and suffix the members have in common, computed
- * once per member set. The shape derives both the {@code Inferred Upgrade
- * Group} name ({@link #deriveGroupName(String)}) and the group-row member label
- * ({@link #memberLabelParts()}).
+ * Shared word-boundary shape of a set of artifact-id strings.
+ *
+ * <p>The shape derives artifact name suggestions through
+ * {@link #deriveGroupName(String)} and compact group-row member labels through
+ * {@link #memberLabelParts()}.
  *
  * <p>A boundary is a {@code '-'} or {@code '.'} separator. A shared prefix,
  * suffix, or base is only meaningful when it ends or starts on such a boundary,
@@ -56,7 +56,9 @@ public class CoordinateShape {
 	/**
 	 * Create the shape of the given member artifact ids.
 	 *
-	 * @param artifactIds the member artifact ids; must not be empty.
+	 * <p>The list is retained and must not be modified while the shape is in use.
+	 *
+	 * @param artifactIds the artifact-id strings to analyze.
 	 * @return the computed shape.
 	 */
 	public static CoordinateShape of(List<String> artifactIds) {
@@ -64,14 +66,12 @@ public class CoordinateShape {
 	}
 
 	/**
-	 * Derive the {@code Inferred Upgrade Group} name for members under one
-	 * {@code groupId}.
+	 * Derive a shared name for members under one {@code groupId}.
 	 *
-	 * <p>The name is the common word-boundary prefix of the members after
-	 * {@code Abbreviation Promotion}: a bare acronym prefix (at most three letters)
-	 * is expanded to the longer {@code groupId} segment it abbreviates, so
-	 * {@code org.bouncycastle:bc-*} reads as {@code bouncycastle} rather than
-	 * {@code bc}.
+	 * <p>The name is the common word-boundary prefix of the members. A bare acronym
+	 * prefix of at most three letters is expanded to the longer {@code groupId}
+	 * segment it abbreviates, so {@code org.bouncycastle:bc-*} reads as
+	 * {@code bouncycastle} rather than {@code bc}.
 	 *
 	 * @param groupId the shared group id of the members.
 	 * @return the derived name, or {@literal null} if the members share no usable

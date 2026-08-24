@@ -19,8 +19,8 @@ package biz.paluch.dap.util;
 import java.util.regex.MatchResult;
 
 /**
- * Default {@link MatchResult} implementation.
- * 
+ * Single-group {@link MatchResult} backed by known text and offsets.
+ *
  * @author Mark Paluch
  */
 class DefaultMatchResult implements MatchResult {

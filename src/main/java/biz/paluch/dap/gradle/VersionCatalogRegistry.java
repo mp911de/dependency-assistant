@@ -44,8 +44,12 @@ import org.toml.lang.psi.TomlFile;
 import org.toml.lang.psi.TomlTable;
 
 /**
- * Registry mapping version-catalog alias names to their TOML file paths
- * relative to the project root. The default catalog is {@code libs} at
+ * Maps Gradle version-catalog aliases to TOML paths relative to a project root
+ * and resolves catalog accessor references to their artifact declarations.
+ *
+ * <p>An anchored registry prefers catalogs from the imported Gradle model,
+ * falls back to declarations in {@code settings.gradle.kts} or
+ * {@code settings.gradle}, and finally uses the default {@code libs} catalog at
  * {@code gradle/libs.versions.toml}.
  *
  * @author Mark Paluch
@@ -78,12 +82,14 @@ class VersionCatalogRegistry {
 	}
 
 	/**
-	 * Return the registry anchored at the project root of {@code file}, or the
-	 * {@link #ABSENT} registry when {@code file} has no backing virtual file. The
-	 * result is cached on {@code file} and shared for the same PSI file.
+	 * Return the registry anchored at the project root of {@code file}.
 	 *
-	 * @param file the Gradle build or settings file to anchor the registry at; must
-	 * not be {@literal null}.
+	 * <p>The result is cached on {@code file} and invalidated by project PSI,
+	 * project-root, or imported Gradle model changes. A file without a backing
+	 * virtual file receives the default unanchored registry and cannot resolve a
+	 * catalog file.
+	 *
+	 * @param file the Gradle-related file that anchors the registry.
 	 * @return the version-catalog registry for the file.
 	 */
 	public static VersionCatalogRegistry from(PsiFile file) {
@@ -262,6 +268,9 @@ class VersionCatalogRegistry {
 	 * Resolve the given TOML reference to the catalog artifact declaration. The
 	 * returned reference is anchored at the TOML catalog entry, not at a Gradle DSL
 	 * usage site.
+	 * @param reference the catalog accessor reference to resolve.
+	 * @return the catalog-backed artifact reference, or an unresolved reference if
+	 * the alias, catalog file, or entry cannot be resolved.
 	 */
 	ArtifactReference resolve(TomlReference reference) {
 

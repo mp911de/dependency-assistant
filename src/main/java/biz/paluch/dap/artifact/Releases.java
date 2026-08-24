@@ -34,7 +34,7 @@ import biz.paluch.dap.util.Sequence;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Value object encapsulating releases for one artifact.
+ * Immutable release history for one artifact.
  *
  * <p>Instances are immutable; {@link #withRelease(Release)} returns a new
  * instance including the additional release.
@@ -46,10 +46,11 @@ import org.jspecify.annotations.Nullable;
  * needed by {@link UpgradeStrategy upgrade strategies} and completion lists.
  *
  * <p>The scheme with the most recent dated release is the successor scheme.
- * Releases in that scheme appear before releases from superseded schemes.
- * Release dates choose scheme precedence; they do not interleave releases from
- * different schemes. Within each scheme, releases follow the scheme's version
- * order, newest first.
+ * Without dates, enum encounter order provides a deterministic fallback that
+ * does not establish a real scheme migration. Releases in the selected scheme
+ * appear before releases from superseded schemes. Release dates choose scheme
+ * precedence; they do not interleave releases from different schemes. Within
+ * each scheme, releases follow the scheme's version order, newest first.
  *
  * @author Mark Paluch
  * @see Release
@@ -259,13 +260,12 @@ public class Releases implements Sequence<Release> {
 	}
 
 	/**
-	 * Return the successor scheme, i.e. the scheme with the most recent dated
-	 * release.
+	 * Return the highest-ranked versioning scheme.
 	 *
-	 * <p>If an artifact switched schemes more than once, the most recently active
-	 * scheme wins again. Date metadata is what makes a cross-scheme successor
-	 * meaningful; without dates, callers should avoid treating a multi-scheme
-	 * history as evidence of a real migration.
+	 * <p>The scheme with the most recent dated release ranks first. If an artifact
+	 * switched schemes more than once, the most recently active scheme wins again.
+	 * Without dates, enum encounter order breaks ties deterministically; callers
+	 * should not treat that result as evidence of a real migration.
 	 *
 	 * @return the successor scheme, or {@literal null} if there are no releases.
 	 */
@@ -342,8 +342,8 @@ public class Releases implements Sequence<Release> {
 	/**
 	 * Return the releases in artifact-level release order.
 	 *
-	 * @return the immutable list of ordered releases. An empty list if
-	 * {@link #isEmpty() empty}.
+	 * @return the immutable list of ordered releases, or an empty list if
+	 * {@link #isEmpty()}.
 	 */
 	@Override
 	public List<Release> toList() {

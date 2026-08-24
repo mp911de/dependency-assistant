@@ -96,8 +96,8 @@ import com.intellij.util.ui.UIUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Navigates the sites participating in a dependency's version: narrows the
- * files to search and presents the result through direct navigation, a
+ * Locates the sites participating in a dependency's version within a supplied
+ * build-file scope and presents the result through direct navigation, a
  * multi-result popup, or the Find tool window. The popup shows a read-only
  * preview of the focused declaration site beside the list.
  *
@@ -140,14 +140,12 @@ public class DependencySiteNavigator {
 	}
 
 	/**
-	 * Create a navigator that resolves the build files to search lazily inside the
-	 * search read action, for callers that would otherwise enumerate build files on
-	 * the UI thread.
+	 * Create a navigator that resolves the build files lazily for each search, for
+	 * callers that would otherwise enumerate build files on the UI thread.
 	 *
 	 * @param project the project owning the dependency sites.
 	 * @param parentDisposable the lifecycle that expires pending searches.
-	 * @param files supplies the build files to search; invoked inside the
-	 * non-blocking read action that runs the search.
+	 * @param files supplies the build files to search.
 	 */
 	public DependencySiteNavigator(Project project, Disposable parentDisposable,
 			Supplier<? extends Iterable<VirtualFile>> files) {
@@ -195,8 +193,7 @@ public class DependencySiteNavigator {
 	 * with {@code parentDisposable} so a closed dialog aborts a pending find.
 	 *
 	 * @param query the dependency-site query to run.
-	 * @param where the screen anchor for the popup or notice; must not be
-	 * {@literal null}.
+	 * @param where the screen anchor for the popup or notice.
 	 */
 	public void browse(DependencySiteQuery query, RelativePoint where) {
 
@@ -206,12 +203,11 @@ public class DependencySiteNavigator {
 
 	/**
 	 * Find every site backing the query and open a single result directly in the
-	 * editor; several results are presented like {@link #browse}. Runs and fails
+	 * editor. Several results are presented like {@link #browse}. Runs and fails
 	 * fast like {@link #browse}.
 	 *
 	 * @param query the dependency-site query to run.
-	 * @param where the screen anchor for the popup or notice; must not be
-	 * {@literal null}.
+	 * @param where the screen anchor for the popup or notice.
 	 */
 	public void navigate(DependencySiteQuery query, RelativePoint where) {
 
@@ -233,8 +229,7 @@ public class DependencySiteNavigator {
 	 * fails fast during indexing like {@link #navigate}.
 	 *
 	 * @param query the dependency-site query to run.
-	 * @param where the screen anchor for the indexing notice; must not be
-	 * {@literal null}.
+	 * @param where the screen anchor for the indexing notice.
 	 */
 	public void openInFindWindow(DependencySiteQuery query, RelativePoint where) {
 		openInFindWindow(new DependencyUsageTarget(project, query, files), where);

@@ -22,9 +22,9 @@ import com.intellij.psi.PsiElement;
  * Detects the role a PSI element plays in a Gradle dependency or plugin version
  * declaration.
  *
- * <p>It models the version-declaration grammar of a Gradle build file
- * regardless of the underlying script language: where an element sits within a
- * version declaration and, for call-inline styles, which call owns it.
+ * <p>It models the version-declaration grammar of a Gradle script regardless of
+ * the underlying script language: where an element sits within a version
+ * declaration and, for call-inline styles, which call owns it.
  *
  * @author Mark Paluch
  * @see DeclarationStyle

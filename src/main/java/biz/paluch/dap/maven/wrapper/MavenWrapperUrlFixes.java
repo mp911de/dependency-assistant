@@ -32,7 +32,7 @@ import com.intellij.modcommand.PsiUpdateModCommandAction;
  * Quick-fix actions for {@link MavenWrapperUrlProblem} variants.
  *
  * <p>Each factory returns a fresh {@link PsiUpdateModCommandAction} bound to
- * {@link Property} via the {@code Class}-based super constructor; the action
+ * {@link Property} via the {@code Class}-based super constructor. The action
  * resolves its target property from the caret offset at execution time and
  * therefore holds no PSI reference of its own.
  *

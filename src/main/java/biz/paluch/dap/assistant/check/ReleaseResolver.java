@@ -52,15 +52,16 @@ import com.intellij.openapi.progress.ProgressIndicator;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Resolves available versions for an artifact by consulting the {@link Cache}
+ * Resolves available releases for an artifact by consulting the {@link Cache}
  * and, when needed, fetching {@link Release}s from its {@link ReleaseSource}s.
  *
  * <p>The resolver owns the full lookup decision for a single artifact: it
  * consults the cache according to the requested {@link Consistency}, asks the
  * cache for a {@link FetchPlan} to honor empty-lookup back-off, narrows the
- * sources accordingly, fetches the remaining sources in parallel, and writes
- * the outcome back. A single resolver is reused across artifacts; per-artifact
- * inputs flow through {@link #getReleases(ReleaseSources, Consistency)}.
+ * sources accordingly, fetches the remaining sources in parallel, and writes a
+ * successful fetch back. A single resolver is reused across artifacts.
+ * Per-artifact inputs flow through
+ * {@link #getReleases(ReleaseSources, Consistency)}.
  *
  * @author Mark Paluch
  * @see ReleaseSource
@@ -87,10 +88,10 @@ public class ReleaseResolver {
 	/**
 	 * Create a resolver fetching through the given executor, honoring the given
 	 * progress indicator for cancellation, and backed by the given cache.
-	 * @param executor the executor used to query sources in parallel .
-	 * @param indicator the progress indicator used for cancellation .
-	 * @param cache the release cache consulted and updated by the resolver; must
-	 * not be {@literal null}.
+	 *
+	 * @param executor the executor used to query sources in parallel.
+	 * @param indicator the progress indicator used for cancellation.
+	 * @param cache the release cache consulted and updated by the resolver.
 	 */
 	public ReleaseResolver(ExecutorService executor, ProgressIndicator indicator, Cache cache) {
 		this(executor, indicator, cache, DEFAULT_SOURCE_TIMEOUT, DEFAULT_SOURCE_TIMEOUT_UNIT);
@@ -122,12 +123,12 @@ public class ReleaseResolver {
 	 *
 	 * <p>Under {@link Consistency#CACHED} a sufficiently recent cached result is
 	 * served without fetching; otherwise the sources are fetched subject to the
-	 * cache's {@link FetchPlan}. Non-fatal lookup failures are captured in the
-	 * returned {@link ReleaseLookupResult}; {@link ProcessCanceledException}
-	 * propagates.
+	 * cache's {@link FetchPlan}. Releases from completed sources are retained when
+	 * a sibling source fails or times out. A failure is returned only when no
+	 * source yields releases. {@link ProcessCanceledException} propagates.
 	 *
-	 * @param sources the artifact and its candidate release sources .
-	 * @param consistency the release-cache consistency to use .
+	 * @param sources the artifact and its candidate release sources.
+	 * @param consistency the release-cache consistency to use.
 	 * @return the lookup result, carrying the resolved releases or a failure
 	 * message.
 	 */
@@ -295,14 +296,14 @@ public class ReleaseResolver {
 	}
 
 	/**
-	 * Per-source outcome of resolving an artifact, together with the merged
+	 * Fetch outcome for one artifact, retaining the source outcomes and the merged
 	 * {@link Releases} computed once on construction.
 	 *
 	 * <p>The merged releases are derived from the source results, so they are
-	 * computed eagerly and exposed through {@link #toReleases()};
+	 * computed eagerly and exposed through {@link #toReleases()}.
 	 * {@link #getPreferredSource()} reuses that instance rather than asking callers
 	 * to pass it back. The empty and producing source identifiers describe this
-	 * fetch alone; combining them with any previously recorded state is the cache's
+	 * fetch alone. Combining them with any previously recorded state is the cache's
 	 * responsibility.
 	 */
 	private static class FetchResult {
@@ -400,7 +401,7 @@ public class ReleaseResolver {
 	public enum Consistency {
 
 		/**
-		 * Allow cached versions to be used.
+		 * Allow cached releases to be used.
 		 */
 		CACHED,
 
@@ -412,7 +413,8 @@ public class ReleaseResolver {
 		REFRESH,
 
 		/**
-		 * Bypass the cache completely and perform a full fetch.
+		 * Ignore cached releases and the incremental fetch plan, perform a full fetch,
+		 * and update the cache with the outcome.
 		 */
 		RESET;
 	}

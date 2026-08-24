@@ -44,8 +44,12 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.util.ObjectUtils;
 
 /**
- * Gradle-specific {@link PropertyResolver} that resolves properties from Gradle
- * files associated with a given PSI element's containing file.
+ * {@link PropertyResolver} assembled from the Gradle files between an anchor
+ * file and its project root.
+ *
+ * <p>Directories are merged from root to anchor. Within each directory,
+ * {@code gradle.properties} is followed by Gradle scripts in file-name order,
+ * and later declarations replace earlier declarations with the same name.
  *
  * @author Mark Paluch
  */
@@ -64,9 +68,13 @@ class GradlePropertyResolver implements PropertyResolver {
 	}
 
 	/**
-	 * Return a resolver anchored at {@code file}, or an empty resolver when
-	 * {@code file} is {@literal null}. File-backed instances are cached on
-	 * {@code file} (shared for the same PSI file).
+	 * Return a resolver assembled from the physical file tree of {@code file}.
+	 *
+	 * <p>The result is cached on the anchor and invalidated by any project PSI
+	 * modification. Injected fragments and non-physical copies resolve through
+	 * their physical source file.
+	 * @param file the file that anchors property discovery.
+	 * @return the resolver for the anchor's Gradle project tree.
 	 */
 	public static GradlePropertyResolver create(PsiFile file) {
 
@@ -77,6 +85,8 @@ class GradlePropertyResolver implements PropertyResolver {
 
 	/**
 	 * Return a resolver containing only properties from the given file.
+	 * @param file the file to parse.
+	 * @return the file-local property resolver.
 	 */
 	public static GradlePropertyResolver forFile(PsiFile file) {
 		return PsiFileCache.get(file, GradlePropertyResolver::parseFile);
@@ -227,6 +237,8 @@ class GradlePropertyResolver implements PropertyResolver {
 	/**
 	 * Finds a cached property binding whose value PSI matches or encloses
 	 * {@code literal}.
+	 * @param literal the value PSI to match.
+	 * @return the matching property binding, or {@literal null} if none matches.
 	 */
 	public @Nullable Property findBindingForValueLiteral(PsiElement literal) {
 

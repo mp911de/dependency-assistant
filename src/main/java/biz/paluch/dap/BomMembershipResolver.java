@@ -42,11 +42,11 @@ import org.jspecify.annotations.Nullable;
  * <p>Only artifacts a scan classified as a BOM are considered, whether or not
  * they already carry a cached membership. Candidate versions are the
  * non-preview, non-snapshot releases newer than three years that lack a
- * membership. Resolved memberships are immutable and cached forever;
- * unresolvable versions carry no persisted state and are simply retried on the
- * next invocation.
+ * membership. Resolved memberships do not expire by age and an already-cached
+ * version is left unchanged. An empty or unresolvable result creates no
+ * per-version membership, so a later invocation can retry it.
  *
- * <p>Resolution parses BOM POMs and must run on a background thread; each
+ * <p>Resolution parses BOM POMs and must run on a background thread. Each
  * assistant call is wrapped in its own short read action.
  *
  * @author Mark Paluch
@@ -97,7 +97,8 @@ public class BomMembershipResolver {
 
 	/**
 	 * Resolve missing memberships for the given artifacts only. Artifacts without a
-	 * cache entry or without cached membership are skipped.
+	 * cache entry, package-system classification, or BOM classification are
+	 * skipped.
 	 *
 	 * @param artifactIds the artifacts of interest.
 	 * @param indicator the progress indicator to report cancellation through.

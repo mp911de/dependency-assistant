@@ -108,6 +108,8 @@ public class FileScope implements Sequence<VirtualFile> {
 	/**
 	 * Re-resolve the scope against the current file system state: files that
 	 * disappeared become missing paths, missing paths that reappeared become files.
+	 *
+	 * @return a new scope resolved from the original declared paths.
 	 */
 	public FileScope rebuild() {
 		return from(paths);
@@ -138,6 +140,8 @@ public class FileScope implements Sequence<VirtualFile> {
 	/**
 	 * Return the live files' presentable URLs joined line-by-line, for dialog and
 	 * notification texts.
+	 *
+	 * @return the presentable URLs of resolved files in declaration order.
 	 */
 	public String getPresentablePaths() {
 		return files.stream().map(VirtualFile::getPresentableUrl).collect(Collectors.joining("\n"));
@@ -157,6 +161,8 @@ public class FileScope implements Sequence<VirtualFile> {
 	/**
 	 * Return the paths that could not be resolved, joined line-by-line for dialog
 	 * and notification texts.
+	 *
+	 * @return the unresolved declared paths in declaration order.
 	 */
 	public String getMissingPaths() {
 		return String.join("\n", missingPaths);

@@ -38,7 +38,12 @@ import com.intellij.psi.PsiFile;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Package-local utilities for Gradle wrapper property files.
+ * Shared recognition, version-range, and cached-checksum operations for Gradle
+ * Wrapper properties files.
+ *
+ * <p>Wrapper-file recognition is based on the {@code gradle-wrapper.properties}
+ * file name. Version matching is bounded and returns no ranges for values
+ * longer than 2048 characters.
  *
  * @author Mark Paluch
  */
@@ -57,6 +62,17 @@ class GradleWrapperUtils {
 	private GradleWrapperUtils() {
 	}
 
+	/**
+	 * Find the cached published checksum for the given Gradle distribution version.
+	 *
+	 * <p>Matching ignores version wrappers but requires equal unwrapped version
+	 * values. A matching release without sha metadata is treated as absent.
+	 *
+	 * @param artifactId the distribution artifact coordinate.
+	 * @param version the distribution version.
+	 * @param stateService the project state service containing the release cache.
+	 * @return the published checksum, or {@literal null} when none is cached.
+	 */
 	static @Nullable String findSha(ArtifactId artifactId, ArtifactVersion version, StateService stateService) {
 
 		Releases releases = stateService.getCache()
@@ -74,7 +90,11 @@ class GradleWrapperUtils {
 	}
 
 	/**
-	 * Return file-absolute ranges for the version segment in a Gradle wrapper URL.
+	 * Return file-absolute ranges for the version segment in a Gradle Wrapper URL.
+	 *
+	 * @param property the distribution URL property to inspect.
+	 * @return the version ranges, or an empty list for an unsupported or
+	 * excessively long value.
 	 */
 	static List<TextRange> getVersionRanges(Property property) {
 

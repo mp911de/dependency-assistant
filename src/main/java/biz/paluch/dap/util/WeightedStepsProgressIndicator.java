@@ -31,7 +31,7 @@ import com.intellij.openapi.progress.ProgressIndicator;
  * parent is the completed weight plus the current step's weighted share,
  * divided by the total weight. A child fraction in {@code [0, 1]} therefore
  * advances the parent only across the current step's slice. Weights are
- * relative and need not sum to {@code 1}; {@code (0.1, 0.9)} and {@code (1, 9)}
+ * relative and need not sum to {@code 1}. {@code (0.1, 0.9)} and {@code (1, 9)}
  * behave identically.
  *
  * <pre class="code">
@@ -42,13 +42,10 @@ import com.intellij.openapi.progress.ProgressIndicator;
  * resolve(steps);          // owns the remaining 90%
  * </pre>
  *
- * <p>The indicator is safe for concurrent use: {@link #nextStep()} advances an
- * atomic step counter and {@link #setFraction(double)} computes the upstream
- * fraction from a single counter read against immutable weight tables, so
- * concurrent fraction updates and step advances cannot observe torn state. As
- * with the platform stepper, the absolute fraction reported upstream reflects
- * whichever update writes last; ordering across racing updates is not
- * serialized.
+ * <p>{@link #nextStep()} advances an atomic step counter, so concurrent step
+ * advances are not lost. Parent fraction writes are not serialized. When step
+ * advances and fraction updates race, the parent reflects whichever update is
+ * written last.
  *
  * @author Mark Paluch
  * @see StepsProgressIndicator
@@ -70,10 +67,12 @@ public class WeightedStepsProgressIndicator extends DelegatingProgressIndicator 
 	/**
 	 * Create a stepped indicator over the given parent.
 	 * @param indicator the indicator to forward to.
-	 * @param weights the relative weight of each step in encounter order; must
-	 * contain at least one entry and every weight must be greater than {@code 0}.
+	 * @param weights the relative weight of each step in encounter order. The array
+	 * must contain at least one entry; zero and negative weights are rejected.
 	 * Relative weights are not required to sum to {@code 1}. {@code (0.1, 0.9)} and
-	 * {@code (1, 9)} behave identically.
+	 * {@code (1, 9)} behave identically. The array is copied.
+	 * @throws IllegalArgumentException if no weights are supplied or a weight is
+	 * zero or negative.
 	 */
 	public WeightedStepsProgressIndicator(ProgressIndicator indicator, double... weights) {
 
@@ -100,13 +99,14 @@ public class WeightedStepsProgressIndicator extends DelegatingProgressIndicator 
 	/**
 	 * Create a stepped indicator with {@code taskCount} equally weighted steps.
 	 *
-	 * <p>This is the thread-safe counterpart to the platform
+	 * <p>This is the atomic-step counterpart to the platform
 	 * {@code StepsProgressIndicator}: each {@link #nextStep()} advances the parent
 	 * fraction by {@code 1 / taskCount}.
 	 * @param indicator the indicator to forward to.
-	 * @param taskCount the number of equally weighted steps; must be greater than
-	 * {@code 0}.
+	 * @param taskCount the number of equally weighted steps. It must be greater
+	 * than {@code 0}.
 	 * @return a stepped indicator over {@code taskCount} equally weighted steps.
+	 * @throws IllegalArgumentException if {@code taskCount} is not positive.
 	 */
 	public static WeightedStepsProgressIndicator forTasks(ProgressIndicator indicator, int taskCount) {
 
@@ -131,6 +131,14 @@ public class WeightedStepsProgressIndicator extends DelegatingProgressIndicator 
 		setFraction(0.0);
 	}
 
+	/**
+	 * Report progress within the current step.
+	 *
+	 * <p>The supplied fraction is clamped to {@code [0, 1]} before it is mapped to
+	 * the current step's share of the parent indicator.
+	 *
+	 * @param fraction the fraction within the current step.
+	 */
 	@Override
 	public void setFraction(double fraction) {
 

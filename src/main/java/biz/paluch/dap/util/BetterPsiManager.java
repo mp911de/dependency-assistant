@@ -14,16 +14,16 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.lang.Contract;
 
 /**
- * Validity-safe facade over the platform {@link PsiManager}.
+ * Resolves {@link VirtualFile VirtualFiles} to PSI while rejecting invalid file
+ * handles before delegating to {@link PsiManager}.
  *
  * <p>Every lookup guards its {@link VirtualFile} argument with
  * {@link #isValid(VirtualFile)} before delegating to
  * {@link PsiManager#findFile(VirtualFile)}, so a stale, deleted, or otherwise
- * invalid file resolves to an absent result rather than throwing or returning
- * torn state. The facade exposes the same resolution in several shapes
- * ({@link #doWithFile} callback, {@link #findFile} nullable return,
- * {@link #stream} for bulk resolution, and {@link #optional}) so callers can
- * pick the form that fits their control flow.
+ * invalid file resolves to an absent result. The facade exposes the same
+ * resolution in several shapes ({@link #doWithFile} callback, {@link #findFile}
+ * nullable return, {@link #stream} for bulk resolution, and {@link #optional})
+ * so callers can pick the form that fits their control flow.
  *
  * <p>Resolving PSI reads the project model, so the instance methods must be
  * invoked inside a read action. Instances are cheap, stateless beyond their
@@ -64,13 +64,11 @@ public class BetterPsiManager {
 	 * {@code consumer}.
 	 *
 	 * <p>The consumer is invoked only when the file is valid and resolves to a
-	 * {@link PsiFile}; otherwise the call is a no-op. Must be called inside a read
+	 * {@link PsiFile}. Otherwise the call is a no-op. Must be called inside a read
 	 * action.
 	 *
-	 * @param file the file to resolve; can be {@literal null} or invalid, in which
-	 * case nothing happens.
-	 * @param consumer the action to run with the resolved {@link PsiFile}; must not
-	 * be {@literal null}.
+	 * @param file the file to resolve. Invalid files are ignored.
+	 * @param consumer the action to run with the resolved {@link PsiFile}.
 	 */
 	public void doWithFile(VirtualFile file, Consumer<PsiFile> consumer) {
 		if (isValid(file)) {
@@ -87,7 +85,7 @@ public class BetterPsiManager {
 	 *
 	 * <p>Must be called inside a read action.
 	 *
-	 * @param file the file to resolve; can be {@literal null} or invalid.
+	 * @param file the file to resolve. Invalid files are treated as absent.
 	 * @return the resolved {@link PsiFile}, or {@literal null} when the file is
 	 * invalid or has no PSI.
 	 */
@@ -99,10 +97,10 @@ public class BetterPsiManager {
 	 * Resolve the {@link PsiFile} for each given file, skipping invalid and
 	 * unresolvable entries.
 	 *
-	 * <p>Must be called inside a read action. The returned stream is lazy;
-	 * resolution happens as the stream is consumed.
+	 * <p>Must be called inside a read action. The returned stream is lazy.
+	 * Resolution happens as the stream is consumed.
 	 *
-	 * @param files the files to resolve; individual entries may be invalid.
+	 * @param files the files to resolve. Individual entries may be invalid.
 	 * @return a stream of the resolvable {@link PsiFile PsiFiles}, in iteration
 	 * order of {@code files}.
 	 */
@@ -118,7 +116,7 @@ public class BetterPsiManager {
 	 *
 	 * <p>Must be called inside a read action.
 	 *
-	 * @param file the file to resolve; can be {@literal null} or invalid.
+	 * @param file the file to resolve. Invalid files are treated as absent.
 	 * @return an {@link Optional} holding the resolved {@link PsiFile}, or empty
 	 * when the file is invalid or has no PSI.
 	 */
@@ -129,9 +127,8 @@ public class BetterPsiManager {
 	/**
 	 * Test whether the given file is present and usable for PSI resolution.
 	 *
-	 * @param file the file to test; can be {@literal null}.
-	 * @return {@literal true} if the file is non-{@literal null}, exists, and is
-	 * valid; {@literal false} otherwise.
+	 * @param file the file to test, or {@literal null}.
+	 * @return {@code true} if the file is present, exists, and is valid.
 	 */
 	@Contract("null -> false")
 	public static boolean isValid(@Nullable VirtualFile file) {
@@ -141,9 +138,8 @@ public class BetterPsiManager {
 	/**
 	 * Test whether the given file is missing or unusable for PSI resolution.
 	 *
-	 * @param file the file to test; can be {@literal null}.
-	 * @return {@literal true} if the file is {@literal null}, does not exist, or is
-	 * invalid; {@literal false} otherwise.
+	 * @param file the file to test, or {@literal null}.
+	 * @return {@code true} if the file is absent, does not exist, or is invalid.
 	 * @see #isValid(VirtualFile)
 	 */
 	@Contract("null -> true")

@@ -25,8 +25,9 @@ import com.intellij.psi.PsiFileFactory;
 
 /**
  * {@link PropertyContributorSupport} that completes Gradle
- * {@link WrapperProperty wrapper property} lines with the latest Gradle
- * distribution URL.
+ * {@link WrapperProperty Gradle Wrapper property} lines with the default URL
+ * for the newest cached non-preview release. When no such release is cached,
+ * completion uses the built-in default version.
  *
  * @author Mark Paluch
  */

@@ -51,8 +51,8 @@ class PlanNotifications {
 	 * Each action is one-shot: choosing it expires the notification.
 	 *
 	 * @param commit whether the upgrades were committed.
-	 * @param items
-	 * @param applied the number of applied upgrades.
+	 * @param items the plan items covered by the run.
+	 * @param applied the updates that changed build files.
 	 * @param push pushes the committed changes; {@literal null} when not offered.
 	 * @param unshelve restores the shelf created for the run; {@literal null} when
 	 * not offered.

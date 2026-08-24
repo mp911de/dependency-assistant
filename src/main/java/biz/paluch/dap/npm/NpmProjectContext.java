@@ -39,10 +39,13 @@ import com.intellij.psi.PsiFile;
 /**
  * {@link ProjectBuildContext} for a single {@code package.json} file.
  *
- * <p>
- * Each {@code package.json} file produces its own context so that dependent
+ * <p>Each {@code package.json} file produces its own context so that dependent
  * declarations in different monorepo modules maintain independent dependency
- * state.
+ * state. The context reads the root {@code version} as the project version when
+ * it is parseable. Release lookup always includes {@link NpmRegistry} and also
+ * includes a strict {@link GitHubReleaseSourceRouter} when GitHub support is
+ * available.
+ *
  * @author Mark Paluch
  */
 class NpmProjectContext extends AbstractProjectBuildContext {
@@ -62,6 +65,15 @@ class NpmProjectContext extends AbstractProjectBuildContext {
 		this.projectVersion = projectVersion;
 	}
 
+	/**
+	 * Return the release sources used for dependencies in an NPM context.
+	 *
+	 * <p>The strict GitHub router, when available, handles only Git-backed
+	 * coordinates. The public NPM registry handles regular package coordinates.
+	 *
+	 * @param project the IntelliJ project used for GitHub account resolution.
+	 * @return the ordered release sources for NPM dependencies.
+	 */
 	public static List<ReleaseSource> getReleaseSources(Project project) {
 		if (NpmUtils.GITHUB_AVAILABLE) {
 			return List.of(new GitHubReleaseSourceRouter(project, true), NpmRegistry.NPM_REGISTRY);
@@ -70,7 +82,9 @@ class NpmProjectContext extends AbstractProjectBuildContext {
 	}
 
 	/**
-	 * Create a context for the given anchor file.
+	 * Create a context for the given anchor file and read its declared project
+	 * version.
+	 *
 	 * @param anchor the {@code package.json} PSI file.
 	 * @return the build context for the anchor file's {@code package.json}.
 	 */
@@ -79,7 +93,9 @@ class NpmProjectContext extends AbstractProjectBuildContext {
 	}
 
 	/**
-	 * Create a context for the given project and anchor file.
+	 * Create an unversioned context for the given project and anchor file without
+	 * reading PSI.
+	 *
 	 * @param project the IntelliJ project.
 	 * @param anchor the {@code package.json} virtual file.
 	 * @return the build context for the given {@code package.json} file.

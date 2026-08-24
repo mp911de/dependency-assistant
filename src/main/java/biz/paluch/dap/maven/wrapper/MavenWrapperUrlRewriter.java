@@ -28,8 +28,7 @@ import org.jspecify.annotations.Nullable;
  * <p>All methods are pure text rewrites that operate on the Maven coordinate
  * shape captured by {@link MavenWrapperUtils#MAVEN_ARTIFACT_PATTERN}. URLs that
  * do not match the pattern are returned unchanged where a transform depends on
- * the match; non-coordinate transforms (credentials, scheme) only inspect the
- * URL prefix.
+ * the match. Credential removal inspects only the URL authority.
  *
  * @author Mark Paluch
  */
@@ -95,8 +94,7 @@ class MavenWrapperUrlRewriter {
 	 * Rewrite both the path-artifact and the file-artifact segments of the URL to
 	 * the given canonical artifact id.
 	 * @param url the URL to rewrite.
-	 * @param canonicalArtifactId the canonical artifact id; must not be
-	 * {@literal null}.
+	 * @param canonicalArtifactId the canonical artifact id.
 	 * @return the rewritten URL, or the input when the URL does not match the Maven
 	 * artifact pattern.
 	 */
@@ -120,8 +118,7 @@ class MavenWrapperUrlRewriter {
 	 * <p>The number of replaced segments equals the segment count of the canonical
 	 * group path, so any mirror prefix in the URL is preserved.
 	 * @param url the URL to rewrite.
-	 * @param canonicalGroupPathTail the canonical group path (slash-separated);
-	 * must not be {@literal null}.
+	 * @param canonicalGroupPathTail the canonical slash-separated group path.
 	 * @return the rewritten URL, or the input when the URL does not match the Maven
 	 * artifact pattern.
 	 */
@@ -161,12 +158,13 @@ class MavenWrapperUrlRewriter {
 	 *
 	 * <p>For {@link WrapperProperty#DISTRIBUTION} the existing {@code .zip} or
 	 * {@code .tar.gz} extension is preserved; any other extension falls back to
-	 * {@code .tar.gz}. For {@link WrapperProperty#WRAPPER} the file name always
-	 * ends in {@code .jar}.
+	 * {@code .zip}. For {@link WrapperProperty#WRAPPER} the file name always ends
+	 * in {@code .jar}.
+	 *
 	 * @param url the URL to rewrite.
 	 * @param property the wrapper property.
 	 * @param version the canonical version.
-	 * @return the rewritten URL.
+	 * @return the rewritten URL, or the input when it has no path separator.
 	 */
 	static String replaceFileName(String url, WrapperProperty property, String version) {
 
@@ -184,8 +182,8 @@ class MavenWrapperUrlRewriter {
 	 * Return the canonical file-name that would be produced by
 	 * {@link #replaceFileName(String, WrapperProperty, String)} applied to the
 	 * given URL, without touching the URL.
-	 * @param url the URL whose extension informs the suggestion; must not be
-	 * {@literal null}.
+	 *
+	 * @param url the URL whose extension informs the suggestion.
 	 * @param property the wrapper property.
 	 * @param version the canonical version.
 	 * @return the suggested file name.
@@ -198,10 +196,11 @@ class MavenWrapperUrlRewriter {
 	}
 
 	/**
-	 * Build the canonical URL for the given wrapper property and version.
+	 * Build the canonical Maven Central URL for the given wrapper property and
+	 * version.
+	 *
 	 * @param property the wrapper property.
-	 * @param version the version carrier supplying the canonical version; must not
-	 * be {@literal null}.
+	 * @param version the version carrier supplying the canonical version.
 	 * @return the canonical URL.
 	 */
 	static String canonicalUrl(WrapperProperty property, VersionAware version) {
@@ -210,7 +209,9 @@ class MavenWrapperUrlRewriter {
 	}
 
 	/**
-	 * Build the canonical URL for the given wrapper property and version.
+	 * Build the canonical Maven Central URL for the given wrapper property and
+	 * version.
+	 *
 	 * @param property the wrapper property.
 	 * @param version the canonical version.
 	 * @return the canonical URL.
@@ -220,11 +221,13 @@ class MavenWrapperUrlRewriter {
 	}
 
 	/**
-	 * Build the canonical URL for the given wrapper property and version.
+	 * Build the canonical Maven Central URL for the given wrapper property and
+	 * version.
+	 *
 	 * @param property the wrapper property.
 	 * @param version the canonical version.
-	 * @param preservedExtension the distribution archive extension to use, can be
-	 * {@literal null}.
+	 * @param preservedExtension the distribution archive extension to use. A
+	 * {@literal null} or unsupported extension selects the property's default.
 	 * @return the canonical URL.
 	 */
 	static String canonicalUrl(WrapperProperty property, String version, @Nullable String preservedExtension) {
@@ -254,8 +257,8 @@ class MavenWrapperUrlRewriter {
 	 * {@code /} at or after {@code authorityStart}, or the string length when no
 	 * path separator follows).
 	 * @param url the URL to inspect.
-	 * @param authorityStart the offset returned by {@link #authorityStart(String)};
-	 * must be non-negative.
+	 * @param authorityStart the non-negative offset returned by
+	 * {@link #authorityStart(String)}.
 	 * @return the authority end offset.
 	 */
 	static int authorityEnd(String url, int authorityStart) {

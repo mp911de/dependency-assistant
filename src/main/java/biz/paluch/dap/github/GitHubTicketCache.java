@@ -36,8 +36,11 @@ import org.jspecify.annotations.Nullable;
 /**
  * Project-level service persisting GitHub label and milestone listings across
  * IDE restarts.
+ *
  * <p>Mutations count against a modification tracker so the persistence layer
  * skips snapshotting and serialization while the listings are unchanged.
+ * Persistence callbacks exchange detached snapshots, so callers cannot mutate
+ * the live cache through {@link #getState()} or a previously loaded state.
  *
  * @author Mark Paluch
  */
@@ -82,7 +85,9 @@ public class GitHubTicketCache
 	/**
 	 * Return the stored labels for the given repository coordinates.
 	 *
-	 * @return the stored labels; empty if the repository has no stored listing.
+	 * @param coordinates the GitHub host, owner, and repository key.
+	 * @return the stored labels. The list is empty when the repository has no
+	 * stored listing.
 	 */
 	List<GitHubLabel> getLabels(GitRepositoryMetadata coordinates) {
 		return readRepositories(state -> {
@@ -104,7 +109,9 @@ public class GitHubTicketCache
 	/**
 	 * Return the stored open milestones for the given repository coordinates.
 	 *
-	 * @return the stored milestones; empty if the repository has no stored listing.
+	 * @param coordinates the GitHub host, owner, and repository key.
+	 * @return the stored milestones. The list is empty when the repository has no
+	 * stored listing.
 	 */
 	List<GitHubMilestone> getMilestones(GitRepositoryMetadata coordinates) {
 		return readRepositories(repositories -> {
@@ -125,6 +132,9 @@ public class GitHubTicketCache
 
 	/**
 	 * Replace the stored labels for the given repository coordinates.
+	 *
+	 * @param coordinates the GitHub host, owner, and repository key.
+	 * @param labels the complete label listing to store.
 	 */
 	void storeLabels(GitRepositoryMetadata coordinates, List<GitHubLabel> labels) {
 
@@ -141,6 +151,9 @@ public class GitHubTicketCache
 
 	/**
 	 * Replace the stored milestones for the given repository coordinates.
+	 *
+	 * @param coordinates the GitHub host, owner, and repository key.
+	 * @param milestones the complete open-milestone listing to store.
 	 */
 	void storeMilestones(GitRepositoryMetadata coordinates, List<GitHubMilestone> milestones) {
 

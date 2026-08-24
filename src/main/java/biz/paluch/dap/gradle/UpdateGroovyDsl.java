@@ -25,7 +25,7 @@ import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrMethod
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrLiteral;
 
 /**
- * Updates a Gradle build file with a new version.
+ * Locates and rewrites version values in Groovy DSL Gradle scripts.
  *
  * @author Mark Paluch
  */

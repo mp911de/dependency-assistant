@@ -26,13 +26,13 @@ import biz.paluch.dap.artifact.VersionSource;
 import com.intellij.psi.PsiFile;
 
 /**
- * Scans a single Antora playbook file and registers its {@code ui.bundle.url}
- * references with a {@link DependencyCollector}.
+ * Registers the {@code ui.bundle.url} references from one Antora playbook with
+ * a {@link DependencyCollector}.
  *
- * <p>
- * This collector is intentionally syntax-only. It records the repository
- * identity and declared version as found in the playbook and leaves cache-based
- * version resolution to the project context and lookup services.
+ * <p>This collector records the Git-backed repository identity and the version
+ * source derived from the URL segment. It does not read the release cache or
+ * contact a remote API. The assistant's scan-completion phase and per-file
+ * lookup resolve Git refs later.
  *
  * @author Mark Paluch
  */

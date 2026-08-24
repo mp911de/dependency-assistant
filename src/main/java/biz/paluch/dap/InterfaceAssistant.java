@@ -25,7 +25,11 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 
 /**
- * User-interface metadata for a build-tool integration.
+ * User-interface metadata SPI for a build-tool integration.
+ *
+ * <p>Instances are used by context-independent presentation code for names,
+ * icons, and version highlight ranges. Implementations must not depend on a
+ * {@link ProjectDependencyContext} or retain project and file state.
  *
  * @author Mark Paluch
  */
@@ -33,15 +37,17 @@ public interface InterfaceAssistant {
 
 	/**
 	 * Return the human-readable integration name.
+	 * @return the integration name for presentation to users.
 	 */
 	String getDisplayName();
 
 	/**
 	 * Return the human-readable integration name for the given file.
-	 * <p>The default returns {@link #getDisplayName()}; integrations whose name
+	 * <p>The default returns {@link #getDisplayName()}. Integrations whose name
 	 * depends on the concrete file (such as Gradle Groovy vs Kotlin DSL) override
 	 * this method.
 	 * @param file the file to get the display name for.
+	 * @return the integration name for the file.
 	 */
 	default String getDisplayName(VirtualFile file) {
 		return getDisplayName();
@@ -50,30 +56,33 @@ public interface InterfaceAssistant {
 	/**
 	 * Return the gutter action icon to use for the given declaration.
 	 * @param declaration the declaration that should use the icon.
+	 * @return the icon for dependency actions in the gutter.
 	 */
 	Icon getGutterIcon(ArtifactDeclaration declaration);
 
 	/**
 	 * Return the gutter navigation icon to use for the given declaration.
 	 * @param declaration the declaration that should use the icon.
+	 * @return the icon for dependency navigation in the gutter.
 	 */
 	Icon getNavigateIcon(ArtifactDeclaration declaration);
 
 	/**
 	 * Return the table icon to use for the given {@link Dependency}.
 	 * @param dependency the dependency for which to return the icon.
+	 * @return the icon representing the dependency in tables.
 	 */
 	Icon getTableIcon(Dependency dependency);
 
 	/**
 	 * Return the document range used by the annotator and gutter line marker to
 	 * highlight the version portion of {@code element}. Implementations narrow the
-	 * range to a build-tool-specific sub-range (e.g. the version string inside a
-	 * quoted TOML literal, the committish of a Git URL, the ref segment of a GitHub
-	 * Actions {@code uses:} declaration); the default returns the element's own
-	 * range so unsupported inputs degrade gracefully.
+	 * range to a build-tool-specific sub-range, such as the version string inside a
+	 * quoted TOML literal or the ref segment of a GitHub Actions {@code uses:}
+	 * declaration. The default returns the element's own range so unsupported
+	 * inputs degrade gracefully.
 	 * @param element the element whose version sub-range should be highlighted.
-	 * @return the highlight range; guaranteed to be not {@literal null}.
+	 * @return the document range to highlight.
 	 */
 	default TextRange getHighlightRange(PsiElement element) {
 		return element.getTextRange();

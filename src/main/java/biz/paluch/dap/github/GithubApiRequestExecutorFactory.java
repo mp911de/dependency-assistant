@@ -43,10 +43,15 @@ import org.springframework.util.Assert;
 /**
  * Project-scoped factory for {@link GithubApiRequestExecutor} instances.
  *
- * <p>This class mirrors the IntelliJ pull-request tool window shape without
- * owning UI. It can create an executor when the repository/account choice is
- * already clear, or return enough selector input for a future UI adapter to
- * perform the repository and account selection.
+ * <p>The factory resolves hosted repositories and accounts from the bundled
+ * GitHub plugin. A request produces an authenticated executor when a compatible
+ * account and credentials are available, an anonymous executor for lookups that
+ * do not require selection, or a selection-required result that explains why no
+ * executor was created.
+ *
+ * <p>Credential lookup blocks while bridging the GitHub plugin's suspending
+ * API. Callers must not resolve authenticated executors on the event-dispatch
+ * thread.
  *
  * @author Mark Paluch
  */
@@ -64,6 +69,8 @@ class GithubApiRequestExecutorFactory {
 
 	/**
 	 * Production constructor invoked by the IntelliJ service container.
+	 *
+	 * @param project the project whose repositories and default account are used.
 	 */
 	GithubApiRequestExecutorFactory(Project project) {
 		this.project = project;
@@ -78,6 +85,7 @@ class GithubApiRequestExecutorFactory {
 
 	/**
 	 * Create a best-effort executor for the first known GitHub repository.
+	 *
 	 * @return the executor resolution result.
 	 */
 	ExecutorResult getExecutor() {
@@ -111,6 +119,7 @@ class GithubApiRequestExecutorFactory {
 	/**
 	 * Create an executor for the given repository coordinates if the account choice
 	 * is clear.
+	 *
 	 * @param repository the GitHub repository coordinates.
 	 * @return the executor resolution result.
 	 */
@@ -121,6 +130,7 @@ class GithubApiRequestExecutorFactory {
 	/**
 	 * Create an executor for the given GitHub repository mapping if the account
 	 * choice is clear.
+	 *
 	 * @param repository the GitHub repository mapping.
 	 * @return the executor resolution result.
 	 */
@@ -132,6 +142,7 @@ class GithubApiRequestExecutorFactory {
 
 	/**
 	 * Create an executor for the given server if the account choice is clear.
+	 *
 	 * @param server the GitHub server.
 	 * @return the executor resolution result.
 	 */
@@ -140,7 +151,12 @@ class GithubApiRequestExecutorFactory {
 	}
 
 	/**
-	 * Create an executor from a selection made by a future UI adapter.
+	 * Create an authenticated executor from an explicit repository/account pair.
+	 *
+	 * @param repository the selected GitHub repository.
+	 * @param account the selected account.
+	 * @return the executor resolution result, including a failure reason when the
+	 * pair cannot be authenticated.
 	 */
 	ExecutorResult getExecutor(GHGitRepositoryMapping repository, GithubAccount account) {
 		GithubServerPath server = repository.getRepository().getServerPath();
@@ -149,7 +165,8 @@ class GithubApiRequestExecutorFactory {
 	}
 
 	/**
-	 * Return the selector inputs for a future UI adapter.
+	 * Return the repositories, accounts, and current suggestions for a server.
+	 *
 	 * @param server the GitHub server.
 	 * @return immutable selector details.
 	 */

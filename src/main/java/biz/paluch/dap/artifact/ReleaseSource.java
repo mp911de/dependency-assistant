@@ -23,10 +23,11 @@ import biz.paluch.dap.util.Sequence;
 import com.intellij.openapi.progress.ProgressIndicator;
 
 /**
- * Strategy interface for obtaining known releases for an artifact.
+ * Strategy for obtaining known releases for an artifact.
  *
- * <p>Implementations typically adapt one registry, such as a remote Maven
- * repository or the Gradle Plugin Portal.
+ * <p>Adapters translate one upstream registry or service into {@link Release}
+ * values. Routing implementations may translate the artifact coordinates or
+ * select another release source before fetching.
  *
  * <p>Throw {@link ArtifactNotFoundException} only for a definitive absence at
  * this source. Return an empty sequence when release data is simply
@@ -40,6 +41,7 @@ public interface ReleaseSource {
 
 	/**
 	 * Return the unique identifier of this source.
+	 * @return the source identifier.
 	 */
 	default String getId() {
 		return getClass().getSimpleName();
@@ -53,17 +55,17 @@ public interface ReleaseSource {
 	 * periodically call {@link ProgressIndicator#checkCanceled()} during
 	 * long-running fetches to honor user cancellation.
 	 * @param artifactId the artifact whose releases to retrieve.
-	 * @param indicator the progress indicator used to honor cancellation; must not
-	 * be {@literal null}.
+	 * @param indicator the progress indicator used to honor cancellation.
 	 * @return the releases known to this source.
 	 * @throws ArtifactNotFoundException if the artifact is definitively absent.
+	 * @throws IOException if release data cannot be read from the source.
 	 */
 	Sequence<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException;
 
 	/**
 	 * Render the artifact coordinates as a human-readable string.
 	 * @param artifactId the artifact coordinates.
-	 * @return
+	 * @return the source-specific coordinate rendering.
 	 */
 	default String toString(ArtifactId artifactId) {
 		return artifactId.toString();
@@ -71,6 +73,7 @@ public interface ReleaseSource {
 
 	/**
 	 * Return the built-in {@link ReleaseSource} backed by Maven Central.
+	 * @return the Maven Central release source.
 	 */
 	static ReleaseSource mavenCentral() {
 		return MavenRepository.MAVEN_CENTRAL;

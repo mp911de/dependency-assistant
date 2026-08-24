@@ -31,8 +31,13 @@ import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Version suffix such as {@code SNAPSHOT}, {@code M1}, {@code RC1} or
- * {@code RELEASE}.
+ * Artifact-version qualifier such as {@code SNAPSHOT}, {@code M1}, {@code RC1},
+ * or {@code RELEASE}.
+ *
+ * <p>The ordering spans the project's broad Maven and ecosystem-specific
+ * vocabulary rather than strict semantic versioning. Snapshots sort first,
+ * followed by known development and preview qualifiers, release candidates,
+ * unknown qualifiers, general-availability releases, and service releases.
  *
  * @author Mark Paluch
  */
@@ -467,7 +472,7 @@ interface Suffix extends Comparable<Suffix> {
 	}
 
 	/**
-	 * Semantic versioning suffix such as {@code M1}, {@code RC1} or {@code SR1}.
+	 * Single-segment suffix such as {@code M1}, {@code RC1}, or {@code SR1}.
 	 */
 	class SemVerSuffix implements PreReleaseSuffix {
 
@@ -536,7 +541,7 @@ interface Suffix extends Comparable<Suffix> {
 	}
 
 	/**
-	 * Dot-separated semantic versioning suffix such as {@code alpha.0.3} or
+	 * Dot-separated multi-segment suffix such as {@code alpha.0.3} or
 	 * {@code rc.1.2}.
 	 */
 	class MultiSegmentSuffix implements PreReleaseSuffix {
@@ -591,7 +596,7 @@ interface Suffix extends Comparable<Suffix> {
 	}
 
 	/**
-	 * Numeric-only semantic versioning pre-release suffix.
+	 * Numeric-only pre-release suffix.
 	 */
 	class NumericPreReleaseSuffix implements PreReleaseSuffix {
 

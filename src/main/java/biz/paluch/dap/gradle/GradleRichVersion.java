@@ -23,7 +23,11 @@ import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Utilities for Gradle rich-version declarations.
+ * Selects and rewrites the concrete version anchor in a Gradle rich-version
+ * declaration.
+ *
+ * <p>Supported forms include concrete versions, version ranges, and
+ * {@code strictly!!prefer} notation. Dynamic versions have no concrete anchor.
  *
  * @author Mark Paluch
  */
@@ -36,6 +40,13 @@ class GradleRichVersion {
 
 	/**
 	 * Derive a concrete version anchor from a raw Gradle rich-version declaration.
+	 *
+	 * <p>A preferred version takes precedence in {@code strictly!!prefer} notation.
+	 * A range contributes its closed upper bound, or its closed lower bound when no
+	 * closed upper bound exists.
+	 * @param raw the raw rich-version declaration.
+	 * @return the concrete version anchor, or an empty result for blank, dynamic,
+	 * or malformed declarations and ranges without a closed bound.
 	 */
 	static Optional<ArtifactVersion> parse(@Nullable String raw) {
 		if (!StringUtils.hasText(raw) || isDynamic(raw)) {
@@ -57,6 +68,15 @@ class GradleRichVersion {
 	/**
 	 * Rewrite a raw Gradle rich-version declaration to use {@code newVersion} while
 	 * preserving supported rich-version syntax.
+	 *
+	 * <p>The preferred component of {@code strictly!!prefer} and the closed bound
+	 * selected as the anchor are replaced. When the preferred component is empty,
+	 * the strict component is replaced. If updating a closed lower bound would
+	 * cross an exclusive upper bound, both bounds become the new closed version.
+	 * @param raw the raw rich-version declaration.
+	 * @param newVersion the replacement version.
+	 * @return the rewritten declaration, or {@code raw} when no supported update
+	 * form is recognized.
 	 */
 	static String update(String raw, String newVersion) {
 		if (StringUtils.isEmpty(raw) || isDynamic(raw)) {

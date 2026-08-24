@@ -36,7 +36,13 @@ import kotlin.coroutines.Continuation;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Initialize GitHub extension point.
+ * Ensures Dependency Assistant's GitHub ref completion contributor runs before
+ * the bundled GitHub Actions contributor.
+ *
+ * <p>The IntelliJ extension-point caches are reordered reflectively because
+ * both contributors declare first priority. Initialization failures are logged
+ * without aborting project startup. Completion ordering may then remain
+ * platform-defined.
  *
  * @author Mark Paluch
  */
@@ -55,10 +61,7 @@ public class GitHubInitService implements ProjectActivity {
 		return null;
 	}
 
-	/**
-	 * I AM THE ALPHA AND THE OMEGA OF GITHUB ☝️. LET THERE BE ORDER AMONGST
-	 * PLUGINS.
-	 */
+	/** Reorder the known completion-contributor representations when required. */
 	private void ɑΩ() {
 
 		ExtensionPoint<CompletionContributorEP> point = CompletionContributor.EP.getPoint();
@@ -143,11 +146,12 @@ public class GitHubInitService implements ProjectActivity {
 		}
 
 		/**
-		 * Create a magic detector from the given collection.
-		 * @param collection
-		 * @param classNameExtractor
-		 * @return
-		 * @param <T>
+		 * Locate the bundled and Dependency Assistant contributors in a collection.
+		 *
+		 * @param <T> the collection element type.
+		 * @param collection the extension representation to inspect.
+		 * @param classNameExtractor function yielding each implementation class name.
+		 * @return the detected contributor positions.
 		 */
 		public static <T> MagicDetector from(Collection<T> collection, Function<T, String> classNameExtractor) {
 
@@ -180,7 +184,9 @@ public class GitHubInitService implements ProjectActivity {
 		}
 
 		/**
-		 * Swap the elements at the given indices (from, to) if magic is required.
+		 * Swap the detected contributors when the bundled contributor comes first.
+		 *
+		 * @param consumer operation that swaps the two detected positions.
 		 */
 		public void swapIfNeeded(BiConsumer<Integer, Integer> consumer) {
 			if (requiresMagic()) {

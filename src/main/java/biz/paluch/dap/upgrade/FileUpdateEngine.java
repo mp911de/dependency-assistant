@@ -37,10 +37,13 @@ import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiFile;
 
 /**
- * File-mutation engine.
- * <p>File writes are expected to be inside the caller's write action. Methods
- * do not create IDE commands or undo boundaries is created. Changed documents
- * are saved, so the caller's write action must be held on the EDT.
+ * Applies dependency updates to physical build files or PSI preview copies.
+ *
+ * <p>For physical-file mutation, callers provide the write action and any IDE
+ * command or undo boundary. When the file has an associated {@link Document},
+ * the engine commits the document before and after applying updates and saves
+ * it afterward. Preview applies to a caller-provided PSI copy without
+ * committing or saving a document.
  *
  * @author Mark Paluch
  */
@@ -56,14 +59,34 @@ public class FileUpdateEngine {
 
 	private final FileDocumentManager fileDocumentManager;
 
+	/**
+	 * Create an engine that routes each source file through all registered
+	 * dependency assistants.
+	 *
+	 * @param project the project whose build files are updated.
+	 */
 	public FileUpdateEngine(Project project) {
 		this(project, assistants(project));
 	}
 
+	/**
+	 * Create an engine that routes source files through the given dependency
+	 * assistant.
+	 *
+	 * @param project the project whose build files are updated.
+	 * @param assistant the assistant used to recognize and update files.
+	 */
 	public FileUpdateEngine(Project project, DependencyAssistant assistant) {
 		this(project, new DependencyAssistantsUpdateFunction(assistant));
 	}
 
+	/**
+	 * Create an engine using the given update function.
+	 *
+	 * @param project the project whose build files are updated.
+	 * @param updateFunction the function that applies updates to a resolved PSI
+	 * file or preview copy.
+	 */
 	public FileUpdateEngine(Project project, UpdateFunction updateFunction) {
 		this.project = project;
 		this.updateFunction = updateFunction;
@@ -73,7 +96,9 @@ public class FileUpdateEngine {
 	}
 
 	/**
-	 * Create an update function that applies updates to all registered assistants.
+	 * Create an update function that applies through every registered assistant
+	 * that supports the source file and produces an available context.
+	 *
 	 * @param project the project.
 	 * @return the update function.
 	 */
@@ -83,7 +108,9 @@ public class FileUpdateEngine {
 	}
 
 	/**
-	 * Create an update function that applies updates to all registered assistants.
+	 * Create an update function that applies every target through the given project
+	 * dependency context without inspecting the source file.
+	 *
 	 * @param context the project dependency context.
 	 * @return the update function.
 	 */
@@ -91,6 +118,19 @@ public class FileUpdateEngine {
 		return new ProjectDependencyContextUpdateFunction(context);
 	}
 
+	/**
+	 * Apply every update to each resolved file in the scope.
+	 *
+	 * <p>The callback is invoked after each update that changes target file text.
+	 * Missing paths retained by the scope are not processed. Empty updates or a
+	 * scope with no resolved files produce a zero-change result.
+	 *
+	 * @param scope the resolved build files to update.
+	 * @param updates the dependency updates to apply to every file.
+	 * @param afterApply the callback for each update that changes a file.
+	 * @return the number of update steps that changed file text across the scope.
+	 * @throws IllegalStateException if a scoped file cannot be resolved to PSI.
+	 */
 	public UpgradeResult apply(FileScope scope, List<DependencyUpdate> updates, Consumer<DependencyUpdate> afterApply) {
 
 		ApplicationManager.getApplication().assertWriteAccessAllowed();
@@ -107,6 +147,16 @@ public class FileUpdateEngine {
 		return applied;
 	}
 
+	/**
+	 * Apply the supplied update sequence to a physical file.
+	 *
+	 * <p>The sequence controls its own post-update callbacks. This method does not
+	 * perform change tracking.
+	 *
+	 * @param file the physical build file to update.
+	 * @param updates the update sequence to apply.
+	 * @throws IllegalStateException if the file cannot be resolved to PSI.
+	 */
 	public void applyUpdates(VirtualFile file, DependencyUpdates updates) {
 		doWithFile(file, psiFile -> {
 			updateFunction.apply(psiFile, psiFile, updates);
@@ -114,6 +164,16 @@ public class FileUpdateEngine {
 		});
 	}
 
+	/**
+	 * Apply the given updates to a physical file and report updates that change its
+	 * text.
+	 *
+	 * @param file the physical build file to update.
+	 * @param updates the dependency updates to apply.
+	 * @param afterApply the callback for each update that changes the file.
+	 * @return the number of update steps that changed file text.
+	 * @throws IllegalStateException if the file cannot be resolved to PSI.
+	 */
 	public UpgradeResult applyUpdates(VirtualFile file, List<DependencyUpdate> updates,
 			Consumer<DependencyUpdate> afterApply) {
 		return doWithFile(file, psiFile -> apply(psiFile, psiFile, updates, afterApply));
@@ -140,8 +200,17 @@ public class FileUpdateEngine {
 	}
 
 	/**
-	 * Preview uses a non-physical target copy while real apply uses the source as
-	 * target.
+	 * Apply updates using one PSI file for assistant dispatch and another as the
+	 * mutation target.
+	 *
+	 * <p>This split lets preview use a non-physical target copy. The physical-file
+	 * methods pass the same PSI file as source and target. No document is committed
+	 * or saved by this method.
+	 *
+	 * @param source the source file used for assistant recognition and context
+	 * creation.
+	 * @param target the PSI file to mutate.
+	 * @param updates the dependency updates to apply.
 	 */
 	public void applyToFile(PsiFile source, PsiFile target, List<DependencyUpdate> updates) {
 		if (updates.isEmpty()) {
@@ -171,7 +240,8 @@ public class FileUpdateEngine {
 	}
 
 	/**
-	 * Tracks changes to a {@link PsiFile}.
+	 * Tracks update steps that change a {@link PsiFile}'s text between successive
+	 * observations.
 	 */
 	public static class ChangeTracker {
 
@@ -184,19 +254,23 @@ public class FileUpdateEngine {
 		}
 
 		/**
-		 * Create a new {@link ChangeTracker} for the given {@link PsiFile} and
-		 * initialize the text content.
-		 * @param psiFile file to track.
-		 * @return a new {@code ChangeTracker} instance for the given {@code PsiFile}.
+		 * Create a tracker initialized with the file's current text.
+		 *
+		 * @param psiFile the file to track.
+		 * @return a tracker initialized with the current file text.
 		 */
 		public static ChangeTracker of(PsiFile psiFile) {
 			return new ChangeTracker(psiFile.getText());
 		}
 
 		/**
-		 * Update the tracker after applying an update.
-		 * <p>Change tracker is only updated if the text content has changed.
-		 * @param file the current file.
+		 * Compare the file with the previous observation and advance the snapshot.
+		 *
+		 * <p>The change count advances only when the text differs.
+		 *
+		 * @param file the file after an update step.
+		 * @return {@literal true} if the text changed since the previous observation;
+		 * {@literal false} otherwise.
 		 */
 		public boolean update(PsiFile file) {
 			String after = file.getText();
@@ -208,6 +282,11 @@ public class FileUpdateEngine {
 			return changed;
 		}
 
+		/**
+		 * Return the accumulated number of changed update steps.
+		 *
+		 * @return the accumulated change result.
+		 */
 		public UpgradeResult getChanges() {
 			return UpgradeResult.of(changeCount);
 		}
@@ -215,15 +294,27 @@ public class FileUpdateEngine {
 	}
 
 	/**
-	 * Functional interface for updating a {@link PsiFile}.
+	 * Strategy for applying dependency updates to a PSI target selected from a
+	 * source file.
 	 */
 	@FunctionalInterface
 	public interface UpdateFunction {
 
+		/**
+		 * Apply updates to the target file.
+		 *
+		 * @param source the source used for integration selection and context.
+		 * @param target the file to mutate.
+		 * @param updates the updates to apply.
+		 */
 		void apply(PsiFile source, PsiFile target, DependencyUpdates updates);
 
 	}
 
+	/**
+	 * Routes a source through each supporting dependency assistant and applies
+	 * updates through every available context.
+	 */
 	public static class DependencyAssistantsUpdateFunction implements UpdateFunction {
 
 		private final List<DependencyAssistant> assistants;
@@ -253,6 +344,9 @@ public class FileUpdateEngine {
 
 	}
 
+	/**
+	 * Applies updates through one fixed project dependency context.
+	 */
 	public static class ProjectDependencyContextUpdateFunction implements UpdateFunction {
 
 		private final ProjectDependencyContext context;

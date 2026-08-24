@@ -230,8 +230,9 @@ class KotlinArtifactReferenceLocator implements ArtifactReferenceLocator<KtEleme
 
 	/**
 	 * Return whether the element is the leading entry of a multi-entry string
-	 * template (e.g. the {@code "group:artifact:"} prefix before a {@code $version}
-	 * interpolation). Such an entry is the coordinate, not the version.
+	 * template (for example, the {@code "group:artifact:"} prefix before a
+	 * {@code $version} interpolation). Such an entry is the coordinate, not the
+	 * version.
 	 */
 	private static boolean isLeadingTemplateEntry(PsiElement element) {
 		return element instanceof KtStringTemplateEntry

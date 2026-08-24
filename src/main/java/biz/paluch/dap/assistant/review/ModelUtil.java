@@ -29,8 +29,11 @@ class ModelUtil {
 
 	/**
 	 * Return the {@link TableRow} row backing the given view row.
+	 *
+	 * @param table the table whose model contains the row.
 	 * @param viewRow row index in view coordinates (e.g. from renderer/editor),
-	 * respects row sorter.
+	 * respecting the row sorter.
+	 * @return the table row at the corresponding model index.
 	 */
 	static TableRow getRow(JTable table, int viewRow) {
 		int modelRow = table.convertRowIndexToModel(viewRow);

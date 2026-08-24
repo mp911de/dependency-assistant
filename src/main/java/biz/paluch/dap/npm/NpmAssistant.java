@@ -55,12 +55,14 @@ import com.intellij.psi.util.CachedValuesManager;
 import org.springframework.util.Assert;
 
 /**
- * NPM implementation of {@link DependencyAssistant}.
+ * NPM implementation of {@link DependencyAssistant} for {@code package.json}
+ * files.
  *
  * <p>Supports {@code package.json} files whose JSON root carries a
  * {@code dependencies} or {@code devDependencies} object. The assistant relies
- * on the bundled IntelliJ JSON support, declared via
- * {@code com.intellij.modules.json} in the plugin XML.
+ * on IntelliJ JSON support and is active only while the
+ * {@code com.intellij.modules.json} dependency is available. Project-wide
+ * enumeration excludes files below {@code node_modules}.
  *
  * @author Mark Paluch
  */

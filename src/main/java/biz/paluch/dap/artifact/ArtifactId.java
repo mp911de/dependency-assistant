@@ -19,18 +19,26 @@ package biz.paluch.dap.artifact;
 import java.util.Comparator;
 
 /**
- * Artifact coordinates identified by {@code groupId} and {@code artifactId}.
+ * Artifact coordinates identified by a {@code groupId} and an
+ * {@code artifactId}.
+ *
+ * <p>The two segments form the declared dependency identity. Git-backed
+ * artifacts may carry separate release-routing metadata in
+ * {@link GitArtifactId} while exposing these declared coordinates through this
+ * interface.
  *
  * @author Mark Paluch
  */
 public interface ArtifactId extends Comparable<ArtifactId> {
 
 	/**
-	 * Natural ordering by {@code groupId} then {@code artifactId}, consistent with
-	 * {@link Object#equals(Object)}. This is the ordering used by
-	 * {@link #compareTo(ArtifactId)} and therefore by
-	 * {@code TreeMap}/{@code TreeSet} keys, so it compares both segments
-	 * case-sensitively to match the case-sensitive identity contract.
+	 * Natural ordering by {@code groupId} then {@code artifactId}. This is the
+	 * ordering used by {@link #compareTo(ArtifactId)} and therefore by
+	 * {@code TreeMap}/{@code TreeSet} keys. Both segments are compared
+	 * case-sensitively.
+	 *
+	 * <p>The comparator considers only the declared coordinates. Routing metadata
+	 * carried by specialized implementations does not participate.
 	 */
 	Comparator<? super ArtifactId> COMPARATOR = Comparator.comparing(ArtifactId::groupId)
 			.thenComparing(ArtifactId::artifactId);
@@ -46,7 +54,11 @@ public interface ArtifactId extends Comparable<ArtifactId> {
 			.thenComparing(ArtifactId::groupId);
 
 	/**
-	 * Creates an {@link ArtifactId} from the given group id and artifact id.
+	 * Create artifact coordinates from the given group id and artifact id.
+	 *
+	 * @param groupId the group that namespaces the artifact.
+	 * @param artifactId the artifact name within the group.
+	 * @return the artifact coordinates.
 	 */
 	static ArtifactId of(String groupId, String artifactId) {
 		return new DefaultArtifactId(groupId, artifactId);
@@ -55,14 +67,14 @@ public interface ArtifactId extends Comparable<ArtifactId> {
 	/**
 	 * Return the group id that namespaces the artifact (e.g. the Maven
 	 * {@code groupId} or the first segment of Gradle coordinates).
-	 * @return the group id; never {@literal null}.
+	 * @return the group id.
 	 */
 	String groupId();
 
 	/**
 	 * Return the artifact id that names the artifact within its {@link #groupId()
 	 * group}.
-	 * @return the artifact id; never {@literal null}.
+	 * @return the artifact id.
 	 */
 	String artifactId();
 
@@ -74,6 +86,11 @@ public interface ArtifactId extends Comparable<ArtifactId> {
 	/**
 	 * Create a detached {@link ArtifactId} that is not coupled to its underlying
 	 * implementation.
+	 *
+	 * <p>The detached value retains only {@link #groupId()} and
+	 * {@link #artifactId()}. Implementation-specific metadata is discarded.
+	 *
+	 * @return detached artifact coordinates.
 	 */
 	default ArtifactId detach() {
 		return new DefaultArtifactId(groupId(), artifactId());

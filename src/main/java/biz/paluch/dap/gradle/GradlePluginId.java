@@ -32,15 +32,13 @@ import org.springframework.util.StringUtils;
  * {@link ArtifactId} adapter for dependencies declared through Gradle's plugin
  * DSL.
  *
- * <p>
- * Plugin declarations use a single identifier, not module coordinates. The
+ * <p>Plugin declarations use a single identifier, not module coordinates. The
  * assistant still needs to route those declarations through the common
  * artifact, release, and update infrastructure, so a plugin id is normalized as
  * an {@link ArtifactId} whose {@link #groupId()} and {@link #artifactId()} are
  * both the plugin id.
  *
- * <p>
- * This type models the declaration-facing identity of a plugin. It does not
+ * <p>This type models the declaration-facing identity of a plugin. It does not
  * expose Gradle Plugin Portal marker coordinates such as
  * {@code <pluginId>:<pluginId>.gradle.plugin}; that translation belongs to the
  * release-source layer. Keeping the marker artifact out of parser code lets
@@ -61,8 +59,7 @@ interface GradlePluginId extends ArtifactId, HasPackageSystem, HasPackageIdentit
 
 	/**
 	 * Screen candidate plugin ids before creating an artifact adapter.
-	 * <p>
-	 * This check is intentionally local to parser dispatch and user input
+	 * <p>This check is intentionally local to parser dispatch and user input
 	 * normalization. It is not a substitute for Gradle's own plugin resolution
 	 * rules.
 	 * @param id candidate plugin id text.
@@ -76,12 +73,13 @@ interface GradlePluginId extends ArtifactId, HasPackageSystem, HasPackageIdentit
 	/**
 	 * Create a normalized plugin identity for use in dependency-site and release
 	 * lookup pipelines.
-	 * <p>
-	 * The given value must be the plugin id as declared in the build file, not
+	 * <p>The given value must be the plugin id as declared in the build file, not
 	 * the Gradle Plugin Portal marker artifact.
 	 *
 	 * @param id the plugin identifier.
 	 * @return the normalized plugin identity.
+	 * @throws IllegalArgumentException if {@code id} is {@literal null}, blank, or
+	 * contains an unsupported character.
 	 */
 	static GradlePluginId of(String id) {
 		Assert.isTrue(isValidPluginId(id), "Invalid plugin id: " + id);
@@ -91,8 +89,7 @@ interface GradlePluginId extends ArtifactId, HasPackageSystem, HasPackageIdentit
 	/**
 	 * Identify plugin declarations after they have crossed into the common
 	 * {@link ArtifactId} model.
-	 * <p>
-	 * The normalized {@code groupId == artifactId} shape is used as a stable
+	 * <p>The normalized {@code groupId == artifactId} shape is used as a stable
 	 * signal by Gradle-specific release lookup and rendering code. Regular module
 	 * coordinates should not be created with equal group and artifact ids unless
 	 * they intentionally represent a plugin declaration.
@@ -106,11 +103,11 @@ interface GradlePluginId extends ArtifactId, HasPackageSystem, HasPackageIdentit
 
 	/**
 	 * Expose the plugin id at plugin-specific call sites.
-	 * <p>
-	 * The plugin-specific accessor makes the single-id nature of plugin
+	 * <p>The plugin-specific accessor makes the single-id nature of plugin
 	 * declarations explicit while retaining {@link ArtifactId} compatibility for
 	 * shared infrastructure.
 	 *
+	 * @return the plugin identifier.
 	 * @see #groupId()
 	 */
 	default String id() {

@@ -265,6 +265,16 @@ public class ApplicationSettings implements PersistentStateComponent<Application
 		});
 	}
 
+	/**
+	 * Invoke the given action with the live settings state while holding its
+	 * synchronization lock.
+	 *
+	 * <p>The callback must not retain the state for use after it returns. Direct
+	 * mutation bypasses service-level modification tracking. Use the settings
+	 * operations for live updates.
+	 *
+	 * @param action the action to invoke with the live state.
+	 */
 	public void doWithState(Consumer<? super State> action) {
 		State state = this.state;
 		synchronized (state.mutex) {
@@ -272,6 +282,18 @@ public class ApplicationSettings implements PersistentStateComponent<Application
 		}
 	}
 
+	/**
+	 * Invoke the given function with the live settings state while holding its
+	 * synchronization lock.
+	 *
+	 * <p>The callback must not retain the state for use after it returns. Direct
+	 * mutation bypasses service-level modification tracking. Use the settings
+	 * operations for live updates.
+	 *
+	 * @param <T> the result type.
+	 * @param action the function to invoke with the live state.
+	 * @return the callback result.
+	 */
 	public <T> T doWithState(Function<? super State, ? extends T> action) {
 		State state = this.state;
 		synchronized (state.mutex) {
@@ -328,6 +350,9 @@ public class ApplicationSettings implements PersistentStateComponent<Application
 
 		/**
 		 * Create a detached copy for persistence.
+		 *
+		 * <p>When several entries describe the same package constellation, only the
+		 * most recently added entry is retained in the snapshot.
 		 *
 		 * @return a snapshot of this state.
 		 */

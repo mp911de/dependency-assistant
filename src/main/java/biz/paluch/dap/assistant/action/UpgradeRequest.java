@@ -26,17 +26,20 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * Value object capturing the context (file selection, editor file) of a
- * dependency upgrade request.
+ * Value object carrying the file selection, active editor, and optional dialog
+ * focus of a dependency upgrade request.
  *
- * @param selection the Project View selection; empty when invoked without a
- * selection.
- * @param editorFile the build file open in the active editor, or
- * {@literal null} when no editor is open.
- * @param focusArtifact the artifact whose dialog row to select and reveal after
- * the check, or {@literal null} when the request does not originate from a
- * single declaration (e.g. a plain menu action).
+ * <p>The selection list is retained and exposed directly. Callers must not
+ * modify it after construction.
+ *
  * @author Mark Paluch
+ * @param selection the Project View selection. Empty when invoked without a
+ * selection.
+ * @param editorFile the file open in the active editor, or {@literal null} when
+ * no editor is open.
+ * @param focusArtifact the package identity whose dialog row to select and
+ * reveal after the check, or {@literal null} when the request does not
+ * originate from a single declaration (for example, a plain menu action).
  * @see UpgradeScopeResolver
  */
 public record UpgradeRequest(List<VirtualFile> selection, @Nullable PsiFile editorFile,
@@ -58,6 +61,12 @@ public record UpgradeRequest(List<VirtualFile> selection, @Nullable PsiFile edit
 		return editorFile != null;
 	}
 
+	/**
+	 * Return the active editor file.
+	 *
+	 * @return the editor file carried by this request.
+	 * @throws IllegalStateException if this request has no editor file.
+	 */
 	public PsiFile getEditorFile() {
 		Assert.state(editorFile != null, "No editor file");
 		return editorFile;

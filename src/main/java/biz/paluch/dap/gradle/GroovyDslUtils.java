@@ -170,7 +170,7 @@ class GroovyDslUtils {
 	}
 
 	// -------------------------------------------------------------------------
-	// Version catalog (Groovy {@code libs.…})
+	// Version catalog (Groovy accessor)
 	// -------------------------------------------------------------------------
 
 	/**
@@ -186,9 +186,8 @@ class GroovyDslUtils {
 	}
 
 	/**
-	 * Innermost {@code alias}/{@code id}/{@code implementation}/… call whose first
-	 * argument is a {@code libs.…} reference chain and that contains
-	 * {@code element}.
+	 * Innermost {@code alias}, {@code id}, or dependency call whose first argument
+	 * is a version-catalog accessor chain and that contains {@code element}.
 	 */
 	static @Nullable GrMethodCall findEnclosingGroovyCatalogAccessorCall(PsiElement element) {
 

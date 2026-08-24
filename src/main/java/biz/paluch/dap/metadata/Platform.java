@@ -26,14 +26,14 @@ import org.jspecify.annotations.Nullable;
  * <p>A platform decides whether it recognizes a normalized
  * {@link RepositoryUrl} and creates the {@link ProjectRepository} handle that
  * renders the platform's browsable URLs. Detection is purely syntactic (host
- * name and path shape); no network probing is involved. A declared hint, the
+ * name and path shape). No network probing is involved. A declared hint, the
  * Maven {@code issueManagement/system} value, can vouch for self-hosted
  * instances whose host name alone does not reveal the platform, such as GitHub
  * Enterprise or a self-hosted GitLab.
  *
  * <p>Implementations are registered through the {@code biz.paluch.dap.platform}
  * extension point and must be stateless. Detection order follows the extension
- * registration order; the static {@link #findConnection} and
+ * registration order. The static {@link #findConnection} and
  * {@link #findIssueTracker} entry points return the first match.
  *
  * @author Mark Paluch
@@ -53,7 +53,7 @@ public interface Platform {
 	 * Detect whether this platform hosts the given repository URL.
 	 * @param repositoryUrl the normalized repository URL.
 	 * @param hint a declared platform hint such as the Maven
-	 * {@code issueManagement/system} value; can be {@literal null}.
+	 * {@code issueManagement/system} value, or {@literal null} if undeclared.
 	 * @return the connection, or {@literal null} if this platform does not
 	 * recognize the URL.
 	 */
@@ -65,7 +65,7 @@ public interface Platform {
 	 *
 	 * @param repositoryConnection the detected repository connection.
 	 * @param hint a declared platform hint such as the Maven
-	 * {@code issueManagement/system} value; can be {@literal null}.
+	 * {@code issueManagement/system} value, or {@literal null} if undeclared.
 	 * @return the derived issue tracker, or {@literal null} if this platform cannot
 	 * derive one for the connection.
 	 */
@@ -85,11 +85,11 @@ public interface Platform {
 
 	/**
 	 * Detect the hosting platform of a declared repository URL by asking all
-	 * registered platforms. The URL is parsed once; the first platform that
+	 * registered platforms. The URL is parsed once. The first platform that
 	 * recognizes the parsed URL wins.
 	 * @param url the declared repository URL.
 	 * @param hint a declared platform hint such as the Maven
-	 * {@code issueManagement/system} value; can be {@literal null}.
+	 * {@code issueManagement/system} value, or {@literal null} if undeclared.
 	 * @return the connection of the first recognizing platform, or {@literal null}
 	 * if the value does not parse as a repository URL or no platform recognizes it.
 	 */
@@ -114,7 +114,7 @@ public interface Platform {
 	 * platforms.
 	 * @param repositoryConnection the detected repository connection.
 	 * @param hint a declared platform hint such as the Maven
-	 * {@code issueManagement/system} value; can be {@literal null}.
+	 * {@code issueManagement/system} value, or {@literal null} if undeclared.
 	 * @return the tracker of the first platform that derives one, or
 	 * {@literal null} if no platform derives a tracker.
 	 */

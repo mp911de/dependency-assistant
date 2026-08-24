@@ -84,8 +84,12 @@ import com.intellij.util.ui.UIUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Dialog showing declared dependency versions and update suggestions across all
- * supported build tools (Maven, Gradle, GitHub Actions, NPM, and Antora).
+ * Modeless dialog for reviewing a {@link DependencyCheckResult} and choosing
+ * dependency upgrades.
+ *
+ * <p>The dialog keeps its mutable selection state in {@link UpgradeReview}.
+ * Confirming applies the armed rows to the checked file scope; transferring
+ * sends them to the Upgrade Plan without changing build files.
  *
  * @author Mark Paluch
  */

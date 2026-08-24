@@ -24,6 +24,7 @@ import java.util.stream.Stream;
  * Immutable {@link Sequence} backed by a list snapshot.
  *
  * @author Mark Paluch
+ * @param <T> the element type.
  */
 record DefaultSequence<T>(List<T> items) implements Sequence<T> {
 

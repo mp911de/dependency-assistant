@@ -22,7 +22,8 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 
 /**
- * Static URL {@link IssueTracker}.
+ * Issue tracker that uses the same declared URL for browsing and issue
+ * creation.
  *
  * @author Mark Paluch
  */

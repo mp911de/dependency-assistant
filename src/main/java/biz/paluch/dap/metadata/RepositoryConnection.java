@@ -26,7 +26,7 @@ import org.jspecify.annotations.Nullable;
  * <p>A connection is the result of platform detection: it identifies the
  * repository through its canonical {@link #getKey() key} and browsable
  * {@link #getUrl() URL} and creates the {@link ProjectRepository} handle on
- * demand. Connections are cheap, immutable detection results; they hold no
+ * demand. Connections are cheap, immutable detection results. They hold no
  * network resources and involve no network access.
  *
  * @author Mark Paluch
@@ -38,18 +38,23 @@ public interface RepositoryConnection {
 	/**
 	 * Return the canonical repository key used to address cached repository
 	 * entries, typically in {@code host/owner/repository} form.
+	 *
+	 * @return the canonical repository cache key.
 	 */
 	String getKey();
 
 	/**
 	 * Return the browsable https URL of the repository main page in its
 	 * platform-canonical form, independent of how the repository URL was declared.
+	 *
+	 * @return the canonical browsable repository URL.
 	 */
 	String getUrl();
 
 	/**
 	 * Create the repository handle for this connection through the detecting
 	 * platform.
+	 *
 	 * @param project the project requesting the handle.
 	 * @return the repository handle, or {@literal null} if the platform cannot
 	 * create one.

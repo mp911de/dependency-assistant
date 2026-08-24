@@ -193,8 +193,7 @@ class KtVersion {
 
 	/**
 	 * Return the PSI element that contributes the effective version value.
-	 * <p>
-	 * A directly declared version/property expression takes precedence.
+	 * <p>A directly declared version/property expression takes precedence.
 	 * Otherwise, the first non-range constraint value is returned in declaration
 	 * order.
 	 *
@@ -227,8 +226,7 @@ class KtVersion {
 	/**
 	 * Representation of a named version constraint declared inside a Kotlin DSL
 	 * {@code version { ... }} block.
-	 * <p>
-	 * The contract is intentionally narrow: the record exposes the constraint
+	 * <p>The contract is intentionally narrow: the record exposes the constraint
 	 * name, the underlying PSI elements, and the literal rendering used by
 	 * {@link GradleVersionConstraint}.
 	 */

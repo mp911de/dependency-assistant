@@ -24,7 +24,7 @@ import com.intellij.psi.xml.XmlTag;
 import org.jspecify.annotations.Nullable;
 
 /**
- * XML handling utility methods.
+ * Locates supported Maven property and version tags from a PSI context element.
  *
  * @author Mark Paluch
  */
@@ -33,6 +33,10 @@ public class XmlUtil {
 	/**
 	 * Return the property tag for the given context element if the element is a
 	 * property within the {@code properties} tag.
+	 *
+	 * @param contextElement the element at or inside the candidate property tag.
+	 * @return the property tag, or {@literal null} when the context is outside a
+	 * Maven POM property.
 	 */
 	public static @Nullable XmlTag findPropertyTag(PsiElement contextElement) {
 
@@ -55,8 +59,15 @@ public class XmlUtil {
 	}
 
 	/**
-	 * Return the version tag for the given context element if the element is a
-	 * version tag within a dependency or plugin.
+	 * Return the supported Maven version tag containing the given context element.
+	 *
+	 * <p>POM versions are resolved through {@link #findPomVersionTag(PsiElement)}.
+	 * Maven extension versions are resolved through
+	 * {@link #findExtensionVersionTag(PsiElement)}.
+	 *
+	 * @param contextElement the element at or inside the candidate version tag.
+	 * @return the version tag, or {@literal null} when the context is not a
+	 * supported Maven version site.
 	 */
 	public static @Nullable XmlTag findVersionTag(PsiElement contextElement) {
 
@@ -74,7 +85,12 @@ public class XmlUtil {
 
 	/**
 	 * Return the version tag for the given context element if the element is a
-	 * version tag within a dependency, plugin, or build extension.
+	 * version tag within a dependency, plugin, build extension, or supported
+	 * external parent declaration.
+	 *
+	 * @param contextElement the element at or inside the candidate version tag.
+	 * @return the version tag, or {@literal null} when the context is not a
+	 * supported POM version site.
 	 */
 	public static @Nullable XmlTag findPomVersionTag(PsiElement contextElement) {
 
@@ -108,7 +124,11 @@ public class XmlUtil {
 
 	/**
 	 * Return the version tag for the given context element if the element is a
-	 * version tag within a extension.
+	 * version tag within an {@code extensions.xml} extension declaration.
+	 *
+	 * @param contextElement the element at or inside the candidate version tag.
+	 * @return the version tag, or {@literal null} when the context is not an
+	 * extension version site.
 	 */
 	public static @Nullable XmlTag findExtensionVersionTag(PsiElement contextElement) {
 

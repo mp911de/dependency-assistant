@@ -19,14 +19,15 @@ package biz.paluch.dap.artifact;
 import java.util.Map;
 
 /**
- * Bill of Materials: the managed member set of a BOM artifact at one specific
- * BOM version.
+ * Managed member set observed for a Bill of Materials at one specific BOM
+ * version.
  *
- * <p>A BOM (Maven {@code dependencyManagement} import, Gradle platform) manages
- * an artifact set that never appears in the consuming build file. The BOM's own
- * {@code dependencyManagement} section is the truth for the member artifacts
- * along with their managed versions. Member sets differ across BOM releases, so
- * membership is always scoped to one BOM version.
+ * <p>A BOM (Maven {@code dependencyManagement} import or Gradle platform)
+ * supplies versions that are absent from member declarations in the consuming
+ * build file. The member map is resolved from cached membership or by locating
+ * and parsing the BOM POM. Member sets differ across BOM releases, so
+ * membership is always scoped to one BOM version. An empty map carries the BOM
+ * identity and version without any known member pins.
  *
  * <p>A Bill of Materials is always versioned, so {@link #isVersioned()} returns
  * {@literal true} and {@link #getVersion()} never fails.
@@ -48,9 +49,9 @@ public interface BillOfMaterials extends VersionedPackage {
 	 *
 	 * @param pkg the BOM package identity.
 	 * @param version the BOM version the membership is scoped to.
-	 * @param members the managed members keyed by artifact coordinates; copied into
-	 * the returned instance.
-	 * @return the Bill of Materials; guaranteed to be not {@literal null}.
+	 * @param members the managed members keyed by artifact coordinates. The
+	 * returned instance copies this map.
+	 * @return the Bill of Materials.
 	 */
 	static BillOfMaterials of(PackageIdentity pkg, ArtifactVersion version,
 			Map<ArtifactId, ArtifactVersion> members) {
@@ -63,9 +64,9 @@ public interface BillOfMaterials extends VersionedPackage {
 	 *
 	 * @param bom the BOM identity and version; typically the declaration that
 	 * imported the BOM or the candidate version being resolved.
-	 * @param members the managed members keyed by artifact coordinates; copied into
-	 * the returned instance.
-	 * @return the Bill of Materials; guaranteed to be not {@literal null}.
+	 * @param members the managed members keyed by artifact coordinates. The
+	 * returned instance copies this map.
+	 * @return the Bill of Materials.
 	 */
 	static BillOfMaterials from(VersionedPackage bom, Map<ArtifactId, ArtifactVersion> members) {
 		return of(bom.getPackageIdentity(), bom.getVersion(), members);
@@ -82,7 +83,7 @@ public interface BillOfMaterials extends VersionedPackage {
 	 * Return the managed members of this BOM keyed by artifact coordinates, each
 	 * mapped to its managed version.
 	 *
-	 * @return the member map.
+	 * @return the unmodifiable member map.
 	 */
 	Map<ArtifactId, ArtifactVersion> getMembers();
 

@@ -60,16 +60,17 @@ import org.jetbrains.yaml.psi.YAMLScalar;
 import org.springframework.util.Assert;
 
 /**
- * Antora playbook implementation of {@link DependencyAssistant}.
+ * Antora playbook UI implementation of {@link DependencyAssistant}.
  *
- * <p>Supports YAML files named {@code antora-playbook.yml} whose
- * {@code ui.bundle.url} declaration references a Git-hosted release asset. The
- * assistant is only active when the YAML plugin is available, which is checked
- * through class-availability guards. Always-loaded code keeps optional plugin
- * types out of eager class loading.
+ * <p>This integration claims YAML files named {@code antora-playbook.yml} by
+ * file shape. Within those files, it recognizes parseable {@code ui.bundle.url}
+ * values that use the GitHub release asset URL shape. Both the YAML and GitHub
+ * plugins must be installed and enabled for the integration to be available.
  *
- * <p>Each supported file forms its own lightweight project context keyed by the
- * file path.
+ * <p>Each supported file forms its own project context keyed by the file path.
+ * Collection records the declared Git ref, and scan-wide completion attempts to
+ * resolve that ref against cached GitHub releases before Project State is
+ * stored.
  *
  * @author Mark Paluch
  */
@@ -247,7 +248,7 @@ public class AntoraAssistant implements DependencyAssistant {
 	}
 
 	/**
-	 * Antora-specific user interface support.
+	 * Antora-specific presentation metadata for dependency declarations.
 	 */
 	enum AntoraInterface implements InterfaceAssistant {
 

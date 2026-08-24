@@ -26,7 +26,7 @@ import biz.paluch.dap.util.MessageBundle;
 import com.intellij.psi.PsiElement;
 
 /**
- * Provides the upgrade-available gutter marker for Gradle wrapper property
+ * Provides the upgrade-available gutter marker for Gradle Wrapper property
  * files.
  *
  * @author Mark Paluch

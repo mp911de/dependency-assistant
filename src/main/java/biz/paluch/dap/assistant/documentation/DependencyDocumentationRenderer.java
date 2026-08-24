@@ -67,14 +67,16 @@ import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Renders the Quick Documentation HTML body for one dependency declaration or
- * release lookup item: the coordinate header, the project-name and
- * current-value sections, the {@link ReleaseDigest} release table, and known
- * security advisories. The project-name section renders only for a
- * pipeline-accepted captured name; an echo of the coordinates is omitted rather
- * than repeated. Immutable and constructed from its rendering inputs;
- * resolution and target lifecycle live in
- * {@link DependencyDocumentationProvider}.
+ * Renders Quick Documentation HTML for dependency declarations, version
+ * properties, and release lookup items. Declaration views can include the
+ * accepted project name, current value, a bounded {@link ReleaseDigest},
+ * release-note links, and known security advisories. Release lookup views can
+ * additionally describe the release's relation to the current version,
+ * dependency-rule violations, and advisory differences.
+ *
+ * <p>The project-name section is omitted when the presentation policy rejects
+ * the captured name or the name merely repeats the coordinates. Resolution and
+ * target lifecycle are owned by {@link DependencyDocumentationProvider}.
  *
  * @author Mark Paluch
  */
@@ -145,9 +147,8 @@ class DependencyDocumentationRenderer {
 	 * Render the documentation body for a single concrete artifact.
 	 *
 	 * @param pkg the artifact to document.
-	 * @param withIcons {@literal true} to render the full body with
-	 * {@link VersionAge} icons and upgrade links; {@literal false} for plain HTML
-	 * without icons or links (hover hint).
+	 * @param withIcons {@literal true} to render status, advisory-severity, and
+	 * release-note icons. {@literal false} omits all icons.
 	 * @return the HTML body.
 	 */
 	String render(PackageIdentity pkg, boolean withIcons) {
@@ -158,9 +159,8 @@ class DependencyDocumentationRenderer {
 	 * Render the documentation body for a single concrete artifact.
 	 *
 	 * @param artifactId the artifact to document.
-	 * @param withIcons {@literal true} to render the full body with
-	 * {@link VersionAge} icons and upgrade links; {@literal false} for plain HTML
-	 * without icons or links (hover hint).
+	 * @param withIcons {@literal true} to render status, advisory-severity, and
+	 * release-note icons. {@literal false} omits all icons.
 	 * @return the HTML body.
 	 */
 	String render(ArtifactId artifactId, boolean withIcons) {
@@ -426,7 +426,7 @@ class DependencyDocumentationRenderer {
 	 * coordinate-like text at dots and colons when the content column runs out of
 	 * width, fragmenting one value across several code chips. A {@code nowrap}
 	 * block keeps the value whole and lets the section table claim the width it
-	 * needs; wrapping happens between lines only.
+	 * needs. Wrapping happens between lines only.
 	 */
 	private static HtmlChunk nowrapLine(HtmlChunk value) {
 		return HtmlChunk.div("white-space: nowrap").child(value);
@@ -442,7 +442,8 @@ class DependencyDocumentationRenderer {
 
 	/**
 	 * Render the security-advisories section for the current version of the given
-	 * artifact; cache-only, empty for clean or unscanned dependencies.
+	 * artifact. The lookup is cache-only and the result is empty for clean or
+	 * unscanned dependencies.
 	 */
 	private HtmlChunk renderSecurityAdvisories(ArtifactId artifactId, boolean withIcons) {
 
@@ -456,9 +457,10 @@ class DependencyDocumentationRenderer {
 
 	/**
 	 * Render the security-advisories section for the given vulnerabilities, with an
-	 * optional plain-text note behind the section header; empty for clean or
-	 * unscanned versions. With icons, each advisory row leads with its severity
-	 * shield instead of a list dot; the plain variant keeps the {@code ul} list.
+	 * optional plain-text note behind the section header. The result is empty for
+	 * clean or unscanned versions. With icons, each advisory row leads with its
+	 * severity shield instead of a list dot. The plain variant keeps the {@code ul}
+	 * list.
 	 */
 	private static HtmlChunk renderSecurityAdvisories(Vulnerabilities vulnerabilities, @Nullable String note,
 			boolean withIcons) {
@@ -515,12 +517,11 @@ class DependencyDocumentationRenderer {
 
 	/**
 	 * Render the documentation body for a version property, with one release table
-	 * per group of artifacts sharing the same available versions.
+	 * per group of artifacts sharing the same leading cached version keys.
 	 *
-	 * @param property the version property to document .
-	 * @param withIcons {@literal true} to render the full body with
-	 * {@link VersionAge} icons and upgrade links; {@literal false} for plain HTML
-	 * without icons or links (hover hint).
+	 * @param property the version property to document.
+	 * @param withIcons {@literal true} to render status, advisory-severity, and
+	 * release-note icons. {@literal false} omits all icons.
 	 * @return the HTML body, or {@literal null} if the property drives no
 	 * artifacts.
 	 */
@@ -573,7 +574,7 @@ class DependencyDocumentationRenderer {
 	}
 
 	/**
-	 * Render the release table for the {@link ReleaseDigest} rows; hidden rows are
+	 * Render the release table for the {@link ReleaseDigest} rows. Hidden rows are
 	 * summarized by notes linking to the Dependency Check dialog so truncation is
 	 * never silent.
 	 */
@@ -645,12 +646,12 @@ class DependencyDocumentationRenderer {
 	 * Bounded selection of the release rows the popup renders for one artifact,
 	 * keeping the popup an upgrade decision aid rather than a release changelog.
 	 * Previews newer than the current version fill a top section capped at a few
-	 * rows; every other release, stable or the current anchor, fills the release
+	 * rows. Every other release, stable or the current anchor, fills the release
 	 * section capped separately. Rows beyond the caps are carried as counts.
 	 *
 	 * @param previewRows the previews newer than the current version, newest first.
-	 * @param releaseRows the stable releases and the current-version anchor, newest
-	 * first.
+	 * @param releaseRows the stable releases and the current-version anchor (which
+	 * can itself be a preview), newest first.
 	 * @param morePreviews the number of newer previews beyond {@code previewRows}.
 	 * @param moreReleases the number of releases hidden from the release section,
 	 * including previews at or below the current version.
@@ -659,7 +660,7 @@ class DependencyDocumentationRenderer {
 
 		/**
 		 * Select the rows to render from the given releases. Previews count against
-		 * {@code previewLimit} only when newer than the current version; previews at or
+		 * {@code previewLimit} only when newer than the current version. Previews at or
 		 * below the current version are folded into {@link #moreReleases()}. Stable
 		 * releases fill up to {@code releaseLimit} rows regardless of the current
 		 * version, and the release matching the current version is always kept as the
@@ -670,7 +671,8 @@ class DependencyDocumentationRenderer {
 		 * @param currentVersion the declared version, or {@literal null} when
 		 * unresolved.
 		 * @param previewLimit the maximum number of newer-preview rows.
-		 * @param releaseLimit the maximum number of stable rows.
+		 * @param releaseLimit the stable-row budget. The current-version anchor can
+		 * exceed this budget.
 		 * @return the digest.
 		 */
 		static ReleaseDigest of(Releases releases, @Nullable ArtifactVersion currentVersion, int previewLimit,
@@ -723,6 +725,12 @@ class DependencyDocumentationRenderer {
 
 	}
 
+	/**
+	 * Groups property-backed artifacts that can share one release table because
+	 * their leading cached version keys match. The first artifact supplies the
+	 * representative release history, while every artifact remains visible in the
+	 * group header.
+	 */
 	static class ReleaseGroup {
 
 		private final PackageSystem packageSystem;
@@ -844,9 +852,8 @@ class DependencyDocumentationRenderer {
 		}
 
 		/**
-		 * Render the release-notes icon as a raw https link, mirroring the
-		 * advisory-link precedent: the facade already validated the URL, so it is
-		 * browsed as returned.
+		 * Render the release-notes icon using the browsable HTTPS URL produced by the
+		 * project-metadata facade.
 		 */
 		private HtmlChunk releaseNotesLink(URI releaseNotesUrl) {
 			return HtmlChunk.tag("a")

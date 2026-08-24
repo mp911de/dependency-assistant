@@ -51,10 +51,11 @@ import com.intellij.util.ProcessingContext;
  * completions inside property keys, property values, and on blank lines in the
  * properties list (see {@link #PATTERNS}).
  *
- * <p>Subclasses implement {@link #supports(Property)} and the
- * {@link #addCompletions(CompletionResultSet, Cache, PsiFileFactory, Property)}
- * hook to contribute format-specific lookup elements, typically through
- * {@link #addPropertyLineCompletion}.
+ * <p>Subclasses contribute format-specific lookup elements through
+ * {@link #addCompletions(CompletionResultSet, Cache, PsiFileFactory, Property)},
+ * typically using {@link #addPropertyLineCompletion}. The
+ * {@link #supports(Property)} hook controls automatic invocation after an
+ * equals sign; it does not filter explicit completion locations.
  *
  * @author Mark Paluch
  */
@@ -122,22 +123,33 @@ public abstract class PropertyContributorSupport extends CompletionProvider<Comp
 		addCompletions(result, cache, factory, propertyPosition);
 	}
 
+	/**
+	 * Add format-specific completions for the property at the caret.
+	 *
+	 * <p>On the first invocation, the result set matches the property text from its
+	 * start through the caret. Repeated invocation uses an empty prefix matcher.
+	 *
+	 * @param result the result set to receive lookup elements.
+	 * @param cache the project release cache.
+	 * @param factory the project PSI file factory.
+	 * @param propertyPosition the property resolved at the completion position.
+	 */
 	protected abstract void addCompletions(CompletionResultSet result, Cache cache, PsiFileFactory factory,
 			Property propertyPosition);
 
 	/**
 	 * Add a wrapper {@code key=url} line completion item to {@code result}.
 	 *
+	 * <p>The item is never auto-inserted. Selecting it replaces the complete line
+	 * containing the completion position and moves the caret to the end of the
+	 * replacement.
+	 *
 	 * @param result the completion result set.
-	 * @param factory the file factory used to materialise the synthetic property;
-	 * must not be {@literal null}.
-	 * @param propertyPosition the property element at the caret; must not be
-	 * {@literal null}.
+	 * @param factory the file factory used to materialize the synthetic property.
+	 * @param propertyPosition the property element at the caret.
 	 * @param key the wrapper property key.
-	 * @param release the artifact release associated with {@code url}; must not be
-	 * {@literal null}.
-	 * @param url the canonical download URL for {@code release}; must not be
-	 * {@literal null}.
+	 * @param release the artifact release represented by {@code url}.
+	 * @param url the canonical download URL for {@code release}.
 	 */
 	protected static void addPropertyLineCompletion(CompletionResultSet result, PsiFileFactory factory,
 			Property propertyPosition, String key, ArtifactRelease release, String url) {
@@ -165,6 +177,20 @@ public abstract class PropertyContributorSupport extends CompletionProvider<Comp
 				.withAutoCompletionPolicy(AutoCompletionPolicy.NEVER_AUTOCOMPLETE));
 	}
 
+	/**
+	 * Return whether the typed character should open completion at the given
+	 * position.
+	 *
+	 * <p>An equals sign triggers completion only for a property accepted by
+	 * {@link #supports(Property)}. Version characters trigger inside property
+	 * values, while property-key triggers are delegated to
+	 * {@link #isPropertyKeyTrigger(char)}.
+	 *
+	 * @param position the PSI position at the caret.
+	 * @param typeChar the typed character.
+	 * @return {@literal true} if completion should open automatically;
+	 * {@literal false} otherwise.
+	 */
 	public boolean invokeAutoPopup(PsiElement position, char typeChar) {
 		if (typeChar == '=') {
 			return autoPopupAfterEquals(position);
@@ -183,14 +209,38 @@ public abstract class PropertyContributorSupport extends CompletionProvider<Comp
 		return supports(property);
 	}
 
+	/**
+	 * Return whether completion should open after an equals sign for the given
+	 * property.
+	 *
+	 * @param property the property at the caret.
+	 * @return {@literal true} if the property supports value completion;
+	 * {@literal false} otherwise.
+	 */
 	protected abstract boolean supports(Property property);
 
+	/**
+	 * Return whether the typed character should open property-key completion.
+	 *
+	 * @param typeChar the typed character.
+	 * @return {@literal true} if the character begins a supported property key;
+	 * {@literal false} otherwise.
+	 */
 	protected abstract boolean isPropertyKeyTrigger(char typeChar);
 
+	/**
+	 * Insert handler that replaces the complete document line containing the
+	 * completion start offset.
+	 */
 	protected static class PropertyLineInsertHandler implements InsertHandler<LookupElement> {
 
 		private final String replacement;
 
+		/**
+		 * Create an insert handler for the given complete property line.
+		 *
+		 * @param replacement the complete property line to insert.
+		 */
 		public PropertyLineInsertHandler(String replacement) {
 			this.replacement = replacement;
 		}

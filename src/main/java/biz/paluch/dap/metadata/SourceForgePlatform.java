@@ -43,7 +43,7 @@ public class SourceForgePlatform extends PlatformSupport {
 	/**
 	 * SourceForge project unix names: letters, numbers, and dashes per the
 	 * project-creation rules, starting and ending with an alphanumeric. Underscores
-	 * are tolerated for legacy projects; the documented 3-30 length is relaxed to
+	 * are tolerated for legacy projects. The documented 3-30 length is relaxed to
 	 * an upper bound of 50.
 	 */
 	private static final Pattern PROJECT_NAME = Pattern.compile("[A-Za-z0-9](?:[A-Za-z0-9_-]{0,48}[A-Za-z0-9])?");

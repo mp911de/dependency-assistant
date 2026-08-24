@@ -17,7 +17,6 @@
 package biz.paluch.dap.antora;
 
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.Versioned;
@@ -31,15 +30,17 @@ import org.jetbrains.yaml.psi.YAMLScalar;
 import org.jspecify.annotations.Nullable;
 
 /**
- * {@link ArtifactReferenceResolver} implementation for Antora playbook
- * {@code ui.bundle.url} declarations.
+ * Resolves Antora playbook {@code ui.bundle.url} PSI into an
+ * {@link ArtifactReference}.
  *
- * <p>Resolves the {@link YAMLScalar} value of a {@code ui.bundle.url} key into
- * an {@link ArtifactReference}. The declared version is resolved through the
- * canonical chain of
- * {@link GitVersionResolver#resolveLenient(ArtifactId, String)}: cached Git ref
- * matching, then a raw {@link ArtifactVersion#from(String)} parse. Remote API
- * access is never triggered.
+ * <p>Resolution applies only to a non-leaf PSI position within a parseable
+ * bundle URL scalar and an available build context. All other inputs produce
+ * {@link ArtifactReference#unresolved()}.
+ *
+ * <p>The declared ref is resolved through
+ * {@link GitVersionResolver#resolveLenient(ArtifactId, String)}. That operation
+ * consults cached releases, preserves unmatched SHA and opaque refs, and leaves
+ * an empty ref unversioned. It does not contact a remote API.
  *
  * @author Mark Paluch
  */
@@ -50,7 +51,7 @@ class AntoraArtifactReferenceResolver implements ArtifactReferenceResolver {
 	private final AntoraProjectContext buildContext;
 
 	/**
-	 * Create a resolver for the given context and build context.
+	 * Create a resolver backed by the given cache resolver and playbook context.
 	 * @param versionResolver the cached Git-ref resolver.
 	 * @param buildContext the Antora playbook context.
 	 */
@@ -93,10 +94,11 @@ class AntoraArtifactReferenceResolver implements ArtifactReferenceResolver {
 	}
 
 	/**
-	 * Return the given element if it is the {@link YAMLScalar} value of a
-	 * {@code ui.bundle.url} key.
+	 * Locate the {@link YAMLScalar} value of the {@code ui.bundle.url} key that
+	 * contains the given element.
 	 * @param element the element at the cursor position.
-	 * @return the scalar, or {@literal null} if it is not the value of such a key.
+	 * @return the containing scalar, or {@literal null} if the element is not
+	 * within such a value.
 	 */
 	static @Nullable YAMLScalar findBundleUrlScalar(PsiElement element) {
 		YamlVersionSite site = YamlVersionSite.locate(element, AntoraPlaybookParser::isBundleUrlKeyValue);

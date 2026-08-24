@@ -25,7 +25,8 @@ import biz.paluch.dap.artifact.VersionSource;
 import com.intellij.psi.PsiElement;
 
 /**
- * Default implementation of {@link VersionedDependencySite}.
+ * Package-private dependency site with distinct declaration and version PSI
+ * anchors.
  *
  * @author Mark Paluch
  */

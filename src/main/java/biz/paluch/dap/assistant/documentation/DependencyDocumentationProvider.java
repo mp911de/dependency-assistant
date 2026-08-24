@@ -19,7 +19,6 @@ package biz.paluch.dap.assistant.documentation;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.Release;
-import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.assistant.ArtifactReferenceContext;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
@@ -42,8 +41,9 @@ import org.jspecify.annotations.Nullable;
 /**
  * Provides Quick Documentation for supported dependency build files.
  *
- * <p>Resolution and target lifecycle live here; HTML rendering is owned by
- * {@link DependencyDocumentationRenderer}.
+ * <p>This provider resolves dependency declarations and version properties into
+ * pointer-backed targets that can survive an in-place version update. HTML
+ * rendering is owned by {@link DependencyDocumentationRenderer}.
  *
  * @author Mark Paluch
  */
@@ -57,10 +57,16 @@ public class DependencyDocumentationProvider
 
 	/**
 	 * Resolve the given element into a documentation target, or {@literal null}
-	 * when the element does not resolve to a dependency declaration.
+	 * when the element does not resolve to a dependency declaration or a
+	 * property-backed declaration has no indexed artifacts.
+	 *
 	 * <p>Used both for the initial documentation request and for re-resolving the
 	 * target after an upgrade has rewritten the version literal, so the re-rendered
 	 * popup reflects the live declaration state.
+	 *
+	 * @param target the PSI element at the documentation position.
+	 * @return the resolved documentation target, or {@literal null} if no
+	 * documentation is available.
 	 */
 	static @Nullable DocumentationTarget createTarget(PsiElement target) {
 
@@ -160,8 +166,8 @@ public class DependencyDocumentationProvider
 
 		/**
 		 * Full documentation shown in the Quick Documentation popup ({@code Ctrl+Q}).
-		 * Version rows include {@link VersionAge} icons rendered relative to the tag's
-		 * current value; upgradeable rows wrap the icon in an upgrade link.
+		 * Version rows include status and release-note icons. Upgradeable rows and
+		 * truncation notes include action links.
 		 */
 		@Override
 		public @Nullable DocumentationResult computeDocumentation() {
@@ -174,8 +180,8 @@ public class DependencyDocumentationProvider
 		}
 
 		/**
-		 * Simplified content shown in the hover tooltip (no icons and no links - plain
-		 * HTML).
+		 * Compact content shown in the hover tooltip. Icon columns are omitted, while
+		 * applicable upgrade and truncation action links remain available.
 		 */
 		@Override
 		public @Nullable String computeDocumentationHint() {
@@ -186,9 +192,8 @@ public class DependencyDocumentationProvider
 		 * Builds the documentation HTML body, or {@literal null} when nothing can be
 		 * rendered.
 		 *
-		 * @param withIcons {@literal true} to render the full body with
-		 * {@link VersionAge} icons and upgrade links; {@literal false} for plain HTML
-		 * without icons or links (hover hint).
+		 * @param withIcons {@literal true} to render status, advisory-severity, and
+		 * release-note icons. {@literal false} omits all icons.
 		 * @return the HTML body, or {@literal null} if no documentation is available.
 		 */
 		protected abstract @Nullable String buildHtmlBody(boolean withIcons);

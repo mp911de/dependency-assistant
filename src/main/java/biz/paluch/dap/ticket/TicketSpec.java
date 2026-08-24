@@ -113,7 +113,7 @@ public class TicketSpec {
 	/**
 	 * Return the configured labels to attach.
 	 *
-	 * @return the live label list; empty if none have been configured.
+	 * @return the live label list. An empty list means no labels are configured.
 	 */
 	public List<Label> getLabels() {
 		return labels;

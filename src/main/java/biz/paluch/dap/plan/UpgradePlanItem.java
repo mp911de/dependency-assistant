@@ -102,8 +102,8 @@ class UpgradePlanItem implements Sequence<ItemDependency> {
 	 * the members and the attention level from the version span.
 	 *
 	 * @param itemId the stable item identity.
-	 * @param displayName the captured display name, or {@literal null} to obtain it
-	 * from the first assistant.
+	 * @param displayName the captured display name, or {@literal null} to derive it
+	 * from the first member's package system.
 	 * @param to the pinned target version.
 	 * @param vulnerabilityFix whether the target fixes current vulnerabilities.
 	 * @param vulnerabilityCount the captured current vulnerability count.
@@ -185,6 +185,12 @@ class UpgradePlanItem implements Sequence<ItemDependency> {
 		return itemId;
 	}
 
+	/**
+	 * Return all materialized members in captured order, including implicit group
+	 * members. The returned list is live and must be treated as read-only.
+	 *
+	 * @return the item members.
+	 */
 	public List<ItemDependency> getMembers() {
 		return members;
 	}
@@ -217,7 +223,7 @@ class UpgradePlanItem implements Sequence<ItemDependency> {
 
 	/**
 	 * Return the version the item upgrades from: the oldest current version across
-	 * the item's members, or the target version when no member declares one.
+	 * the item's members.
 	 */
 	public ArtifactVersion getFromVersion() {
 		return from;
@@ -305,8 +311,9 @@ class UpgradePlanItem implements Sequence<ItemDependency> {
 	}
 
 	/**
-	 * Return the build-file updates that move this item's members to the pinned
-	 * target, fanned out to every member for a group item.
+	 * Return the build-file updates that move this item's explicit members to the
+	 * pinned target. Implicit group members remain represented in the item but emit
+	 * no update because another member owns their shared version-property write.
 	 */
 	public List<DependencyUpdate> createUpdates() {
 

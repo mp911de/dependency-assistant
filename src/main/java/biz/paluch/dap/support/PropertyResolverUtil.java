@@ -24,7 +24,7 @@ import org.jspecify.annotations.Nullable;
 
 
 /**
- * Utility to resolve property placeholders.
+ * Package-private placeholder expansion used by {@link PropertyResolver}.
  *
  * @author Mark Paluch
  */
@@ -40,8 +40,7 @@ class PropertyResolverUtil {
 	 * {@code value} using {@code resolver}. Unresolved placeholders are left
 	 * in-place so that callers can detect them. Returns {@literal null} if
 	 * {@code value} is {@literal null}.
-	 * <p>
-	 * After this call, callers must check that the result contains no residual
+	 * <p>After this call, callers must check that the result contains no residual
 	 * placeholder tokens (via {@link #hasUnresolvedPlaceholder(String)}) before
 	 * accepting the value as fully resolved.
 	 */

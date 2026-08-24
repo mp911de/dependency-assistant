@@ -63,10 +63,13 @@ record UsesRepositoryAction(ArtifactId artifactId, @Nullable String version) imp
 
 	/**
 	 * Return the declared version source for dependency analysis.
-	 * <p>
-	 * An action without a usable ref has repository identity but no declared
+	 *
+	 * <p>An action without a usable ref has repository identity but no declared
 	 * version. This distinction lets callers collect the action as a dependency
 	 * without manufacturing version metadata that was not present in the workflow.
+	 *
+	 * @return the declared version source, or an absent source when the ref is
+	 * absent.
 	 */
 	public VersionSource toVersionSource() {
 		return VersionSource.from(version());
@@ -74,13 +77,15 @@ record UsesRepositoryAction(ArtifactId artifactId, @Nullable String version) imp
 
 	/**
 	 * Return the replacement text that preserves the workflow's ref style.
-	 * <p>
-	 * Version-style declarations are updated with the release version.
+	 *
+	 * <p>Version-style declarations are updated with the release version.
 	 * SHA-pinned declarations are updated with the release commit SHA when that
 	 * metadata is available and carry the resolved version as explanatory text. If
 	 * no SHA is available, the release version is returned as the safest available
 	 * replacement text.
+	 *
 	 * @param gitVersion the resolved release version to render.
+	 * @return the ref text and optional managed version comment.
 	 */
 	public VersionText getVersion(GitVersion gitVersion) {
 
@@ -96,9 +101,11 @@ record UsesRepositoryAction(ArtifactId artifactId, @Nullable String version) imp
 
 	/**
 	 * Return the rendering style implied by the declared ref.
-	 * <p>
-	 * Callers use the style to preserve the user's pinning model when offering
+	 *
+	 * <p>Callers use the style to preserve the user's pinning model when offering
 	 * completions or applying updates.
+	 *
+	 * @return the rendering style of the declared ref.
 	 */
 	public RefStyle getStyle() {
 		return RefStyle.from(version());
@@ -106,15 +113,20 @@ record UsesRepositoryAction(ArtifactId artifactId, @Nullable String version) imp
 
 	/**
 	 * Version text prepared for insertion into a workflow scalar.
-	 * <p>
-	 * The optional comment is managed metadata for SHA-pinned declarations and
+	 * <p>The optional comment is managed metadata for SHA-pinned declarations and
 	 * is intentionally kept separate from the scalar replacement text.
+	 *
+	 * @param text the ref text to insert after {@code @}.
+	 * @param comment the managed version comment, or an empty string when no
+	 * comment should be written.
 	 */
 	record VersionText(String text, String comment) {
 
 		/**
 		 * Create a replacement that pins to the immutable commit SHA, regardless of the
 		 * declared ref style.
+		 *
+		 * @param gitVersion the resolved release version to pin.
 		 * @return the SHA replacement text with the version as managed comment.
 		 * @throws IllegalStateException if {@code gitVersion} carries no SHA.
 		 */

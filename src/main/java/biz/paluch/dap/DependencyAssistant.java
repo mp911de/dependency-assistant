@@ -32,19 +32,22 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>Implementations are contributed through the
  * {@code biz.paluch.dap.assistant} extension point and are shared across
- * projects. They should therefore be stateless or hold only immutable
- * configuration; per-run state lives in the {@link IntrospectedDependencies}
- * instance returned by {@link #introspect(Project)}.
+ * projects. They must not retain project, PSI, or collection-run state.
+ * Immutable configuration may be retained, while per-run state belongs in the
+ * {@link IntrospectedDependencies} instance returned by
+ * {@link #introspect(Project)}.
  *
  * <p>An assistant supplies the integration points the
  * {@link ProjectStateIndexer} drives: it enumerates the files an ecosystem owns
- * and collects each into a store-ready {@link DependencyCollector}. The indexer
+ * and populates a phase-one {@link DependencyCollector} for each. The indexer
  * derives the build context for each anchor on demand through
  * {@link #createContext(Project, PsiFile)}.
  *
- * <p>Support checks are expected to be cheap. Expensive parsing and state
- * access belongs in {@link #prepare(Project) preparation}, dependency scanning,
- * or a {@link ProjectDependencyContext}.
+ * <p>Support checks are expected to be cheap and limited to project-model or
+ * file shape recognition. They must not perform I/O or parse file contents.
+ * Expensive preparation, parsing, and state access belongs in
+ * {@link #prepare(Project)}, dependency collection, or a
+ * {@link ProjectDependencyContext}.
  *
  * @author Mark Paluch
  * @see ProjectStateIndexer
@@ -54,57 +57,65 @@ import org.jspecify.annotations.Nullable;
 public interface DependencyAssistant {
 
 	/**
-	 * Return the stable integration id.
+	 * Return the stable integration id used for persisted references and refresh
+	 * identity.
+	 * <p>The id must remain stable across plugin versions.
+	 *
 	 * @return the stable id, for example {@code "maven"} or {@code "gradle"}.
 	 */
 	String getId();
 
 	/**
 	 * Return the human-readable integration name.
+	 * @return the integration name for presentation to users.
 	 */
 	String getDisplayName();
 
 	/**
 	 * Return the package {@link PackageSystem ecosystem} this integration serves.
 	 * <p>One assistant serves exactly one ecosystem.
+	 *
 	 * @return the ecosystem served by this integration.
 	 */
 	PackageSystem getPackageSystem();
 
 	/**
 	 * Return the user-interface metadata for this integration.
-	 * <p>The returned {@link InterfaceAssistant} is a stateless, shared instance
-	 * supplying icons and display names, reachable without a
-	 * {@link ProjectDependencyContext}. Persisted references such as the Upgrade
-	 * Plan resolve it from a stored integration class name to recover the correct
-	 * row icon.
-	 *
-	 * @return the interface metadata.
+	 * @return the context-independent interface metadata.
 	 */
 	InterfaceAssistant getInterfaceAssistant();
 
 	/**
 	 * Return whether this integration applies to the given project.
-	 * <p>This conditional must not trigger I/O or PSI access.
+	 * <p>This check must not trigger I/O or inspect PSI.
+	 *
 	 * @param project the IntelliJ project to inspect.
+	 * @return {@literal true} if this integration can operate in the project.
 	 */
 	boolean supports(Project project);
 
 	/**
 	 * Return whether this integration owns the given file.
-	 * <p>This conditional must not trigger I/O or PSI access.
+	 * <p>This check recognizes the file shape only. It does not guarantee that a
+	 * project model is available for {@link #createContext(Project, PsiFile)}.
+	 *
 	 * @param file the file to inspect.
+	 * @return {@literal true} if this integration recognizes the file.
 	 */
 	boolean supports(PsiFile file);
 
 	/**
 	 * Return whether the given element represents an editable dependency version.
 	 * @param element the PSI element to inspect.
+	 * @return {@literal true} if the element can anchor a single dependency update.
 	 */
 	boolean isVersionElement(PsiElement element);
 
 	/**
-	 * Initialization hook after project startup.
+	 * Prepare this integration after project startup and before the initial Project
+	 * State population.
+	 * <p>The default implementation performs no preparation.
+	 *
 	 * @param project the IntelliJ project.
 	 */
 	default void prepare(Project project) {
@@ -120,8 +131,8 @@ public interface DependencyAssistant {
 	 * Materials when they cannot resolve the BOM, so callers can tell "not mine"
 	 * apart from "resolved to nothing".
 	 *
-	 * @param bom the BOM identity and version to resolve members for.
 	 * @param project the project providing repository configuration.
+	 * @param bom the BOM identity and version to resolve members for.
 	 * @return the resolved Bill of Materials, or {@literal null} when this
 	 * integration cannot resolve the BOM.
 	 */
@@ -139,11 +150,13 @@ public interface DependencyAssistant {
 	List<PsiFile> enumerate(Project project);
 
 	/**
-	 * Return a fresh {@link IntrospectedDependencies} instance scoped to one
-	 * indexer run.
-	 * <p>The default returns the empty instance, suitable for integrations that do
-	 * not derive scan-wide metadata.
+	 * Return an {@link IntrospectedDependencies} instance scoped to one collection
+	 * run.
+	 * <p>Implementations that accumulate run state must return a fresh instance.
+	 * The default returns the shared empty instance, suitable for integrations that
+	 * do not derive scan-wide metadata.
 	 * @param project the IntelliJ project.
+	 * @return a completion handle scoped to the new collection run.
 	 */
 	default IntrospectedDependencies introspect(Project project) {
 		return IntrospectedDependencies.empty();
@@ -151,8 +164,8 @@ public interface DependencyAssistant {
 
 	/**
 	 * Collect the given anchor file into a fresh, completed
-	 * {@link DependencyCollector}: run a single-file introspection, collect, attach
-	 * the given release sources, and complete the introspection.
+	 * {@link DependencyCollector}: create a run-scoped introspection handle,
+	 * collect the file, and complete the collector.
 	 * <p>This is the single-file counterpart of the indexer's collect-complete
 	 * flow, used by file-scoped contexts that scan one build file on demand.
 	 *
@@ -173,7 +186,9 @@ public interface DependencyAssistant {
 	 * <p>The collector is the same instance the indexer later passes to
 	 * {@link IntrospectedDependencies#complete(DependencyCollector)} and stores in
 	 * the {@link biz.paluch.dap.state.ProjectState}. Implementations must mutate
-	 * the provided collector directly and must not replace it with a new instance.
+	 * the provided collector directly. They must not complete it themselves because
+	 * the host completes all collectors after phase-one collection.
+	 *
 	 * @param anchor the anchor file to collect for.
 	 * @param collector the collector to populate in place.
 	 */
@@ -189,7 +204,7 @@ public interface DependencyAssistant {
 	 * their {@link IntrospectedDependencies} should override this method.
 	 * @param anchor the anchor file to collect for.
 	 * @param collector the collector to populate in place.
-	 * @param introspected the introspection handle for the current indexer run.
+	 * @param introspected the introspection handle for the current collection run.
 	 */
 	default void collect(PsiFile anchor, DependencyCollector collector, IntrospectedDependencies introspected) {
 		collect(anchor, collector);
@@ -199,7 +214,8 @@ public interface DependencyAssistant {
 	 * Create the file-scoped dependency context for the given anchor file.
 	 * <p>Invoke only after {@link #supports(PsiFile)} returned {@literal true}.
 	 * @param anchor the build file or catalog file that anchors the operation.
-	 * @return a file-scoped context.
+	 * @return a file-scoped context, which may be unavailable when the required
+	 * project model is not ready.
 	 * @throws IllegalStateException if this integration does not support the file.
 	 */
 	default ProjectDependencyContext createContext(PsiFile anchor) {
@@ -211,7 +227,8 @@ public interface DependencyAssistant {
 	 * <p>Invoke only after {@link #supports(PsiFile)} returned {@literal true}.
 	 * @param project the IntelliJ project.
 	 * @param anchor the build file or catalog file that anchors the operation.
-	 * @return a file-scoped context.
+	 * @return a file-scoped context, which may be unavailable when the required
+	 * project model is not ready.
 	 * @throws IllegalStateException if this integration does not support the file.
 	 */
 	ProjectDependencyContext createContext(Project project, PsiFile anchor);

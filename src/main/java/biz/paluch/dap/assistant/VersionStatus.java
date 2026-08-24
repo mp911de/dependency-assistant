@@ -28,7 +28,14 @@ import biz.paluch.dap.util.ResolvableIcon;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Version status for a single dependency upgrade candidate.
+ * Consolidated presentation status of one candidate artifact version.
+ *
+ * <p>The status combines its relationship to the current version, the evaluated
+ * dependency rule, and known vulnerabilities. Icon resolution applies one
+ * precedence across surfaces: a vulnerability shield, a rule-violation warning,
+ * a compliant lock fallback for an older or unknown-current candidate, then the
+ * candidate's version-age icon. The requested {@link SecurityShieldIcons shield
+ * style} changes only a vulnerability shield's visual weight.
  *
  * @author Mark Paluch
  */
@@ -50,6 +57,16 @@ public class VersionStatus {
 		this.vulnerabilities = vulnerabilities;
 	}
 
+	/**
+	 * Create the status of one candidate version.
+	 *
+	 * @param evaluator the governing rule evaluated against the current version.
+	 * @param currentVersion the current version, or {@literal null} when it cannot
+	 * be resolved.
+	 * @param candidate the candidate version to classify.
+	 * @param vulnerabilities the checked vulnerability result for the candidate.
+	 * @return the candidate's consolidated status.
+	 */
 	public static VersionStatus of(DependencyRuleEvaluator evaluator, @Nullable ArtifactVersion currentVersion,
 			ArtifactVersion candidate, Vulnerabilities vulnerabilities) {
 		return new VersionStatus(evaluator, currentVersion, candidate, vulnerabilities);
@@ -109,8 +126,11 @@ public class VersionStatus {
 
 	/**
 	 * Return the version-age category for callers that deliberately present age
-	 * semantics. Rule violations do not erase this value; rule precedence applies
-	 * only to shared icon selection.
+	 * semantics.
+	 *
+	 * <p>A preview candidate remains in the preview category even when no current
+	 * version is known. Rule and vulnerability precedence applies only to icon
+	 * selection and does not erase the age category.
 	 *
 	 * @return the version-age category.
 	 */
@@ -127,19 +147,22 @@ public class VersionStatus {
 	}
 
 	/**
-	 * Return the icon for a surface (dialog combo, completion lookup).
+	 * Return the Swing icon for a surface using the requested vulnerability-shield
+	 * style.
 	 *
 	 * @param style the shield weight to use when the candidate is vulnerable.
-	 * @return the icon.
+	 * @return the resolved Swing icon.
 	 */
 	public Icon getIcon(SecurityShieldIcons style) {
 		return resolveIcon(style).getIcon();
 	}
 
 	/**
-	 * Return the icon for a surface (dialog combo, completion lookup), pairing the
-	 * Swing icon with the reflective path the {@code <icon src>} resolver
-	 * re-resolves.
+	 * Return the presentation icon and documentation reference for this status.
+	 *
+	 * <p>Vulnerability, rule violation, compliant locked fallback, and version age
+	 * are considered in that order. The supplied style affects only a vulnerability
+	 * shield.
 	 *
 	 * @param style the shield weight to use when the candidate is vulnerable.
 	 * @return the resolvable icon.
@@ -164,8 +187,8 @@ public class VersionStatus {
 	}
 
 	/**
-	 * Return the Swing icon for documentation surfaces, always rendered with the
-	 * filled shield weight.
+	 * Return the Swing icon for an emphasis surface using the filled vulnerability
+	 * shield.
 	 *
 	 * @return the Swing icon.
 	 */
@@ -184,8 +207,13 @@ public class VersionStatus {
 	}
 
 	/**
-	 * Return the compact vulnerability label used by completion tails, or
-	 * {@literal null} when the candidate is not vulnerable.
+	 * Return the compact vulnerability label used by completion tails.
+	 *
+	 * <p>The label starts with the most severe advisory's identifier and appends
+	 * the number of remaining advisories.
+	 *
+	 * @return the compact label, or {@literal null} when the candidate is not
+	 * vulnerable.
 	 */
 	@Nullable
 	public String getVulnerabilityTailLabel() {

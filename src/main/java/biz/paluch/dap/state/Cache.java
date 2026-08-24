@@ -52,16 +52,17 @@ import com.intellij.util.xmlb.annotations.XCollection;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Persistent cache for release metadata and per-project property correlations.
- * <p>This type serves as the durable backing store of the plugin state. It
- * keeps:
- * <ul>
- * <li>cached releases keyed by artifact coordinates, and</li>
- * <li>project-scoped property mappings that can later be used to resolve
- * version-managed dependencies.</li>
- * </ul>
- * Lookup methods intentionally return snapshots or derived views rather than
- * exposing the synchronized backing collections directly.
+ * Persistent cache for artifact, repository, and project metadata.
+ *
+ * <p>Artifact entries retain releases and vulnerability scans, BOM membership,
+ * project metadata, and release-source back-off state. Project entries retain
+ * property-to-artifact correlations. Repository entries retain discovered Git
+ * tags.
+ *
+ * <p>The cache owns its mutable entries and maintains transient lookup indexes
+ * over the XML-serializable lists. {@link #reindex()} restores those indexes
+ * after deserialization. Collection accessors return snapshots, although the
+ * entries within those snapshots remain live unless documented otherwise.
  *
  * @author Mark Paluch
  */
@@ -80,8 +81,14 @@ public class Cache implements ModificationTracker {
 	 */
 	private static final int EMPTY_THRESHOLD = 3;
 
+	/**
+	 * Duration for which {@link #doNotNag()} suppresses refresh reminders.
+	 */
 	public static final Duration PLEASE_BE_SILENT_FOR = Duration.ofHours(12);
 
+	/**
+	 * Maximum cache age before {@link #shouldNag()} may request a refresh.
+	 */
 	public static final Duration LAST_TIME_CACHE_WAS_UPDATED = Duration.ofDays(2);
 
 	@Transient
@@ -127,6 +134,11 @@ public class Cache implements ModificationTracker {
 		this.clock = clock;
 	}
 
+	/**
+	 * Return the clock shared with time-based cache policies.
+	 *
+	 * @return the cache clock.
+	 */
 	public Clock getClock() {
 		return this.clock;
 	}
@@ -145,6 +157,10 @@ public class Cache implements ModificationTracker {
 		return modificationTracker.getModificationCount();
 	}
 
+	/**
+	 * Advance the persistence modification count for state stored alongside the
+	 * cache.
+	 */
 	public void incrementModification() {
 		this.modificationTracker.incModificationCount();
 	}
@@ -281,8 +297,8 @@ public class Cache implements ModificationTracker {
 	 * {@code onNewRelease} for each release added that was not previously cached.
 	 *
 	 * @param releases the fetched releases.
-	 * @param packageSystem the ecosystem the fetched artifact belongs to; stored on
-	 * a freshly created entry.
+	 * @param packageSystem the ecosystem the fetched artifact belongs to. The value
+	 * is stored on a freshly created entry.
 	 * @param onNewRelease invoked once per newly cached release .
 	 */
 	public void updateReleases(FetchedReleases releases, PackageSystem packageSystem,
@@ -299,9 +315,13 @@ public class Cache implements ModificationTracker {
 	/**
 	 * Return cached releases for the given artifact.
 	 *
+	 * <p>This overload uses only the artifact coordinates. The package system does
+	 * not participate in release lookup.
+	 *
 	 * @param pkg the artifact to look up.
-	 * @return the cached releases for the artifact, or an empty list if no entry is
-	 * present.
+	 * @return the cached releases for the artifact, or an empty result if no entry
+	 * is present.
+	 * @see #getReleases(ArtifactId)
 	 */
 	@Transient
 	public Releases getReleases(PackageIdentity pkg) {
@@ -312,8 +332,8 @@ public class Cache implements ModificationTracker {
 	 * Return cached releases for the given artifact.
 	 *
 	 * @param artifactId the artifact to look up.
-	 * @return the cached releases for the artifact, or an empty list if no entry is
-	 * present.
+	 * @return the cached releases for the artifact, or an empty result if no entry
+	 * is present.
 	 */
 	@Transient
 	public Releases getReleases(ArtifactId artifactId) {
@@ -328,8 +348,8 @@ public class Cache implements ModificationTracker {
 	 *
 	 * @param artifactId the artifact to look up.
 	 * @param ensureRecent whether stale cache content should be ignored.
-	 * @return the cached releases for the artifact, or an empty list if no entry is
-	 * present or the cache is considered stale.
+	 * @return the cached releases for the artifact, or an empty result if no entry
+	 * is present or the cache is considered stale.
 	 */
 	@Transient
 	public Releases getReleases(ArtifactId artifactId, boolean ensureRecent) {
@@ -357,8 +377,7 @@ public class Cache implements ModificationTracker {
 	 * <p>A Bill of Materials with no members marks the artifact without caching a
 	 * membership, so an unresolvable BOM stays resolvable later.
 	 *
-	 * @param bom the Bill of Materials to record; carries the ecosystem it belongs
-	 * to.
+	 * @param bom the Bill of Materials to record. The value carries its ecosystem.
 	 * @see CachedArtifact#setBillOfMaterials(BillOfMaterials, long)
 	 */
 	public void putBillOfMaterials(BillOfMaterials bom) {
@@ -374,13 +393,13 @@ public class Cache implements ModificationTracker {
 	 * Return the cached Bill of Materials for the given BOM identity and version.
 	 * <p>The lookup is ecosystem-aware, matching
 	 * {@link #putBillOfMaterials(BillOfMaterials)}. Released BOM contents are
-	 * immutable, so entries never expire by age; the containing artifact's
+	 * immutable, so entries never expire by age. The containing artifact's
 	 * last-seen eviction bounds their lifetime.
 	 *
 	 * @param bom the BOM identity and version to look up.
-	 * @return the indexed Bill of Materials, a cached membership or a prediction
-	 * from {@link CachedArtifact#predictBom}; {@literal null} if none is indexed
-	 * for the version.
+	 * @return the indexed Bill of Materials, a cached membership, or a prediction
+	 * from {@link CachedArtifact#predictBom}. Returns {@literal null} if none is
+	 * indexed for the version.
 	 */
 	@Transient
 	public @Nullable BillOfMaterials getBillOfMaterials(VersionedPackage bom) {
@@ -470,8 +489,8 @@ public class Cache implements ModificationTracker {
 
 	/**
 	 * Return a snapshot of the cached artifact entries.
-	 * <p>The list is a copy taken under the artifacts lock; the entries themselves
-	 * are the live instances. The background scan walks this snapshot to read each
+	 * <p>The list is a copy taken under the artifacts lock. The entries themselves
+	 * are live instances. The background scan walks this snapshot to read each
 	 * artifact's persisted {@link CachedArtifact#getPackageSystem() ecosystem} and
 	 * cached releases so it can build the correct vulnerability query from the
 	 * cache alone.
@@ -570,6 +589,17 @@ public class Cache implements ModificationTracker {
 		});
 	}
 
+	/**
+	 * Return whether project metadata should be inspected for the given artifact.
+	 *
+	 * <p>An existing entry without metadata requires inspection. A nothing-found
+	 * marker is retried until the attempt threshold is reached. Timestamped
+	 * metadata is retried after the stale interval.
+	 *
+	 * @param cachedArtifact the artifact entry, or {@literal null} when no entry
+	 * exists.
+	 * @return {@code true} if project metadata should be inspected.
+	 */
 	public boolean requiresMetadataRefresh(@Nullable CachedArtifact cachedArtifact) {
 
 		if (cachedArtifact == null) {
@@ -641,8 +671,8 @@ public class Cache implements ModificationTracker {
 
 	/**
 	 * Return whether this cache contains any cached release entries.
-	 * <p>Artifact entries carrying only Bill of Materials membership do not count;
-	 * the release store is considered empty until a release fetch produced results.
+	 * <p>Artifact entries carrying only Bill of Materials membership do not count.
+	 * The release store is considered empty until a release fetch produced results.
 	 *
 	 * @return {@literal true} if at least one artifact entry has cached releases.
 	 */

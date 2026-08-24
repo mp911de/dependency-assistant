@@ -39,6 +39,8 @@ public class UpgradeResult {
 
 	/**
 	 * Return a result representing no change.
+	 *
+	 * @return the shared zero-change result.
 	 */
 	public static UpgradeResult none() {
 		return NONE;
@@ -46,6 +48,8 @@ public class UpgradeResult {
 
 	/**
 	 * Return a result representing one changed update step.
+	 *
+	 * @return the shared single-change result.
 	 */
 	public static UpgradeResult changed() {
 		return CHANGED;
@@ -55,6 +59,8 @@ public class UpgradeResult {
 	 * Return a result with the given number of changed update steps.
 	 *
 	 * @param changeCount the non-negative change count.
+	 * @return a result carrying {@code changeCount}.
+	 * @throws IllegalArgumentException if {@code changeCount} is negative.
 	 */
 	public static UpgradeResult of(int changeCount) {
 		return switch (changeCount) {
@@ -69,6 +75,8 @@ public class UpgradeResult {
 	 *
 	 * @param other the result to combine with this one.
 	 * @return the combined result.
+	 * @throws ArithmeticException if the combined change count exceeds the
+	 * {@code int} range.
 	 */
 	public UpgradeResult merge(UpgradeResult other) {
 		return other.changeCount == 0 ? this : of(Math.addExact(changeCount, other.changeCount));
@@ -76,6 +84,8 @@ public class UpgradeResult {
 
 	/**
 	 * Return the number of changed update steps.
+	 *
+	 * @return the non-negative change count.
 	 */
 	public int getChangeCount() {
 		return changeCount;
@@ -83,6 +93,9 @@ public class UpgradeResult {
 
 	/**
 	 * Return whether any update step changed a build file.
+	 *
+	 * @return {@literal true} if the change count is positive; {@literal false}
+	 * otherwise.
 	 */
 	public boolean hasChanges() {
 		return changeCount > 0;

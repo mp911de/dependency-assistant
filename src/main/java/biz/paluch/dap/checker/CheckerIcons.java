@@ -21,9 +21,10 @@ import javax.swing.Icon;
 import com.intellij.openapi.util.IconLoader;
 
 /**
- * Package checker icons.
+ * Vulnerability severity and remediation icons shared by security surfaces.
  *
  * @author Mark Paluch
+ * @see SecurityShieldIcons
  */
 public class CheckerIcons {
 
@@ -39,8 +40,14 @@ public class CheckerIcons {
 
 	public static final Icon MEDIUM_OUTLINE = load("/META-INF/icons/checker/mediumAllTreeOutline.svg");
 
+	/**
+	 * Filled shield for an offered safe-version remediation.
+	 */
 	public static final Icon SAFE = load("/META-INF/icons/checker/safeAllTree.svg");
 
+	/**
+	 * Outline shield for an offered safe-version remediation.
+	 */
 	public static final Icon SAFE_OUTLINE = load("/META-INF/icons/checker/safeAllTreeOutline.svg");
 
 	public static final Icon UNKNOWN = load("/META-INF/icons/checker/uncheckedAllTree.svg");

@@ -25,7 +25,7 @@ import biz.paluch.dap.artifact.PackageIdentity;
 
 /**
  * One-shot accumulator applying {@link GroupingPolicy grouping policies} to the
- * dependency-check candidates and reassembling the display-ordered rows.
+ * dependency-check candidates and assembling the name-sorted review rows.
  *
  * @author Mark Paluch
  */
@@ -51,8 +51,8 @@ class Grouper {
 	}
 
 	/**
-	 * Reassemble the candidates into display order, emitting each registered group
-	 * at its first member's position and skipping suppressed members.
+	 * Replace grouped candidates with their registered group, suppress the other
+	 * represented members, and sort the resulting rows by name.
 	 *
 	 * @return the rows in display order.
 	 */

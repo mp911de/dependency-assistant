@@ -21,7 +21,9 @@ import com.intellij.util.xmlb.Converter;
 import org.jspecify.annotations.Nullable;
 
 /**
- * xmlb converter materializing {@link ArtifactVersion}.
+ * XMLB converter between persisted version text and {@link ArtifactVersion}.
+ *
+ * <p>Unparseable text materializes as {@literal null}.
  *
  * @author Mark Paluch
  */

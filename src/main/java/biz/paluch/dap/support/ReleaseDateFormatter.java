@@ -31,14 +31,14 @@ import com.intellij.util.text.DateFormatUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Formatter for release and due dates, combining relative descriptions with
- * absolute dates.
+ * Localized formatter for release dates, due dates, and the age between
+ * releases.
  *
- * <p>Release dates render as a relative description (e.g. "3 days ago", "in 3
- * days") within one year in either direction and as an absolute medium-style
- * date beyond. Due dates render relative at day granularity within two weeks.
- * Instances capture the current time at creation; create a formatter per
- * rendering pass.
+ * <p>{@link #format(LocalDateTime)} uses a compact 60-day cutoff for past
+ * releases. {@link #formatDetailed(LocalDateTime)} includes time of day and a
+ * relative description for dates less than one year away. Due dates render
+ * relative at day granularity within two weeks. Instances capture the current
+ * instant and zone at creation, so create a formatter per rendering pass.
  *
  * @author Mark Paluch
  */
@@ -61,6 +61,11 @@ public class ReleaseDateFormatter {
 		this.now = clock.instant();
 	}
 
+	/**
+	 * Create a formatter using the system clock and default time zone.
+	 *
+	 * @return a formatter that captures the current system time.
+	 */
 	public static ReleaseDateFormatter create() {
 		return new ReleaseDateFormatter(Clock.systemDefaultZone());
 	}
@@ -68,15 +73,21 @@ public class ReleaseDateFormatter {
 	/**
 	 * Create a formatter using the given clock as time and zone source, primarily
 	 * for deterministic tests.
+	 *
+	 * @param clock the time and zone source to capture.
+	 * @return a formatter using the supplied clock.
 	 */
 	public static ReleaseDateFormatter create(Clock clock) {
 		return new ReleaseDateFormatter(clock);
 	}
 
 	/**
-	 * Format the given release date as a relative description (e.g. "3 days ago",
-	 * "in 3 days") when it falls within one year in either direction, and as an
-	 * absolute medium-style date otherwise.
+	 * Format a release date for compact display.
+	 *
+	 * <p>Future dates and past dates up to 60 whole days ago combine the platform's
+	 * relative description (for example, "3 days ago" or "in 3 days") with an
+	 * absolute medium-style date. Past dates beyond that cutoff use the absolute
+	 * date alone.
 	 *
 	 * @param releaseDate the release date to format.
 	 * @return the formatted release date.
@@ -98,9 +109,9 @@ public class ReleaseDateFormatter {
 	/**
 	 * Format the given release date including the time of day, combining the
 	 * relative description with the absolute medium-style date and short-style time
-	 * (e.g. "3 days ago (Jun 25, 2026 2:05 PM)") when it falls within one year in
-	 * either direction, and using the absolute date-time alone otherwise. Date and
-	 * time are composed without the locale's date-time separator. Intended for
+	 * (e.g. "3 days ago (Jun 25, 2026 2:05 PM)") when it is less than one year away
+	 * in either direction, and using the absolute date-time alone otherwise. Date
+	 * and time are composed without the locale's date-time separator. Intended for
 	 * documentation surfaces with room for detail.
 	 *
 	 * @param releaseDate the release date to format.

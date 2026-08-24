@@ -24,11 +24,17 @@ import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Dependency declaration found while scanning build files.
+ * Aggregate of the declaration and version sources observed for one package.
  *
- * <p>The same artifact can appear in several structural locations. Each
+ * <p>The same artifact can appear in several structural locations. This type
+ * merges those locations without retaining their build-file origin. Each
  * declaration location is captured as a {@link DeclarationSource}, and each
  * version origin is captured as a {@link VersionSource}.
+ *
+ * <p>A declared dependency has no effective version of its own:
+ * {@link #isVersioned()} returns {@code false} and {@link #getVersion()}
+ * throws. {@link Dependency} adds the effective current version when a usage
+ * can be resolved.
  *
  * @author Mark Paluch
  * @see Dependency
@@ -46,7 +52,7 @@ public class DeclaredDependency implements VersionedPackage {
 
 	/**
 	 * Create a new {@code DeclaredDependency}.
-	 * @param pkg the declared artifact coordinates.
+	 * @param pkg the declared package identity.
 	 */
 	public DeclaredDependency(PackageIdentity pkg) {
 		this.pkg = pkg;
@@ -64,6 +70,7 @@ public class DeclaredDependency implements VersionedPackage {
 
 	/**
 	 * Return the version sources associated with this dependency.
+	 * @return an unmodifiable live view in registration order.
 	 */
 	public Set<VersionSource> getVersionSources() {
 		return Collections.unmodifiableSet(versionSources);
@@ -71,6 +78,7 @@ public class DeclaredDependency implements VersionedPackage {
 
 	/**
 	 * Return the declaration sources associated with this dependency.
+	 * @return an unmodifiable live view in registration order.
 	 */
 	public Set<DeclarationSource> getDeclarationSources() {
 		return Collections.unmodifiableSet(declarationSources);
@@ -137,6 +145,10 @@ public class DeclaredDependency implements VersionedPackage {
 		return false;
 	}
 
+	/**
+	 * Reject access to an effective version because declarations are unversioned.
+	 * @throws IllegalStateException always, because no effective version is held.
+	 */
 	@Override
 	public ArtifactVersion getVersion() {
 		throw new IllegalStateException("Not a versioned dependency");

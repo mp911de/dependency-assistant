@@ -36,21 +36,22 @@ import org.jspecify.annotations.Nullable;
  * history: the rows a first completion invocation shows.
  *
  * <p>Selection composes three policies: the <em>corridor</em> anchored on a
- * current version drops lines older than the current line and always keeps the
- * current line and the current release; a {@link VersionStem} adds the newest
- * matching version per steered line, the matching members when the stem pins a
- * single line, or the matching pre-releases under
- * {@linkplain VersionStem#isSuffixIntent() suffix intent}; without either, a
- * window over the newest lines applies. Stable lines surface their newest
- * stable version up to a line budget that also caps lines per major version, so
- * histories with many minors in one major still surface the recent majors.
- * Pre-release-only lines surface their newest pre-release up to a smaller cap.
+ * current version drops lines older than the current line, keeps the current
+ * line, and includes the current release when it exists in the history; a
+ * {@link VersionStem} adds the newest matching version per steered line, the
+ * matching members when the stem pins a single line, or the matching
+ * pre-releases under {@linkplain VersionStem#isSuffixIntent() suffix intent};
+ * without either, a window over the newest lines applies. Stable lines surface
+ * their newest stable version up to a line budget that also caps lines per
+ * major version, so histories with many minors in one major still surface the
+ * recent majors. Pre-release-only lines surface their newest pre-release up to
+ * a smaller cap.
  *
  * <p>Selections degrade rather than vanish: an opaque current version (branch,
  * bare SHA) and a current version ahead of the cached history both fall back to
- * the window, and a single-line history lists its members. Proposals keep the
- * history's canonical order so the curated invocation and the full-history
- * invocation list rows consistently.
+ * the window, and a single-line history lists a bounded set of its members.
+ * Proposals keep the history's canonical order so the curated invocation and
+ * the full-history invocation list rows consistently.
  *
  * @author Mark Paluch
  * @see DevelopmentLines
@@ -81,8 +82,7 @@ class ReleaseProposals implements Sequence<Release> {
 	 * or {@literal null} when no current version is available.
 	 * @param stem the typed-prefix stem steering line selection, or {@literal null}
 	 * without a usable prefix.
-	 * @return the proposals in the history's canonical order; never
-	 * {@literal null}.
+	 * @return the proposals in the history's canonical order.
 	 */
 	public static ReleaseProposals select(Releases history, @Nullable ArtifactVersion currentVersion,
 			@Nullable VersionStem stem) {
@@ -97,7 +97,7 @@ class ReleaseProposals implements Sequence<Release> {
 	 * <p>The result keeps the history's canonical order. A release outside the
 	 * underlying history is ignored: proposals only contain history releases.
 	 *
-	 * @param release the release to include; must not be {@literal null}.
+	 * @param release the release to include.
 	 * @return these proposals when the release is already included, extended
 	 * proposals otherwise.
 	 */
@@ -115,7 +115,7 @@ class ReleaseProposals implements Sequence<Release> {
 	/**
 	 * Return the proposed releases as a list, in the history's canonical order.
 	 *
-	 * @return the proposed releases; never {@literal null}.
+	 * @return the unmodifiable proposed releases.
 	 */
 	public List<Release> getReleases() {
 		return releases;
@@ -123,6 +123,8 @@ class ReleaseProposals implements Sequence<Release> {
 
 	/**
 	 * Return the number of proposed releases.
+	 *
+	 * @return the number of proposals.
 	 */
 	public int size() {
 		return releases.size();
@@ -146,6 +148,8 @@ class ReleaseProposals implements Sequence<Release> {
 
 	/**
 	 * Return the proposed releases as a stream, in the history's canonical order.
+	 *
+	 * @return a new stream over the proposed releases.
 	 */
 	@Override
 	public Stream<Release> stream() {

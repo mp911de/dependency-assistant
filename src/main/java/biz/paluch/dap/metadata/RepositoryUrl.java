@@ -27,7 +27,7 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>Declared repository values arrive in ecosystem-specific wrappings. This
  * value type removes the wrapping and yields the delegate URL plus the declared
- * {@link RepositoryType}:
+ * or inferred {@link RepositoryType}:
  *
  * <ul>
  * <li>Maven {@code scm:<provider>:} prefixes with colon or pipe ({@code |})
@@ -36,10 +36,13 @@ import org.jspecify.annotations.Nullable;
  * <li>npm Git URL forms: {@code git+} scheme prefix, {@code #commit-ish} and
  * {@code #semver:} fragments, and shorthand expansion ({@code owner/repo},
  * {@code github:}, {@code gitlab:}, {@code bitbucket:}, {@code gist:}).</li>
- * <li>Trailing slashes, and trailing {@code .git} suffixes when the URL carries
- * no query string; a {@code .git} tail inside a query (e.g. gitweb
- * {@code ?p=repo.git}) is preserved intact.</li>
+ * <li>Trailing slashes and trailing {@code .git} suffixes.</li>
  * </ul>
+ *
+ * <p>Repository views carrying a query string, such as gitweb
+ * {@code ?p=repo.git} URLs, are rejected. Equality uses the inferred repository
+ * type and normalized delegate URL; it does not perform semantic URL
+ * equivalence.
  *
  * @author Mark Paluch
  * @see RepositoryType
@@ -77,11 +80,12 @@ public class RepositoryUrl {
 
 	/**
 	 * Parse a declared repository value into its normalized form.
+	 *
 	 * <p>A {@code RepositoryUrl} exists only for values whose delegate URL parses
 	 * as a {@link RemoteUrl}: values that are not URL-shaped or carry a query
 	 * string (e.g. gitweb {@code ?p=repo.git} views) yield {@literal null}.
 	 * @param declared the raw value from a Maven {@code scm} element or an npm
-	 * {@code repository} field; can be {@literal null}.
+	 * {@code repository} field, or {@literal null} if undeclared.
 	 * @return the normalized repository URL, or {@literal null} if the value is
 	 * {@literal null}, blank, carries no delegate URL after unwrapping, or the
 	 * delegate URL is not a remote URL.
@@ -153,7 +157,7 @@ public class RepositoryUrl {
 	/**
 	 * Locate the delimiter between the SCM provider and the delegate URL. Per the
 	 * Maven SCM URL format, the delimiter is a colon, or a pipe when the delegate
-	 * URL itself contains colons; whichever occurs first separates the provider.
+	 * URL itself contains colons. Whichever occurs first separates the provider.
 	 */
 	private static int providerDelimiter(String wrapped) {
 
@@ -212,20 +216,27 @@ public class RepositoryUrl {
 
 	/**
 	 * Return the declared or inferred version-control system.
-	 * @return the repository type; guaranteed to be not {@literal null}.
+	 *
+	 * @return the repository type.
 	 */
 	public RepositoryType getType() {
 		return type;
 	}
 
 	/**
-	 * Return the unwrapped delegate URL.
-	 * @return the delegate URL; guaranteed to be non-blank.
+	 * Return the normalized delegate URL.
+	 *
+	 * @return the non-blank delegate URL.
 	 */
 	public String getUrl() {
 		return url;
 	}
 
+	/**
+	 * Return the parsed host and path view of the normalized delegate URL.
+	 *
+	 * @return the parsed remote URL.
+	 */
 	public RemoteUrl getRemote() {
 		return remoteUrl;
 	}

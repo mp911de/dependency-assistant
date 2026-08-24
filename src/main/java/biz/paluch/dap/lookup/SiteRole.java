@@ -22,13 +22,11 @@ import biz.paluch.dap.util.MessageBundle;
 import org.jetbrains.annotations.Nls;
 
 /**
- * {@link DependencySiteSearchHit Search hit} role.
+ * Role assigned to a {@link DependencySiteSearchHit Dependency Site}.
  *
- * <p>The role classifies a located PSI element by what it contributes to a
- * dependency's version: the place the version value is written, or a place the
- * version is referenced indirectly. The owning build ecosystem assigns the role
- * because only it knows, for example, that a version-catalog {@code [versions]}
- * entry is a definition and a {@code version.ref} is a usage.
+ * <p>A role distinguishes the location where a version value is written from a
+ * location that refers to the version indirectly. The search producer assigns
+ * the role from build-tool-specific syntax.
  *
  * @author Mark Paluch
  * @see DependencySiteSearchHit
@@ -57,9 +55,9 @@ public enum SiteRole {
 	}
 
 	/**
-	 * Return the message key for the localized role label.
+	 * Return the localized display name of this role.
 	 *
-	 * @return the complete message key.
+	 * @return the localized role name.
 	 */
 	public @Nls String getName() {
 		return message.get();

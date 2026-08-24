@@ -22,8 +22,15 @@ import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.rule.DependencyRule;
 
 /**
- * Creates the upgrade suggestions surfaced for a dependency, including
- * tier-based suggestions, rule remediation, and the Safe Version remediation.
+ * Evaluates upgrade policy for a dependency and its materialized release,
+ * vulnerability, and governance facts.
+ *
+ * <p>Evaluation first selects the non-remediation version tiers. It then adds a
+ * Safe Version only for a vulnerable current version with an explicitly clean
+ * newer target, and finally applies the governing rule. Rule governance removes
+ * disabled version tiers and prepends a rule-remediation target, when
+ * available, if the current version is noncompliant. Existing remediation
+ * targets are retained.
  *
  * @author Mark Paluch
  */
@@ -39,13 +46,15 @@ public class UpgradeSuggestionsFactory {
 	 * Create suggestions from fully materialized upgrade facts.
 	 *
 	 * <p>The current dependency version is included in the release universe before
-	 * tier, Safe Version, and rule-remediation policy is applied.
+	 * tier, Safe Version, and rule-remediation policy is applied. Safe Version
+	 * selection stays within the current versioning scheme but may cross major or
+	 * minor version lines. A missing vulnerability result is not considered clean.
 	 *
 	 * @param dependency the dependency to inspect.
 	 * @param releases the known releases for the dependency.
 	 * @param vulnerabilities the vulnerability results for known versions.
 	 * @param rule the governing dependency rule.
-	 * @return the policy-filtered suggestions in strategy priority order.
+	 * @return the policy-filtered suggestions in evaluation priority order.
 	 */
 	public static UpgradeSuggestions createSuggestions(Dependency dependency, Releases releases,
 			VulnerabilityRepository vulnerabilities, DependencyRule rule) {

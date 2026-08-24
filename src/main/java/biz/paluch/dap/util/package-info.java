@@ -1,5 +1,6 @@
 /**
- * Miscellaneous utility classes, such as utilities for working with strings.
+ * Cross-cutting adapters for PSI traversal, properties-file ranges, HTTP
+ * access, presentation, caching, and progress reporting.
  */
 @org.jspecify.annotations.NullMarked
 package biz.paluch.dap.util;

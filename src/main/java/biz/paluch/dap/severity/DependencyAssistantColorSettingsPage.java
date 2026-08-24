@@ -30,9 +30,13 @@ import com.intellij.openapi.options.colors.ColorDescriptor;
 import com.intellij.openapi.options.colors.ColorSettingsPage;
 
 /**
- * Exposes {@link DependencyAssistantSeverities#UPGRADE_AVAILABLE_KEY} in Color
- * Scheme so users can customise the highlight applied to dependency versions
- * that have a newer release available.
+ * Color settings page for dependency upgrade annotations.
+ *
+ * <p>Users can configure separate editor attributes for
+ * {@link DependencyAssistantSeverities#UPGRADE_AVAILABLE_KEY Upgrade Available}
+ * annotations and {@link DependencyAssistantSeverities#UPGRADE_SUGGESTION_KEY
+ * rule-driven upgrade suggestions}. The XML preview applies each attribute to a
+ * Maven dependency version.
  *
  * @author Mark Paluch
  */

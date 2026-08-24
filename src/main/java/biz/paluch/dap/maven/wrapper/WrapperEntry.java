@@ -25,8 +25,13 @@ import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Parsed wrapper property.
- * 
+ * Parsed Maven Wrapper URL declaration.
+ *
+ * <p>An entry retains the supported property kind, the PSI property and value,
+ * the repository derived from the URL, and the separate path and file-name
+ * version texts. The two version texts may differ while a user is editing the
+ * declaration.
+ *
  * @author Mark Paluch
  */
 record WrapperEntry(WrapperProperty property, Property propertyLiteral, PsiElement versionLiteral,
@@ -38,11 +43,14 @@ record WrapperEntry(WrapperProperty property, Property propertyLiteral, PsiEleme
 
 	/**
 	 * Return whether the path and file version segments carry the same text.
+	 *
 	 * <p>A well-formed wrapper URL holds the same version twice; mismatched
 	 * versions indicate a malformed URL, or a mid-typed URL where the completion
 	 * placeholder has been inserted into only one segment. Dependency collection
 	 * rejects such entries; completion and resolution accept them so the user can
 	 * still get version suggestions while typing.
+	 *
+	 * @return {@literal true} if both version segments contain the same text.
 	 */
 	public boolean hasConsistentVersions() {
 		return pathVersion.equals(fileVersion);
@@ -51,6 +59,8 @@ record WrapperEntry(WrapperProperty property, Property propertyLiteral, PsiEleme
 	/**
 	 * Return the parsed artifact version, or {@literal null} when
 	 * {@link #pathVersion} cannot be parsed as an {@link ArtifactVersion}.
+	 *
+	 * @return the parsed path version, or {@literal null} if it is not recognized.
 	 */
 	@Nullable
 	public ArtifactVersion version() {
@@ -59,6 +69,8 @@ record WrapperEntry(WrapperProperty property, Property propertyLiteral, PsiEleme
 
 	/**
 	 * Return a {@link VersionSource} based on the declared version.
+	 *
+	 * @return the version source derived from the path version text.
 	 */
 	public VersionSource versionSource() {
 		return VersionSource.from(pathVersion());

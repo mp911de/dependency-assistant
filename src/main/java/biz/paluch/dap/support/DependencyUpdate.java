@@ -38,6 +38,10 @@ import biz.paluch.dap.upgrade.UpgradeSuggestions;
  * {@link UpgradeSuggestion} or {@link UpgradeSuggestions} for proposed targets
  * before the user or policy has selected one.
  *
+ * <p>The collection constructor retains the supplied source collections and the
+ * accessors expose those collections without copying. Callers that pass mutable
+ * collections remain responsible for subsequent mutations.
+ *
  * @author Mark Paluch
  * @see ArtifactVersionChange
  * @see UpgradeSuggestion
@@ -185,7 +189,8 @@ public class DependencyUpdate extends ArtifactVersionChange {
 	/**
 	 * Return the declaration sources participating in this update.
 	 *
-	 * @return the declaration sources supplied when the update was created.
+	 * @return the retained declaration-source collection supplied when the update
+	 * was created.
 	 */
 	public Collection<DeclarationSource> declarationSources() {
 		return declarationSources;
@@ -194,7 +199,8 @@ public class DependencyUpdate extends ArtifactVersionChange {
 	/**
 	 * Return the version sources that can be rewritten by this update.
 	 *
-	 * @return the version sources supplied when the update was created.
+	 * @return the retained version-source collection supplied when the update was
+	 * created.
 	 */
 	public Collection<VersionSource> versionSources() {
 		return versionSources;

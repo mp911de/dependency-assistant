@@ -25,7 +25,8 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 
 /**
- * IntelliJ completion contributor for Gradle wrapper property files.
+ * Contributes complete {@code distributionUrl} property lines and cached Gradle
+ * versions inside existing distribution URLs.
  *
  * @author Mark Paluch
  */

@@ -51,7 +51,7 @@ import com.intellij.util.ui.UIUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Dialog-row presentation over one upgrade aggregate.
+ * Dialog-row presentation for one {@link DependencyUpgradeCandidate}.
  */
 class SingleTableRow extends TableRow implements HasArtifactId, HasPackageIdentity, HasPackageSystem {
 
@@ -248,6 +248,10 @@ class SingleTableRow extends TableRow implements HasArtifactId, HasPackageIdenti
 	 * Swing tooltips do not carry the documentation pane's stylesheet, so the
 	 * {@code section} class is inert and the label styling is inlined: context-help
 	 * gray plus a right padding separating the label column from the value column.
+	 *
+	 * @param labelKey the message key for the row label.
+	 * @param value the rendered row value.
+	 * @return the tooltip table row.
 	 */
 	static HtmlChunk section(String labelKey, HtmlChunk value) {
 

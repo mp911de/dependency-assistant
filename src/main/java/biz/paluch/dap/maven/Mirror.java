@@ -22,12 +22,11 @@ package biz.paluch.dap.maven;
  *
  * <p>Matching follows Maven's own {@code DefaultMirrorSelector} semantics.
  *
- * @param id the mirror id, used to look up the matching {@code <server>}
- * credentials; never {@literal null} or blank.
- * @param url the mirror URL that replaces the original repository URL; never
- * {@literal null} or blank.
- * @param mirrorOf the {@code mirrorOf} pattern declaring which repositories
- * this mirror replaces; never {@literal null} or blank.
+ * @param id the mirror id used to look up matching {@code <server>}
+ * credentials.
+ * @param url the mirror URL that replaces the original repository URL.
+ * @param mirrorOf the pattern declaring which repositories this mirror
+ * replaces.
  * @author Mark Paluch
  */
 record Mirror(String id, String url, String mirrorOf) {

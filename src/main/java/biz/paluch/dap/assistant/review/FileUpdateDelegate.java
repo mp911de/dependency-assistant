@@ -40,7 +40,12 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 
 /**
- * Delegate to update build files providing write action guarding.
+ * Applies dependency updates to build files inside platform write commands.
+ *
+ * <p>By default, each file is routed through the registered build-tool
+ * integrations. A multi-file update uses one write command per file and can be
+ * configured as one globally undoable operation through
+ * {@link #withGlobalUndo(UndoConfirmationPolicy)}.
  *
  * @author Mark Paluch
  */
@@ -61,14 +66,21 @@ public class FileUpdateDelegate {
 	private boolean globalUndo;
 
 	/**
-	 * Create a delegate using the update action from the given dependency context.
+	 * Create a delegate that routes each file through the registered build-tool
+	 * integrations.
+	 *
+	 * @param project the project whose files are updated.
 	 */
 	public FileUpdateDelegate(Project project) {
 		this(project, new FileUpdateEngine(project));
 	}
 
 	/**
-	 * Create a delegate using the update action from the given dependency context.
+	 * Create a delegate that applies every update through the given dependency
+	 * context.
+	 *
+	 * @param project the project whose files are updated.
+	 * @param dependencyContext the context that performs the updates.
 	 */
 	public FileUpdateDelegate(Project project, ProjectDependencyContext dependencyContext) {
 		this(project, new FileUpdateEngine(project, FileUpdateEngine.context(dependencyContext)));
@@ -106,10 +118,16 @@ public class FileUpdateDelegate {
 
 	/**
 	 * Update the given files with the given updates.
+	 *
 	 * <p>Every file's writes run inside their own {@link WriteCommandAction} tagged
 	 * with a shared command group, so a fan-out of writes issued back-to-back (one
 	 * chosen target routed to several files) coalesces into a single undoable step
-	 * while the EDT stays free between files.
+	 * while the EDT stays free between files. A file-specific failure is reported
+	 * and does not prevent later files from being processed.
+	 *
+	 * @param indicator the progress and cancellation indicator.
+	 * @param files the build-file scope to update.
+	 * @param updates the updates to route to each file.
 	 */
 	public void updateFiles(ProgressIndicator indicator, FileScope files, DependencyUpdates updates) {
 

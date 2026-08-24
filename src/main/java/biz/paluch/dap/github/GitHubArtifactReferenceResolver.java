@@ -42,7 +42,8 @@ import org.jspecify.annotations.Nullable;
  * triggered.
  *
  * <p>Only elements inside the scalar value of a {@code uses:}
- * {@link YAMLKeyValue} are considered. All other elements resolve to
+ * {@link YAMLKeyValue} are considered. The input must be a structural PSI
+ * element rather than a terminal leaf. All other elements resolve to
  * {@link ArtifactReference#unresolved()}.
  *
  * @author Mark Paluch
@@ -54,7 +55,8 @@ class GitHubArtifactReferenceResolver implements ArtifactReferenceResolver {
 	private final GitHubProjectContext buildContext;
 
 	/**
-	 * Create a resolver for the given context and build context.
+	 * Create a resolver using cached Git ref metadata for the given build context.
+	 *
 	 * @param versionResolver the cached Git-ref resolver.
 	 * @param buildContext the GitHub Actions file context.
 	 */

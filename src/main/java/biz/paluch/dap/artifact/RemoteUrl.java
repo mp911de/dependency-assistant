@@ -55,7 +55,7 @@ public class RemoteUrl {
 	/**
 	 * Parse a remote URL into its syntactic form.
 	 * @param url the remote URL to parse.
-	 * @return the parsed URL
+	 * @return the parsed URL.
 	 * @throws IllegalArgumentException if the value is blank, malformed, carries a
 	 * query string, or has no host.
 	 */
@@ -107,8 +107,7 @@ public class RemoteUrl {
 
 	/**
 	 * Return the slash-separated path segments without leading or trailing slashes.
-	 * @return the path segments, empty for a bare host URL; guaranteed to be not
-	 * {@literal null}.
+	 * @return the path segments. The list is empty for a bare host URL.
 	 */
 	public List<String> pathSegments() {
 		return pathSegments;

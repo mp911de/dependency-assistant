@@ -27,10 +27,18 @@ import biz.paluch.dap.support.UpgradeStrategy;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Value object capturing an applied dependency update, carrying the display
- * label and the follow-up flag used by the after-apply balloon.
+ * Summary of a dependency update recorded after it changes a build file.
+ *
+ * <p>The summary retains the applied version change, its user-facing display
+ * label, and the follow-up classification used by after-apply notifications.
+ * Natural ordering uses only the display label. Sorted accumulators therefore
+ * retain at most one summary for a label even though record equality includes
+ * all three components.
  *
  * @author Mark Paluch
+ * @param update the applied version change.
+ * @param displayName the user-facing dependency label.
+ * @param flag the follow-up classification for the applied change.
  */
 public record AppliedDependencyUpdate(ArtifactVersionChange update,
 		String displayName, Flag flag)
@@ -53,12 +61,15 @@ public record AppliedDependencyUpdate(ArtifactVersionChange update,
 	public enum Flag {
 
 		/**
-		 * Within the governing rule, or an in-major upgrade with no rule.
+		 * No follow-up is required because the target complies with its governing rule
+		 * and any classified upgrade strategy is enabled, or because no rule applies
+		 * and the change does not cross a major version line.
 		 */
 		NONE,
 
 		/**
-		 * Rejected by the dependency's governing rule.
+		 * The target is rejected by the governing rule, or its classified upgrade
+		 * strategy is disabled by that rule.
 		 */
 		COMPLIANCE,
 
@@ -87,8 +98,7 @@ public record AppliedDependencyUpdate(ArtifactVersionChange update,
 	/**
 	 * Return whether this update is called out in the after-apply balloon.
 	 *
-	 * @return {@literal true} if the update carries a follow-up {@link Flag};
-	 * {@literal false} otherwise.
+	 * @return {@code true} if the update carries a follow-up {@link Flag}.
 	 */
 	public boolean isFlagged() {
 		return flag != Flag.NONE;
@@ -97,6 +107,11 @@ public record AppliedDependencyUpdate(ArtifactVersionChange update,
 	/**
 	 * Create an applied update from a {@link DependencyUpdate} and its governing
 	 * rule.
+	 *
+	 * @param update the update that changed a build file.
+	 * @param rule the rule governing the dependency.
+	 * @param presentation the source of the user-facing dependency label.
+	 * @return the classified applied-update summary.
 	 */
 	public static AppliedDependencyUpdate from(DependencyUpdate update, DependencyRule rule,
 			DependencyPresentation presentation) {
@@ -106,6 +121,13 @@ public record AppliedDependencyUpdate(ArtifactVersionChange update,
 
 	/**
 	 * Create an applied update from a {@link DependencyUpdate}.
+	 *
+	 * <p>Without a governing rule, only a major version crossing receives a
+	 * follow-up flag.
+	 *
+	 * @param update the update that changed a build file.
+	 * @param displayName the user-facing dependency label.
+	 * @return the classified applied-update summary.
 	 */
 	public static AppliedDependencyUpdate from(DependencyUpdate update,
 			String displayName) {

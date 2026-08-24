@@ -96,6 +96,8 @@ public class DependencyUsageTarget implements UsageTarget, ItemPresentation {
 
 	/**
 	 * Search the current file scope. Callers must provide read access.
+	 *
+	 * @return all matching declaration, version-usage, and consumption sites.
 	 */
 	public DependencySearchResults findSites() {
 		return find(files.get());

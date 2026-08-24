@@ -21,8 +21,11 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.PackageIdentity;
 
 /**
- * Read-only lookup of the known {@link Vulnerabilities} per artifact and
- * version.
+ * Read-only lookup of known {@link Vulnerabilities} by artifact or package
+ * identity and version.
+ *
+ * <p>Use the {@link PackageIdentity} overload when package-system ownership is
+ * available. The artifact overload performs a coordinate-only lookup.
  *
  * @author Mark Paluch
  * @see VulnerabilityRepository
@@ -31,6 +34,7 @@ public interface VulnerabilitiesRepository {
 
 	/**
 	 * Return the known vulnerabilities for the given artifact version.
+	 *
 	 * @param artifactId the artifact to look up.
 	 * @param version the version to look up.
 	 * @return the known vulnerabilities, or {@link Vulnerabilities#absent()} when
@@ -40,6 +44,7 @@ public interface VulnerabilitiesRepository {
 
 	/**
 	 * Return the known vulnerabilities for the given package version.
+	 *
 	 * @param pkg the package to look up.
 	 * @param version the version to look up.
 	 * @return the known vulnerabilities, or {@link Vulnerabilities#absent()} when

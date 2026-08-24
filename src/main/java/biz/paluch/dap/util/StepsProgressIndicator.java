@@ -23,14 +23,13 @@ import com.intellij.openapi.progress.ProgressIndicator;
  * of steps.
  *
  * <p>A child fraction in {@code [0, 1]} reflects progress within the current
- * step; {@link #nextStep()} commits the current step and moves to the next one.
+ * step. {@link #nextStep()} commits the current step and moves to the next one.
  * The mapping from steps to the parent fraction is left to the implementation,
  * which may weight steps equally or individually.
  *
- * <p>{@link WeightedStepsProgressIndicator} is the thread-safe implementation
- * and supports per-step weights. {@link #forSteps(ProgressIndicator, int)}
- * adapts the platform equal-step indicator for callers that do not need thread
- * safety.
+ * <p>{@link WeightedStepsProgressIndicator} supports per-step weights and
+ * atomic step advancement. {@link #forSteps(ProgressIndicator, int)} creates
+ * the same implementation with equal weights.
  *
  * @author Mark Paluch
  * @see WeightedStepsProgressIndicator
@@ -47,10 +46,12 @@ public interface StepsProgressIndicator extends ProgressIndicator {
 	 * Create a new {@code StepsProgressIndicator} for the number of
 	 * {@code totalSteps}.
 	 *
-	 * <p>The returned indicator is thread-safe.
+	 * <p>Step advancement on the returned indicator is atomic.
+	 *
 	 * @param indicator the indicator to forward to.
 	 * @param totalSteps the number of equally sized steps.
-	 * @return a steps indicator backed by the platform implementation.
+	 * @return an indicator with equally weighted steps.
+	 * @throws IllegalArgumentException if {@code totalSteps} is not positive.
 	 */
 	static StepsProgressIndicator forSteps(ProgressIndicator indicator, int totalSteps) {
 		return WeightedStepsProgressIndicator.forTasks(indicator, totalSteps);

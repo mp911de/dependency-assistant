@@ -38,12 +38,13 @@ import org.jspecify.annotations.Nullable;
 /**
  * Recognizes {@code gitlab.com}, hosts following the {@code gitlab.*} naming
  * convention, and, hint-aided, self-hosted instances. Nested group paths are
- * real repository coordinates and are never truncated; path segments from the
+ * real repository coordinates and are never truncated. Path segments from the
  * {@code /-/} web-path separator onward are discarded instead, healing cached
  * URLs such as {@code group/sub/proj/-/tree/main} without re-inspection.
  *
- * <p>URL patterns: issues {@code /-/issues}, new issue {@code /-/issues/new},
- * releases {@code /-/releases}, release notes {@code /-/releases/{tag}}.
+ * <p>URL patterns: work items {@code /-/work_items}, new work item
+ * {@code /-/work_items/new}, releases {@code /-/releases}, and release notes
+ * {@code /-/releases/{tag}}.
  *
  * @author Mark Paluch
  */
@@ -54,8 +55,8 @@ public class GitLabPlatform implements Platform {
 	/**
 	 * GitLab path segments per {@code Gitlab::PathRegex}: start with an
 	 * alphanumeric, underscore, or dot, continue with alphanumerics, underscore,
-	 * hyphen, and dot, at most 255 characters; {@code .} and {@code ..} are
-	 * reserved.
+	 * hyphen, and dot, and contain at most 255 characters. {@code .} and {@code ..}
+	 * are reserved.
 	 */
 	private static final Pattern PATH_SEGMENT = Pattern.compile("(?!\\.\\.?$)[A-Za-z0-9_.][A-Za-z0-9._-]{0,254}");
 

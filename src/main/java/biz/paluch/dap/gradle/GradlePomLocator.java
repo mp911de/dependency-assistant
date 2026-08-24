@@ -30,9 +30,12 @@ import org.jetbrains.plugins.gradle.settings.GradleSettings;
 import org.jspecify.annotations.Nullable;
 
 /**
- * {@link PomLocator} resolving POMs from the Gradle module cache
- * ({@code caches/modules-2/files-2.1}) under the configured Gradle user home,
- * scanning the per-artifact hash directories for the POM file.
+ * {@link PomLocator} resolving POMs from {@code caches/modules-2/files-2.1}
+ * under the configured Gradle user home.
+ *
+ * <p>The configured service directory takes precedence over the default Gradle
+ * user home. Each per-artifact hash directory is searched for the requested
+ * POM.
  *
  * @author Mark Paluch
  */

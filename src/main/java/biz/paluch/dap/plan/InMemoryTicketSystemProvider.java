@@ -22,9 +22,10 @@ import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.openapi.project.Project;
 
 /**
- * Development/offline {@link TicketSystemProvider} backing the Upgrade Plan with
- * the {@link InMemoryTicketRepository}. Always supports so the ticket workflow can
- * be exercised without a live ticket system. Not for production use.
+ * Development/offline {@link TicketSystemProvider} backing the Upgrade Plan
+ * with the {@link InMemoryTicketRepository}. Supports a project only when its
+ * {@code InMemoryTicketSystemProvider.enabled} property is set. Not for
+ * production use.
  *
  * @author Mark Paluch
  */

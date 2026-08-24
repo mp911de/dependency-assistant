@@ -51,6 +51,10 @@ import org.jspecify.annotations.Nullable;
  * {@link PushSupport}. No VCS-specific plugin classes are referenced, so this
  * class loads and degrades gracefully when a particular VCS plugin is absent.
  *
+ * <p>File operations use the supplied plan scope. Repository-level branch and
+ * push operations currently use the first repository known to the project;
+ * multi-repository selection is not supported.
+ *
  * @author Mark Paluch
  */
 // TODO: consider multi-repository projects
@@ -80,8 +84,8 @@ class PlanVcs {
 	}
 
 	/**
-	 * Return whether the plan can be pushed, that is, its repository's VCS
-	 * contributes the platform push support.
+	 * Return whether the plan can be pushed, that is, the first project
+	 * repository's VCS contributes the platform push support.
 	 */
 	boolean canPush() {
 
@@ -174,8 +178,8 @@ class PlanVcs {
 	}
 
 	/**
-	 * Push the current branch of the plan's repository through the VCS's push
-	 * support, targeting the tracked branch or a same-named new branch on the
+	 * Push the current branch of the first project repository through the VCS's
+	 * push support, targeting the tracked branch or a same-named new branch on the
 	 * default remote. Asynchronous: the push support runs its own background task
 	 * and posts its own result notification.
 	 *
@@ -201,9 +205,9 @@ class PlanVcs {
 	}
 
 	/**
-	 * Return the current branch name of the plan's repository, used to default the
-	 * milestone, or {@literal null} when the scope is not on a named branch. Must
-	 * run on a background thread.
+	 * Return the current branch name of the first project repository, used to
+	 * default the milestone, or {@literal null} when that repository is not on a
+	 * named branch. Must run on a background thread.
 	 */
 	@Nullable
 	String getCurrentBranch() {

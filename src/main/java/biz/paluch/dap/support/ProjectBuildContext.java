@@ -28,10 +28,10 @@ import biz.paluch.dap.state.ProjectId;
  * file.
  *
  * <p>This contract is intentionally narrower than a full integration context:
- * it exposes only the stable project identity and release-source topology
- * needed by shared state, lookup, and dependency-check infrastructure.
- * Build-tool specific services such as parsing, PSI rewriting, and UI behavior
- * remain with the concrete integration layer.
+ * it exposes only the project identity, package system, project version, and
+ * release sources needed by shared state, lookup, and dependency-check
+ * infrastructure. Build-tool specific services such as parsing, PSI rewriting,
+ * and UI behavior remain with the concrete integration layer.
  *
  * <p>A context may be unavailable when the anchor file is outside an imported
  * or otherwise supported project model. Callers that operate opportunistically
@@ -53,15 +53,22 @@ public interface ProjectBuildContext {
 
 	/**
 	 * Return whether this context is backed by a supported project model.
+	 *
 	 * <p>Unavailable contexts are sentinels used by integrations that inspect files
 	 * before a build model, package descriptor, or repository context can be
 	 * established.
+	 *
+	 * @return {@literal true} if project metadata can be accessed; {@literal false}
+	 * otherwise.
 	 */
 	boolean isAvailable();
 
 	/**
 	 * Return whether this context cannot provide project state or release-source
 	 * metadata.
+	 *
+	 * @return {@literal true} if this context is unavailable; {@literal false}
+	 * otherwise.
 	 * @see #isAvailable()
 	 */
 	default boolean isAbsent() {
@@ -73,12 +80,16 @@ public interface ProjectBuildContext {
 	 * <p>The identity must use the same scoping rules as
 	 * {@link #getReleaseSources()} so cached dependencies, property mappings, and
 	 * release lookups refer to the same dependency domain.
+	 *
+	 * @return the identity used to partition project dependency state.
 	 * @throws IllegalStateException if the build context is not available.
 	 */
 	ProjectId getProjectId();
 
 	/**
-	 * Return the package ecosystem this context supports.
+	 * Return the package system this context supports.
+	 *
+	 * @return the package system that interprets dependency coordinates.
 	 */
 	PackageSystem getPackageSystem();
 
@@ -101,7 +112,8 @@ public interface ProjectBuildContext {
 	 * common {@link ReleaseSource} contract. They should reflect the repositories,
 	 * registries, or hosting services that apply to dependencies owned by
 	 * {@link #getProjectId()}.
-	 * @throws IllegalStateException if the build context is not available.
+	 *
+	 * @return the release sources for this dependency domain.
 	 */
 	List<ReleaseSource> getReleaseSources();
 

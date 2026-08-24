@@ -37,8 +37,10 @@ import com.intellij.util.ui.UIUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Apply all planned upgrades to the build files, guarded by a confirmation with
- * a "do not ask again" option as a last resort against accidental clicks.
+ * Apply planned upgrades to the build files, guarded by a confirmation with a
+ * "do not ask again" option as a last resort against accidental clicks. A plan
+ * selection narrows the run to the selected items; without a selection the
+ * whole plan is applied.
  *
  * @author Mark Paluch
  */

@@ -44,7 +44,14 @@ import org.jdom.JDOMException;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Shows update notification.
+ * Project startup activity that records the current plugin version and shows
+ * release notes after a version change.
+ *
+ * <p>The activity reads version and change-note metadata from the bundled
+ * {@code META-INF/plugin.xml}. It shows at most five change-note sections newer
+ * than the version stored in {@link ApplicationSettings}. Missing or unreadable
+ * metadata, blank change notes, and an unavailable notification group are
+ * ignored.
  *
  * @author Mark Paluch
  */

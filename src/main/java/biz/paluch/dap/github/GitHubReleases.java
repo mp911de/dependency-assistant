@@ -33,7 +33,6 @@ import biz.paluch.dap.artifact.ArtifactNotFoundException;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.TagSource;
-import biz.paluch.dap.state.CachedRelease;
 import biz.paluch.dap.util.Sequence;
 import biz.paluch.dap.util.StringUtils;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -60,15 +59,11 @@ import org.jspecify.annotations.Nullable;
  * repositories that do not publish GitHub Releases.</li>
  * </ul>
  *
- * <p>Many projects do not publish GitHub Releases; the tag fallback ensures
+ * <p>Many projects do not publish GitHub Releases. The tag fallback ensures
  * those still expose update candidates. Tag entries without a release
  * contribute a version with {@literal null} date and the tag's commit SHA.
  * Release entries without a matching fetched tag contribute a version with
  * {@literal null} SHA.
- *
- * <p>Results are cached into the shared {@link biz.paluch.dap.state.Cache} as
- * {@link CachedRelease} entries with the SHA stored in the optional {@code sha}
- * field.
  *
  * @author Mark Paluch
  */
@@ -116,9 +111,16 @@ public class GitHubReleases implements ReleaseSource, TagSource {
 	 * combine them into a deduplicated, version-keyed list of {@link Release}
 	 * entries.
 	 *
-	 * @return the fetched releases, or an empty list if the fetch could not
-	 * complete for a recoverable error.
+	 * <p>If one endpoint fails but the other returns releases or tags, the partial
+	 * result is retained. If both result sets are empty and either request failed,
+	 * the first failure is propagated.
+	 *
+	 * @param artifactId the repository coordinates to query.
+	 * @param indicator progress indicator used for cancellation.
+	 * @return the combined releases and tag-only candidates.
 	 * @throws ArtifactNotFoundException if the repository does not exist.
+	 * @throws IOException if no release or tag result is available after a request
+	 * failure.
 	 */
 	public List<Release> fetchAllReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException {
 		List<IOException> exceptions = new ArrayList<>();

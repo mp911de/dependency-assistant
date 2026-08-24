@@ -42,7 +42,7 @@ import org.jspecify.annotations.Nullable;
  * so callers never see it.
  *
  * <p>Documents written before grouping stored one member per element carrying
- * its own {@code artifactId}; such elements still read correctly and are
+ * its own {@code artifactId}. Such elements still read correctly and are
  * rewritten in grouped form on the next snapshot.
  *
  * @author Mark Paluch
@@ -68,7 +68,7 @@ public class CachedBom {
 	/**
 	 * Create a membership entry for the given BOM version and members.
 	 *
-	 * @param version the BOM version string the membership is scoped to.
+	 * @param version the BOM version the membership is scoped to.
 	 * @param members the managed members keyed by artifact coordinates.
 	 * @return the membership entry.
 	 */
@@ -80,7 +80,9 @@ public class CachedBom {
 	}
 
 	/**
-	 * Return the BOM version string this membership is scoped to.
+	 * Return the BOM version this membership is scoped to.
+	 *
+	 * @return the BOM version.
 	 */
 	public ArtifactVersion getVersion() {
 		return version;
@@ -90,8 +92,7 @@ public class CachedBom {
 	 * Return whether the given artifact is listed as a member of this membership,
 	 * regardless of version.
 	 * @param artifactId the member coordinates to look up.
-	 * @return {@literal true} if a member entry matches the coordinates;
-	 * {@literal false} otherwise.
+	 * @return {@code true} if a member entry matches the coordinates.
 	 */
 	public boolean isMember(ArtifactId artifactId) {
 
@@ -109,8 +110,7 @@ public class CachedBom {
 	 * Expand the stored groups into a domain member map, skipping entries whose
 	 * coordinates or version no longer parse.
 	 *
-	 * @return the managed members keyed by artifact coordinates; guaranteed to be
-	 * not {@literal null}.
+	 * @return the managed members keyed by artifact coordinates.
 	 */
 	public Map<ArtifactId, ArtifactVersion> toMembers() {
 
@@ -225,6 +225,8 @@ public class CachedBom {
 		/**
 		 * Return the managed version shared by this group, or {@literal null} when the
 		 * group inherits the BOM version.
+		 *
+		 * @return the shared managed version, or {@literal null} when inherited.
 		 */
 		public @Nullable ArtifactVersion getVersion() {
 			return version;
@@ -233,6 +235,8 @@ public class CachedBom {
 		/**
 		 * Return the artifact identifiers in this group, falling back to the
 		 * single-member form used by documents written before grouping.
+		 *
+		 * @return the grouped artifact identifiers.
 		 */
 		public List<String> getArtifactIds() {
 			return artifacts.isEmpty() && StringUtils.hasText(artifactId) ? List.of(artifactId) : artifacts;

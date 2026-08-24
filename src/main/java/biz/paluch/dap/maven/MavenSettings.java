@@ -56,7 +56,9 @@ public class MavenSettings {
 	 * <p>If a mirror matches the repository, the result carries the mirror's id and
 	 * URL and the credentials of the {@code <server>} matching the mirror id.
 	 * Otherwise, the repository is returned unchanged with the credentials of the
-	 * {@code <server>} matching its own id.
+	 * {@code <server>} matching its own id. Credentials are attached only when
+	 * their repository binding permits the effective URL. Credentials without URL
+	 * bindings remain eligible by repository id alone.
 	 *
 	 * @param id the declared repository id.
 	 * @param url the declared repository URL.

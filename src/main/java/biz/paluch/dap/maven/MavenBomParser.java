@@ -66,8 +66,11 @@ class MavenBomParser extends MavenPomSupport {
 	/**
 	 * Parse the managed members of the BOM POM file.
 	 *
-	 * @return the managed members keyed by artifact coordinates; {@literal null} if
-	 * the file is no Maven POM.
+	 * <p>Imported BOM entries, entries without an artifact ID, and entries without
+	 * a resolvable version are omitted. If the configured file cannot be
+	 * represented as an XML POM, the result is empty.
+	 *
+	 * @return the managed members keyed by artifact coordinates.
 	 */
 	@RequiresReadLock
 	public Map<ArtifactId, ArtifactVersion> readMembers() {

@@ -24,9 +24,13 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.PackageIdentity;
 
 /**
- * The outcome of a bulk {@link CheckRequest}: for each {@link PackageIdentity
- * package} a source could check, the {@link Vulnerabilities vulnerabilities} it
- * produced per version.
+ * Outcome of a bulk {@link CheckRequest}, containing the checked
+ * {@link Vulnerabilities} per package and version.
+ *
+ * <p>Only versions for which a source returned a known result are considered
+ * checked. A missing package or version reads as
+ * {@link Vulnerabilities#absent() absent}, which is distinct from an explicitly
+ * clean result.
  *
  * @author Mark Paluch
  * @see VulnerabilitySource
@@ -43,7 +47,7 @@ public class CheckResult {
 	}
 
 	/**
-	 * Return the result for a request that checked nothing.
+	 * Return a result containing no checked version.
 	 *
 	 * @return the empty result.
 	 */
@@ -52,15 +56,13 @@ public class CheckResult {
 	}
 
 	/**
-	 * Return a result over the given per-package vulnerabilities.
+	 * Create a result from vulnerabilities grouped by package and version.
 	 *
 	 * <p>The package map is copied, while per-version maps are retained as the
 	 * result state.
 	 *
-	 * @param vulnerabilities the vulnerabilities per version, per package and must
-	 * hold only real results that are not {@link Vulnerabilities#isUnknown()
-	 * absent}.
-	 * @return the result; {@link #empty()} when the map is empty.
+	 * @param vulnerabilities the vulnerabilities per version and package.
+	 * @return the result, or {@link #empty()} when the map is empty.
 	 */
 	public static CheckResult of(Map<PackageIdentity, Map<ArtifactVersion, Vulnerabilities>> vulnerabilities) {
 
@@ -73,9 +75,10 @@ public class CheckResult {
 	}
 
 	/**
-	 * Return whether no package was checked.
+	 * Return whether the result contains no known package-version result.
 	 *
-	 * @return {@literal true} if nothing was checked; {@literal false} otherwise.
+	 * @return {@literal true} if every entry is absent or no entry exists;
+	 * {@literal false} otherwise.
 	 */
 	public boolean isEmpty() {
 
@@ -110,7 +113,7 @@ public class CheckResult {
 	 * Apply the given action to each checked package and its per-version
 	 * vulnerabilities.
 	 *
-	 * @param consumer the action to apply to each package.
+	 * @param consumer the action to apply to each package and its version results.
 	 */
 	public void forEach(BiConsumer<PackageIdentity, Map<ArtifactVersion, Vulnerabilities>> consumer) {
 		vulnerabilities.forEach(consumer);

@@ -25,10 +25,10 @@ import org.jspecify.annotations.Nullable;
  * reaction: reload the visible row set, refresh a single row, or refresh every
  * row in place.
  *
+ * @author Mark Paluch
  * @param candidate the single row to refresh, or {@literal null} when the
  * change is a reload or spans all rows.
  * @param reload whether the visible candidate set must be reloaded.
- * @author Mark Paluch
  */
 record ReviewChange(@Nullable TableRow candidate, boolean reload) {
 
@@ -38,6 +38,8 @@ record ReviewChange(@Nullable TableRow candidate, boolean reload) {
 
 	/**
 	 * The visible candidate set changed and must be reloaded.
+	 *
+	 * @return the shared reload change.
 	 */
 	static ReviewChange reloadVisible() {
 		return RELOAD_VISIBLE;
@@ -45,6 +47,9 @@ record ReviewChange(@Nullable TableRow candidate, boolean reload) {
 
 	/**
 	 * A single candidate's selection changed; refresh its row.
+	 *
+	 * @param candidate the row to refresh.
+	 * @return a row-scoped change.
 	 */
 	static ReviewChange row(TableRow candidate) {
 		return new ReviewChange(candidate, false);
@@ -52,6 +57,8 @@ record ReviewChange(@Nullable TableRow candidate, boolean reload) {
 
 	/**
 	 * Selections changed across many rows; refresh all rows without reloading.
+	 *
+	 * @return the shared all-rows change.
 	 */
 	static ReviewChange allRows() {
 		return ALL_ROWS;

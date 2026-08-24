@@ -26,15 +26,13 @@ import com.intellij.psi.util.PsiTreeUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Shared helpers that translate an NPM dependency PSI element into the text
- * range covered by its underlying {@link NpmVersionExpression} variant.
+ * Locates NPM dependency literals and their version-bearing text ranges.
  *
- * <p>
- * The IDE annotator and line marker compute their highlight using the
- * variant's own {@link NpmVersionExpression#replaceableRange(String)} so that
- * {@code Exact}, {@code Range}, {@code SimpleRange}, {@code Alias},
- * {@code Prefix}, and {@code Git} entries each expose the same sub-range that
- * the updater rewrites.
+ * <p>The IDE annotator and line marker use
+ * {@link NpmVersionExpression#replaceableRange(String)} for highlighting.
+ * Updatable variants expose the same sub-range to
+ * {@link UpdatePackageJsonFile}; prefix ranges are highlighted but not updated
+ * by that writer.
  *
  * @author Mark Paluch
  */
@@ -48,6 +46,10 @@ class NpmPsiUtils {
 	 * the NPM dependency value containing the given element. Returns the element's
 	 * own range when no enclosing dependency value can be located, so the IDE
 	 * extensions degrade gracefully outside dependency contexts.
+	 *
+	 * @param element the PSI element at or within a dependency value.
+	 * @return the version-bearing range, or a fallback PSI range when no supported
+	 * expression is found.
 	 */
 	static TextRange getVersionRange(PsiElement element) {
 
@@ -69,9 +71,10 @@ class NpmPsiUtils {
 	}
 
 	/**
-	 * Return whether the given JSON string literal is properly terminated with an
-	 * unescaped double-quote character. An unterminated literal arises when the
-	 * user is mid-typing and the parser has not yet observed the closing quote.
+	 * Return whether the given JSON string literal ends with a double quote that is
+	 * not immediately preceded by a backslash. An unterminated literal arises when
+	 * the user is mid-typing and the parser has not yet observed the closing quote.
+	 *
 	 * @param literal the literal to inspect.
 	 * @return {@literal true} if the literal text ends with an unescaped {@code "};
 	 * {@literal false} otherwise.

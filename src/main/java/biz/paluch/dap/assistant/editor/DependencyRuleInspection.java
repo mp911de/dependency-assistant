@@ -47,11 +47,11 @@ import com.intellij.psi.PsiFile;
  * {@link LocalInspectionTool} that flags {@link DependencyRule} violations.
  *
  * <p>The governing rule is resolved through {@link DependencyfileService}. The
- * inspection is advisory and warning-only: it stays silent for artifacts that
- * no rule governs and produces nothing when the project has no
- * {@code dependencyfile.json} descriptor. When the release cache holds a
- * version matching the governing generation, it offers a batchable quick fix
- * that realigns the declaration to the newest compliant release.
+ * inspection stays silent for artifacts that no rule governs and produces
+ * nothing when the project has no {@code dependencyfile.json} descriptor. When
+ * the release cache holds a version matching the governing generation, it
+ * offers a batchable quick fix that realigns the declaration to the newest
+ * compliant release.
  *
  * @author Mark Paluch
  */
@@ -119,7 +119,7 @@ public class DependencyRuleInspection extends LocalInspectionTool implements Ico
 	}
 
 	/**
-	 * Quick fix that realigns a drifting version literal to the newest cached
+	 * Quick fix that realigns a non-compliant version literal to the newest cached
 	 * release matching the governing generation.
 	 */
 	static class AlignGenerationQuickFix extends UpdateDependencyVersionQuickFix implements Iconable {

@@ -36,8 +36,14 @@ import kotlin.coroutines.Continuation;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Initialize Gradle extension point.
- * 
+ * Project activity that places Dependency Assistant's Groovy completion
+ * contributor before IntelliJ's Maven dependency completion contributor.
+ *
+ * <p>The IntelliJ contributor can stop subsequent completion processing, so
+ * ordering is adjusted in each materialized form of the completion extension
+ * point. This activity depends on IntelliJ extension-point internals and logs
+ * initialization failures instead of failing project startup.
+ *
  * @author Mark Paluch
  */
 public class GradleInitService implements ProjectActivity {
@@ -55,10 +61,6 @@ public class GradleInitService implements ProjectActivity {
 		return null;
 	}
 
-	/**
-	 * I AM THE ALPHA AND THE OMEGA OF GRADLE ☝️. LET THERE BE ORDER AMONGST
-	 * PLUGINS.
-	 */
 	private void ɑΩ() {
 
 		ExtensionPoint<CompletionContributorEP> point = CompletionContributor.EP.getPoint();
@@ -142,13 +144,6 @@ public class GradleInitService implements ProjectActivity {
 			this.myIndex = myIndex;
 		}
 
-		/**
-		 * Create a magic detector from the given collection.
-		 * @param collection
-		 * @param classNameExtractor
-		 * @return
-		 * @param <T>
-		 */
 		public static <T> MagicDetector from(Collection<T> collection, Function<T, String> classNameExtractor) {
 
 			int mavenIndex = -1;
@@ -179,9 +174,6 @@ public class GradleInitService implements ProjectActivity {
 			return mavenIndex != -1 && myIndex != -1 && mavenIndex < myIndex;
 		}
 
-		/**
-		 * Swap the elements at the given indices (from, to) if magic is required.
-		 */
 		public void swapIfNeeded(BiConsumer<Integer, Integer> consumer) {
 			if (requiresMagic()) {
 				consumer.accept(mavenIndex, myIndex);

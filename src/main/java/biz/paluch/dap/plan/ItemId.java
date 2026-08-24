@@ -23,7 +23,13 @@ import biz.paluch.dap.artifact.PackageSystem;
 import org.springframework.util.ObjectUtils;
 
 /**
- * Item identifier.
+ * Semantic identity of an Upgrade Plan item, derived from the unordered set of
+ * its member coordinates, package systems, current versions, and owning
+ * assistants.
+ *
+ * <p>The display name, target version, ticket, declaration structure, and
+ * implicit-member flag do not participate in identity.
+ *
  * @author Mark Paluch
  */
 class ItemId {

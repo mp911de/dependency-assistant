@@ -32,6 +32,8 @@ import org.springframework.util.MultiValueMap;
  * declared at.
  *
  * @author Mark Paluch
+ * @param version the effective current version shared by the members.
+ * @param members the agreeing candidates in bucket order.
  */
 record VersionAgreement(ArtifactVersion version, List<SingleTableRow> members) {
 

@@ -29,16 +29,17 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * Three-state result of a vulnerability indicator.
- * <p>The state is one of:
+ * Checked vulnerability result for one package version.
+ *
+ * <p>The result has three states:
  * <ul>
- * <li><em>absent</em> no vulnerability scan exists for the version. An unknown
- * result never renders as clean.</li>
- * <li><em>clean</em> no vulnerabilities were found.</li>
- * <li><em>vulnerable</em> one or more vulnerabilities were found.</li>
+ * <li><em>absent</em>: no source returned data for the version.</li>
+ * <li><em>clean</em>: the version was checked and no advisory was found.</li>
+ * <li><em>vulnerable</em>: the version was checked and at least one advisory
+ * was found.</li>
  * </ul>
- * Callers must distinguish absent from clean before acting; only {@link #get()}
- * on a non-absent result is contractually defined.
+ * Absent is intentionally distinct from clean. Only a non-absent result exposes
+ * an advisory collection through {@link #get()}.
  *
  * @author Mark Paluch
  */
@@ -52,6 +53,16 @@ public class Vulnerabilities implements Iterable<Vulnerability> {
 
 	private final @Nullable Vulnerability topVulnerability;
 
+	/**
+	 * Create a result backed by the given advisory collection.
+	 *
+	 * <p>A {@literal null} collection represents absent, an empty collection
+	 * represents clean, and a non-empty collection represents vulnerable. The
+	 * collection is retained and must not be mutated after construction.
+	 *
+	 * @param vulnerabilities the backing advisories, or {@literal null} for an
+	 * absent result.
+	 */
 	protected Vulnerabilities(@Nullable Collection<Vulnerability> vulnerabilities) {
 		this.vulnerabilities = vulnerabilities;
 		this.topVulnerability = vulnerabilities == null || vulnerabilities.isEmpty() ? null
@@ -70,7 +81,7 @@ public class Vulnerabilities implements Iterable<Vulnerability> {
 	}
 
 	/**
-	 * Return the result for a version with no vulnerability scan.
+	 * Return the result for a version for which no source returned data.
 	 *
 	 * @return the absent result.
 	 */
@@ -79,7 +90,7 @@ public class Vulnerabilities implements Iterable<Vulnerability> {
 	}
 
 	/**
-	 * Return the result for a scanned version with no vulnerabilities.
+	 * Return the result for a checked version with no vulnerabilities.
 	 *
 	 * @return the clean result.
 	 */
@@ -88,34 +99,38 @@ public class Vulnerabilities implements Iterable<Vulnerability> {
 	}
 
 	/**
-	 * Return the result for a scanned version, deriving clean from an empty list
-	 * and vulnerable otherwise.
+	 * Create a checked result from the given advisories.
 	 *
-	 * @param vulnerabilities the vulnerabilities found.
-	 * @return a clean result when the list is empty, a vulnerable result otherwise.
+	 * @param vulnerabilities the advisories found.
+	 * @return a clean result when none are supplied, or a vulnerable result
+	 * otherwise.
 	 */
 	public static Vulnerabilities of(Vulnerability... vulnerabilities) {
 		return of(List.of(vulnerabilities));
 	}
 
 	/**
-	 * Return the result for a scanned version, deriving clean from an empty list
-	 * and vulnerable otherwise.
+	 * Create a checked result from the given advisories.
 	 *
-	 * @param vulnerabilities the vulnerabilities found.
-	 * @return a clean result when the list is empty, a vulnerable result otherwise.
+	 * <p>The supplied collection is copied.
+	 *
+	 * @param vulnerabilities the advisories found.
+	 * @return a clean result when the collection is empty, or a vulnerable result
+	 * otherwise.
 	 */
 	public static Vulnerabilities of(Collection<Vulnerability> vulnerabilities) {
 		return vulnerabilities.isEmpty() ? CLEAN : new Vulnerabilities(List.copyOf(vulnerabilities));
 	}
 
 	/**
-	 * Adds all vulnerabilities in the given {@code Vulnerabilities} to a new
-	 * {@code Vulnerabilities} object if they're not already present (optional
-	 * operation). This operation effectively creates a <i>union</i> of the two
-	 * sets.
-	 * @param v the vulnerabilities to add.
-	 * @return the union vulnerabilities object.
+	 * Return the union of this result and the given result.
+	 *
+	 * <p>Duplicate advisory values are removed while preserving encounter order. An
+	 * absent result contributes no advisory, so the union is clean when neither
+	 * result contributes an advisory.
+	 *
+	 * @param v the result to combine with this result.
+	 * @return a new result containing the combined advisories.
 	 */
 	@CheckReturnValue
 	public Vulnerabilities addAll(Vulnerabilities v) {
@@ -155,9 +170,10 @@ public class Vulnerabilities implements Iterable<Vulnerability> {
 	}
 
 	/**
-	 * Return the known vulnerabilities.
+	 * Return the known vulnerabilities for a checked result.
 	 *
-	 * @return an empty list when clean, the found vulnerabilities when vulnerable.
+	 * @return an empty collection when clean, or the found vulnerabilities when
+	 * vulnerable. Callers must not modify the returned collection.
 	 * @throws IllegalStateException if the result is absent.
 	 */
 	public Collection<Vulnerability> get() {
@@ -178,6 +194,15 @@ public class Vulnerabilities implements Iterable<Vulnerability> {
 		return getTopVulnerability().getSeverity();
 	}
 
+	/**
+	 * Return the most severe known vulnerability.
+	 *
+	 * <p>When several advisories have the same severity rank, the first one in
+	 * encounter order is returned.
+	 *
+	 * @return the most severe vulnerability.
+	 * @throws IllegalStateException if the result is absent or clean.
+	 */
 	public Vulnerability getTopVulnerability() {
 		Assert.state(topVulnerability != null, "No vulnerabilities");
 		return topVulnerability;

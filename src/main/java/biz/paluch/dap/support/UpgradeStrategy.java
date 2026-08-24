@@ -28,16 +28,17 @@ import org.jetbrains.annotations.Nls;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Determines which release to select as the upgrade target from a list of
+ * Determines which release to select as the upgrade target from a collection of
  * available releases.
+ *
  * <p>Each constant represents a boundary within the version space.
  * {@link #select} filters the provided releases according to that boundary and
- * returns the best match, or {@literal null} if no suitable release exists.
- * <p>Note: The {@code options} list passed to {@link #select} must be sorted
- * newest-first.
+ * returns the best match, or {@literal null} if no suitable release exists. The
+ * {@code options} passed to {@link #select} must be sorted newest-first.
  *
  * @author Mark Paluch
  * @see Release
+ * @see Releases
  */
 public enum UpgradeStrategy {
 
@@ -155,8 +156,10 @@ public enum UpgradeStrategy {
 
 	/**
 	 * Select the newest preview release (RC, milestone) that is newer than
-	 * {@code current}. If the current version is a snapshot, select a non-snapshot
-	 * preview release.
+	 * {@code current}. If the current version is a snapshot, first select the
+	 * newest non-snapshot preview in the same major/minor line, without requiring
+	 * it to compare newer than the snapshot. If no such release exists, use the
+	 * normal newer-preview selection.
 	 * <p>Return {@literal null} when no qualifying preview release exists.
 	 */
 	PREVIEW {
@@ -240,6 +243,9 @@ public enum UpgradeStrategy {
 
 	/**
 	 * Return the localized display name of the given upgrade strategy.
+	 *
+	 * @param strategy the strategy to display.
+	 * @return the localized strategy name.
 	 */
 	public static @Nls String getDisplayName(UpgradeStrategy strategy) {
 		return MessageBundle.message("upgrade-strategy." + strategy.name());
@@ -255,8 +261,7 @@ public enum UpgradeStrategy {
 	 * to the current version's scheme.
 	 *
 	 * @param current the version currently in use.
-	 * @param options the available releases sorted newest-first; must not be
-	 * {@literal null}.
+	 * @param options the available releases sorted newest-first.
 	 * @return the selected release, or {@literal null} if no release satisfies this
 	 * strategy's criteria.
 	 */
@@ -303,6 +308,8 @@ public enum UpgradeStrategy {
 
 	/**
 	 * Return the localized display name of this upgrade strategy.
+	 *
+	 * @return the localized strategy name.
 	 */
 	public @Nls String getDisplayName() {
 		return MessageBundle.message("upgrade-strategy." + name());

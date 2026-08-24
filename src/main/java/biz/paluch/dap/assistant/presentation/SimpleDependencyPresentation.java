@@ -23,7 +23,8 @@ import biz.paluch.dap.metadata.ProjectName;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Default {@link DependencyPresentation} backed by plain values.
+ * Package-local immutable {@link DependencyPresentation} that snapshots
+ * package-system coordinate labels at construction time.
  *
  * @author Mark Paluch
  */

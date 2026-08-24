@@ -51,6 +51,11 @@ import org.jetbrains.yaml.psi.YAMLScalar;
  * workflow already uses an abbreviated SHA. Otherwise, the release version
  * string is inserted.
  *
+ * <p>Completion applies only after the {@code @} separator of a
+ * repository-backed {@code uses:} scalar. Insertion delegates to
+ * {@link UpdateGitHubWorkflowFile} so the existing quote and ref styles are
+ * preserved.
+ *
  * @author Mark Paluch
  */
 public class GitHubWorkflowCompletionContributor extends CompletionContributor implements DumbAware {

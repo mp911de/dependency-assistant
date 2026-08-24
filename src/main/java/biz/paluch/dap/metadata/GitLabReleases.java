@@ -67,15 +67,14 @@ import org.jspecify.annotations.Nullable;
  * <p>Tag entries without a release contribute a version with {@literal null}
  * date and the tag's commit SHA. Release entries whose tag is beyond the
  * fetched tag page fall back to the release's own commit SHA. Both fetches are
- * capped at one page of {@value #PAGE_SIZE} items, the API maximum.
+ * capped at one page of {@value #PAGE_SIZE} items. When one endpoint supplies
+ * data, an I/O failure from the other endpoint does not discard that data.
  *
  * <p>The project id is the URL-encoded full namespace path, preserving nested
  * group segments
  * ({@code gitlab-org%2Fsecurity-products%2Fanalyzers%2Fsemgrep}). Requests are
- * anonymous; public projects require no token and gitlab.com allows 500
- * unauthenticated requests per minute and IP. This adapter deliberately does
- * not depend on the {@code org.jetbrains.plugins.gitlab} plugin, which exposes
- * no tags or releases API.
+ * anonymous. This adapter does not depend on the
+ * {@code org.jetbrains.plugins.gitlab} plugin.
  *
  * @author Mark Paluch
  */
@@ -95,8 +94,8 @@ public class GitLabReleases implements ReleaseSource, TagSource {
 	/**
 	 * Create a release source for the given GitLab repository.
 	 *
-	 * @param repository the repository coordinates; the host selects the GitLab
-	 * instance, the owner path may contain nested group segments.
+	 * @param repository the repository coordinates. The host selects the GitLab
+	 * instance, and the owner path may contain nested group segments.
 	 */
 	public GitLabReleases(GitRepositoryMetadata repository) {
 		this.repository = repository;

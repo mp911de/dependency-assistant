@@ -37,7 +37,13 @@ import org.apache.http.HttpHeaders;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Downloads a wrapper artifact and computes its SHA-256 checksum.
+ * Downloads the artifact referenced by a Maven Wrapper URL and computes its
+ * lowercase SHA-256 digest.
+ *
+ * <p>The asynchronous operation uses a cancellable IntelliJ background task. It
+ * routes invalid URLs and download failures to the failure callback, while task
+ * cancellation, project disposal, and uncaught task failures invoke the
+ * canceled callback.
  *
  * @author Mark Paluch
  */
@@ -46,6 +52,20 @@ class WrapperChecksumDownloader {
 	private WrapperChecksumDownloader() {
 	}
 
+	/**
+	 * Queue a cancellable checksum download.
+	 *
+	 * <p>An invalid URI invokes {@code failure} immediately without queuing a task.
+	 * A queued task dispatches the callback corresponding to completion, failure,
+	 * cancellation, or project disposal.
+	 *
+	 * @param project the project that owns the background task.
+	 * @param url the artifact URL.
+	 * @param success callback receiving the lowercase SHA-256 digest.
+	 * @param failure callback receiving URL and download failures.
+	 * @param canceled callback for cancellation, disposal, or an uncaught task
+	 * failure.
+	 */
 	static void downloadAndComputeSha(Project project, String url, Consumer<String> success,
 			Consumer<IOException> failure, Runnable canceled) {
 
@@ -96,6 +116,14 @@ class WrapperChecksumDownloader {
 		}.queue();
 	}
 
+	/**
+	 * Download the artifact and compute its lowercase SHA-256 digest.
+	 *
+	 * @param uri the artifact URI.
+	 * @param indicator the progress and cancellation indicator.
+	 * @return the lowercase hexadecimal SHA-256 digest.
+	 * @throws IOException if the request or response stream fails.
+	 */
 	static String downloadAndComputeSha(URI uri, ProgressIndicator indicator) throws IOException {
 
 		return HttpRequests.request(uri.toASCIIString())

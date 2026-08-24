@@ -30,7 +30,7 @@ import org.jspecify.annotations.Nullable;
 /**
  * Support class base for platforms whose browsable URLs are fixed path
  * templates below a canonical repository base URL. A subclass implements
- * {@link Platform#detect} and returns a {@link SimpleRepositoryConnection};
+ * {@link Platform#detect} and returns a {@link SimpleRepositoryConnection}. The
  * repository handle and issue tracker are rendered here from the configured
  * path templates.
  *
@@ -51,13 +51,13 @@ abstract class PlatformSupport implements Platform {
 	private final @Nullable String issuesPath;
 
 	/**
-	 * @param hintToken lower-case token that must appear in a non-empty declared
-	 * hint for issue-tracker derivation; irrelevant when {@code issuesPath} is
+	 * @param hintToken lower-case token required in a non-empty declared hint for
+	 * issue-tracker derivation. The value is irrelevant when {@code issuesPath} is
 	 * {@literal null}.
 	 * @param releasesPath path below the base URL to the releases listing.
 	 * @param releaseNotesPath path below the base URL to which the encoded tag name
-	 * is appended; {@literal null} if the platform has no per-tag page.
-	 * @param issuesPath path below the base URL to the issue tracker;
+	 * is appended, or {@literal null} if the platform has no per-tag page.
+	 * @param issuesPath path below the base URL to the issue tracker, or
 	 * {@literal null} if no tracker is derived.
 	 */
 	PlatformSupport(@Nullable String hintToken, String releasesPath, @Nullable String releaseNotesPath,

@@ -23,9 +23,9 @@ package biz.paluch.dap.assistant.check;
  * <p>Profile and module scope are deliberately absent: coupling uses the stable
  * assistant id and bare property name only.
  *
+ * @author Mark Paluch
  * @param assistantId the stable dependency-assistant id.
  * @param property the bare version-property name.
- * @author Mark Paluch
  */
 public record VersionProperty(String assistantId, String property) {
 

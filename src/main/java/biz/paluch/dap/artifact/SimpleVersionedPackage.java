@@ -1,7 +1,7 @@
 package biz.paluch.dap.artifact;
 
 /**
- * Simple {@link VersionedArtifact} implementation.
+ * Simple {@link VersionedPackage} implementation.
  *
  * @author Mark Paluch
  */

@@ -73,7 +73,11 @@ class GradlePropertiesParser {
 	}
 
 	/**
-	 * Loads all properties from a {@code gradle.properties} PSI file into a map.
+	 * Parse a {@code gradle.properties} PSI file into properties retaining each
+	 * value PSI element.
+	 * @param file the file to parse.
+	 * @return the properties in declaration order, or an empty map when
+	 * {@code file} is not a properties file.
 	 */
 	public static Map<String, biz.paluch.dap.support.Property> parseGradleProperties(PsiFile file) {
 
@@ -95,10 +99,8 @@ class GradlePropertiesParser {
 	 * completion}, because the declarations a property backs usually live in a
 	 * different build file than the property itself.
 	 *
-	 * @param file the {@code gradle.properties} PSI file; must not be
-	 * {@literal null}.
-	 * @param collector the collector to populate in place; must not be
-	 * {@literal null}.
+	 * @param file the {@code gradle.properties} PSI file.
+	 * @param collector the collector to populate in place.
 	 */
 	public static void collectGradleProperties(PsiFile file, DependencyCollector collector) {
 
@@ -108,7 +110,10 @@ class GradlePropertiesParser {
 	}
 
 	/**
-	 * Loads all properties from a {@code gradle.properties} PSI file into a map.
+	 * Parse property names and values from a {@code gradle.properties} PSI file.
+	 * @param file the file to parse.
+	 * @return the properties in declaration order, or an empty map when
+	 * {@code file} is not a properties file.
 	 */
 	public static Map<String, String> getGradleProperties(PsiFile file) {
 

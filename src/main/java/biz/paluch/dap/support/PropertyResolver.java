@@ -25,10 +25,9 @@ import org.springframework.util.Assert;
 /**
  * Strategy interface for resolving build-time property values.
  *
- * <p>
- * A resolver may expose both the resolved string value and the
- * {@link PropertyValue} metadata that identifies its PSI declaration. Metadata
- * support is optional.
+ * <p>A resolver may expose both the logical string value and the
+ * {@link Property} binding that identifies its PSI declaration. Binding support
+ * is optional.
  *
  * @author Mark Paluch
  * @see PropertyValue
@@ -37,16 +36,21 @@ public interface PropertyResolver {
 
 	/**
 	 * Determine whether the given property key is available for resolution.
+	 *
 	 * @param key the property name to resolve.
+	 * @return {@literal true} if the key resolves to a value; {@literal false}
+	 * otherwise.
 	 */
 	default boolean containsProperty(String key) {
 		return getProperty(key) != null;
 	}
 
 	/**
-	 * Resolve the property value associated with the given key, or {@literal null} if
-	 * the key cannot be resolved.
+	 * Resolve the property value associated with the given key, or {@literal null}
+	 * if the key cannot be resolved.
+	 *
 	 * @param key the property name to resolve.
+	 * @return the property value, or {@literal null} if the key is absent.
 	 * @see #containsProperty(String)
 	 */
 	@Nullable
@@ -62,11 +66,15 @@ public interface PropertyResolver {
 	}
 
 	/**
-	 * Resolve {@code ${...}} placeholders in the given text, replacing them with
-	 * corresponding property values.
+	 * Resolve braced ({@code ${name}}) and unbraced ({@code $name}) placeholders in
+	 * the given text.
+	 *
+	 * <p>Resolution repeats to support property chains. Unknown placeholders,
+	 * cycles, and chains beyond the resolution limit remain in the returned text.
+	 *
 	 * @param text the String to resolve.
 	 * @return the resolved String.
-	 * @throws IllegalArgumentException if given text is {@literal null}.
+	 * @throws IllegalArgumentException if {@code text} is {@literal null}.
 	 */
 	default String resolvePlaceholders(String text) {
 		Assert.notNull(text, "Text must not be null");
@@ -75,8 +83,8 @@ public interface PropertyResolver {
 
 	/**
 	 * Compose this resolver with the given fallback resolver.
-	 * <p>
-	 * This resolver is consulted first for both {@link #getProperty(String)} and
+	 *
+	 * <p>This resolver is consulted first for both {@link #getProperty(String)} and
 	 * {@link #getPropertyValue(String)} lookups.
 	 * @param fallback the resolver to consult if this resolver has no match.
 	 * @return a composite resolver with this resolver as primary and
@@ -88,6 +96,8 @@ public interface PropertyResolver {
 
 	/**
 	 * Return an empty {@link PropertyResolver}.
+	 *
+	 * @return a resolver that contains no properties.
 	 */
 	static PropertyResolver empty() {
 		return key -> null;

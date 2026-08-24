@@ -46,8 +46,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * A collected dependency's complete upgrade picture: the dependency, its
  * release universe, governing rule, vulnerabilities, computed suggestions,
- * declared versions, and the assistant that can apply it, gathered in one
- * consistent release universe.
+ * declared versions, presentation, and associated build-tool integration,
+ * gathered in one consistent release universe.
  *
  * <p>The aggregate is the basis for an upgrade decision, not the decision
  * itself: it owns everything needed to offer and apply an upgrade, while the
@@ -55,9 +55,10 @@ import org.jspecify.annotations.Nullable;
  * resolved through the matching release view so callers cannot select a
  * suggestion whose release is no longer available.
  *
- * <p>An aggregate is created for one dependency check. Suggestions and display
- * views are computed during creation and retained with the supplied dependency,
- * rule, vulnerability repository, declared versions, and assistant.
+ * <p>The candidate is a transient snapshot created for dependency review or
+ * reconstructed from an Upgrade Plan. Suggestions and display views are
+ * computed during creation and retained with the supplied dependency, rule,
+ * vulnerability repository, declared versions, and assistant.
  *
  * @author Mark Paluch
  */
@@ -111,7 +112,16 @@ public class DependencyUpgradeCandidate implements HasArtifactId, HasPackageIden
 	}
 
 	/**
-	 * Create an upgrade governed by the given rule.
+	 * Create an upgrade candidate and compute its suggestions and display views.
+	 *
+	 * @param dependency the collected dependency to analyze.
+	 * @param assistant the build-tool integration associated with the dependency.
+	 * @param releases the known release universe.
+	 * @param vulnerabilities the vulnerability facts used for remediation.
+	 * @param rule the governing dependency rule.
+	 * @param presentation the user-facing dependency presentation.
+	 * @param declaredVersions the declaration-version and drift facts.
+	 * @return the computed upgrade candidate.
 	 */
 	public static DependencyUpgradeCandidate create(Dependency dependency,
 			DependencyAssistant assistant, Releases releases, VulnerabilityRepository vulnerabilities,
@@ -191,7 +201,8 @@ public class DependencyUpgradeCandidate implements HasArtifactId, HasPackageIden
 	}
 
 	/**
-	 * Return all known releases, including the current dependency version.
+	 * Return the supplied release universe with the current dependency version
+	 * included.
 	 *
 	 * @return the release universe used to compute suggestions.
 	 */

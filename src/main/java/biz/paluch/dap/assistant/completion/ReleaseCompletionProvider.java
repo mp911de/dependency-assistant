@@ -62,27 +62,35 @@ import com.intellij.util.ProcessingContext;
 import org.jspecify.annotations.Nullable;
 
 /**
- * {@link CompletionProvider} that turns resolved artifact metadata into release
- * lookup elements.
+ * {@link CompletionProvider} that resolves a dependency declaration and turns
+ * its cached release history into lookup elements.
  *
- * <p>The provider resolves the artifact at the completion position through the
- * active {@link ProjectDependencyContext}, reads cached releases from
- * {@link StateService}, and renders them as prioritized {@link ArtifactRelease}
- * lookup elements.
+ * <p>The provider resolves the original completion position when available and
+ * uses the original project file to locate the active
+ * {@link ProjectDependencyContext}. An absent declaration contributes nothing;
+ * an empty cached history contributes only a no-releases advertisement. It does
+ * not refresh metadata or contact release sources.
+ *
+ * <p>The first completion stage contributes curated {@link ReleaseProposals};
+ * repeated explicit invocation cycles to the full history. Both stages preserve
+ * the history's canonical order rather than platform relevance order. Candidate
+ * rows are rendered with release, rule, age, and vulnerability status.
  *
  * <p>Subclasses usually customize one of the protected hooks instead of
  * replacing the provider:
  * {@link #getPrefixMatcher(CompletionParameters, CompletionResultSet)} for
  * format-specific prefix handling,
  * {@link #postProcess(CompletionParameters, LookupElementBuilder, PsiElement, ArtifactRelease)}
- * for insert handlers, and {@link #getRefStyle(PsiElement)} for tag-vs-SHA
- * insertion.
+ * for insert handlers, {@link #getRefStyle(PsiElement)} for version or SHA
+ * insertion, and {@link #afterCompletion(CompletionResultSet, List)} for result
+ * ownership. The overloads accepting {@link ProcessingContext} support
+ * synchronous coordination of invocation-specific state. The context must not
+ * be retained.
  *
- * <p>This provider does not decide completion locations, refresh release
- * metadata, or contact remote repositories. Register it from a
+ * <p>This provider does not decide completion locations. Register it from a
  * {@code CompletionContributor} at PSI positions that can be resolved by the
- * current dependency context. The default implementation is stateless and can
- * be reused between contributors.
+ * current dependency context. It retains no PSI or request-specific state and
+ * can be reused between contributors.
  *
  * @author Mark Paluch
  * @see ArtifactReleaseRenderer
@@ -172,6 +180,15 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 		afterCompletion(versionsResult, elements);
 	}
 
+	/**
+	 * Publish the prepared lookup elements after release processing completes.
+	 *
+	 * <p>The default adds every element to {@code result}. An override that does
+	 * not delegate must publish the elements itself.
+	 *
+	 * @param result the result set configured with release ordering.
+	 * @param elements the prepared lookup elements in canonical release order.
+	 */
 	protected void afterCompletion(CompletionResultSet result, List<LookupElement> elements) {
 		result.addAllElements(elements);
 	}
@@ -277,8 +294,9 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	 * SHA references can return {@link RefStyle#SHA}; in that case Git-backed
 	 * releases with SHA metadata insert the SHA while keeping version lookup
 	 * strings available for matching.
+	 *
 	 * @param element the PSI element used to resolve the artifact reference.
-	 * @return the reference style to use; guaranteed to be not {@literal null}.
+	 * @return the reference style to use for insertion.
 	 */
 	protected RefStyle getRefStyle(PsiElement element) {
 		return RefStyle.VERSION;
@@ -288,9 +306,11 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	 * Customize the lookup element for a release option.
 	 *
 	 * <p>The builder already has the release renderer, lookup strings, and default
-	 * replacement handler applied. Override to add format-specific insert handling
-	 * or lookup metadata while preserving the supplied builder's existing behavior.
-	 * The default returns {@code builder} unchanged.
+	 * replacement handler applied when the declaration exposes a version literal.
+	 * An override may replace that handler when it owns the complete
+	 * format-specific insertion, or add lookup metadata while preserving the
+	 * existing behavior. The default returns {@code builder} unchanged.
+	 *
 	 * @param parameters the IntelliJ completion parameters.
 	 * @param builder the lookup element builder prepared by this provider.
 	 * @param element the PSI element used to resolve the artifact reference.
@@ -308,8 +328,10 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	 *
 	 * <p>The default implementation delegates to
 	 * {@link #postProcess(CompletionParameters, LookupElementBuilder, PsiElement, ArtifactRelease)}.
-	 * State stored in {@code context} is available only during the synchronous
-	 * provider invocation and must not be retained.
+	 * The {@code context} is available only during the synchronous provider
+	 * invocation and must not be retained. Values needed by an insert handler must
+	 * be captured separately.
+	 *
 	 * @param parameters the IntelliJ completion parameters.
 	 * @param context the processing context for the current provider invocation.
 	 * @param builder the lookup element builder prepared by this provider.
@@ -331,6 +353,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	 * {@link #getPrefix(CompletionParameters)}. Contributors with larger
 	 * surrounding syntaxes, such as URLs or dependency notations, can override this
 	 * method to calculate the prefix from a format-specific version range.
+	 *
 	 * @param parameters the IntelliJ completion parameters.
 	 * @param result the original completion result set.
 	 * @return the result set to receive release lookup elements.
@@ -345,9 +368,10 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	 * invocation.
 	 *
 	 * <p>The default implementation delegates to
-	 * {@link #getPrefixMatcher(CompletionParameters, CompletionResultSet)}. State
-	 * stored in {@code context} is available only during the synchronous provider
-	 * invocation and must not be retained.
+	 * {@link #getPrefixMatcher(CompletionParameters, CompletionResultSet)}. The
+	 * {@code context} is available only during the synchronous provider invocation
+	 * and must not be retained.
+	 *
 	 * @param parameters the IntelliJ completion parameters.
 	 * @param context the processing context for the current provider invocation.
 	 * @param result the original completion result set.
@@ -366,6 +390,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	 * explicit invocation show the curated proposals, every second explicit
 	 * invocation shows the full history, and one more invocation returns to the
 	 * proposals.
+	 *
 	 * @param parameters the IntelliJ completion parameters.
 	 * @return {@literal true} if this invocation shows the full history;
 	 * {@literal false} if it shows the curated proposals.
@@ -379,6 +404,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	/**
 	 * Return whether the {@code typedChar} is a typical version character such as a
 	 * letter, digit or dot.
+	 *
 	 * @param typedChar the character to check.
 	 * @return {@literal true} if the character should trigger release completion;
 	 * {@literal false} otherwise.
@@ -390,6 +416,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	/**
 	 * Return whether {@code c} can be part of a version token. Version tokens may
 	 * contain letters, digits, dots, hyphens, underscores, and plus signs.
+	 *
 	 * @param c the character to check.
 	 * @return {@literal true} if the character belongs to a version token;
 	 * {@literal false} otherwise.
@@ -404,6 +431,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	 * <p>The original position is preferred when IntelliJ has inserted completion
 	 * placeholder PSI. If no original position is available, the live completion
 	 * position is used.
+	 *
 	 * @param parameters the IntelliJ completion parameters.
 	 * @return the version-token prefix before the caret.
 	 */
@@ -424,6 +452,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	 * <p>Version tokens may contain letters, digits, dots, hyphens, underscores,
 	 * and plus signs. The returned prefix is the contiguous token fragment between
 	 * the token start and the caret offset.
+	 *
 	 * @param parameters the IntelliJ completion parameters.
 	 * @param literal the PSI element whose text contains the version token.
 	 * @return the version-token prefix before the caret.
@@ -442,10 +471,24 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 		return text.substring(start, caretInScalar);
 	}
 
+	/**
+	 * Default insert handler that replaces the manipulator value of a captured
+	 * version literal.
+	 *
+	 * <p>The literal is held through a smart pointer and resolved at insertion
+	 * time. An invalid pointer or missing element manipulator results in no
+	 * replacement. A successful replacement moves both the caret and completion
+	 * tail to the end of the new version text.
+	 */
 	public static class LookupElementInsertHandler implements InsertHandler<LookupElement> {
 
 		private final SmartPsiElementPointer<PsiElement> pointer;
 
+		/**
+		 * Create an insert handler for the given version literal.
+		 *
+		 * @param pointer the version literal whose manipulator value is replaced.
+		 */
 		public LookupElementInsertHandler(PsiElement pointer) {
 			this.pointer = SmartPointerManager.createPointer(pointer);
 		}
@@ -472,6 +515,9 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 		 * Move the caret and completion tail to {@code offset} after an insert handler
 		 * rewrote the completed declaration, so completion always ends at the applied
 		 * version text.
+		 *
+		 * @param context the insertion context whose caret and tail are updated.
+		 * @param offset the file-absolute destination offset.
 		 */
 		public static void moveCaretTo(InsertionContext context, int offset) {
 

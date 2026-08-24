@@ -24,11 +24,12 @@ import java.util.List;
 /**
  * Mutable criteria object for ticket search.
  *
- * Criteria combine as AND, values within one criterion combine as OR, and an
+ * <p>Criteria combine as AND, values within one criterion combine as OR, and an
  * empty criterion is unconstrained. Titles match exactly.
  *
- * <p>A query is not thread-safe and should not be retained after the search
- * callback returns.
+ * <p>The repository creates a fresh query for each search and consumes it after
+ * invoking the search callback. A query is not thread-safe and should not be
+ * retained after the callback returns.
  *
  * @author Mark Paluch
  */
@@ -137,7 +138,7 @@ public class TicketQuery {
 	/**
 	 * Return the configured exact-title values.
 	 *
-	 * @return the live exact-title list; empty if unconstrained.
+	 * @return the live exact-title list. An empty list leaves title unconstrained.
 	 */
 	public List<String> getTitles() {
 		return titles;
@@ -146,7 +147,7 @@ public class TicketQuery {
 	/**
 	 * Return the configured states to match.
 	 *
-	 * @return the live state list; empty if unconstrained.
+	 * @return the live state list. An empty list leaves state unconstrained.
 	 */
 	public List<TicketState> getStates() {
 		return states;
@@ -155,7 +156,8 @@ public class TicketQuery {
 	/**
 	 * Return the configured milestones to match.
 	 *
-	 * @return the live milestone list; empty if unconstrained.
+	 * @return the live milestone list. An empty list leaves milestone
+	 * unconstrained.
 	 */
 	public List<Milestone> getMilestones() {
 		return milestones;
@@ -164,7 +166,7 @@ public class TicketQuery {
 	/**
 	 * Return the configured labels to match.
 	 *
-	 * @return the live label list; empty if unconstrained.
+	 * @return the live label list. An empty list leaves label unconstrained.
 	 */
 	public List<Label> getLabels() {
 		return labels;

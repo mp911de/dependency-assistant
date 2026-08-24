@@ -50,9 +50,14 @@ import org.springframework.util.ObjectUtils;
  * registry at {@code https://registry.npmjs.org/}.
  *
  * <p>The registry document also carries the package's {@code repository} and
- * {@code bugs} declarations; the fetch captures them as {@link CachedMetadata}
+ * {@code bugs} declarations. The fetch captures them as {@link CachedMetadata}
  * on the returned {@link NpmReleases} so the cache-write path can store them
  * without a second request.
+ *
+ * <p>When GitHub support is available, Git-backed artifact identities are
+ * outside this source and yield no releases. The strict
+ * {@link biz.paluch.dap.github.GitHubReleaseSourceRouter} in
+ * {@link NpmProjectContext} owns those lookups instead.
  *
  * @author Mark Paluch
  */
@@ -84,6 +89,17 @@ public class NpmRegistry implements ReleaseSource {
 		return "NpmRegistry[%s]".formatted(uri.getHost());
 	}
 
+	/**
+	 * Fetch the NPM Registry Package Document for the given artifact and parse its
+	 * versions and project metadata.
+	 *
+	 * @param artifactId the normalized NPM package coordinate.
+	 * @param indicator the progress indicator used to honor cancellation.
+	 * @return the parsed releases, or an empty sequence when this source does not
+	 * own the artifact or the registry response is unusable.
+	 * @throws ArtifactNotFoundException if the registry returns HTTP 404.
+	 * @throws IOException if the registry document cannot be fetched or parsed.
+	 */
 	@Override
 	public Sequence<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException {
 
@@ -110,8 +126,11 @@ public class NpmRegistry implements ReleaseSource {
 	/**
 	 * Encode a validated NPM package name for inclusion in the registry URL path.
 	 * The leading {@code @} of a scoped name is percent-encoded, and the scope/name
-	 * separator slash is preserved; all other characters in the name allowlist are
+	 * separator slash is preserved. All other characters in the name allowlist are
 	 * URL-safe.
+	 *
+	 * @param packageName the validated package name.
+	 * @return the registry path representation of the package name.
 	 */
 	protected static String encodePackageName(String packageName) {
 
@@ -166,13 +185,15 @@ public class NpmRegistry implements ReleaseSource {
 	}
 
 	/**
-	 * Capture {@link CachedMetadata} from the packument's {@code repository} and
-	 * {@code bugs} fields, reading the {@code dist-tags.latest} version document
-	 * first and falling back to the top-level hoisted copies.
+	 * Capture {@link CachedMetadata} from the NPM Registry Package Document's
+	 * {@code repository} and {@code bugs} fields, reading the
+	 * {@code dist-tags.latest} version document first and falling back to the
+	 * top-level hoisted copies.
+	 *
 	 * <p>A repository candidate is selected only when it parses through
-	 * {@link RepositoryUrl#parse(String)}; a tracker candidate only when it is a
-	 * valid absolute http/https URL. Unusable candidates count as absent, so the
-	 * result can be the nothing-found marker.
+	 * {@link RepositoryUrl#parse(String)}. A tracker candidate is selected only
+	 * when it is a valid absolute http/https URL. Unusable candidates count as
+	 * absent, so the result can be the nothing-found marker.
 	 */
 	private static CachedMetadata getProjectMetadata(JsonNode root) {
 

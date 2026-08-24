@@ -20,11 +20,11 @@ import com.intellij.util.xmlb.annotations.Attribute;
 import com.intellij.util.xmlb.annotations.Tag;
 
 /**
- * Persistent root state for the Dependency Assistant plugin.
- * <p>
- * The type currently persists a single {@link Cache} instance and
- * intentionally keeps the model minimal so that service-level runtime state
- * remains outside the serialized contract.
+ * Persistent root state for the project-scoped Dependency Assistant service.
+ *
+ * <p>The state contains the durable {@link Cache} and the marker recording
+ * whether Dependency Assistant has been used actively. Runtime dependency
+ * collectors remain owned by {@link StateService} and are not serialized.
  *
  * @author Mark Paluch
  */
