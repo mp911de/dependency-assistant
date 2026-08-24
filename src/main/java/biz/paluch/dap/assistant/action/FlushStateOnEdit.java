@@ -17,57 +17,75 @@
 package biz.paluch.dap.assistant.action;
 
 import biz.paluch.dap.DependencyAssistantDispatcher;
+import com.intellij.openapi.editor.Document;
+import com.intellij.openapi.editor.EditorFactory;
+import com.intellij.openapi.editor.event.BulkAwareDocumentListener;
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiTreeChangeAdapter;
-import com.intellij.psi.PsiTreeChangeEvent;
-import org.jetbrains.annotations.NotNull;
 
 /**
- * PSI change listener that schedules a {@link StateRefresher} pass for changes
- * to physical build files recognized by a dependency integration.
+ * Document listener that schedules a {@link StateRefresher} pass for edits to
+ * physical build files recognized by a dependency integration.
  *
- * <p>Changes without an owning physical file are ignored.
+ * <p>The listener observes every document change through the
+ * {@link EditorFactory#getEventMulticaster() editor event multicaster} and
+ * resolves only PSI already cached for its project, so documents of other
+ * projects and files without loaded PSI are ignored. Bulk updates report a
+ * single change once finished. Each change re-arms the refresher's quiet-period
+ * timer, so a burst of keystrokes and the auto-save that follows collapse into
+ * one re-collection.
+ *
+ * <p>Filtering runs inside the write action that changed the document and is
+ * limited to cached-PSI lookup and file-type recognition. Ownership resolution
+ * happens later in the refresher.
  *
  * @author Mark Paluch
- * @see FlushStateOnSave
+ * @see StateRefresher
  */
-public class FlushStateOnEdit extends PsiTreeChangeAdapter {
+public class FlushStateOnEdit implements BulkAwareDocumentListener.Simple {
 
-	@Override
-	public void childAdded(@NotNull PsiTreeChangeEvent event) {
-		refreshOwningState(event);
+	private final Project project;
+
+	private final PsiDocumentManager documentManager;
+
+	private final StateRefresher stateRefresher;
+
+	FlushStateOnEdit(Project project) {
+		this.project = project;
+		this.documentManager = PsiDocumentManager.getInstance(project);
+		this.stateRefresher = StateRefresher.getInstance(project);
+	}
+
+	/**
+	 * Register an edit listener for the given project.
+	 *
+	 * <p>The listener lives as long as the project's {@link StateRefresher} and is
+	 * removed when the service is disposed.
+	 *
+	 * @param project the project to observe.
+	 */
+	public static void install(Project project) {
+
+		FlushStateOnEdit listener = new FlushStateOnEdit(project);
+		EditorFactory.getInstance().getEventMulticaster()
+				.addDocumentListener(listener, listener.getStateRefresher());
+	}
+
+	StateRefresher getStateRefresher() {
+		return stateRefresher;
 	}
 
 	@Override
-	public void childRemoved(@NotNull PsiTreeChangeEvent event) {
-		refreshOwningState(event);
-	}
+	public void afterDocumentChange(Document document) {
 
-	@Override
-	public void childReplaced(@NotNull PsiTreeChangeEvent event) {
-		refreshOwningState(event);
-	}
+		if (project.isDisposed()) {
+			return;
+		}
 
-	@Override
-	public void childrenChanged(@NotNull PsiTreeChangeEvent event) {
-		refreshOwningState(event);
-	}
-
-	@Override
-	public void childMoved(@NotNull PsiTreeChangeEvent event) {
-		refreshOwningState(event);
-	}
-
-	@Override
-	public void propertyChanged(@NotNull PsiTreeChangeEvent event) {
-		refreshOwningState(event);
-	}
-
-	private static void refreshOwningState(PsiTreeChangeEvent event) {
-
-		PsiFile file = event.getFile();
-		if (file == null || !file.isPhysical() || !DependencyAssistantDispatcher.contextSupports(file)) {
+		PsiFile file = documentManager.getCachedPsiFile(document);
+		if (file == null || !file.isPhysical() || !DependencyAssistantDispatcher.supports(file)) {
 			return;
 		}
 
@@ -76,7 +94,7 @@ public class FlushStateOnEdit extends PsiTreeChangeAdapter {
 			return;
 		}
 
-		StateRefresher.getInstance(file.getProject()).refresh(virtualFile);
+		stateRefresher.refresh(virtualFile);
 	}
 
 }

@@ -281,13 +281,12 @@ public class DependencyfileService implements Disposable, DependencyRuleService 
 					&& VirtualFile.PROP_NAME.equals(propertyChange.getPropertyName())) {
 
 				VirtualFile parent = propertyChange.getFile().getParent();
-				return parent != null
-						&& this.descriptorDirectories.contains(normalize(parent.getPath()))
+				return parent != null && this.descriptorDirectories.contains(normalize(Path.of(parent.getPath())))
 						&& (FILE_NAME.equals(propertyChange.getOldValue())
 								|| FILE_NAME.equals(propertyChange.getNewValue()));
 			}
 
-			return this.descriptorPaths.contains(normalize(event.getPath()));
+			return this.descriptorPaths.contains(normalize(Path.of(event.getPath())));
 		}
 
 		private static Set<Path> descriptorPaths(Path projectRoot) {
@@ -305,10 +304,6 @@ public class DependencyfileService implements Disposable, DependencyRuleService 
 		private static @Nullable Path projectRoot(Project project) {
 			String basePath = project.getBasePath();
 			return (basePath != null ? normalize(Path.of(basePath)) : null);
-		}
-
-		private static Path normalize(String path) {
-			return normalize(Path.of(path));
 		}
 
 		private static Path normalize(Path path) {

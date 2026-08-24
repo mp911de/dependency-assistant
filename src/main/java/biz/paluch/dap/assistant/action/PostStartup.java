@@ -49,8 +49,9 @@ import kotlin.coroutines.Continuation;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Project startup activity that waits for smart mode and queues initial
- * dependency-state population for each applicable integration.
+ * Project startup activity that installs the {@link FlushStateOnEdit edit
+ * listener}, then waits for smart mode and queues initial dependency-state
+ * population for each applicable integration.
  *
  * <p>The background pass prepares and indexes the integrations, resolves Bill
  * of Materials membership, and restarts highlighting. Outside power-save mode
@@ -67,6 +68,8 @@ public class PostStartup implements ProjectActivity {
 
 	@Override
 	public @Nullable Object execute(Project project, Continuation<? super Unit> continuation) {
+
+		FlushStateOnEdit.install(project);
 
 		DumbService.getInstance(project).runWhenSmart(() -> {
 

@@ -56,7 +56,6 @@ import org.jspecify.annotations.Nullable;
  * least one supported file.
  *
  * @author Mark Paluch
- * @see FlushStateOnSave
  * @see FlushStateOnEdit
  */
 @Service(Service.Level.PROJECT)
