@@ -67,7 +67,7 @@ public class FlushStateOnEdit extends PsiTreeChangeAdapter {
 	private static void refreshOwningState(PsiTreeChangeEvent event) {
 
 		PsiFile file = event.getFile();
-		if (file == null || !file.isPhysical() || !DependencyAssistantDispatcher.supports(file)) {
+		if (file == null || !file.isPhysical() || !DependencyAssistantDispatcher.contextSupports(file)) {
 			return;
 		}
 

@@ -215,7 +215,10 @@ public final class StateRefresher implements Disposable {
 			return;
 		}
 
-		DaemonCodeAnalyzer.getInstance(project).restart();
+		DaemonCodeAnalyzer analyzer = DaemonCodeAnalyzer.getInstance(project);
+		for (VirtualFile virtualFile : refreshed) {
+			psiManager.doWithFile(virtualFile, analyzer::restart);
+		}
 	}
 
 	private static void cancelScheduled(@Nullable ScheduledFuture<?> scheduled) {
