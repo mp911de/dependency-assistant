@@ -33,9 +33,6 @@ import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.GitRef;
-import biz.paluch.dap.artifact.GitVersion;
-import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.assistant.ArtifactReferenceContext;
@@ -168,9 +165,12 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool implem
 				String versions = declaredVersions.stream().map(Object::toString)
 						.collect(Collectors.joining(", "));
 
+				String coordinates = context.getPackageSystem()
+						.getCoordinates(declaration.getArtifactId());
+
 				String message = MessageBundle.message(declarationDrift
 						? "inspection.version-drift.version-and-declaration.problem"
-						: "inspection.version-drift.problem", declaration.getArtifactId(), versions);
+						: "inspection.version-drift.problem", coordinates, versions);
 
 				List<LocalQuickFix> fixes = new ArrayList<>();
 				if (!highest.equals(currentVersion)) {
@@ -186,17 +186,6 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool implem
 			}
 
 		};
-	}
-
-	private static ArtifactVersion resolveGitRef(ArtifactVersion version, Releases releases) {
-
-		if (version instanceof GitRef gitRef) {
-			GitVersion gitVersion = GitVersionResolver.resolveVersion(gitRef.getRef(), releases);
-			if (gitVersion != null) {
-				return gitVersion;
-			}
-		}
-		return version;
 	}
 
 	private static boolean hasDeclarationDrift(Iterable<VersionSource> versionSources) {
