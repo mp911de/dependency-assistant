@@ -51,7 +51,7 @@ jobs:
           fi
 
           if [[ "$tag" =~ -(M|RC) ]]; then
-            channel="eap"
+            channel="default"
           else
             channel="default"
           fi
