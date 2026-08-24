@@ -11,6 +11,9 @@ concurrency:
 permissions:
   contents: read
   actions: write
+  id-token: write
+  attestations: write
+  artifact-metadata: write
 
 jobs:
   build:
@@ -45,6 +48,11 @@ jobs:
           path: 'build/distributions/*.zip'
           retention-days: 15
           archive: 'false'
+
+      - name: Generate artifact attestation
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: 'build/distributions/'
 
       - name: Capture Build Reports
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
