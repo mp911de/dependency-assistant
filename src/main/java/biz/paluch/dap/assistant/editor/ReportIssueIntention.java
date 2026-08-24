@@ -65,8 +65,8 @@ public class ReportIssueIntention extends BaseIntentionAction implements Priorit
 			return false;
 		}
 
-		setText(MessageBundle.message("intention.ReportIssue.text", context.getPresentation()
-				.getDisplayName()));
+		setText(MessageBundle.message("intention.ReportIssue.text",
+				PresentationUtil.getDependencyName(context.getPresentation())));
 		return true;
 	}
 
