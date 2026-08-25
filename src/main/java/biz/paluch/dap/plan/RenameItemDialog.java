@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.plan;
 
+import java.awt.Dimension;
 import java.util.Collection;
 
 import javax.swing.JComponent;
@@ -46,12 +47,11 @@ import org.jspecify.annotations.Nullable;
  * {@link #isRememberName()} and {@link #isUpdateDependencyfile()}; the handler
  * preselects them from the persisted preferences and acts on the answers.
  *
- * <p>The dialog knows nothing about plan items, the service, the hint store, or
- * the metadata cache; it edits a name and two flags and nothing else.
- *
  * @author Mark Paluch
  */
 class RenameItemDialog extends DialogWrapper {
+
+	private static final int MIN_CONTENT_WIDTH = 520;
 
 	private final String currentName;
 
@@ -138,10 +138,6 @@ class RenameItemDialog extends DialogWrapper {
 		return updateDependencyfile.isEnabled() && updateDependencyfile.isSelected();
 	}
 
-	/**
-	 * Form layout: the name field grows horizontally with the dialog but keeps its
-	 * preferred height; the choices sit below it.
-	 */
 	@Override
 	protected JComponent createCenterPanel() {
 
@@ -154,7 +150,11 @@ class RenameItemDialog extends DialogWrapper {
 				.addComponent(rememberName)
 				.addComponent(updateDependencyfile)
 				.getPanel();
-		return JBUI.Panels.simplePanel().addToTop(form);
+		JComponent panel = JBUI.Panels.simplePanel().addToTop(form);
+		Dimension preferred = panel.getPreferredSize();
+		panel.setPreferredSize(new Dimension(Math.max(preferred.width, JBUI.scale(MIN_CONTENT_WIDTH)),
+				preferred.height));
+		return panel;
 	}
 
 	@Override

@@ -159,6 +159,10 @@ class GroupRow extends TableRow {
 		if (presentation.hasDependencyName()) {
 			return presentation.getDependencyName();
 		}
+		ProjectName projectName = presentation.getProjectName();
+		if (projectName.hasDisplayName()) {
+			return projectName.getDisplayName();
+		}
 		return getName();
 	}
 
