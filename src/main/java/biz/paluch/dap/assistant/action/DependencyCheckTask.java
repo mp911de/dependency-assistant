@@ -16,8 +16,11 @@
 
 package biz.paluch.dap.assistant.action;
 
+import java.util.Collection;
 import java.util.List;
 
+import biz.paluch.dap.DependencyAssistant;
+import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.assistant.Notifications;
 import biz.paluch.dap.assistant.check.DependencyCheck;
@@ -25,11 +28,13 @@ import biz.paluch.dap.assistant.check.DependencyCheckResult;
 import biz.paluch.dap.assistant.check.UpgradeScope;
 import biz.paluch.dap.assistant.review.DependencyCheckDialog;
 import biz.paluch.dap.util.MessageBundle;
+import com.intellij.ide.nls.NlsMessages;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.vfs.VirtualFile;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -92,12 +97,12 @@ public class DependencyCheckTask extends Task.Backgroundable {
 
 		UpgradeScope scope = this.scope;
 		if (scope != null) {
-			if (!scope.isEmpty()) {
-				showResult(scope);
+			if (scope.isEmpty()) {
+				notifyNotFound(scope.reason());
 				return;
 			}
 
-			notifyNotFound(scope.reason());
+			showResult(scope);
 		}
 	}
 
@@ -105,8 +110,8 @@ public class DependencyCheckTask extends Task.Backgroundable {
 
 		DependencyCheckResult result = resultRef;
 		if (result == null || result.isEmpty()) {
-			Notifications.info(project, MessageBundle.message("plugin.name"),
-					MessageBundle.message("action.check.dependencies.noUpdates"));
+			Notifications.info(project, MessageBundle.message("action.check.dependencies.empty.title"),
+					MessageBundle.message("action.check.dependencies.empty.checked", scope.size()));
 			return;
 		}
 
@@ -130,13 +135,41 @@ public class DependencyCheckTask extends Task.Backgroundable {
 
 	private void notifyNotFound(UpgradeScope.Reason reason) {
 
-		String message = switch (reason) {
-		case NO_BUILD_FILES -> MessageBundle.message("action.check.dependencies.notFound.noBuildFiles");
-		case NOT_IMPORTED -> MessageBundle.message("action.check.dependencies.notFound.notImported");
-		case SUCCESS, DISCOVERY -> "";
-		};
+		List<DependencyAssistant> assistants = DependencyAssistantDispatcher.findAll(project);
 
-		Notifications.info(project, MessageBundle.message("plugin.name"), message);
+		if (assistants.isEmpty()) {
+			assistants = DependencyAssistantDispatcher.findAll();
+			if (assistants.isEmpty()) {
+				Notifications.info(project, MessageBundle.message("action.check.dependencies.no-assistants.title"),
+						MessageBundle.message("action.check.dependencies.no-assistants.installed"));
+
+			} else {
+				Notifications.info(project, MessageBundle.message("action.check.dependencies.no-assistants.title"),
+						MessageBundle.message("action.check.dependencies.no-assistants.available", format(assistants)));
+			}
+			return;
+		}
+
+		String message;
+		String supportedAssistants = format(assistants);
+		if (!request.hasSelection()) {
+			message = MessageBundle.message("action.check.dependencies.empty.noBuildFiles", supportedAssistants);
+		} else if (reason == UpgradeScope.Reason.NOT_IMPORTED) {
+			message = MessageBundle.message("action.check.dependencies.empty.notImported");
+		} else {
+			List<VirtualFile> selection = request.selection();
+			message = selection.size() == 1
+					? MessageBundle.message("action.check.dependencies.empty.unsupportedFile",
+							selection.getFirst().getName(), supportedAssistants)
+					: MessageBundle.message("action.check.dependencies.empty.unsupportedSelection", selection.size(),
+							supportedAssistants);
+		}
+
+		Notifications.info(project, MessageBundle.message("action.check.dependencies.empty.title"), message);
+	}
+
+	private String format(Collection<DependencyAssistant> assistants) {
+		return NlsMessages.formatOrList(assistants.stream().map(DependencyAssistant::getDisplayName).sorted().toList());
 	}
 
 	private String getTitle(UpgradeScope scope) {
