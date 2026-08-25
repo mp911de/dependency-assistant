@@ -54,7 +54,7 @@ public class DependencyUpgradeIcons {
 			"AllIcons.Actions.RunAll");
 
 	private static final ResolvableIcon PREVIEW = new ResolvableIcon(DependencyAssistantIcons.DEBUGGER_SYNC,
-			"DependencyAssistantIcons.DEBUGGER_SYNC");
+			DependencyAssistantIcons.class.getName() + ".DEBUGGER_SYNC");
 
 	private static final ResolvableIcon SAME_OR_UNKNOWN = new ResolvableIcon(AllIcons.Nodes.PpLibFolder,
 			"AllIcons.Nodes.PpLibFolder");

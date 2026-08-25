@@ -175,6 +175,17 @@ class DependencyDocumentationRendererTests {
 	}
 
 	@Test
+	void shouldRetainVersionPrefixInUpgradeLink() {
+
+		ArtifactId artifactId = ArtifactId.of("com.example", "prefixed");
+		cache.updateReleases(artifactId, List.of(Release.of("v1.2.3")));
+
+		String html = renderer(null, true).render(artifactId, false);
+
+		assertThat(html).contains("href=\"dependency-assistant-upgrade:v1.2.3\"");
+	}
+
+	@Test
 	void shouldEscapeReleaseLinkHref() {
 
 		ArtifactId artifactId = ArtifactId.of("com.example", "unsafe");

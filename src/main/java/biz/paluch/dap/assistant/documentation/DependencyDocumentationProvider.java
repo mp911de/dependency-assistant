@@ -158,8 +158,11 @@ public class DependencyDocumentationProvider
 			}
 
 			Release release = context.getReleases().stream()
-					.filter(it -> it.toString().equals(version) || it.getVersion().toString().equals(version))
-					.findFirst().orElseThrow();
+					.filter(it -> it.getVersion().toString().equals(version))
+					.findFirst().orElse(null);
+			if (release == null) {
+				return;
+			}
 			DependencyUpdate update = DependencyUpdate.from(declaration, release);
 			context.getDependencyContext().applyUpdate(versionLiteral, update);
 		}

@@ -338,7 +338,7 @@ class DependencyDocumentationRenderer {
 			return List.of();
 		}
 
-		Set<String> remaining = identifiers(candidate);
+		Set<String> remaining = getVulnerabilityIdentifiers(candidate);
 		List<Vulnerability> fixed = new ArrayList<>();
 		for (Vulnerability vulnerability : current) {
 
@@ -354,10 +354,10 @@ class DependencyDocumentationRenderer {
 		if (!current.isVulnerable() || !candidate.isVulnerable()) {
 			return false;
 		}
-		return identifiers(current).equals(identifiers(candidate));
+		return getVulnerabilityIdentifiers(current).equals(getVulnerabilityIdentifiers(candidate));
 	}
 
-	private static Set<String> identifiers(Vulnerabilities vulnerabilities) {
+	private static Set<String> getVulnerabilityIdentifiers(Vulnerabilities vulnerabilities) {
 
 		if (!vulnerabilities.isVulnerable()) {
 			return Set.of();
@@ -503,10 +503,6 @@ class DependencyDocumentationRenderer {
 						+ " " + vulnerability.getSeverity().getLabel() + ")"));
 	}
 
-	/**
-	 * Render the advisory identifier, linked to its source when the source URL uses
-	 * a supported scheme.
-	 */
 	private static HtmlChunk advisoryIdentifier(Vulnerability vulnerability) {
 
 		HtmlChunk identifier = HtmlChunk.text(vulnerability.getIdentifier());
@@ -812,6 +808,8 @@ class DependencyDocumentationRenderer {
 
 		private final Release release;
 
+		private final ArtifactVersion version;
+
 		private final String key;
 
 		private final boolean current;
@@ -822,12 +820,12 @@ class DependencyDocumentationRenderer {
 
 		private final @Nullable HtmlChunk releaseNotesCell;
 
-		DocumentedRelease(VersionStatus status, DependencyPresentation presentation, Release release, boolean linkable,
-				boolean withIcons,
-				@Nullable URI releaseNotesUrl) {
+		DocumentedRelease(VersionStatus status, DependencyPresentation presentation,
+				Release release, boolean linkable, boolean withIcons, @Nullable URI releaseNotesUrl) {
 
 			this.release = release;
-			this.key = release.unwrap().toString();
+			this.version = release.getVersion();
+			this.key = version.toString();
 			this.current = status.isCurrent();
 			this.linkable = linkable && !current;
 
@@ -839,7 +837,7 @@ class DependencyDocumentationRenderer {
 								.attr("href", DependencyUpgradeLinkHandler.SCHEME + key)
 								.attr("title",
 										MessageBundle.message("documentation.upgrade-to", presentation.getDisplayName(),
-												key))
+												version.toDocumentationString()))
 								.child(htmlIcon)
 						: htmlIcon;
 				this.firstColumnIcon = HtmlChunk.tag("td").child(content);
@@ -858,7 +856,8 @@ class DependencyDocumentationRenderer {
 		private HtmlChunk releaseNotesLink(URI releaseNotesUrl) {
 			return HtmlChunk.tag("a")
 					.attr("href", releaseNotesUrl.toString())
-					.attr("title", MessageBundle.message("documentation.release-notes", key))
+					.attr("title",
+							MessageBundle.message("documentation.release-notes", version.toDocumentationString()))
 					.child(HtmlChunk.icon("AllIcons.Toolwindows.Documentation", AllIcons.Toolwindows.Documentation));
 		}
 
@@ -889,7 +888,7 @@ class DependencyDocumentationRenderer {
 		}
 
 		private HtmlChunk renderVersion() {
-			HtmlChunk text = HtmlChunk.text(release.version().toDocumentationString());
+			HtmlChunk text = HtmlChunk.text(version.toDocumentationString());
 			return current ? text.bold() : text;
 		}
 
