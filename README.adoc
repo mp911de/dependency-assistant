@@ -6,7 +6,7 @@ Mark Paluch
 
 image:{github}/actions/workflows/build.yml/badge.svg?branch=main[Build Status (GitHub Workflow Build), link={github}/actions?query=workflow%3ABuild+branch%3Amain]
 
-An https://plugins.jetbrains.com[IntelliJ IDEA] plugin that helps you upgrade dependencies declared in Maven, Gradle, GitHub Actions, NPM, and Antora projects, plus Maven and Gradle wrapper properties.
+An https://plugins.jetbrains.com/plugin/30958-dependency-assistant[IntelliJ IDEA] plugin that helps you upgrade dependencies declared in Maven, Gradle, GitHub Actions, NPM, and Antora projects, plus Maven and Gradle wrapper properties.
 Dependency Assistant resolves available releases from the relevant repositories, registries, or release feeds and can apply updates selectively.
 When JetBrains Package Checker is available in the IDE, known Maven and npm vulnerabilities can be shown alongside versions.
 
@@ -21,8 +21,9 @@ When JetBrains Package Checker is available in the IDE, known Maven and npm vuln
 * Shows Package Checker vulnerability information for Maven and npm packages when available, and can suggest remediation.
 * Upgrade Plan: Staging of Dependency upgrades for later review, ticket creation and the plan as batch upgrade.
 * Links to release notes and issue trackers when project metadata (e.g. POM, NPM Registry) is available.
-* Inspections for Maven and Gradle wrappers.
-* Inspection for Version and Declaration drift.
+* Inspections for Maven and Gradle wrapper URLs, unpinned GitHub Actions, and dependency rule violations (`dependencyfile.json`).
+* Inspection for version and declaration drift.
+* Intentions to insert wrapper SHA-256 checksums, open release notes, and report issues.
 
 .Screenshot: dependency version check dialog
 image::images/screenshot.png[Maven dependency check dialog,width=800]
@@ -39,17 +40,19 @@ image::images/documentation-highlights.png[Suggestions,width=400]
 
 == Installation
 
-Install the *Dependency Assistant* plugin from the IDE *Settings / Plugins* marketplace, or build the distribution locally (see <<Building>>) and install the ZIP from disk.
+Requires IntelliJ IDEA 2025.2 (build 252) or newer.
 
-The plugin does not require the Java plugin and installs on any IntelliJ-based IDE (for example WebStorm or PyCharm); Maven, Gradle, GitHub Actions, NPM, and Antora support activate when the corresponding IDE plugins are present.
+Install the *Dependency Assistant* plugin from the IDE *Settings / Plugins* https://plugins.jetbrains.com/plugin/30958-dependency-assistant[marketplace], or build the distribution locally (see <<Building>>) and install the ZIP from disk.
+
+The plugin does not require the Java plugin and installs on any IntelliJ-based IDE (for example WebStorm or PyCharm). Maven, Gradle, GitHub Actions, NPM, and Antora support activate when the corresponding IDE plugins are present.
 
 == Usage
 
 . Open a supported build file in the editor.
 . Start a check
 ** Use the intention action (light bulb) when the caret is on a supported dependency version or declaration, or
-** Alternatively: Choose menu:Tools[Dependency Assistant > Update Dependencies].
-. In the dialog, review suggestions, adjust *Update to* and the *Update* checkbox per row, then confirm to apply changes.
+** Alternatively: Choose menu:Tools[Dependency Assistant > Upgrade dependencies…].
+. In the dialog, review suggestions, adjust *Upgrade to* and the *Upgrade* checkbox per row, then confirm to apply changes.
 
 Updates are written to the build files that contain the selected dependency declarations.
 The plugin may consider related files in the project when resolving coordinates, properties, catalogs, and release sources.
@@ -72,7 +75,7 @@ To produce a plugin archive for local installation:
 
 The ZIP is generated under `build/distributions/`.
 
-Continuous integration runs tests and the IntelliJ Plugin Verifier; see the link:{github}/actions[Actions] tab on GitHub.
+Continuous integration runs tests and the IntelliJ Plugin Verifier. See the link:{github}/actions[Actions] tab on GitHub.
 
 == Contributing
 
