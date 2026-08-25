@@ -23,7 +23,6 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.extension.IdeaProjectTests;
-import biz.paluch.dap.fixtures.TestAssistant;
 import biz.paluch.dap.fixtures.TestCandidates;
 import biz.paluch.dap.state.ApplicationSettings;
 import com.intellij.openapi.command.impl.UndoManagerImpl;
@@ -97,7 +96,7 @@ class UpgradePlanServiceUnitTests {
 	void renameActionAppliesUndoesAndRedoes() {
 
 		UpgradePlanState.Item stored = UpgradePlanState.Item.from(candidate("alpha"), TARGET);
-		UpgradePlanItem item = new UpgradePlanLoader(TestAssistant.INSTANCE, null).create(stored);
+		UpgradePlanItem item = TestPlannedUpgrade.LOADER.create(stored);
 		stored.setMaterialized(item);
 		UpgradePlanState.Content content = new UpgradePlanState.Content();
 		content.getItems().add(stored);
@@ -120,7 +119,7 @@ class UpgradePlanServiceUnitTests {
 	void renameActionRemembersNameWhenRequested() {
 
 		UpgradePlanState.Item stored = UpgradePlanState.Item.from(candidate("alpha"), TARGET);
-		UpgradePlanItem item = new UpgradePlanLoader(TestAssistant.INSTANCE, null).create(stored);
+		UpgradePlanItem item = TestPlannedUpgrade.LOADER.create(stored);
 		stored.setMaterialized(item);
 		UpgradePlanState.Content content = new UpgradePlanState.Content();
 		content.getItems().add(stored);

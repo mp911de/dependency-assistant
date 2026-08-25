@@ -309,7 +309,7 @@ public final class UpgradePlanService implements Disposable {
 						copy.setItems(List.copyOf(content.getItems()));
 						return new Snapshot(planGeneration, copy);
 					});
-			UpgradePlanLoader loader = new UpgradePlanLoader(ticketSystem);
+			UpgradePlanLoader loader = new UpgradePlanLoader(project, ticketSystem);
 
 			for (Item item : snapshot.content()) {
 				item.setMaterialized(loader.create(item));

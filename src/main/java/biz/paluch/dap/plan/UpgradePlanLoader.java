@@ -25,12 +25,17 @@ import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.plan.UpgradePlanState.DeclarationSourceState;
 import biz.paluch.dap.plan.UpgradePlanState.Item;
 import biz.paluch.dap.plan.UpgradePlanState.Member;
 import biz.paluch.dap.plan.UpgradePlanState.VersionSourceState;
+import biz.paluch.dap.state.Cache;
+import biz.paluch.dap.state.GitVersionResolver;
+import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.ticket.TicketSystem;
 import biz.paluch.dap.util.StringUtils;
+import com.intellij.openapi.project.Project;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -50,17 +55,18 @@ class UpgradePlanLoader {
 
 	private final @Nullable TicketSystem ticketSystem;
 
-	UpgradePlanLoader(@Nullable TicketSystem ticketSystem) {
-		this(DependencyAssistantDispatcher.findAll(), ticketSystem);
+	private final GitVersionResolver gitVersionResolver;
+
+	UpgradePlanLoader(Project project, @Nullable TicketSystem ticketSystem) {
+		this(DependencyAssistantDispatcher.findAll(project), ticketSystem, StateService.getInstance(project)
+				.getCache());
 	}
 
-	UpgradePlanLoader(DependencyAssistant assistant, @Nullable TicketSystem ticketSystem) {
-		this(List.of(assistant), ticketSystem);
-	}
-
-	UpgradePlanLoader(List<? extends DependencyAssistant> assistants, @Nullable TicketSystem ticketSystem) {
+	UpgradePlanLoader(List<? extends DependencyAssistant> assistants,
+			@Nullable TicketSystem ticketSystem, Cache cache) {
 		this.assistants = assistants;
 		this.ticketSystem = ticketSystem;
+		this.gitVersionResolver = new GitVersionResolver(cache);
 	}
 
 	/**
@@ -91,8 +97,19 @@ class UpgradePlanLoader {
 			dependencies.add(toDependency(member));
 		}
 
+		ArtifactVersion version = ArtifactVersion.of(item.getToVersion());
+		for (Member member : item.getMembers()) {
+
+			Versioned versioned = gitVersionResolver.resolveStrict(member.getPackageIdentity()
+					.getArtifactId(), item.getToVersion());
+			if (versioned.isVersioned()) {
+				version = versioned.getVersion();
+				break;
+			}
+		}
+
 		UpgradePlanItem planItem = new UpgradePlanItem(item.getId(), item.getDisplayName(),
-				ArtifactVersion.of(item.getToVersion()), item.isVulnerabilityFix(), item.getVulnerabilityCount(),
+				version, item.isVulnerabilityFix(), item.getVulnerabilityCount(),
 				item.getHighestVulnerabilitySeverity(), dependencies, resolvedAssistants);
 		UpgradePlanState.Ticket ticket = item.getTicket();
 		if (ticket != null) {

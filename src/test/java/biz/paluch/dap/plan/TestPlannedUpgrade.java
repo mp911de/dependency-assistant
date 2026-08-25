@@ -19,7 +19,6 @@ package biz.paluch.dap.plan;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Objects;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
@@ -28,11 +27,15 @@ import biz.paluch.dap.fixtures.TestCandidates;
 import biz.paluch.dap.plan.UpgradePlanState.Content;
 import biz.paluch.dap.plan.UpgradePlanState.Item;
 import biz.paluch.dap.plan.UpgradePlanState.Plan;
+import biz.paluch.dap.state.Cache;
 import com.intellij.openapi.command.impl.UndoManagerImpl;
 import com.intellij.openapi.command.undo.UndoManager;
 import com.intellij.openapi.project.Project;
 
 class TestPlannedUpgrade implements PlannedUpgrade {
+
+	public static final UpgradePlanLoader LOADER = new UpgradePlanLoader(List.of(TestAssistant.INSTANCE), null,
+			new Cache());
 
 	private final String name;
 
@@ -73,7 +76,7 @@ class TestPlannedUpgrade implements PlannedUpgrade {
 			List<UpgradePlanState.Member> members = candidate.getUpgradeCandidates().stream()
 					.map(UpgradePlanState.Member::of).toList();
 			Item stored = Item.from(candidate.name, target, members, candidate.getUpgradeCandidates());
-			UpgradePlanItem item = new UpgradePlanLoader(TestAssistant.INSTANCE, null).create(stored);
+			UpgradePlanItem item = LOADER.create(stored);
 			stored.setMaterialized(item);
 			content.getItems().add(stored);
 			items.add(item);
@@ -97,8 +100,7 @@ class TestPlannedUpgrade implements PlannedUpgrade {
 		TestPlannedUpgrade candidate = new TestPlannedUpgrade(
 				TestCandidates.candidate(coordinates, it -> it.releases(target)));
 		Item stored = Item.from(candidate, ArtifactVersion.of(target));
-		return Objects
-				.requireNonNull(new UpgradePlanLoader(TestAssistant.INSTANCE, null).create(stored));
+		return LOADER.create(stored);
 	}
 
 	@Override

@@ -40,15 +40,13 @@ import static biz.paluch.dap.assertions.Assertions.*;
  */
 class UpgradePlanLoaderUnitTests {
 
-	UpgradePlanLoader loader = new UpgradePlanLoader(TestAssistant.INSTANCE, null);
-
 	@Test
 	void reconstructsApplyAndNavigationFactsFromPersistedState() {
 
 		Item stored = item("Spring Core", "6.2.2",
 				member("org.springframework", "spring-core", "6.2.1", "spring.version"));
 
-		UpgradePlanItem planItem = loader.create(stored);
+		UpgradePlanItem planItem = TestPlannedUpgrade.LOADER.create(stored);
 
 		assertThat(planItem).isNotNull();
 		assertThat(planItem.getDisplayName()).isEqualTo("Spring Core");
@@ -75,7 +73,7 @@ class UpgradePlanLoaderUnitTests {
 				member("org.springframework", "spring-core", "6.2.1", "spring.version"));
 		stored.getMembers().getFirst().assistant = "missing.Assistant";
 
-		assertThat(loader.create(stored)).isNull();
+		assertThat(TestPlannedUpgrade.LOADER.create(stored)).isNull();
 	}
 
 	@Test
@@ -85,7 +83,7 @@ class UpgradePlanLoaderUnitTests {
 		Member implicit = member("com.example", "addon", "6.2.1", "spring.version");
 		implicit.implicit = true;
 
-		UpgradePlanItem planItem = loader.create(item("spring.version", "6.2.2", owner, implicit));
+		UpgradePlanItem planItem = TestPlannedUpgrade.LOADER.create(item("spring.version", "6.2.2", owner, implicit));
 
 		assertThat(planItem).isNotNull();
 		assertThat(planItem.getMembers()).hasSize(2);

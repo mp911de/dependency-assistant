@@ -355,7 +355,7 @@ class UpgradePlanPanel extends SimpleToolWindowPanel implements Disposable, Upgr
 	}
 
 	private void runDependencyCheck() {
-		performAction("biz.paluch.dap.UpgradeDependencies", EMPTY_STATE_PLACE);
+		performAction("DependencyAssistant.UpgradeDependencies", EMPTY_STATE_PLACE);
 	}
 
 	private void performAction(String actionId, String place) {
@@ -549,7 +549,7 @@ class UpgradePlanPanel extends SimpleToolWindowPanel implements Disposable, Upgr
 
 			createTicketsLink = new ActionLink(MessageBundle.message("plan.summary.create-tickets", 0),
 					event -> {
-						performAction("DependencyAssistant.UpgradePlan.CreateTickets", SUMMARY_LINK_PLACE);
+						performAction("DependencyAssistant.UpgradePlan.CreateAllTickets", SUMMARY_LINK_PLACE);
 					});
 
 			summaryText.setForeground(NamedColorUtil.getInactiveTextColor());
