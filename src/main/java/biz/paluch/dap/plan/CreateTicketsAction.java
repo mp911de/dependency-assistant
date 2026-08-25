@@ -23,6 +23,7 @@ import biz.paluch.dap.ticket.Milestone;
 import biz.paluch.dap.ticket.TicketSystem;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.openapi.actionSystem.AnActionEvent;
+import com.intellij.openapi.actionSystem.PlatformDataKeys;
 import com.intellij.openapi.actionSystem.Presentation;
 import com.intellij.openapi.project.Project;
 import org.jspecify.annotations.Nullable;
@@ -50,19 +51,23 @@ public class CreateTicketsAction extends UpgradePlanAction {
 			return;
 		}
 
-		PlanSelection selection = PlanSelection.from(e);
-		List<UpgradePlanItem> targetItems = selection.orElseGet(() -> service.getUpgradePlan().getItems());
+		List<UpgradePlanItem> targetItems = getTargetItems(e, service);
 		int withoutTickets = (int) targetItems.stream().filter(item -> !item.hasTicket()).count();
 		presentation.setText(MessageBundle.message("plan.create-tickets.text", withoutTickets));
-		presentation.setDescription(description(withoutTickets, !selection.isEmpty()));
+		Object[] selection = e.getData(PlatformDataKeys.SELECTED_ITEMS);
+		boolean hasSelection = selection != null && selection.length > 0;
+		String message;
+		if (hasSelection) {
+			message = MessageBundle.message("plan.create-tickets.selected.description",
+					withoutTickets);
+		} else {
+			message = MessageBundle.message("plan.create-tickets.all.description",
+					withoutTickets);
+		}
+		presentation.setDescription(message);
 		if (presentation.isEnabled()) {
 			presentation.setEnabled(withoutTickets > 0);
 		}
-	}
-
-	static String description(int itemCount, boolean selectedScope) {
-		return MessageBundle.message(selectedScope ? "plan.create-tickets.selected.description"
-				: "plan.create-tickets.all.description", itemCount);
 	}
 
 	@Override
@@ -77,6 +82,10 @@ public class CreateTicketsAction extends UpgradePlanAction {
 		if (service.hasTicketSystem()) {
 			createTickets(service, PlanSelection.from(e).orElseGet(() -> service.getUpgradePlan().getItems()));
 		}
+	}
+
+	List<UpgradePlanItem> getTargetItems(AnActionEvent e, UpgradePlanService service) {
+		return PlanSelection.from(e).orElseGet(() -> service.getUpgradePlan().getItems());
 	}
 
 	/**

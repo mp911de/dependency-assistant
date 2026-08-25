@@ -74,7 +74,7 @@ class PlanSelection implements Sequence<UpgradePlanItem> {
 	 * Create the selection from the given action event.
 	 *
 	 * @param e the action event carrying the tree selection.
-	 * @return the plan selection; empty when the event carries none.
+	 * @return the plan selection.
 	 */
 	static PlanSelection from(AnActionEvent e) {
 

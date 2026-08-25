@@ -70,8 +70,9 @@ public class UpgradeDependenciesAction extends AnAction implements DumbAware, Ic
 		Project project = event.getProject();
 		Presentation presentation = event.getPresentation();
 
-		presentation.setText(MessageBundle.message("intention.UpgradeDependencies.text"));
-		presentation.setDescription(MessageBundle.message("action.description"));
+		presentation.setText(MessageBundle.message("action.DependencyAssistant.UpgradeDependencies.text"));
+		presentation
+				.setDescription(MessageBundle.message("action.DependencyAssistant.UpgradeDependencies.description"));
 		presentation.setIcon(getIcon(0));
 
 		if (project == null) {

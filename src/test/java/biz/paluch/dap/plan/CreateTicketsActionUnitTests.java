@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.plan;
 
+import biz.paluch.dap.util.MessageBundle;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -29,19 +30,19 @@ class CreateTicketsActionUnitTests {
 
 	@Test
 	void describesSelectedUpgradeScope() {
-		assertThat(CreateTicketsAction.description(3, true))
+		assertThat(MessageBundle.message("plan.create-tickets.selected.description", 3))
 				.isEqualTo("Create tickets for 3 selected upgrades");
 	}
 
 	@Test
 	void describesWholePlanScope() {
-		assertThat(CreateTicketsAction.description(2, false))
+		assertThat(MessageBundle.message("plan.create-tickets.all.description", 2))
 				.isEqualTo("Create tickets for 2 planned upgrades without tickets");
 	}
 
 	@Test
 	void describesCompletedScope() {
-		assertThat(CreateTicketsAction.description(0, true))
+		assertThat(MessageBundle.message("plan.create-tickets.selected.description", 0))
 				.isEqualTo("All selected upgrades already have tickets");
 	}
 
