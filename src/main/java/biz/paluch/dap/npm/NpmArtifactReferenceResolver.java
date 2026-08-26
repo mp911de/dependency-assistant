@@ -83,7 +83,7 @@ class NpmArtifactReferenceResolver implements ArtifactReferenceResolver {
 		String raw = literal.getValue();
 		NpmVersionExpression expression = NpmVersionExpression.parse(raw);
 
-		ArtifactId initial = NpmPackageParser.toArtifactId(name);
+		ArtifactId initial = NpmUtils.toArtifactId(name);
 		ArtifactId artifactId = expression != null ? expression.postProcess(initial) : initial;
 		VersionSource versionSource = expression != null ? expression.versionSource() : VersionSource.none();
 

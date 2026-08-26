@@ -54,10 +54,9 @@ import org.springframework.util.ObjectUtils;
  * on the returned {@link NpmReleases} so the cache-write path can store them
  * without a second request.
  *
- * <p>When GitHub support is available, Git-backed artifact identities are
- * outside this source and yield no releases. The strict
- * {@link biz.paluch.dap.github.GitHubReleaseSourceRouter} in
- * {@link NpmProjectContext} owns those lookups instead.
+ * <p>Git-backed artifact identities are outside this source and yield no
+ * releases. The strict {@link biz.paluch.dap.github.GitHubReleaseSourceRouter}
+ * in {@link NpmProjectContext} owns those lookups instead.
  *
  * @author Mark Paluch
  */
@@ -103,7 +102,7 @@ public class NpmRegistry implements ReleaseSource {
 	@Override
 	public Sequence<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException {
 
-		if (artifactId instanceof GitArtifactId && NpmUtils.GITHUB_AVAILABLE) {
+		if (artifactId instanceof GitArtifactId) {
 			return Sequence.empty();
 		}
 

@@ -352,7 +352,7 @@ class NpmCompletionTests {
 			  }
 			}
 			""")
-	void completesComparatorAtOfSecondVersionStart(PsiFile packageJson) {
+	void completesComparatorAtSecondVersionStart(PsiFile packageJson) {
 
 		NpmFixtures.analyze(packageJson);
 		fixture.completeBasic();
@@ -362,7 +362,7 @@ class NpmCompletionTests {
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 		assertThat(packageJson)
-				.containsText("\">=1.0.0-alpha.1 <1.0.0-alpha.5\"");
+				.containsText("\">=1.0.0-alpha.1 <=1.0.0-alpha.5\"");
 	}
 
 	@Test
@@ -450,6 +450,41 @@ class NpmCompletionTests {
 
 		assertThat(fixture)
 				.completionSuggests("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
+	}
+
+	@Test
+	@EditorFile(name = "package.json", content = """
+			{
+			  "dependencies": {
+			    "xref": "npm:@springio/antora-xref-extension@^<caret>1.0.0-alpha.1"
+			  }
+			}
+			""")
+	void completesAliasFromTargetPackage(PsiFile packageJson) {
+
+		NpmFixtures.analyze(packageJson);
+		fixture.complete(CompletionType.BASIC);
+
+		assertThat(fixture)
+				.completionSuggests("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
+	}
+
+	@Test
+	@EditorFile(name = "package.json", content = """
+			{
+			  "dependencies": {
+			    "@springio/antora-xref-extension": " ^1.0.0-alpha.<caret>1 "
+			  }
+			}
+			""")
+	void preservesWhitespaceWhenCompletingVersion(PsiFile packageJson) {
+
+		NpmFixtures.analyze(packageJson);
+		fixture.completeBasic();
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+
+		assertThat(packageJson).containsText(
+				"\"@springio/antora-xref-extension\": \" ^1.0.0-alpha.5 \"");
 	}
 
 	@Test

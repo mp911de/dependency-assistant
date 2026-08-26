@@ -88,7 +88,7 @@ class GithubApiRequestExecutorFactory {
 	 *
 	 * @return the executor resolution result.
 	 */
-	ExecutorResult getExecutor() {
+	public ExecutorResult getExecutor() {
 
 		Collection<GHGitRepositoryMapping> repositories = getRepositoryMappings();
 		GHGitRepositoryMapping repository = firstOrNull(repositories);
@@ -116,6 +116,10 @@ class GithubApiRequestExecutorFactory {
 		return anonymous(server, selectionDetails);
 	}
 
+	public ExecutorResult getAnonymousExecutor(GithubServerPath server) {
+		return anonymous(server, getSelectionDetails(server));
+	}
+
 	/**
 	 * Create an executor for the given repository coordinates if the account choice
 	 * is clear.
@@ -123,7 +127,7 @@ class GithubApiRequestExecutorFactory {
 	 * @param repository the GitHub repository coordinates.
 	 * @return the executor resolution result.
 	 */
-	ExecutorResult getExecutor(GHRepositoryCoordinates repository) {
+	public ExecutorResult getExecutor(GHRepositoryCoordinates repository) {
 		return getExecutor(repository.getServerPath());
 	}
 
@@ -134,7 +138,7 @@ class GithubApiRequestExecutorFactory {
 	 * @param repository the GitHub repository mapping.
 	 * @return the executor resolution result.
 	 */
-	ExecutorResult getExecutor(GHGitRepositoryMapping repository) {
+	public ExecutorResult getExecutor(GHGitRepositoryMapping repository) {
 		GithubServerPath server = repository.getRepository().getServerPath();
 		SelectionDetails selectionDetails = getSelectionDetails(server, repository);
 		return resolve(server, selectionDetails);
@@ -146,7 +150,7 @@ class GithubApiRequestExecutorFactory {
 	 * @param server the GitHub server.
 	 * @return the executor resolution result.
 	 */
-	ExecutorResult getExecutor(GithubServerPath server) {
+	public ExecutorResult getExecutor(GithubServerPath server) {
 		return resolve(server, getSelectionDetails(server));
 	}
 
@@ -158,7 +162,7 @@ class GithubApiRequestExecutorFactory {
 	 * @return the executor resolution result, including a failure reason when the
 	 * pair cannot be authenticated.
 	 */
-	ExecutorResult getExecutor(GHGitRepositoryMapping repository, GithubAccount account) {
+	public ExecutorResult getExecutor(GHGitRepositoryMapping repository, GithubAccount account) {
 		GithubServerPath server = repository.getRepository().getServerPath();
 		SelectionDetails selectionDetails = getSelectionDetails(server, repository);
 		return createAuthenticated(server, repository, account, selectionDetails, Reason.EXPLICIT_SELECTION);
@@ -170,11 +174,11 @@ class GithubApiRequestExecutorFactory {
 	 * @param server the GitHub server.
 	 * @return immutable selector details.
 	 */
-	SelectionDetails getSelectionDetails(GithubServerPath server) {
+	private SelectionDetails getSelectionDetails(GithubServerPath server) {
 		return getSelectionDetails(server, getRepositoryMappings(server));
 	}
 
-	static GithubServerPath serverPath(String gitHost) {
+	public static GithubServerPath getServerPath(String gitHost) {
 
 		if (!StringUtils.hasText(gitHost)) {
 			return GithubServerPath.DEFAULT_SERVER;
@@ -225,7 +229,7 @@ class GithubApiRequestExecutorFactory {
 
 		GithubApiRequestExecutor executor = createExecutor(server, account, token);
 		Decision decision = Decision.authenticated(server, repository, account, reason);
-		return result(decision, selectionDetails, executor);
+		return new ExecutorResult(decision, selectionDetails, executor);
 	}
 
 	private @Nullable ExecutorResult createAuthenticatedIfPossible(GithubServerPath server,
@@ -243,22 +247,19 @@ class GithubApiRequestExecutorFactory {
 
 		GithubApiRequestExecutor executor = createExecutor(server, account, token);
 		Decision decision = Decision.authenticated(server, repository, account, reason);
-		return result(decision, selectionDetails, executor);
+		return new ExecutorResult(decision, selectionDetails, executor);
 	}
 
 	private ExecutorResult anonymous(GithubServerPath server, SelectionDetails selectionDetails) {
-		return result(new Decision(Kind.ANONYMOUS, server, null, null, Reason.ANONYMOUS), selectionDetails,
-				createAnonymousExecutor());
+		GithubApiRequestExecutor executor = createAnonymousExecutor();
+		return new ExecutorResult(new Decision(Kind.ANONYMOUS, server, null, null, Reason.ANONYMOUS), selectionDetails,
+				executor);
 	}
 
 	private ExecutorResult selectionRequired(GithubServerPath server, @Nullable GHGitRepositoryMapping repository,
 			@Nullable GithubAccount account, SelectionDetails selectionDetails, Reason reason) {
-		return result(Decision.selectionRequired(server, repository, account, reason), selectionDetails, null);
-	}
-
-	private ExecutorResult result(Decision decision, SelectionDetails selectionDetails,
-			@Nullable GithubApiRequestExecutor executor) {
-		return new ExecutorResult(decision, selectionDetails, executor);
+		return new ExecutorResult(Decision.selectionRequired(server, repository, account, reason), selectionDetails,
+				null);
 	}
 
 	private @Nullable GithubAccount selectAccount(GithubServerPath server, SelectionDetails details) {
@@ -358,6 +359,7 @@ class GithubApiRequestExecutorFactory {
 	private static <T> @Nullable T uniqueOrNull(Collection<T> items) {
 		return items.size() == 1 ? items.iterator().next() : null;
 	}
+
 
 	enum Kind {
 

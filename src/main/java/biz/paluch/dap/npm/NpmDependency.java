@@ -27,8 +27,9 @@ import biz.paluch.dap.artifact.VersionSource;
  * NPM dependency declared in {@code dependencies} or {@code devDependencies}.
  *
  * <p>The {@link ArtifactId} uses the canonical NPM coordinate normalization
- * from {@link NpmPackageParser#toArtifactId(String)}. Git declarations retain
- * those declared coordinates while carrying repository routing metadata.
+ * from {@link NpmUtils#toArtifactId(String)}. Alias declarations use their
+ * target package identity. Git declarations retain their declared coordinates
+ * while carrying repository routing metadata.
  *
  * <p>The Git case is not a sibling type; it is the
  * {@link NpmVersionExpression.Git} variant of {@link #version()}. Anything

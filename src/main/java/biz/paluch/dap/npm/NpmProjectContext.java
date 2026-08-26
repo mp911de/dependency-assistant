@@ -44,7 +44,7 @@ import com.intellij.psi.PsiFile;
  * state. The context reads the root {@code version} as the project version when
  * it is parseable. Release lookup always includes {@link NpmRegistry} and also
  * includes a strict {@link GitHubReleaseSourceRouter} when GitHub support is
- * available.
+ * available and the project is trusted.
  *
  * @author Mark Paluch
  */
@@ -68,8 +68,9 @@ class NpmProjectContext extends AbstractProjectBuildContext {
 	/**
 	 * Return the release sources used for dependencies in an NPM context.
 	 *
-	 * <p>The strict GitHub router, when available, handles only Git-backed
-	 * coordinates. The public NPM registry handles regular package coordinates.
+	 * <p>The strict GitHub router, when available for a trusted project, handles
+	 * only Git-backed coordinates. The public NPM registry handles regular package
+	 * coordinates.
 	 *
 	 * @param project the IntelliJ project used for GitHub account resolution.
 	 * @return the ordered release sources for NPM dependencies.

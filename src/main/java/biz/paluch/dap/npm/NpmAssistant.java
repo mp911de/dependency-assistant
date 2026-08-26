@@ -41,7 +41,6 @@ import biz.paluch.dap.support.ProjectBuildContextWrapper;
 import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.ide.plugins.PluginManagerCore;
-import com.intellij.json.JsonFileType;
 import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.fileTypes.FileTypeManager;
 import com.intellij.openapi.progress.ProgressIndicator;
@@ -115,9 +114,7 @@ public class NpmAssistant implements DependencyAssistant {
 		}
 
 		Collection<VirtualFile> jsonFiles = FileIndexLookup.getInstance(project)
-				.find(JsonFileType.INSTANCE, it -> {
-					return !it.getPath().contains("node_modules") && NpmUtils.isPackageJson(it);
-				});
+				.find(NpmUtils.PACKAGE_JSON, it -> !it.getPath().contains("node_modules"));
 		BetterPsiManager psiManager = BetterPsiManager.getInstance(project);
 		return psiManager.stream(jsonFiles).filter(NpmUtils::isPackageJson).toList();
 	}

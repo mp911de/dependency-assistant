@@ -153,7 +153,7 @@ public class GitHubPlatform implements Platform {
 		public @Nullable TagSource getTagSource() {
 
 			GithubApiRequestExecutorFactory factory = GithubApiRequestExecutorFactory.getInstance(project);
-			GithubServerPath path = GithubApiRequestExecutorFactory.serverPath(metadata.host());
+			GithubServerPath path = GithubApiRequestExecutorFactory.getServerPath(metadata.host());
 			GithubApiRequestExecutorFactory.ExecutorResult executor = factory.getExecutor(path);
 			if (executor.hasExecutor()) {
 				return new GitHubReleases(path, executor.getRequiredExecutor());

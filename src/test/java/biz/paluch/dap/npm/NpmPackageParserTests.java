@@ -84,7 +84,7 @@ class NpmPackageParserTests {
 		List<NpmDependency> dependencies = parser.parse(packageJson);
 
 		assertThat(dependencies).hasSize(1);
-		assertThat(dependencies.getFirst().artifactId()).isEqualTo(ArtifactId.of("alias", "alias"));
+		assertThat(dependencies.getFirst().artifactId()).isEqualTo(ArtifactId.of("@ankurk91", "bootstrap-vue"));
 		assertThat(dependencies.getFirst().version()).isInstanceOfSatisfying(NpmVersionExpression.Alias.class,
 				alias -> {
 					assertThat(alias.packageName()).isEqualTo("@ankurk91/bootstrap-vue");

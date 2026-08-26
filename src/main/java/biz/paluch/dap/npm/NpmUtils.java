@@ -62,6 +62,20 @@ class NpmUtils {
 	}
 
 	/**
+	 * Return the canonical artifact identity for the given NPM package name.
+	 * @param name an NPM package name that passed the package-name allowlist.
+	 * @return the canonical artifact identity.
+	 */
+	static ArtifactId toArtifactId(String name) {
+
+		int slash = name.indexOf('/');
+		if (slash < 0) {
+			return ArtifactId.of(name, name);
+		}
+		return ArtifactId.of(name.substring(0, slash), name.substring(slash + 1));
+	}
+
+	/**
 	 * Return whether the given file is a {@code package.json} that the integration
 	 * should manage.
 	 *

@@ -132,7 +132,7 @@ public class NpmVersionCompletionContributor extends CompletionContributor {
 			return originalValue.substring(0, caretInValue) + lookupString + originalValue.substring(end);
 		}
 
-		String rendered = UpdatePackageJsonFile.render(expression, originalValue, version);
+		String rendered = expression.renderUpdate(version);
 		if (rendered != null) {
 			return rendered;
 		}

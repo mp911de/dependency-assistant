@@ -19,9 +19,7 @@ package biz.paluch.dap.npm;
 import java.util.List;
 
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.GitVersion;
-import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.DependencyUpdates;
 import biz.paluch.dap.support.FileDependencyUpdater;
@@ -34,18 +32,15 @@ import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.PsiTreeUtil;
-import org.jspecify.annotations.Nullable;
 
 /**
  * PSI updater for NPM {@code package.json} dependency entries.
  *
- * <p>The updater dispatches on the {@link NpmVersionExpression} variant of the
- * original declaration and changes only the variant's
- * {@link NpmVersionExpression#replaceableRange(String) replaceable range} in
- * the reconstructed string value. The surrounding property layout and trailing
- * comma remain unchanged. Prefix ranges and unsupported expressions are not
- * rewritten. Git declarations require a {@link GitVersion} target and preserve
- * the declared tag or SHA ref style. The writer does not append explanatory
+ * <p>The updater delegates safe replacement rendering to the parsed
+ * {@link NpmVersionExpression}. Prefix ranges and unsupported expressions are
+ * not rewritten. Git declarations require a {@link GitVersion} target and
+ * preserve the declared tag or SHA ref style. The surrounding property layout
+ * and trailing comma remain unchanged. The writer does not append explanatory
  * comments because NPM package descriptors use JSON syntax.
  *
  * @author Mark Paluch
@@ -124,7 +119,7 @@ class UpdatePackageJsonFile implements FileDependencyUpdater {
 			return;
 		}
 
-		ArtifactId artifactId = NpmPackageParser.toArtifactId(name);
+		ArtifactId artifactId = expression.postProcess(NpmUtils.toArtifactId(name));
 
 		updates.updateAll(entry.getContainingFile(), update -> {
 
@@ -132,55 +127,12 @@ class UpdatePackageJsonFile implements FileDependencyUpdater {
 				return;
 			}
 
-			String replacement = render(expression, literal.getValue(), update);
+			String replacement = expression.renderUpdate(update.to());
 			if (replacement != null && !replacement.equals(literal.getValue())) {
 				JsonStringLiteral replacementLiteral = factory.createStringLiteral(replacement);
 				literal.replace(replacementLiteral);
 			}
 		});
 	}
-
-	private static @Nullable String render(NpmVersionExpression expression, String rawValue, DependencyUpdate update) {
-		return render(expression, rawValue, update.to());
-	}
-
-	static @Nullable String render(NpmVersionExpression expression, String rawValue,
-			ArtifactVersion version) {
-
-		if (!expression.isUpdatable()) {
-			return null;
-		}
-
-		String tail = renderTail(expression, version);
-		if (tail == null) {
-			return null;
-		}
-
-		int start = expression.replaceableRange(rawValue).getStartOffset();
-		int end = expression.replaceableRange(rawValue).getEndOffset();
-		return rawValue.substring(0, start) + tail + rawValue.substring(end);
-	}
-
-	private static @Nullable String renderTail(NpmVersionExpression expression,
-			ArtifactVersion version) {
-
-		return switch (expression) {
-		case NpmVersionExpression.Git git -> renderGitTail(git, version);
-		case NpmVersionExpression.Alias alias -> renderTail(alias.inner(), version);
-		case NpmVersionExpression.Range range -> renderTail(range.upper(), version);
-		default -> version.toString();
-		};
-	}
-
-	private static @Nullable String renderGitTail(NpmVersionExpression.Git git,
-			ArtifactVersion version) {
-
-		if (!(version instanceof GitVersion gitVersion)) {
-			return null;
-		}
-		RefStyle style = RefStyle.from(git.ref().committish().text());
-		return gitVersion.renderRef(style, git.ref().committish().text());
-	}
-
 
 }

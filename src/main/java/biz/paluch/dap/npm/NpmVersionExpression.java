@@ -24,6 +24,8 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.GitArtifactId;
 import biz.paluch.dap.artifact.GitRepositoryMetadata;
+import biz.paluch.dap.artifact.GitVersion;
+import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.artifact.RemoteUrl;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.util.StringUtils;
@@ -69,7 +71,8 @@ import org.springframework.util.Assert;
 sealed interface NpmVersionExpression
 		permits NpmVersionExpression.Exact, NpmVersionExpression.Range,
 		NpmVersionExpression.SimpleRange, NpmVersionExpression.Prefix,
-		NpmVersionExpression.Alias, NpmVersionExpression.Git {
+		NpmVersionExpression.Alias, NpmVersionExpression.Git,
+		NpmVersionExpression.Padded {
 
 	/**
 	 * Pattern for NPM wildcard/prefix ranges supported by this classifier.
@@ -186,7 +189,16 @@ sealed interface NpmVersionExpression
 			return null;
 		}
 
-		value = value.trim();
+		String trimmed = value.trim();
+		if (!value.equals(trimmed)) {
+			NpmVersionExpression inner = parse(trimmed);
+			if (inner == null) {
+				return null;
+			}
+			int start = value.indexOf(trimmed);
+			return new Padded(value.substring(0, start), inner, value.substring(start + trimmed.length()));
+		}
+		value = trimmed;
 
 		if (Git.isGitUrl(value)) {
 			return Git.parse(value);
@@ -204,7 +216,6 @@ sealed interface NpmVersionExpression
 			return null;
 		}
 
-		String trimmed = value.trim();
 		if (trimmed.equals("*") || trimmed.equalsIgnoreCase("x") || trimmed.equalsIgnoreCase("latest")) {
 			return null;
 		}
@@ -228,7 +239,8 @@ sealed interface NpmVersionExpression
 			if (lower == null || upper == null) {
 				return null;
 			}
-			return new Range(lower, upper);
+			String separator = trimmed.substring(pair.end(1), pair.start(2));
+			return new Range(lower, separator, upper);
 		}
 
 		return parseExact(trimmed);
@@ -270,12 +282,14 @@ sealed interface NpmVersionExpression
 	/**
 	 * Render this expression with the given target version.
 	 * <p>The returned value represents the complete expression text for this
-	 * variant, preserving syntax owned by the variant. Updaters that replace only
-	 * {@link #replaceableRange(String)} may use variant-specific tails instead of
-	 * this complete rendering.
+	 * variant, preserving all syntax owned by the variant. Returning
+	 * {@literal null} means that applying the target would not be safe, for example
+	 * when a Git expression receives a non-Git version.
 	 * @param version the target artifact version.
-	 * @return the complete rendered expression text.
+	 * @return the complete rendered expression text, or {@literal null} if the
+	 * target version cannot be represented safely by this expression.
 	 */
+	@Nullable
 	String renderUpdate(ArtifactVersion version);
 
 	/**
@@ -357,13 +371,13 @@ sealed interface NpmVersionExpression
 
 		@Override
 		public TextRange replaceableRange(String rawDeclared) {
-			int start = modifier.length();
-			return TextRange.from(start, version.length());
+			return isStrictComparator() ? TextRange.from(0, modifier.length() + version.length())
+					: TextRange.from(modifier.length(), version.length());
 		}
 
 		@Override
 		public String renderUpdate(ArtifactVersion version) {
-			return modifier + version;
+			return isStrictComparator() ? modifier + "=" + version : modifier + version;
 		}
 
 		@Override
@@ -381,34 +395,44 @@ sealed interface NpmVersionExpression
 			return modifier + version;
 		}
 
+		private boolean isStrictComparator() {
+			return modifier.equals("<") || modifier.equals(">");
+		}
+
 	}
 
 	/**
 	 * Comparator-pair range whose right-hand side is modeled as its own expression.
 	 *
-	 * <p>
-	 * The lower expression establishes the left boundary and is preserved when
+	 * <p>The lower expression establishes the left boundary and is preserved when
 	 * rendering an update. The upper expression is the version-bearing segment used
 	 * for lookup, replacement, and {@link VersionSource} creation. This model keeps
 	 * comparator ranges in the update flow while avoiding attempts to reason about
 	 * arbitrary multi-clause npm ranges.
 	 *
 	 * @param lower the lower range boundary.
+	 * @param separator the verbatim whitespace between the range boundaries.
 	 * @param upper the upper range boundary.
 	 */
-	record Range(NpmVersionExpression lower, NpmVersionExpression upper) implements NpmVersionExpression {
+	record Range(NpmVersionExpression lower, String separator,
+			NpmVersionExpression upper) implements NpmVersionExpression {
+
+		Range(NpmVersionExpression lower, NpmVersionExpression upper) {
+			this(lower, " ", upper);
+		}
 
 		@Override
 		public TextRange replaceableRange(String rawDeclared) {
-			int upperStart = upperStartIn(rawDeclared);
+			int upperStart = lower.toString().length() + separator.length();
 			String upperRaw = rawDeclared.substring(upperStart);
 			TextRange upperRange = upper.replaceableRange(upperRaw);
 			return TextRange.from(upperStart + upperRange.getStartOffset(), upperRange.getLength());
 		}
 
 		@Override
-		public String renderUpdate(ArtifactVersion version) {
-			return lower + " " + upper.renderUpdate(version);
+		public @Nullable String renderUpdate(ArtifactVersion version) {
+			String renderedUpper = upper.renderUpdate(version);
+			return renderedUpper != null ? lower + separator + renderedUpper : null;
 		}
 
 		@Override
@@ -423,20 +447,7 @@ sealed interface NpmVersionExpression
 
 		@Override
 		public String toString() {
-			return lower + " " + upper.toString();
-		}
-
-		/**
-		 * Locate the upper-bound expression in the raw declared text. The bounds may be
-		 * separated by any non-empty whitespace run (per {@link #COMPARATOR_PAIR}), so
-		 * the upper position is found by searching from the end of the lower expression
-		 * rather than assuming a fixed separator length.
-		 */
-		private int upperStartIn(String rawDeclared) {
-			String upperText = upper.toString();
-			int searchFrom = Math.min(lower.toString().length(), rawDeclared.length());
-			int found = rawDeclared.indexOf(upperText, searchFrom);
-			return found >= 0 ? found : Math.min(searchFrom + 1, rawDeclared.length());
+			return lower + separator + upper.toString();
 		}
 
 	}
@@ -502,8 +513,8 @@ sealed interface NpmVersionExpression
 		}
 
 		@Override
-		public String renderUpdate(ArtifactVersion version) {
-			return version.toString();
+		public @Nullable String renderUpdate(ArtifactVersion version) {
+			return null;
 		}
 
 		@Override
@@ -547,8 +558,8 @@ sealed interface NpmVersionExpression
 	 * <p>The {@code inner} expression must parse as one of the non-alias variants.
 	 * Nested aliases are rejected by the compact constructor. Alias expressions
 	 * preserve the target package name while delegating version text, replacement,
-	 * and update rendering to the inner expression. Artifact lookup continues to
-	 * use the package name declared by the JSON property.
+	 * and update rendering to the inner expression. Artifact lookup uses the target
+	 * package identity.
 	 *
 	 * @param packageName the aliased package name written between {@code npm:} and
 	 * {@code @}.
@@ -572,8 +583,9 @@ sealed interface NpmVersionExpression
 		}
 
 		@Override
-		public String renderUpdate(ArtifactVersion version) {
-			return "npm:" + packageName + "@" + inner.renderUpdate(version);
+		public @Nullable String renderUpdate(ArtifactVersion version) {
+			String renderedInner = inner.renderUpdate(version);
+			return renderedInner != null ? "npm:" + packageName + "@" + renderedInner : null;
 		}
 
 		@Override
@@ -587,8 +599,61 @@ sealed interface NpmVersionExpression
 		}
 
 		@Override
+		public ArtifactId postProcess(ArtifactId artifactId) {
+			return NpmUtils.toArtifactId(packageName);
+		}
+
+		@Override
 		public String toString() {
 			return packageName() + inner();
+		}
+
+	}
+
+	/**
+	 * Expression retaining whitespace around a supported inner expression.
+	 * @param leading whitespace before the expression.
+	 * @param inner the supported expression.
+	 * @param trailing whitespace after the expression.
+	 */
+	record Padded(String leading, NpmVersionExpression inner, String trailing) implements NpmVersionExpression {
+
+		@Override
+		public TextRange replaceableRange(String rawDeclared) {
+			TextRange innerRange = inner.replaceableRange(rawDeclared.substring(leading.length(),
+					rawDeclared.length() - trailing.length()));
+			return innerRange.shiftRight(leading.length());
+		}
+
+		@Override
+		public boolean isUpdatable() {
+			return inner.isUpdatable();
+		}
+
+		@Override
+		public String text() {
+			return inner.text();
+		}
+
+		@Override
+		public @Nullable String renderUpdate(ArtifactVersion version) {
+			String renderedInner = inner.renderUpdate(version);
+			return renderedInner != null ? leading + renderedInner + trailing : null;
+		}
+
+		@Override
+		public VersionSource versionSource() {
+			return inner.versionSource();
+		}
+
+		@Override
+		public ArtifactId postProcess(ArtifactId artifactId) {
+			return inner.postProcess(artifactId);
+		}
+
+		@Override
+		public String toString() {
+			return leading + inner + trailing;
 		}
 
 	}
@@ -643,8 +708,18 @@ sealed interface NpmVersionExpression
 		}
 
 		@Override
-		public String renderUpdate(ArtifactVersion version) {
-			return ref.renderUpdate(version);
+		public @Nullable String renderUpdate(ArtifactVersion version) {
+			if (!isUpdatable() || !(version instanceof GitVersion gitVersion)) {
+				return null;
+			}
+
+			String original = ref.committish().text();
+			RefStyle style = RefStyle.from(original);
+			String renderedRef = gitVersion.renderRef(style, original);
+			if (style == RefStyle.SHA) {
+				return ref.prefix() + renderedRef;
+			}
+			return ref.renderUpdate(ArtifactVersion.of(renderedRef));
 		}
 
 		@Override
@@ -758,7 +833,8 @@ sealed interface NpmVersionExpression
 				committish = new Exact("", "");
 			}
 
-			return new NpmVersionExpression.Git(new NpmGitRef(urlPart + "#", repository, committish));
+			String prefix = urlPart + "#" + (committishRaw.startsWith(SEMVER_PREFIX) ? SEMVER_PREFIX : "");
+			return new NpmVersionExpression.Git(new NpmGitRef(prefix, repository, committish));
 		}
 
 		private static NpmVersionExpression.@Nullable Git parseShorthand(String value) {
@@ -780,7 +856,8 @@ sealed interface NpmVersionExpression
 			if (committish == null) {
 				return null;
 			}
-			String prefix = value.replace(committishRaw, "");
+			String prefix = value.substring(0, value.length() - committishRaw.length())
+					+ (committishRaw.startsWith(SEMVER_PREFIX) ? SEMVER_PREFIX : "");
 
 			return new NpmVersionExpression.Git(new NpmGitRef(prefix, repository, committish));
 		}
@@ -833,12 +910,12 @@ sealed interface NpmVersionExpression
 	 * {@link RemoteUrl#parse(String)}.
 	 *
 	 * <p>The {@code prefix} is the original Git URL or shorthand text up to the
-	 * committish replacement point, including {@code #}. For semver refs, the
-	 * {@code semver:} marker is not retained here. The {@code committish} is
-	 * modeled as an {@link NpmVersionExpression} so tag-like refs, comparator refs,
-	 * SHAs, and branch names can share the same rendering contract. An empty
-	 * committish indicates that the user did not pin the dependency to a specific
-	 * ref. Downstream resolution treats that as no concrete version.
+	 * committish replacement point, including {@code #} and an optional
+	 * {@code semver:} marker. The {@code committish} is modeled as an
+	 * {@link NpmVersionExpression} so tag-like refs, comparator refs, SHAs, and
+	 * branch names can share the same rendering contract. An empty committish
+	 * indicates that the user did not pin the dependency to a specific ref.
+	 * Downstream resolution treats that as no concrete version.
 	 *
 	 * @author Mark Paluch
 	 * @param prefix the raw declaration prefix preserved when rendering an update.
@@ -856,10 +933,12 @@ sealed interface NpmVersionExpression
 		 * original URL or shorthand prefix.
 		 *
 		 * @param version the target artifact version.
-		 * @return the rendered Git dependency value.
+		 * @return the rendered Git dependency value, or {@literal null} if the
+		 * committish cannot render the target safely.
 		 */
-		public String renderUpdate(ArtifactVersion version) {
-			return prefix + committish.renderUpdate(version);
+		public @Nullable String renderUpdate(ArtifactVersion version) {
+			String renderedCommittish = committish.renderUpdate(version);
+			return renderedCommittish != null ? prefix + renderedCommittish : null;
 		}
 
 	}

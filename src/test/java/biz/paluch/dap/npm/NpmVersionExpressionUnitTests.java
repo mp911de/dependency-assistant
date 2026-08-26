@@ -18,6 +18,7 @@ package biz.paluch.dap.npm;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.GitRepositoryMetadata;
+import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.npm.NpmVersionExpression.Exact;
 import biz.paluch.dap.npm.NpmVersionExpression.Git;
 import com.intellij.openapi.util.TextRange;
@@ -57,6 +58,24 @@ class NpmVersionExpressionUnitTests {
 
 		assertThat(expression.replaceableRange("^3.1.2")).isEqualTo(TextRange.from(1, 5));
 		assertThat(expression.renderUpdate(ArtifactVersion.of("1.0"))).isEqualTo("^1.0");
+	}
+
+	@Test
+	void strictComparatorReplacementIncludesInclusiveModifier() {
+
+		NpmVersionExpression.Exact expression = new NpmVersionExpression.Exact("<", "3.1.2");
+
+		assertThat(expression.replaceableRange("<3.1.2")).isEqualTo(TextRange.from(0, 6));
+		assertThat(expression.renderUpdate(ArtifactVersion.of("4.0.0"))).isEqualTo("<=4.0.0");
+	}
+
+	@Test
+	void paddedExpressionOffsetsInnerReplacement() {
+
+		NpmVersionExpression expression = requireNonNull(NpmVersionExpression.parse(" ^3.1.2 "));
+
+		assertThat(expression.replaceableRange(" ^3.1.2 ")).isEqualTo(TextRange.from(2, 5));
+		assertThat(expression.renderUpdate(ArtifactVersion.of("4.0.0"))).isEqualTo(" ^4.0.0 ");
 	}
 
 	@ParameterizedTest
@@ -103,9 +122,9 @@ class NpmVersionExpressionUnitTests {
 		NpmVersionExpression.Exact upper = new NpmVersionExpression.Exact("<", "2.1.2");
 		NpmVersionExpression.Range expression = new NpmVersionExpression.Range(lower, upper);
 
-		assertThat(expression.replaceableRange(">=1.0.2 <2.1.2")).isEqualTo(TextRange.from(9, 5));
+		assertThat(expression.replaceableRange(">=1.0.2 <2.1.2")).isEqualTo(TextRange.from(8, 6));
 		assertThat(expression.isUpdatable()).isTrue();
-		assertThat(expression.renderUpdate(ArtifactVersion.of("1.0"))).isEqualTo(">=1.0.2 <1.0");
+		assertThat(expression.renderUpdate(ArtifactVersion.of("1.0"))).isEqualTo(">=1.0.2 <=1.0");
 	}
 
 	@Test
@@ -126,6 +145,14 @@ class NpmVersionExpressionUnitTests {
 		NpmVersionExpression.Exact upper = new NpmVersionExpression.Exact("<=", "2.1.2");
 
 		assertThat(expression).isEqualTo(new NpmVersionExpression.Range(lower, upper));
+	}
+
+	@Test
+	void rangeRenderingPreservesSeparator() {
+
+		NpmVersionExpression expression = requireNonNull(NpmVersionExpression.parse(">=1.0.2   <2.1.2"));
+
+		assertThat(expression.renderUpdate(ArtifactVersion.of("2.4.0"))).isEqualTo(">=1.0.2   <=2.4.0");
 	}
 
 	@Test
@@ -162,7 +189,7 @@ class NpmVersionExpressionUnitTests {
 
 		assertThat(expression.replaceableRange("2.x")).isEqualTo(TextRange.from(0, 3));
 		assertThat(expression.isUpdatable()).isFalse();
-		assertThat(expression.renderUpdate(ArtifactVersion.of("1.0"))).isEqualTo("1.0");
+		assertThat(expression.renderUpdate(ArtifactVersion.of("1.0"))).isNull();
 	}
 
 	@Test
@@ -256,7 +283,17 @@ class NpmVersionExpressionUnitTests {
 		assertThat(git.replaceableRange("git+ssh://git@github.com:npm/cli.git#v1.0.27"))
 				.isEqualTo(TextRange.from(37, 7));
 		assertThat(git.isUpdatable()).isTrue();
-		assertThat(git.renderUpdate(ArtifactVersion.of("1.0"))).isEqualTo("git+ssh://git@github.com:npm/cli.git#1.0");
+		assertThat(git.renderUpdate(ArtifactVersion.of("1.0"))).isNull();
+	}
+
+	@Test
+	void gitRenderingPreservesRefStyle() {
+
+		NpmVersionExpression.Git git = requireNonNull(Git.parse("git+ssh://git@github.com:npm/cli.git#abcdef0"));
+		GitVersion target = GitVersion.of("d1185ce59f7757407fe6a5febb1e03e3dba2a530",
+				ArtifactVersion.of("v1.0.28"));
+
+		assertThat(git.renderUpdate(target)).isEqualTo("git+ssh://git@github.com:npm/cli.git#d1185ce");
 	}
 
 	@Test
@@ -277,8 +314,8 @@ class NpmVersionExpressionUnitTests {
 		String raw = "git+https://github.com/owner/repo.git#semver:^5.0";
 
 		assertThat(git.replaceableRange(raw)).isEqualTo(TextRange.from(45, 4));
-		assertThat(git.renderUpdate(ArtifactVersion.of("1.0")))
-				.isEqualTo("git+https://github.com/owner/repo.git#semver:^1.0");
+		GitVersion target = GitVersion.of(null, ArtifactVersion.of("1.0"));
+		assertThat(git.renderUpdate(target)).isEqualTo("git+https://github.com/owner/repo.git#semver:^1.0");
 	}
 
 	@Test

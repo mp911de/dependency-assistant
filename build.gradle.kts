@@ -1,3 +1,4 @@
+import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.tasks.RunIdeTask
 import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
 import org.jsoup.Jsoup
@@ -19,7 +20,7 @@ repositories {
 	}
 }
 
-// AsciidoctorJ CLI for rendering CHANGELOG.adoc; kept off the Asciidoctor Gradle plugin as
+// AsciidoctorJ CLI for rendering CHANGELOG.adoc. Keep off the Asciidoctor Gradle plugin as
 // it is neither configuration-cache compatible nor free of Gradle deprecations
 val asciidoctorj = configurations.create("asciidoctorj")
 
@@ -123,6 +124,12 @@ java {
 	}
 }
 
+
+val runIdePyCharm = intellijPlatformTesting.runIde.register("runIdePyCharm") {
+	type = IntelliJPlatformType.PyCharm
+	version = "2025.3"
+}
+
 tasks {
 
 	patchPluginXml {
@@ -162,5 +169,6 @@ tasks {
 
 	withType<RunIdeTask>().configureEach {
 		systemProperty("idea.log.debug.categories", "biz.paluch.dap")
+
 	}
 }

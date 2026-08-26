@@ -25,6 +25,7 @@ import biz.paluch.dap.artifact.GitArtifactId;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.util.Sequence;
+import com.intellij.ide.trustedProjects.TrustedProjects;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import org.jetbrains.plugins.github.api.GithubServerPath;
@@ -115,7 +116,7 @@ public class GitHubReleaseSourceRouter implements ReleaseSource {
 		ArtifactId id = artifactId;
 		if (artifactId instanceof GitArtifactId gitArtifactId) {
 			id = gitArtifactId.releaseSource();
-			releaseSource = doGetReleaseSource(GithubApiRequestExecutorFactory.serverPath(gitArtifactId.host()));
+			releaseSource = doGetReleaseSource(GithubApiRequestExecutorFactory.getServerPath(gitArtifactId.host()));
 		} else if (strict) {
 			return Sequence.empty();
 		} else {
@@ -132,14 +133,21 @@ public class GitHubReleaseSourceRouter implements ReleaseSource {
 			return existing;
 		}
 
-		GithubApiRequestExecutorFactory.ExecutorResult executor = server == GithubServerPath.DEFAULT_SERVER
-				? factory.getExecutor()
-				: factory.getExecutor(server);
+		GithubApiRequestExecutorFactory.ExecutorResult executor = TrustedProjects.isProjectTrusted(project)
+				? getExecutor(server)
+				: factory.getAnonymousExecutor(server);
+
 		if (!executor.hasExecutor()) {
 			return null;
 		}
 
 		return releaseSources.computeIfAbsent(server, it -> new GitHubReleases(it, executor.getRequiredExecutor()));
+	}
+
+	private GithubApiRequestExecutorFactory.ExecutorResult getExecutor(GithubServerPath server) {
+		return server == GithubServerPath.DEFAULT_SERVER
+				? factory.getExecutor()
+				: factory.getExecutor(server);
 	}
 
 	@Override

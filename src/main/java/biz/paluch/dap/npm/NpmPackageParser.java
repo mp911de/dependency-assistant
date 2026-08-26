@@ -35,7 +35,8 @@ import org.jspecify.annotations.Nullable;
  * {@code devDependencies}.
  *
  * <p>Package names are normalized to {@link ArtifactId} values through
- * {@link #toArtifactId(String)}. Entries that fail the NPM-name allowlist
+ * {@link NpmUtils#toArtifactId(String)}. NPM aliases use the aliased package
+ * identity for release lookup. Entries that fail the NPM-name allowlist
  * ({@code @?[a-z0-9][a-z0-9._-]*(/[a-z0-9][a-z0-9._-]*)?}) are silently skipped
  * at this layer so no out-of-policy name reaches the registry source or any
  * cache key. Out-of-scope value shapes (or-ranges, {@code latest}, {@code *},
@@ -109,28 +110,8 @@ class NpmPackageParser {
 			return null;
 		}
 
-		ArtifactId artifactId = expression.postProcess(toArtifactId(name));
+		ArtifactId artifactId = expression.postProcess(NpmUtils.toArtifactId(name));
 		return new NpmDependency(artifactId, expression, declarationSource);
-	}
-
-	/**
-	 * Return the canonical {@link ArtifactId} for the given NPM package name.
-	 *
-	 * <p>Unscoped names produce {@code groupId == artifactId == name}. Scoped names
-	 * {@code @scope/name} split into {@code groupId = "@scope"} and
-	 * {@code artifactId = "name"}.
-	 *
-	 * @param name an NPM package name that has passed the {@link #NAME_ALLOWLIST
-	 * allowlist}.
-	 * @return the canonical artifact identity.
-	 */
-	static ArtifactId toArtifactId(String name) {
-
-		int slash = name.indexOf('/');
-		if (slash < 0) {
-			return ArtifactId.of(name, name);
-		}
-		return ArtifactId.of(name.substring(0, slash), name.substring(slash + 1));
 	}
 
 }

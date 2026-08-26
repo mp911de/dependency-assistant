@@ -70,6 +70,21 @@ class UpdatePackageJsonFileTests {
 	@ProjectFile(name = "package.json", content = """
 			{
 			  "dependencies": {
+			    "axios": " ^3.1.2 "
+			  }
+			}
+			""")
+	void preservesWhitespaceAroundVersionExpression(PsiFile packageJson) {
+
+		applyUpdate(packageJson, "axios", "3.4.0");
+
+		assertThat(packageJson).containsText("\"axios\": \" ^3.4.0 \"");
+	}
+
+	@Test
+	@ProjectFile(name = "package.json", content = """
+			{
+			  "dependencies": {
 			    "axios": "1.0.0 - 2.9999.9999"
 			  }
 			}
@@ -89,11 +104,26 @@ class UpdatePackageJsonFileTests {
 			  }
 			}
 			""")
-	void updatesComparatorPairUpperBound(PsiFile packageJson) {
+	void makesComparatorPairUpperBoundInclusive(PsiFile packageJson) {
 
 		applyUpdate(packageJson, "axios", "2.4.0");
 
-		assertThat(packageJson).containsText("\"axios\": \">=1.0.2 <2.4.0\"");
+		assertThat(packageJson).containsText("\"axios\": \">=1.0.2 <=2.4.0\"");
+	}
+
+	@Test
+	@ProjectFile(name = "package.json", content = """
+			{
+			  "dependencies": {
+			    "axios": ">2.1.2"
+			  }
+			}
+			""")
+	void makesStrictLowerBoundInclusive(PsiFile packageJson) {
+
+		applyUpdate(packageJson, "axios", "2.4.0");
+
+		assertThat(packageJson).containsText("\"axios\": \">=2.4.0\"");
 	}
 
 	@Test
@@ -121,7 +151,7 @@ class UpdatePackageJsonFileTests {
 			""")
 	void updatesAliasInner(PsiFile packageJson) {
 
-		applyUpdate(packageJson, "alias", "3.1.0");
+		applyUpdate(packageJson, ArtifactId.of("@ankurk91", "bootstrap-vue"), ArtifactVersion.of("3.1.0"));
 
 		assertThat(packageJson).containsText("\"alias\": \"npm:@ankurk91/bootstrap-vue@^3.1.0\"");
 	}
