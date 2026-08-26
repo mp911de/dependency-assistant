@@ -73,7 +73,7 @@ class AntoraProjectContext extends AbstractProjectBuildContext {
 
 	@Override
 	public PackageSystem getPackageSystem() {
-		return PackageSystem.OTHER;
+		return PackageSystem.GITHUB;
 	}
 
 	@Override

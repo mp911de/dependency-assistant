@@ -66,7 +66,7 @@ public class DependencyUpgradeIcons {
 			((ScalableIcon) AllIcons.Actions.InlaySecuredShield).scale(1.3f), "AllIcons.Actions.InlaySecuredShield");
 
 	private static final ResolvableIcon RULE_WARNING = new ResolvableIcon(DependencyAssistantIcons.DEPENDENCY_RULE_WARN,
-			"biz.paluch.dap.DependencyAssistantIcons.DEPENDENCY_RULE_WARN");
+			DependencyAssistantIcons.class.getName() + ".DEPENDENCY_RULE_WARN");
 
 	private DependencyUpgradeIcons() {
 	}

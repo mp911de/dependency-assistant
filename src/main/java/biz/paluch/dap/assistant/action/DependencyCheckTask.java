@@ -111,7 +111,8 @@ public class DependencyCheckTask extends Task.Backgroundable {
 		DependencyCheckResult result = resultRef;
 		if (result == null || result.isEmpty()) {
 			Notifications.info(project, MessageBundle.message("action.check.dependencies.empty.title"),
-					MessageBundle.message("action.check.dependencies.empty.checked", scope.size()));
+					MessageBundle.message("action.check.dependencies.empty.checked", scope.size(),
+							format(DependencyAssistantDispatcher.findAll(project))));
 			return;
 		}
 

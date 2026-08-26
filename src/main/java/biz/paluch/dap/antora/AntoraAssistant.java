@@ -82,6 +82,8 @@ public class AntoraAssistant implements DependencyAssistant {
 
 	private static final boolean AVAILABLE = isYamlAvailable() && isGitHubAvailable();
 
+	static final AntoraAssistant INSTANCE = new AntoraAssistant();
+
 	@Override
 	public String getId() {
 		return "antora";
@@ -94,7 +96,7 @@ public class AntoraAssistant implements DependencyAssistant {
 
 	@Override
 	public PackageSystem getPackageSystem() {
-		return PackageSystem.OTHER;
+		return PackageSystem.GITHUB;
 	}
 
 	@Override

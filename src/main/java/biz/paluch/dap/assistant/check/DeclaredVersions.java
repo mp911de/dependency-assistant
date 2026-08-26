@@ -30,6 +30,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.DeclaredDependency;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.GitRef;
 import biz.paluch.dap.artifact.GitVersion;
@@ -149,23 +150,23 @@ public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> 
 
 		boolean containsGitVersion = hasGitVersion(declarationSites);
 		for (DeclarationSite site : declarationSites) {
-			if (!(site.dependency() instanceof Dependency dependency)) {
-				continue;
-			}
-
+			DeclaredDependency declaredDependency = site.dependency();
 			String location = getDisplayLocation(site.projectId(), site.file(), project);
-			ArtifactVersion version = dependency.getCurrentVersion();
-			if (version instanceof GitRef gitRef) {
-				ArtifactVersion resolved = gitRefResolver.apply(gitRef.getRef());
-				if (resolved != null) {
-					version = resolved;
+
+			if (declaredDependency instanceof Dependency dependency) {
+				ArtifactVersion version = dependency.getCurrentVersion();
+				if (version instanceof GitRef gitRef) {
+					ArtifactVersion resolved = gitRefResolver.apply(gitRef.getRef());
+					if (resolved != null) {
+						version = resolved;
+					}
 				}
+
+				versions.add(version);
+				entries.add(new VersionDrift(version, location));
 			}
 
-			versions.add(version);
-			entries.add(new VersionDrift(version, location));
-
-			for (VersionSource versionSource : dependency.getVersionSources()) {
+			for (VersionSource versionSource : declaredDependency.getVersionSources()) {
 				if (versionSource instanceof VersionSource.DeclaredVersion declared) {
 					declarationEntries.add(new DeclarationDrift(DeclarationStyle.INLINE, location));
 
@@ -177,14 +178,16 @@ public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> 
 							continue;
 						}
 					}
-					ArtifactVersion.from(declared.getVersion()).ifPresent(declaredVersion -> {
-						versions.add(declaredVersion);
-						entries.add(new VersionDrift(declaredVersion, location));
-					});
+					ArtifactVersion.from(declared.getVersion())
+							.ifPresent(declaredVersion -> {
+								versions.add(declaredVersion);
+								entries.add(new VersionDrift(declaredVersion, location));
+							});
 				} else if (versionSource.isProperty()) {
 					declarationEntries.add(new DeclarationDrift(DeclarationStyle.PROPERTY, location));
 				}
 			}
+
 		}
 		return new DeclaredVersions(versions, entries, declarationEntries);
 	}
@@ -493,6 +496,7 @@ public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> 
 		public @Nls String getName() {
 			return MessageBundle.message(messageKey);
 		}
+
 	}
 
 }

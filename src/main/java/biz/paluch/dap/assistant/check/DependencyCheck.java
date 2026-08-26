@@ -340,7 +340,6 @@ public class DependencyCheck {
 		return results;
 	}
 
-
 	private static void cancelRemainingFutures(Map<?, ? extends Future<?>> futures) {
 		for (Future<?> future : futures.values()) {
 			if (!future.isDone()) {
