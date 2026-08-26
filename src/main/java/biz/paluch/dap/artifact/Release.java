@@ -16,12 +16,11 @@
 
 package biz.paluch.dap.artifact;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.util.Optional;
 
+import biz.paluch.dap.util.DateUtils;
 import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
@@ -140,14 +139,10 @@ public record Release(ArtifactVersion version,
 	 * date nor an ISO local date-time.
 	 */
 	public static @Nullable LocalDateTime parseReleaseDate(@Nullable String date) {
-		if (!StringUtils.hasText(date)) {
+		if (StringUtils.isEmpty(date)) {
 			return null;
 		}
-		try {
-			return LocalDateTime.parse(date);
-		} catch (DateTimeParseException e) {
-			return LocalDateTime.of(LocalDate.parse(date), LocalTime.MIDNIGHT);
-		}
+		return DateUtils.parse(date);
 	}
 
 	@Override
