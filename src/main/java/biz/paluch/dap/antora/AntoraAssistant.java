@@ -53,7 +53,6 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.CachedValuesManager;
-import org.jetbrains.yaml.YAMLFileType;
 import org.jetbrains.yaml.psi.YAMLQuotedText;
 import org.jetbrains.yaml.psi.YAMLScalar;
 
@@ -127,9 +126,9 @@ public class AntoraAssistant implements DependencyAssistant {
 		}
 
 		BetterPsiManager psiManager = BetterPsiManager.getInstance(project);
-		Collection<VirtualFile> yamlFiles = FileIndexLookup.getInstance(project)
-				.find(YAMLFileType.YML, AntoraUtils::isPlaybookFile);
-		return psiManager.stream(yamlFiles).filter(AntoraUtils::isPlaybookFile).toList();
+		Collection<VirtualFile> playbooks = FileIndexLookup.getInstance(project)
+				.find(AntoraUtils.PLAYBOOK_FILE_NAME, AntoraUtils::isPlaybookFile);
+		return psiManager.stream(playbooks).filter(AntoraUtils::isPlaybookFile).toList();
 	}
 
 	@Override
