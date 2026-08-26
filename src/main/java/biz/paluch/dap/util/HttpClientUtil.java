@@ -16,7 +16,7 @@
 
 package biz.paluch.dap.util;
 
-import java.io.ByteArrayOutputStream;
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -30,7 +30,6 @@ import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationInfo;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ApplicationNamesInfo;
-import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.util.io.HttpRequests;
 import com.intellij.util.io.RequestBuilder;
 import org.jspecify.annotations.Nullable;
@@ -45,18 +44,19 @@ import org.springframework.util.Assert;
  * <p>HTTP transport uses {@link HttpRequests}, which integrates with the IDE
  * proxy selector, proxy authentication, and progress-indicator cancellation.
  * Requests share the configured timeouts, user agent, and a 24-request
- * concurrency limit. The string-returning fetch also enforces the response-size
- * limit. A thread interrupted while waiting for a request permit returns an
- * absent result with its interrupt status restored.
+ * concurrency limit. The string-returning fetch enforces the response-size
+ * limit; a fetch supplying its own response processor opts in through
+ * {@link #capped(InputStream, int)}. A thread interrupted while waiting for a
+ * request permit returns an absent result with its interrupt status restored.
  *
  * @author Mark Paluch
  */
 public class HttpClientUtil {
 
 	/**
-	 * Maximum response body size accepted by metadata fetches (5 MB).
+	 * Maximum response body size accepted by metadata fetches (10 MB).
 	 */
-	public static final int MAX_RESPONSE_BODY_BYTES = 5 * 1024 * 1024;
+	public static final int MAX_RESPONSE_BODY_BYTES = 10 * 1024 * 1024;
 
 	/**
 	 * Connect timeout for metadata fetches (10 seconds).
@@ -192,35 +192,34 @@ public class HttpClientUtil {
 	}
 
 	/**
-	 * Read the response body as a UTF-8 string, streaming with a hard size cap.
-	 *
-	 * <p>The body is read in 8&nbsp;KB chunks and the cumulative size is checked
-	 * after each read. Reads exceeding {@link #MAX_RESPONSE_BODY_BYTES} fail with
-	 * an {@link IOException} before the full body is materialised, preventing a
-	 * hostile or oversized response from being fully allocated in memory.
+	 * Read the response body as a UTF-8 string, failing before a body larger than
+	 * {@link #MAX_RESPONSE_BODY_BYTES} is fully allocated.
 	 *
 	 * @param request the HTTP request to read.
 	 * @return the response body decoded as UTF-8.
-	 * @throws IOException if the response exceeds {@link #MAX_RESPONSE_BODY_BYTES}
-	 * or the underlying stream fails.
+	 * @throws ResponseTooLargeException if the response exceeds
+	 * {@link #MAX_RESPONSE_BODY_BYTES}.
+	 * @throws IOException if the response cannot be read.
 	 */
 	public static String readUtf8StreamCapped(HttpRequests.Request request) throws IOException {
 
-		try (InputStream in = request.getInputStream()) {
-			ByteArrayOutputStream out = new ByteArrayOutputStream();
-			byte[] buf = new byte[8 * 1024];
-			long total = 0;
-			int read;
-			while ((read = in.read(buf)) >= 0) {
-				total += read;
-				if (total > MAX_RESPONSE_BODY_BYTES) {
-					throw new IOException("Response body exceeds %s bytes"
-							.formatted(StringUtil.formatFileSize(MAX_RESPONSE_BODY_BYTES)));
-				}
-				out.write(buf, 0, read);
-			}
-			return out.toString(StandardCharsets.UTF_8);
+		try (InputStream in = capped(request.getInputStream(), MAX_RESPONSE_BODY_BYTES)) {
+			return new String(in.readAllBytes(), StandardCharsets.UTF_8);
 		}
+	}
+
+	/**
+	 * Wrap a response body stream so that reading past {@code maxBytes} throws
+	 * {@link ResponseTooLargeException}.
+	 *
+	 * <p>Closing the returned stream closes the wrapped one.
+	 *
+	 * @param body the response body stream to wrap.
+	 * @param maxBytes the number of bytes to accept.
+	 * @return the capped stream.
+	 */
+	public static InputStream capped(InputStream body, int maxBytes) {
+		return new CappedInputStream(body, maxBytes);
 	}
 
 	/**
@@ -249,6 +248,47 @@ public class HttpClientUtil {
 			return 80;
 		}
 		return -1;
+	}
+
+	/**
+	 * Stream that fails once the number of bytes read exceeds the configured cap.
+	 */
+	private static class CappedInputStream extends FilterInputStream {
+
+		private final int maxBytes;
+
+		private long total;
+
+		CappedInputStream(InputStream in, int maxBytes) {
+			super(in);
+			this.maxBytes = maxBytes;
+		}
+
+		@Override
+		public int read() throws IOException {
+			int read = super.read();
+			if (read >= 0) {
+				count(1);
+			}
+			return read;
+		}
+
+		@Override
+		public int read(byte[] b, int off, int len) throws IOException {
+			int read = super.read(b, off, len);
+			if (read > 0) {
+				count(read);
+			}
+			return read;
+		}
+
+		private void count(int read) throws IOException {
+			total += read;
+			if (total > maxBytes) {
+				throw new ResponseTooLargeException(maxBytes);
+			}
+		}
+
 	}
 
 }

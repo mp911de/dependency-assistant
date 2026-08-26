@@ -305,6 +305,76 @@ class NpmRegistryTests {
 		assertThat(metadata.getRepositoryUrl()).isEqualTo("git+https://github.com/owner/new-repo.git");
 	}
 
+	@Test
+	void ignoresBulkFieldsSurroundingTheConsumedOnes() throws IOException {
+
+		String body = """
+				{
+				  "_id": "demo",
+				  "readme": "# demo\\n\\nlots of prose",
+				  "users": { "someone": true },
+				  "versions": {
+				    "1.0.0": {
+				      "dist": { "tarball": "https://registry.npmjs.org/demo/-/demo-1.0.0.tgz", "shasum": "abc" },
+				      "scripts": { "build": "tsc" },
+				      "maintainers": [ { "name": "someone" } ],
+				      "gitHead": "1111111",
+				      "bugs": { "url": "https://github.com/owner/repo/issues" }
+				    }
+				  },
+				  "dist-tags": { "latest": "1.0.0" },
+				  "maintainers": [ { "name": "someone" } ],
+				  "time": { "created": "2024-01-01T10:00:00Z", "1.0.0": "2024-02-01T10:00:00Z" },
+				  "repository": "https://github.com/owner/repo"
+				}
+				""";
+
+		NpmReleases releases = (NpmReleases) SOURCE.parseReleases(body);
+
+		assertThat(releases).singleElement().satisfies(release -> {
+			assertThat(release.version().toString()).isEqualTo("1.0.0");
+			assertThat(release.releaseDate()).isNotNull();
+		});
+		assertThat(releases.getProjectMetadata().getRepositoryUrl()).isEqualTo("https://github.com/owner/repo");
+		assertThat(releases.getProjectMetadata().getIssueTrackerUrl())
+				.isEqualTo("https://github.com/owner/repo/issues");
+	}
+
+	@Test
+	void readsFieldsRegardlessOfDocumentOrder() throws IOException {
+
+		String versionsFirst = """
+				{
+				  "versions": { "1.0.0": { "repository": "https://github.com/owner/repo" } },
+				  "dist-tags": { "latest": "1.0.0" }
+				}
+				""";
+
+		assertThat(parseMetadata(versionsFirst).getRepositoryUrl()).isEqualTo("https://github.com/owner/repo");
+	}
+
+	@Test
+	void toleratesNonObjectVersionDocuments() throws IOException {
+
+		String body = """
+				{
+				  "versions": { "1.0.0": null, "2.0.0": [], "3.0.0": {} }
+				}
+				""";
+
+		Sequence<Release> releases = SOURCE.parseReleases(body);
+
+		assertThat(releases).extracting(r -> r.version().toString())
+				.containsExactlyInAnyOrder("1.0.0", "2.0.0", "3.0.0");
+	}
+
+	@Test
+	void emptySequenceWhenVersionsIsNotAnObject() throws IOException {
+		assertThat(SOURCE.parseReleases("{ \"versions\": null }")).isEmpty();
+		assertThat(SOURCE.parseReleases("{ \"name\": \"demo\" }")).isEmpty();
+		assertThat(SOURCE.parseReleases("[]")).isEmpty();
+	}
+
 	private CachedMetadata parseMetadata(String body) throws IOException {
 
 		NpmReleases releases = (NpmReleases) SOURCE.parseReleases(body);

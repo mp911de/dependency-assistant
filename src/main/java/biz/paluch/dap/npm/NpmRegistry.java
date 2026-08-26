@@ -17,12 +17,12 @@
 package biz.paluch.dap.npm;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -34,10 +34,16 @@ import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.metadata.RepositoryUrl;
 import biz.paluch.dap.state.CachedMetadata;
+import biz.paluch.dap.util.DateUtils;
 import biz.paluch.dap.util.HttpClientUtil;
+import biz.paluch.dap.util.ResponseTooLargeException;
 import biz.paluch.dap.util.Sequence;
+import biz.paluch.dap.util.StringUtils;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.util.io.HttpRequests;
@@ -72,6 +78,12 @@ public class NpmRegistry implements ReleaseSource {
 
 	private static final String ACCEPT_HEADER = "application/json";
 
+	/**
+	 * Accept header for the registry's abbreviated package document, which omits
+	 * everything but the version list and its install metadata.
+	 */
+	private static final String ABBREVIATED_ACCEPT_HEADER = "application/vnd.npm.install-v1+json";
+
 	private static final ObjectMapper MAPPER = new ObjectMapper();
 
 	private final String registryBaseUrl;
@@ -92,6 +104,11 @@ public class NpmRegistry implements ReleaseSource {
 	 * Fetch the NPM Registry Package Document for the given artifact and parse its
 	 * versions and project metadata.
 	 *
+	 * <p>A package document exceeding
+	 * {@link HttpClientUtil#MAX_RESPONSE_BODY_BYTES} is retried against the
+	 * registry's abbreviated document, which yields the versions without release
+	 * dates, commit hashes, or project metadata.
+	 *
 	 * @param artifactId the normalized NPM package coordinate.
 	 * @param indicator the progress indicator used to honor cancellation.
 	 * @return the parsed releases, or an empty sequence when this source does not
@@ -110,11 +127,15 @@ public class NpmRegistry implements ReleaseSource {
 		URI uri = URI.create(registryBaseUrl + encodePackageName(packageName));
 		indicator.checkCanceled();
 
-		String body = fetchUrl(artifactId, uri);
-		if (body == null || body.isEmpty()) {
-			return Sequence.empty();
+		Sequence<Release> releases;
+		try {
+			releases = fetchReleases(artifactId, uri, ACCEPT_HEADER);
+		} catch (ResponseTooLargeException e) {
+			LOG.info("[%s][%s] Package document too large, retrying abbreviated: %s"
+					.formatted(toString(artifactId), getId(), uri), e);
+			releases = fetchReleases(artifactId, uri, ABBREVIATED_ACCEPT_HEADER);
 		}
-		return parseReleases(body);
+		return releases != null ? releases : Sequence.empty();
 	}
 
 	@Override
@@ -131,7 +152,7 @@ public class NpmRegistry implements ReleaseSource {
 	 * @param packageName the validated package name.
 	 * @return the registry path representation of the package name.
 	 */
-	protected static String encodePackageName(String packageName) {
+	static String encodePackageName(String packageName) {
 
 		if (packageName.startsWith("@")) {
 			int slash = packageName.indexOf('/');
@@ -145,9 +166,17 @@ public class NpmRegistry implements ReleaseSource {
 		return URLEncoder.encode(packageName, StandardCharsets.UTF_8);
 	}
 
-	private @Nullable String fetchUrl(ArtifactId artifactId, URI uri) throws IOException {
+	private @Nullable Sequence<Release> fetchReleases(ArtifactId artifactId, URI uri, String acceptHeader)
+			throws IOException {
 		try {
-			return HttpClientUtil.fetchUrl(uri, requestBuilder -> requestBuilder.accept(ACCEPT_HEADER));
+			return HttpClientUtil.fetchUrl(uri, requestBuilder -> requestBuilder.accept(acceptHeader),
+					request -> {
+						try (InputStream body = HttpClientUtil.capped(request.getInputStream(),
+								HttpClientUtil.MAX_RESPONSE_BODY_BYTES);
+								JsonParser parser = MAPPER.createParser(body)) {
+							return parseReleases(parser);
+						}
+					});
 		} catch (HttpRequests.HttpStatusException e) {
 			if (e.getStatusCode() == 404) {
 				LOG.debug("[%s][%s] HTTP Status %d: %s".formatted(toString(artifactId), getId(),
@@ -160,9 +189,16 @@ public class NpmRegistry implements ReleaseSource {
 		}
 	}
 
-	protected Sequence<Release> parseReleases(String body) throws IOException {
+	Sequence<Release> parseReleases(String body) throws IOException {
 
-		JsonNode root = MAPPER.readTree(body);
+		try (JsonParser parser = MAPPER.createParser(body)) {
+			return parseReleases(parser);
+		}
+	}
+
+	private Sequence<Release> parseReleases(JsonParser parser) throws IOException {
+
+		JsonNode root = readRetainedFields(parser);
 		JsonNode versions = root.path("versions");
 		JsonNode time = root.path("time");
 
@@ -176,11 +212,82 @@ public class NpmRegistry implements ReleaseSource {
 			JsonNode version = property.getValue();
 			JsonNode gitHead = version.get("gitHead");
 			String sha = gitHead != null ? gitHead.asText(null) : null;
-			LocalDateTime releaseDate = parseReleaseDate(time.path(versionString).asText(null));
+			String versionTime = time.path(versionString).asText(null);
+			LocalDateTime releaseDate = StringUtils.hasText(versionTime) ? DateUtils.parse(versionTime) : null;
 
 			Release.tryFrom(versionString, releaseDate, sha).ifPresent(result::add);
 		}
 		return new NpmReleases(result, getProjectMetadata(root));
+	}
+
+	/**
+	 * Read the package document, keeping only the fields the parse consumes and
+	 * skipping the rest as it streams past. Fields are matched in whatever order
+	 * they arrive; absent ones stay absent.
+	 */
+	private static ObjectNode readRetainedFields(JsonParser parser) throws IOException {
+
+		ObjectNode root = MAPPER.createObjectNode();
+		if (parser.nextToken() != JsonToken.START_OBJECT) {
+			return root;
+		}
+
+		while (parser.nextToken() == JsonToken.FIELD_NAME) {
+			String field = parser.currentName();
+			parser.nextToken();
+
+			switch (field) {
+			case "versions" -> {
+				if (parser.currentToken() == JsonToken.START_OBJECT) {
+					root.set(field, readRetainedVersions(parser));
+				} else {
+					parser.skipChildren();
+				}
+			}
+			case "time", "dist-tags", "repository", "bugs" -> root.set(field, parser.readValueAsTree());
+			default -> parser.skipChildren();
+			}
+		}
+		return root;
+	}
+
+	/**
+	 * Read the {@code versions} object with the parser positioned at its opening
+	 * brace.
+	 */
+	private static ObjectNode readRetainedVersions(JsonParser parser) throws IOException {
+
+		ObjectNode versions = MAPPER.createObjectNode();
+		while (parser.nextToken() == JsonToken.FIELD_NAME) {
+			String version = parser.currentName();
+			parser.nextToken();
+			versions.set(version, readRetainedVersion(parser));
+		}
+		return versions;
+	}
+
+	/**
+	 * Read a single version document with the parser positioned at its value, which
+	 * need not be an object.
+	 */
+	private static ObjectNode readRetainedVersion(JsonParser parser) throws IOException {
+
+		ObjectNode retained = MAPPER.createObjectNode();
+		if (parser.currentToken() != JsonToken.START_OBJECT) {
+			parser.skipChildren();
+			return retained;
+		}
+
+		while (parser.nextToken() == JsonToken.FIELD_NAME) {
+			String field = parser.currentName();
+			parser.nextToken();
+
+			switch (field) {
+			case "gitHead", "repository", "bugs" -> retained.set(field, parser.readValueAsTree());
+			default -> parser.skipChildren();
+			}
+		}
+		return retained;
 	}
 
 	/**
@@ -290,18 +397,6 @@ public class NpmRegistry implements ReleaseSource {
 			return name;
 		}
 		return groupId + "/" + name;
-	}
-
-	private static @Nullable LocalDateTime parseReleaseDate(@Nullable String publishedAt) {
-
-		if (publishedAt == null || publishedAt.isEmpty()) {
-			return null;
-		}
-		try {
-			return OffsetDateTime.parse(publishedAt).toLocalDateTime();
-		} catch (RuntimeException ignored) {
-			return null;
-		}
 	}
 
 }
