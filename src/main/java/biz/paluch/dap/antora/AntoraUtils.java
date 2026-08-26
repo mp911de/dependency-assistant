@@ -40,11 +40,6 @@ public class AntoraUtils {
 
 	/**
 	 * Return whether the given PSI file has the Antora playbook file shape.
-	 *
-	 * <p>A file qualifies when it carries an injected
-	 * {@link AntoraProjectContext#KEY} user-data entry (used by tests) or when its
-	 * name matches {@link #PLAYBOOK_FILE_NAME}.
-	 *
 	 * @param file the PSI file to test. May be {@literal null}.
 	 * @return {@literal true} if the file is an Antora playbook; {@literal false}
 	 * otherwise.
@@ -54,11 +49,6 @@ public class AntoraUtils {
 		if (file == null) {
 			return false;
 		}
-
-		if (file.getUserData(AntoraProjectContext.KEY) != null) {
-			return true;
-		}
-
 		return PLAYBOOK_FILE_NAME.equals(file.getName());
 	}
 

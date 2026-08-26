@@ -77,12 +77,12 @@ public interface Sequence<T> extends Iterable<T> {
 	}
 
 	/**
-	 * Return the elements of this sequence as an immutable {@link List}.
+	 * Return the elements of this sequence as {@link List}.
 	 *
 	 * <p>The default implementation collects {@link #stream()} into an unmodifiable
 	 * snapshot.
 	 *
-	 * @return the elements as an immutable list.
+	 * @return the elements as list.
 	 */
 	default List<T> toList() {
 		return stream().toList();

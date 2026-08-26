@@ -149,12 +149,8 @@ public class AntoraAssistant implements DependencyAssistant {
 			throw new IllegalStateException("Antora playbook integration does not support " + anchor);
 		}
 
-		AntoraProjectContext injected = anchor.getUserData(AntoraProjectContext.KEY);
-		if (injected != null) {
-			return new AntoraDependencyContext(this, project, anchor.getVirtualFile(), injected);
-		}
-
-		return CachedValuesManager.getProjectPsiDependentCache(anchor, it -> createContext(this, project, it.getVirtualFile()));
+		return CachedValuesManager.getProjectPsiDependentCache(anchor,
+				it -> createContext(this, project, it.getVirtualFile()));
 	}
 
 	private static ProjectDependencyContext createContext(AntoraAssistant assistant, Project project, VirtualFile anchor) {

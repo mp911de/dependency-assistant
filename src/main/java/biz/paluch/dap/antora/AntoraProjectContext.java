@@ -25,7 +25,6 @@ import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.AbstractProjectBuildContext;
 import biz.paluch.dap.support.ProjectBuildContext;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.VirtualFile;
 
 /**
@@ -42,19 +41,9 @@ import com.intellij.openapi.vfs.VirtualFile;
  */
 class AntoraProjectContext extends AbstractProjectBuildContext {
 
-	/**
-	 * Key used to inject a test-scoped context into a PSI file's user data.
-	 */
-	static final Key<AntoraProjectContext> KEY = Key.create("AntoraProjectContext");
-
 	private final Project project;
 
-	/**
-	 * Create an available Antora context for the given project identity.
-	 * @param project the IntelliJ project used for GitHub account resolution.
-	 * @param projectId the project identity.
-	 */
-	AntoraProjectContext(Project project, ProjectId projectId) {
+	private AntoraProjectContext(Project project, ProjectId projectId) {
 		super(projectId);
 		this.project = project;
 	}

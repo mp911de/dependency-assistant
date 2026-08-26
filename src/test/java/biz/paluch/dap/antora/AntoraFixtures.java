@@ -16,13 +16,11 @@
 
 package biz.paluch.dap.antora;
 
-import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.artifact.PackageSystem;
-import biz.paluch.dap.fixtures.TestProjects;
+import biz.paluch.dap.ProjectStateIndexer;
 import biz.paluch.dap.github.TestGitHubReleases;
 import biz.paluch.dap.state.Cache;
-import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
+import com.intellij.openapi.progress.EmptyProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 
@@ -47,19 +45,9 @@ class AntoraFixtures {
 	/**
 	 * Analyze the given Antora playbook file and register its dependency state.
 	 */
-	static DependencyCollector analyze(PsiFile file) {
-
-		StateService service = StateService.getInstance(file.getProject());
-
-		DependencyCollector collector = new AntoraDependencyCollector(PackageSystem.OTHER).collect(file);
-
-		AntoraProjectContext projectContext = new AntoraProjectContext(TestProjects.PROJECT,
-				new ProjectId("antora", "antora-playbook", file.getVirtualFile().getPath()));
-		file.putUserData(AntoraProjectContext.KEY, projectContext);
-
-		service.getProjectState(projectContext.getProjectId()).setDependencies(collector);
-
-		return collector;
+	static void analyze(PsiFile file) {
+		new ProjectStateIndexer(file.getProject(), new EmptyProgressIndicator()).invalidate(AntoraAssistant.INSTANCE,
+				file);
 	}
 
 }
