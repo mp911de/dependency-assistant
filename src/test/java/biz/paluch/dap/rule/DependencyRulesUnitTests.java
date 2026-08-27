@@ -62,6 +62,15 @@ class DependencyRulesUnitTests {
 	}
 
 	@Test
+	void absentRulesRemainAbsentWithProjectVersion() {
+
+		DependencyRule rule = DependencyRules.absent().resolve(
+				ArtifactId.of("org.junit", "junit-bom"), null, ArtifactVersion.of("2.1.1"));
+
+		assertThat(rule).isSameAs(DependencyRule.absent());
+	}
+
+	@Test
 	void reportsSemanticUpgradingEnabledForPresentUnlockedRule() {
 
 		DependencyRules rules = DependencyRules.builder()

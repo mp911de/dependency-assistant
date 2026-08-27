@@ -150,6 +150,28 @@ public record Release(ArtifactVersion version,
 		return true;
 	}
 
+
+	/**
+	 * Returns true if the artifactVersion version is a candidate for upgrade to
+	 * this release in relationship to a {@link ArtifactVersion#isPreview() preview}
+	 * release.
+	 * @param artifactVersion the version to check.
+	 * @return {@code true} if the artifactVersion is a candidate for upgrade.
+	 */
+	public boolean isUpgradeCandidate(ArtifactVersion artifactVersion) {
+
+		if (artifactVersion.matches(version())) {
+			return true;
+		}
+
+		if (!artifactVersion.isPreview() && version().isPreview()) {
+			return false;
+		}
+
+		return getVersion().isNewer(artifactVersion) || getVersion().isBugFixVersion()
+				|| getVersion().isReleaseVersion();
+	}
+
 	/**
 	 * Return whether this release is newer than the given release.
 	 * @param option the release to compare with.

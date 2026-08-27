@@ -140,21 +140,7 @@ public class DependencyUpgradeCandidate implements HasArtifactId, HasPackageIden
 		}
 
 		ArtifactVersion current = getCurrentVersion();
-		return releases.filter(release -> isDisplayable(release, current) || remediations.contains(release));
-	}
-
-	private boolean isDisplayable(Release release, ArtifactVersion current) {
-
-		if (current.matches(release.version())) {
-			return true;
-		}
-
-		if (!current.isPreview() && release.version().isPreview()) {
-			return false;
-		}
-
-		return release.getVersion().isNewer(current) || release.getVersion().isBugFixVersion()
-				|| release.getVersion().isReleaseVersion();
+		return releases.filter(release -> release.isUpgradeCandidate(current) || remediations.contains(release));
 	}
 
 	private boolean isDisplaySuggestion(UpgradeStrategy strategy) {

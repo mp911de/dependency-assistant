@@ -30,7 +30,6 @@ import biz.paluch.dap.assistant.presentation.DependencyPresentation;
 import biz.paluch.dap.assistant.presentation.DependencyPresentationFactory;
 import biz.paluch.dap.plan.PlannedUpgrade;
 import biz.paluch.dap.plan.UpgradePlanToolWindowFactory;
-import biz.paluch.dap.rule.BranchSource;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleService;
 import biz.paluch.dap.rule.ResolutionContext;
@@ -116,7 +115,7 @@ class AssistantReviewActions {
 
 				ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(file);
 				DependencyRule rule = ruleService.resolve(ResolutionContext.forAggregate(update.artifactId(),
-						update.declarationSources(), BranchSource.of(file), context.getProjectVersion()));
+						update.declarationSources(), file.getVirtualFile(), context.getProjectVersion()));
 
 				PackageIdentity pkg = PackageIdentity.of(update.artifactId(), context.getPackageSystem());
 				DependencyPresentation presentation = presentationFactory.create(pkg, rule);

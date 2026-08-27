@@ -16,20 +16,40 @@
 
 package biz.paluch.dap.rule;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Predicate;
-import java.util.regex.Pattern;
 
+/**
+ * Literal pattern with {@code *} wildcards.
+ *
+ * <p>Patterns originate from untrusted project descriptors, so matching walks
+ * literal segments with plain string search and never backtracks, regardless of
+ * pattern length or wildcard count.
+ *
+ * @author Mark Paluch
+ */
 class KnownPattern implements Predicate<String> {
 
 	public static final KnownPattern ANY = new KnownPattern("*");
 
-	private final Pattern glob;
-
 	private final String pattern;
 
+	private final List<String> segments;
+
+	private final boolean wildcard;
+
+	private final boolean leadingWildcard;
+
+	private final boolean trailingWildcard;
+
 	private KnownPattern(String pattern) {
-		this.glob = Pattern.compile(Pattern.quote(pattern).replace("*", "\\E.*\\Q"));
+
 		this.pattern = pattern;
+		this.segments = literalSegments(pattern);
+		this.wildcard = pattern.indexOf('*') != -1;
+		this.leadingWildcard = pattern.startsWith("*");
+		this.trailingWildcard = pattern.endsWith("*");
 	}
 
 	public static KnownPattern of(String pattern) {
@@ -46,7 +66,78 @@ class KnownPattern implements Predicate<String> {
 
 	@Override
 	public boolean test(String s) {
-		return this == ANY || glob.matcher(s).matches();
+
+		if (this == ANY) {
+			return true;
+		}
+		if (!wildcard) {
+			return pattern.equals(s);
+		}
+		if (segments.isEmpty()) {
+			return true;
+		}
+		return matchesSegments(s);
+	}
+
+	/**
+	 * Match by anchoring the first and last segments at the value boundaries and
+	 * locating the remaining segments greedily left to right.
+	 */
+	private boolean matchesSegments(String value) {
+
+		int position = 0;
+		int first = 0;
+		int last = segments.size();
+
+		if (!leadingWildcard) {
+			String head = segments.get(first);
+			if (!value.startsWith(head)) {
+				return false;
+			}
+			position = head.length();
+			first++;
+		}
+
+		int limit = value.length();
+		if (!trailingWildcard) {
+			String tail = segments.get(last - 1);
+			limit = value.length() - tail.length();
+			if (limit < position || !value.startsWith(tail, limit)) {
+				return false;
+			}
+			last--;
+		}
+
+		for (int i = first; i < last; i++) {
+
+			String segment = segments.get(i);
+			int index = value.indexOf(segment, position);
+			if (index == -1 || index + segment.length() > limit) {
+				return false;
+			}
+			position = index + segment.length();
+		}
+
+		return true;
+	}
+
+	private static List<String> literalSegments(String pattern) {
+
+		List<String> segments = new ArrayList<>();
+		int start = 0;
+		while (start < pattern.length()) {
+
+			int star = pattern.indexOf('*', start);
+			if (star == -1) {
+				segments.add(pattern.substring(start));
+				break;
+			}
+			if (star > start) {
+				segments.add(pattern.substring(start, star));
+			}
+			start = star + 1;
+		}
+		return List.copyOf(segments);
 	}
 
 	@Override

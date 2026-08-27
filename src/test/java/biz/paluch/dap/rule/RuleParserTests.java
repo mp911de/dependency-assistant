@@ -138,7 +138,7 @@ class RuleParserTests {
 			""")
 	void parsesGenerationArraysInObjectFormAndBranches(PsiFile file) {
 
-		Rules rules = parse(file);
+		DependencyRules rules = parse(file);
 
 		assertThat(rules.resolve(SPRING_CORE, "main", null)
 				.getGenerations()).hasToString("6.5.x or 7.0.x");
@@ -180,7 +180,7 @@ class RuleParserTests {
 			""")
 	void branchRuleOverridesDefaultsAndInheritsArtifacts(PsiFile file) {
 
-		Rules rules = parse(file);
+		DependencyRules rules = parse(file);
 
 		assertThat(rules.resolve(SPRING_CORE, "3.5.x", null)
 				.getGenerations()).hasToString("6.0.x");
@@ -261,7 +261,7 @@ class RuleParserTests {
 			""")
 	void degradesAllInvalidGenerationsToUnconstrained(PsiFile file) {
 
-		Rules rules = parse(file);
+		DependencyRules rules = parse(file);
 		DependencyRule rule = rules.resolve(SPRING_CORE, "main", null);
 
 		assertThat(rule.isPresent()).isTrue();
@@ -336,7 +336,7 @@ class RuleParserTests {
 			""")
 	void parsesFullDescriptor(PsiFile file) {
 
-		Rules rules = parse(file);
+		DependencyRules rules = parse(file);
 
 		assertThat(rules.resolve(SPRING_CORE, "main", null)
 				.getGenerations()).hasToString("7.0.x");
@@ -383,7 +383,7 @@ class RuleParserTests {
 				.rejects(UpgradeStrategy.MINOR, UpgradeStrategy.MAJOR);
 	}
 
-	private static Rules parse(PsiFile file) {
+	private static DependencyRules parse(PsiFile file) {
 		return new RuleParser((JsonFile) file).parse();
 	}
 

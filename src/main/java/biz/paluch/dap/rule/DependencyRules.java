@@ -36,7 +36,8 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>Resolution selects the most specific branch rule first by branch name,
  * then by the displayed or unwrapped project version. Within the selected
- * branch, the most specific matching artifact pattern wins.
+ * branch, the most specific matching artifact pattern wins; equally specific
+ * patterns resolve to the first declared rule.
  *
  * <p>Branch rules inherit the top-level artifact rules: an artifact without a
  * matching branch-level artifact rule falls back to the top-level rules, still
@@ -50,9 +51,9 @@ import org.jspecify.annotations.Nullable;
  * @see ArtifactRule
  * @see DependencyfileService
  */
-public class DependencyRules implements Rules {
+public class DependencyRules {
 
-	private final Rules parent;
+	private static final DependencyRules ABSENT = new DependencyRules(List.of(), List.of(), SemVerUpdating.DISABLED);
 
 	private final Collection<ArtifactRule> artifacts;
 
@@ -60,17 +61,16 @@ public class DependencyRules implements Rules {
 
 	private final SemVerUpdating semVerUpdating;
 
-	private DependencyRules(Rules parent, Collection<ArtifactRule> artifacts, Collection<BranchRule> branches) {
-		this(parent, artifacts, branches, SemVerUpdating.INFERRED);
-	}
-
-	private DependencyRules(Rules parent, Collection<ArtifactRule> artifacts, Collection<BranchRule> branches,
+	private DependencyRules(Collection<ArtifactRule> artifacts, Collection<BranchRule> branches,
 			SemVerUpdating semVerUpdating) {
 
-		this.parent = parent;
-		this.artifacts = artifacts;
-		this.branches = branches.stream().map(branch -> branch.withDefaults(this.artifacts)).toList();
+		this.artifacts = List.copyOf(artifacts);
+		this.branches = List.copyOf(branches);
 		this.semVerUpdating = semVerUpdating;
+	}
+
+	static DependencyRules absent() {
+		return ABSENT;
 	}
 
 	/**
@@ -103,28 +103,6 @@ public class DependencyRules implements Rules {
 	}
 
 	/**
-	 * Create {@code DependencyRules} from artifact dependency rules.
-	 *
-	 * @param artifacts the artifact dependency rules. The collection is retained.
-	 * @return the dependency rules.
-	 */
-	public static DependencyRules of(Collection<ArtifactRule> artifacts) {
-		return of(artifacts, List.of());
-	}
-
-	/**
-	 * Create {@code DependencyRules} from artifact dependency rules and branch
-	 * rules.
-	 *
-	 * @param artifacts the artifact dependency rules. The collection is retained.
-	 * @param branches the branch rules. The collection is snapshotted.
-	 * @return the dependency rules.
-	 */
-	public static DependencyRules of(Collection<ArtifactRule> artifacts, Collection<BranchRule> branches) {
-		return new DependencyRules(new DependencyRules(Rules.absent(), artifacts, List.of()), artifacts, branches);
-	}
-
-	/**
 	 * Resolve the effective Dependency Rule for the given artifact and branch
 	 * context.
 	 *
@@ -136,7 +114,6 @@ public class DependencyRules implements Rules {
 	 * @return the governing dependency rule, or {@link DependencyRule#absent()}
 	 * when no artifact rule applies.
 	 */
-	@Override
 	public DependencyRule resolve(ArtifactId artifactId, @Nullable String branchName,
 			@Nullable ArtifactVersion projectVersion) {
 		return resolve(artifactId, branchName, projectVersion, false);
@@ -166,7 +143,24 @@ public class DependencyRules implements Rules {
 
 		BranchRule branchRule = resolveBranchRule(branchName, projectVersion, suppressSemanticUpgrading);
 		boolean semanticUpgradingMode = this.semVerUpdating != SemVerUpdating.DISABLED && !suppressSemanticUpgrading;
-		return branchRule.select(parent, artifactId, branchName, projectVersion, semanticUpgradingMode);
+		ArtifactRule defaultRule = mostSpecific(this.artifacts, artifactId);
+		ArtifactRule rule = mostSpecific(branchRule.artifacts(), artifactId);
+		if (rule == null) {
+			rule = defaultRule;
+		}
+
+		if (rule == null) {
+			return branchRule.isFallback()
+					? new ResolvedDependencyRule(Generations.unconstrained(), "", branchRule::supports,
+							semanticUpgradingMode)
+					: DependencyRule.absent();
+		}
+
+		String name = rule.name();
+		if (StringUtils.isEmpty(name) && defaultRule != null) {
+			name = defaultRule.name();
+		}
+		return new ResolvedDependencyRule(rule.generations(), name, branchRule::supports, semanticUpgradingMode);
 	}
 
 	/**
@@ -180,10 +174,10 @@ public class DependencyRules implements Rules {
 	 *
 	 * @param branchName the active branch name; can be {@literal null}.
 	 * @param projectVersion the project version; can be {@literal null}.
-	 * @return the effective branch rule carrying any inherited default Artifact
-	 * Rules and inferred upgrade-strategy limits.
+	 * @return the matching branch rule with effective upgrade-strategy limits, or a
+	 * synthetic rule carrying the default Artifact Rules when no branch matches.
 	 */
-	public BranchRule resolveBranchRule(@Nullable String branchName, @Nullable ArtifactVersion projectVersion) {
+	BranchRule resolveBranchRule(@Nullable String branchName, @Nullable ArtifactVersion projectVersion) {
 		return resolveBranchRule(branchName, projectVersion, false);
 	}
 
@@ -235,6 +229,18 @@ public class DependencyRules implements Rules {
 				.filter(it -> it.test(displayVersion) || it.test(innerMostVersion))
 				.max(BranchRule::compareTo)
 				.orElse(null);
+	}
+
+	private static @Nullable ArtifactRule mostSpecific(Collection<ArtifactRule> artifacts, ArtifactId artifactId) {
+
+		ArtifactRule selected = null;
+		for (ArtifactRule rule : artifacts) {
+			if (rule.pattern().test(artifactId)
+					&& (selected == null || rule.pattern().compareTo(selected.pattern()) > 0)) {
+				selected = rule;
+			}
+		}
+		return selected;
 	}
 
 	@Override
@@ -332,10 +338,7 @@ public class DependencyRules implements Rules {
 		 * @return the dependency rules.
 		 */
 		public DependencyRules build() {
-			List<ArtifactRule> artifactRules = List.copyOf(this.artifacts);
-			List<BranchRule> branchRules = List.copyOf(this.branches);
-			return new DependencyRules(new DependencyRules(Rules.absent(), artifactRules, List.of()), artifactRules,
-					branchRules, this.semVerUpdating);
+			return new DependencyRules(List.copyOf(this.artifacts), List.copyOf(this.branches), this.semVerUpdating);
 		}
 
 	}

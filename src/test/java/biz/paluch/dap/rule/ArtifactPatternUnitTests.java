@@ -73,4 +73,11 @@ class ArtifactPatternUnitTests {
 		assertThat(ArtifactPattern.of("org.springframework:*").compareTo(ArtifactPattern.of("*"))).isPositive();
 	}
 
+	@Test
+	void treatsEquallySpecificPatternsAsTied() {
+
+		assertThat(ArtifactPattern.of("spring-*").compareTo(ArtifactPattern.of("data-*"))).isZero();
+		assertThat(ArtifactPattern.of("*:*").compareTo(ArtifactPattern.of("*"))).isZero();
+	}
+
 }

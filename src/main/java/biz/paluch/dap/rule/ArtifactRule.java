@@ -20,12 +20,13 @@ package biz.paluch.dap.rule;
  * Declared rule associating an {@link ArtifactPattern} with an optional
  * Artifact Display Name and the permitted {@link Generations}.
  *
- * <p>Natural ordering follows pattern specificity and determines which of
- * several matching artifact rules governs a dependency.
+ * <p>Pattern specificity determines which of several matching artifact rules
+ * governs a dependency; equally specific rules resolve to the first declared
+ * rule.
  *
  * @author Mark Paluch
  */
-public class ArtifactRule implements Comparable<ArtifactRule> {
+public class ArtifactRule {
 
 	private final ArtifactPattern pattern;
 
@@ -75,11 +76,6 @@ public class ArtifactRule implements Comparable<ArtifactRule> {
 
 	public Generations generations() {
 		return this.generations;
-	}
-
-	@Override
-	public int compareTo(ArtifactRule o) {
-		return this.pattern.compareTo(o.pattern);
 	}
 
 	@Override

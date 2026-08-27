@@ -28,10 +28,11 @@ import com.intellij.openapi.util.Predicates;
  * example {@code spring-*}), or a groupId and artifactId pair separated by
  * {@code :} or {@code /} (for example {@code org.springframework:spring-*}).
  *
- * <p>Patterns are ordered by specificity. Exact coordinate pairs rank highest,
- * followed by exact bare artifactIds, bare artifactId wildcards,
+ * <p>Natural ordering ranks patterns by specificity. Exact coordinate pairs
+ * rank highest, followed by exact bare artifactIds, bare artifactId wildcards,
  * coordinate-pair wildcards, and the match-all pattern. Rule resolution selects
- * the greatest matching pattern.
+ * the greatest matching pattern; patterns that compare equal are tied and
+ * resolve to the first declared rule.
  *
  * @author Mark Paluch
  * @see ArtifactRule
@@ -44,7 +45,7 @@ public class ArtifactPattern implements Predicate<ArtifactId>, Comparable<Artifa
 
 	private final Predicate<String> artifactIdPredicate;
 
-	private final int comparisonValue;
+	private final int specificity;
 
 	private ArtifactPattern(KnownPattern pattern) {
 
@@ -57,7 +58,7 @@ public class ArtifactPattern implements Predicate<ArtifactId>, Comparable<Artifa
 			this.groupIdPredicate = KnownPattern.of(value.substring(0, separator));
 			this.artifactIdPredicate = KnownPattern.of(value.substring(separator + 1));
 		}
-		this.comparisonValue = determineComparisonValue(value, separator);
+		this.specificity = determineSpecificity(value, separator);
 	}
 
 	/**
@@ -87,14 +88,14 @@ public class ArtifactPattern implements Predicate<ArtifactId>, Comparable<Artifa
 	}
 
 	@Override
-	public boolean test(ArtifactId artifactId) {
-		return this.groupIdPredicate.test(artifactId.groupId())
-				&& this.artifactIdPredicate.test(artifactId.artifactId());
+	public int compareTo(ArtifactPattern o) {
+		return Integer.compare(this.specificity, o.specificity);
 	}
 
 	@Override
-	public int compareTo(ArtifactPattern o) {
-		return Integer.compare(this.comparisonValue, o.comparisonValue);
+	public boolean test(ArtifactId artifactId) {
+		return this.groupIdPredicate.test(artifactId.groupId())
+				&& this.artifactIdPredicate.test(artifactId.artifactId());
 	}
 
 	public String value() {
@@ -119,7 +120,7 @@ public class ArtifactPattern implements Predicate<ArtifactId>, Comparable<Artifa
 		return Math.min(colon, slash);
 	}
 
-	private static int determineComparisonValue(String value, int separator) {
+	private static int determineSpecificity(String value, int separator) {
 
 		if ("*".equals(value) || "*:*".equals(value) || "*/*".equals(value)) {
 			return 0;

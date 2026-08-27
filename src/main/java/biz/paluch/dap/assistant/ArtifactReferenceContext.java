@@ -34,7 +34,6 @@ import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import biz.paluch.dap.metadata.ProjectMetadata;
 import biz.paluch.dap.metadata.ProjectMetadataService;
-import biz.paluch.dap.rule.BranchSource;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.rule.DependencyRuleService;
@@ -153,7 +152,9 @@ public class ArtifactReferenceContext implements HasArtifactId, HasPackageIdenti
 		}
 
 		VersionUpgradeLookup lookup = context.getLookup(element, element.getContainingFile().getVirtualFile());
-		return resolve(element, context, lookup, BranchSource.of(element), true);
+		PsiFile containingFile = element.getContainingFile();
+		VirtualFile branchFile = containingFile != null ? containingFile.getVirtualFile() : null;
+		return resolve(element, context, lookup, branchFile, true);
 	}
 
 	/**
@@ -180,11 +181,11 @@ public class ArtifactReferenceContext implements HasArtifactId, HasPackageIdenti
 
 		VirtualFile containingFile = contextFile.getVirtualFile();
 		VersionUpgradeLookup lookup = context.getLookup(element, containingFile);
-		return resolve(element, context, lookup, BranchSource.of(containingFile), false);
+		return resolve(element, context, lookup, containingFile, false);
 	}
 
 	private static ArtifactReferenceContext resolve(PsiElement element, ProjectDependencyContext context,
-			VersionUpgradeLookup lookup, BranchSource branchSource, boolean requireDefinedVersion) {
+			VersionUpgradeLookup lookup, @Nullable VirtualFile branchFile, boolean requireDefinedVersion) {
 
 		ArtifactReference artifactReference = lookup.resolveArtifactReference(element);
 		if (!artifactReference.isResolved()) {
@@ -201,7 +202,7 @@ public class ArtifactReferenceContext implements HasArtifactId, HasPackageIdenti
 
 		DependencyRuleService ruleService = DependencyRuleService.getInstance(element.getProject());
 		ResolutionContext resolutionContext = ResolutionContext.forDeclaration(declaration,
-				branchSource, context.getProjectVersion());
+				branchFile, context.getProjectVersion());
 		DependencyRule rule = ruleService.resolve(resolutionContext);
 		DependencyRuleEvaluator evaluator = currentVersion != null
 				? DependencyRuleEvaluator.create(rule, currentVersion)
@@ -357,7 +358,9 @@ public class ArtifactReferenceContext implements HasArtifactId, HasPackageIdenti
 		}
 		if (suggestions == null) {
 			Dependency dependency = getDeclaration().toDependency();
-			suggestions = UpgradeSuggestionsFactory.createSuggestions(dependency, getReleases(),
+			Releases upgradeable = getReleases()
+					.filter(it -> it.isUpgradeCandidate(dependency.getCurrentVersion()) && rule.test(it.getVersion()));
+			suggestions = UpgradeSuggestionsFactory.createSuggestions(dependency, upgradeable,
 					version -> getStateService().getVulnerabilities(getPackageIdentity(), version), rule);
 		}
 		return suggestions;

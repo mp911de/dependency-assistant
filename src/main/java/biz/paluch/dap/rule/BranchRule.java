@@ -21,21 +21,15 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
 
-import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.support.UpgradeStrategy;
-import biz.paluch.dap.util.StringUtils;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Artifact rules and upgrade-strategy limits selected by a branch or project
  * version pattern.
  *
- * <p>A branch rule can inherit default artifact rules. Its own artifact rules
- * take precedence; an artifact they do not govern falls back to the inherited
- * defaults, still subject to this rule's upgrade-strategy limits. Natural
- * ordering ranks exact patterns above wildcard patterns and the match-all
- * pattern.
+ * <p>Natural ordering ranks exact patterns above wildcard patterns and the
+ * match-all pattern. Artifact-rule inheritance and effective rule resolution
+ * are owned by {@link DependencyRules}.
  *
  * @author Mark Paluch
  */
@@ -49,63 +43,59 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 
 	private final Collection<ArtifactRule> artifacts;
 
-	private final Collection<ArtifactRule> defaultArtifacts;
-
 	private final Set<UpgradeStrategy> upgradeStrategies;
 
 	private BranchRule(boolean fallback, KnownPattern pattern, Collection<ArtifactRule> artifacts,
-			Collection<ArtifactRule> defaultArtifacts, Set<UpgradeStrategy> upgradeStrategies) {
+			Collection<UpgradeStrategy> upgradeStrategies) {
 
 		this.fallback = fallback;
 		this.pattern = pattern;
 		this.specificity = specificity(pattern.getPattern());
-		this.artifacts = artifacts;
-		this.defaultArtifacts = defaultArtifacts;
-		this.upgradeStrategies = upgradeStrategies;
+		this.artifacts = List.copyOf(artifacts);
+		this.upgradeStrategies = Set.copyOf(upgradeStrategies);
 	}
 
 	/**
 	 * Create a non-fallback rule that matches every branch and governs only the
 	 * given artifacts.
 	 *
-	 * @param artifacts the artifact rules retained by the returned rule.
+	 * @param artifacts the artifact rules snapshotted by the returned rule.
 	 * @param upgradeStrategies the supported upgrade strategies; empty for no
-	 * limits. The set is retained by the returned rule.
+	 * limits. The set is snapshotted by the returned rule.
 	 * @return the branch rule.
 	 */
 	public static BranchRule of(Collection<ArtifactRule> artifacts,
 			Set<UpgradeStrategy> upgradeStrategies) {
-		return new BranchRule(false, KnownPattern.ANY, artifacts, List.of(), upgradeStrategies);
+		return new BranchRule(false, KnownPattern.ANY, artifacts, upgradeStrategies);
 	}
 
 	/**
 	 * Create a non-fallback rule for the given branch or project-version pattern.
 	 *
 	 * @param pattern the branch or project-version pattern.
-	 * @param artifacts the artifact rules retained by the returned rule.
+	 * @param artifacts the artifact rules snapshotted by the returned rule.
 	 * @param upgradeStrategies the supported upgrade strategies; empty for no
-	 * limits. The set is retained by the returned rule.
+	 * limits. The set is snapshotted by the returned rule.
 	 * @return the branch rule.
 	 */
 	public static BranchRule of(String pattern, Collection<ArtifactRule> artifacts,
 			Set<UpgradeStrategy> upgradeStrategies) {
-		return new BranchRule(false, KnownPattern.of(pattern), artifacts, List.of(), upgradeStrategies);
+		return new BranchRule(false, KnownPattern.of(pattern), artifacts, upgradeStrategies);
 	}
 
 	/**
-	 * Create a fallback rule matching every branch, with default artifact
-	 * dependency rules and upgrade-strategy limits. Artifacts without a matching
-	 * artifact rule resolve to a present rule enforcing the upgrade-strategy
-	 * limits.
+	 * Create a fallback declaration matching every branch, with default artifact
+	 * rules and upgrade-strategy limits. {@link DependencyRules} uses this marker
+	 * to retain branch-level governance when no artifact rule matches.
 	 *
-	 * @param artifacts the default artifact dependency rules retained by the
+	 * @param artifacts the default artifact dependency rules snapshotted by the
 	 * returned rule.
 	 * @param upgradeStrategies the supported upgrade strategies; empty for no
-	 * limits. The set is retained by the returned rule.
+	 * limits. The set is snapshotted by the returned rule.
 	 * @return the fallback branch rule.
 	 */
 	public static BranchRule fallback(Collection<ArtifactRule> artifacts, Set<UpgradeStrategy> upgradeStrategies) {
-		return new BranchRule(true, KnownPattern.ANY, artifacts, List.of(), upgradeStrategies);
+		return new BranchRule(true, KnownPattern.ANY, artifacts, upgradeStrategies);
 	}
 
 	/**
@@ -135,20 +125,16 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 		return this.upgradeStrategies.isEmpty() || this.upgradeStrategies.contains(upgradeStrategy);
 	}
 
-	/**
-	 * Create a copy of this branch rule that inherits the given default artifact
-	 * rules for artifacts not governed by its own artifact rules.
-	 *
-	 * @param defaultArtifacts the default artifact rules to inherit.
-	 * @return the inheriting branch rule.
-	 */
-	BranchRule withDefaults(Collection<ArtifactRule> defaultArtifacts) {
-		return defaultArtifacts.isEmpty() ? this
-				: new BranchRule(this.fallback, this.pattern, this.artifacts, defaultArtifacts, this.upgradeStrategies);
+	boolean isFallback() {
+		return this.fallback;
+	}
+
+	Collection<ArtifactRule> artifacts() {
+		return this.artifacts;
 	}
 
 	BranchRule withUpgradeStrategies(Set<UpgradeStrategy> upgradeStrategies) {
-		return new BranchRule(this.fallback, this.pattern, this.artifacts, this.defaultArtifacts, upgradeStrategies);
+		return new BranchRule(this.fallback, this.pattern, this.artifacts, upgradeStrategies);
 	}
 
 	/**
@@ -158,70 +144,6 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 	 */
 	public Set<UpgradeStrategy> upgradeStrategies() {
 		return this.upgradeStrategies;
-	}
-
-	/**
-	 * Select the {@link DependencyRule} that applies to the given
-	 * {@link ArtifactId}.
-	 *
-	 * <p>This rule's own artifact rules are consulted first, then the inherited
-	 * default artifact rules; within each, the most specific matching
-	 * {@link ArtifactRule} wins. Inherited rules remain subject to this rule's
-	 * upgrade-strategy limits. Without any match, a fallback rule yields a present
-	 * rule enforcing this branch's upgrade-strategy limits; otherwise
-	 * {@link DependencyRule#absent()} is returned.
-	 *
-	 * @param parentRules the parent rules consulted to resolve an Artifact Display
-	 * Name when an artifact rule does not declare one.
-	 * @param artifactId the artifact to select a dependency rule for.
-	 * @param branchName the current branch name, can be {@literal null} if the
-	 * project is not versioned.
-	 * @param projectVersion the project version, can be {@literal null} if not
-	 * provided.
-	 * @param semanticUpgradingMode whether semantic version upgrading governs the
-	 * resolved rule.
-	 * @return the effective dependency rule.
-	 */
-	public DependencyRule select(Rules parentRules, ArtifactId artifactId, @Nullable String branchName,
-			@Nullable ArtifactVersion projectVersion, boolean semanticUpgradingMode) {
-
-		DependencyRule rule = selectRule(parentRules, this.artifacts, artifactId, branchName, projectVersion,
-				semanticUpgradingMode);
-		if (rule != null) {
-			return rule;
-		}
-
-		rule = selectRule(parentRules, this.defaultArtifacts, artifactId, branchName, projectVersion,
-				semanticUpgradingMode);
-		if (rule != null) {
-			return rule;
-		}
-
-		return this.fallback
-				? new ResolvedDependencyRule(Generations.unconstrained(), "", this::supports, semanticUpgradingMode)
-				: DependencyRule.absent();
-	}
-
-	private @Nullable DependencyRule selectRule(Rules parentRules, Collection<ArtifactRule> artifacts,
-			ArtifactId artifactId, @Nullable String branchName, @Nullable ArtifactVersion projectVersion,
-			boolean semanticUpgradingMode) {
-
-		return artifacts.stream()
-				.filter(it -> it.pattern().test(artifactId))
-				.max(ArtifactRule::compareTo)
-				.<DependencyRule>map(it -> {
-
-					String name = it.name();
-					if (StringUtils.isEmpty(name)) {
-						DependencyRule dependencyRule = parentRules.resolve(artifactId, branchName, projectVersion);
-						if (dependencyRule.isPresent()) {
-							name = dependencyRule.getDependencyName();
-						}
-					}
-
-					return new ResolvedDependencyRule(it.generations(), name, this::supports, semanticUpgradingMode);
-				})
-				.orElse(null);
 	}
 
 	@Override

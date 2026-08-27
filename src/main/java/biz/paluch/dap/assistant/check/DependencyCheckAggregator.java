@@ -44,7 +44,6 @@ import biz.paluch.dap.assistant.presentation.DependencyPresentationFactory;
 import biz.paluch.dap.assistant.presentation.IconDependencyPresentation;
 import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.metadata.ProjectMetadataService;
-import biz.paluch.dap.rule.BranchSource;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleService;
 import biz.paluch.dap.rule.ResolutionContext;
@@ -295,7 +294,7 @@ public class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 			Dependency dependency = Dependency.from(merged, declaredVersions.getLowestDeclaredVersion());
 
 			ResolutionContext resolutionContext = ResolutionContext.forAggregate(merged,
-					BranchSource.of(entry.declarationSites().iterator().next().file()), versioned);
+					entry.declarationSites().iterator().next().file(), versioned);
 			DependencyRule rule = evaluator.resolve(resolutionContext);
 
 			VulnerabilityRepository vulnerabilities = version -> stateService.getVulnerabilities(pkg, version);

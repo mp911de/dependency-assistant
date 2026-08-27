@@ -39,17 +39,15 @@ class ResolutionContextUnitTests {
 
 	private static final ArtifactId ARTIFACT_ID = ArtifactId.of("org.example", "example");
 
-	private static final BranchSource BRANCH_SOURCE = () -> null;
-
 	private static final Versioned PROJECT_VERSION = Versioned.unversioned();
 
 	@Test
 	void referenceContextUsesDeclarationPluginSemantics() {
 
 		ResolutionContext plugin = ResolutionContext.forDeclaration(declaration(DeclarationSource.plugin()),
-				BRANCH_SOURCE, PROJECT_VERSION);
+				null, PROJECT_VERSION);
 		ResolutionContext dependency = ResolutionContext.forDeclaration(declaration(DeclarationSource.dependency()),
-				BRANCH_SOURCE, PROJECT_VERSION);
+				null, PROJECT_VERSION);
 
 		assertThat(plugin.suppressSemanticUpgrading()).isTrue();
 		assertThat(dependency.suppressSemanticUpgrading()).isFalse();
@@ -59,10 +57,10 @@ class ResolutionContextUnitTests {
 	void aggregateContextUsesPluginOnlySemantics() {
 
 		ResolutionContext plugins = ResolutionContext.forAggregate(ARTIFACT_ID,
-				List.of(DeclarationSource.plugin(), DeclarationSource.pluginManagement()), BRANCH_SOURCE,
+				List.of(DeclarationSource.plugin(), DeclarationSource.pluginManagement()), null,
 				PROJECT_VERSION);
 		ResolutionContext mixed = ResolutionContext.forAggregate(ARTIFACT_ID,
-				List.of(DeclarationSource.plugin(), DeclarationSource.dependency()), BRANCH_SOURCE, PROJECT_VERSION);
+				List.of(DeclarationSource.plugin(), DeclarationSource.dependency()), null, PROJECT_VERSION);
 
 		assertThat(plugins.suppressSemanticUpgrading()).isTrue();
 		assertThat(mixed.suppressSemanticUpgrading()).isFalse();

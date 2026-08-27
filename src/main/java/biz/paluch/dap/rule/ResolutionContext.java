@@ -24,6 +24,8 @@ import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DeclaredDependency;
 import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.support.ArtifactDeclaration;
+import com.intellij.openapi.vfs.VirtualFile;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Immutable input for resolving the Dependency Rule of one artifact.
@@ -41,15 +43,15 @@ public class ResolutionContext {
 
 	private final boolean suppressSemanticUpgrading;
 
-	private final BranchSource branchSource;
+	private final @Nullable VirtualFile branchFile;
 
 	private final Versioned projectVersion;
 
 	ResolutionContext(ArtifactId artifactId, boolean suppressSemanticUpgrading,
-			BranchSource branchSource, Versioned projectVersion) {
+			@Nullable VirtualFile branchFile, Versioned projectVersion) {
 		this.artifactId = artifactId;
 		this.suppressSemanticUpgrading = suppressSemanticUpgrading;
-		this.branchSource = branchSource;
+		this.branchFile = branchFile;
 		this.projectVersion = projectVersion;
 	}
 
@@ -57,31 +59,31 @@ public class ResolutionContext {
 	 * Create a resolution context from a single resolved artifact declaration.
 	 *
 	 * @param declaration the artifact declaration.
-	 * @param branchSource the source used for branch lookup.
+	 * @param branchFile the file used for branch lookup, or {@literal null}.
 	 * @param projectVersion the project version used for branch rule selection.
 	 * @return a resolution context that suppresses semver inference when the
 	 * declaration is a plugin.
 	 */
 	public static ResolutionContext forDeclaration(ArtifactDeclaration declaration,
-			BranchSource branchSource, Versioned projectVersion) {
+			@Nullable VirtualFile branchFile, Versioned projectVersion) {
 
 		return new ResolutionContext(declaration.getArtifactId(),
 				declaration.getDeclarationSource().isPlugin(),
-				branchSource, projectVersion);
+				branchFile, projectVersion);
 	}
 
 	/**
 	 * Create a resolution context from an aggregate declared dependency.
 	 *
 	 * @param dependency the aggregate dependency declaration.
-	 * @param branchSource the source used for branch lookup.
+	 * @param branchFile the file used for branch lookup, or {@literal null}.
 	 * @param projectVersion the project version used for branch rule selection.
 	 * @return a resolution context that suppresses semver inference only when the
 	 * dependency has at least one declaration source and all sources are plugins.
 	 */
-	public static ResolutionContext forAggregate(DeclaredDependency dependency, BranchSource branchSource,
+	public static ResolutionContext forAggregate(DeclaredDependency dependency, @Nullable VirtualFile branchFile,
 			Versioned projectVersion) {
-		return forAggregate(dependency.getArtifactId(), dependency.getDeclarationSources(), branchSource,
+		return forAggregate(dependency.getArtifactId(), dependency.getDeclarationSources(), branchFile,
 				projectVersion);
 	}
 
@@ -91,15 +93,16 @@ public class ResolutionContext {
 	 *
 	 * @param artifactId the artifact to resolve.
 	 * @param declarationSources the declaration sources backing the artifact.
-	 * @param branchSource the source used for branch lookup.
+	 * @param branchFile the file used for branch lookup, or {@literal null}.
 	 * @param projectVersion the project version used for branch rule selection.
 	 * @return a resolution context that suppresses semver inference only when the
 	 * source collection is non-empty and every source is a plugin.
 	 */
 	public static ResolutionContext forAggregate(ArtifactId artifactId,
-			Collection<DeclarationSource> declarationSources, BranchSource branchSource, Versioned projectVersion) {
+			Collection<DeclarationSource> declarationSources, @Nullable VirtualFile branchFile,
+			Versioned projectVersion) {
 
-		return new ResolutionContext(artifactId, DeclarationSource.isPlugin(declarationSources), branchSource,
+		return new ResolutionContext(artifactId, DeclarationSource.isPlugin(declarationSources), branchFile,
 				projectVersion);
 	}
 
@@ -111,8 +114,8 @@ public class ResolutionContext {
 		return suppressSemanticUpgrading;
 	}
 
-	public BranchSource getBranchSource() {
-		return branchSource;
+	public @Nullable VirtualFile getBranchFile() {
+		return branchFile;
 	}
 
 	public Versioned getProjectVersion() {
@@ -130,13 +133,13 @@ public class ResolutionContext {
 		ResolutionContext that = (ResolutionContext) obj;
 		return Objects.equals(this.artifactId, that.artifactId) &&
 				this.suppressSemanticUpgrading == that.suppressSemanticUpgrading &&
-				Objects.equals(this.branchSource, that.branchSource) &&
+				Objects.equals(this.branchFile, that.branchFile) &&
 				Objects.equals(this.projectVersion, that.projectVersion);
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(artifactId, suppressSemanticUpgrading, branchSource, projectVersion);
+		return Objects.hash(artifactId, suppressSemanticUpgrading, branchFile, projectVersion);
 	}
 
 	@Override
@@ -144,7 +147,7 @@ public class ResolutionContext {
 		return "ResolutionContext[" +
 				"artifactId=" + artifactId + ", " +
 				"suppressSemanticUpgrading=" + suppressSemanticUpgrading + ", " +
-				"branchSource=" + branchSource + ", " +
+				"branchFile=" + branchFile + ", " +
 				"projectVersion=" + projectVersion + ']';
 	}
 

@@ -31,11 +31,13 @@ import com.intellij.json.psi.JsonObject;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.SimpleModificationTracker;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.vfs.VirtualFileManager;
 import com.intellij.openapi.vfs.newvfs.BulkFileListener;
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent;
+import com.intellij.openapi.vfs.newvfs.events.VFileMoveEvent;
 import com.intellij.openapi.vfs.newvfs.events.VFilePropertyChangeEvent;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
@@ -68,9 +70,11 @@ public class DependencyfileService implements Disposable, DependencyRuleService 
 
 	private final Project project;
 
-	private volatile @Nullable Rules rules;
+	private final SimpleModificationTracker modificationTracker = new SimpleModificationTracker();
 
-	private volatile @Nullable Rules ruleOverride;
+	private volatile @Nullable DependencyRules rules;
+
+	private volatile @Nullable DependencyRules ruleOverride;
 
 	DependencyfileService(Project project) {
 		this.project = project;
@@ -106,14 +110,11 @@ public class DependencyfileService implements Disposable, DependencyRuleService 
 
 	@Override
 	public DependencyRule resolve(ResolutionContext context) {
-		Rules rules = rules();
-		String branchName = currentBranchName(this.project, context.getBranchSource().getFile());
+		DependencyRules rules = rules();
+		String branchName = currentBranchName(this.project, context.getBranchFile());
 		ArtifactVersion projectVersion = context.getProjectVersion().orElseGet(() -> null);
-		if (rules instanceof DependencyRules dependencyRules) {
-			return dependencyRules.resolve(context.getArtifactId(), branchName, projectVersion,
-					context.suppressSemanticUpgrading());
-		}
-		return rules.resolve(context.getArtifactId(), branchName, projectVersion);
+		return rules.resolve(context.getArtifactId(), branchName, projectVersion,
+				context.suppressSemanticUpgrading());
 	}
 
 	/**
@@ -122,33 +123,40 @@ public class DependencyfileService implements Disposable, DependencyRuleService 
 	 *
 	 * @param rules the rules to use, or {@literal null} to restore discovery.
 	 */
-	public void setRules(@Nullable Rules rules) {
+	public void setRules(@Nullable DependencyRules rules) {
+		this.modificationTracker.incModificationCount();
 		this.ruleOverride = rules;
 		this.rules = null;
 		restartAnalyzer();
 	}
 
-	private Rules rules() {
-		Rules rules = this.ruleOverride;
+	private DependencyRules rules() {
+		DependencyRules rules = this.ruleOverride;
 		if (rules != null) {
 			return rules;
 		}
 
 		rules = this.rules;
-		if (rules == null) {
-			rules = loadRules();
-			this.rules = rules;
+		if (rules != null) {
+			return rules;
+		}
+
+		long stamp = this.modificationTracker.getModificationCount();
+		rules = loadRules();
+		this.rules = rules;
+		if (this.modificationTracker.getModificationCount() != stamp) {
+			this.rules = null;
 		}
 		return rules;
 	}
 
-	private Rules loadRules() {
+	private DependencyRules loadRules() {
 		if (JSON_PRESENT) {
 			VirtualFile descriptor = findDescriptor();
 			return (descriptor != null ? ReadAction.compute(() -> parseDescriptor(descriptor))
-					: Rules.absent());
+					: DependencyRules.absent());
 		}
-		return Rules.absent();
+		return DependencyRules.absent();
 	}
 
 	private @Nullable VirtualFile findDescriptor() {
@@ -200,16 +208,17 @@ public class DependencyfileService implements Disposable, DependencyRuleService 
 		return paths;
 	}
 
-	private Rules parseDescriptor(VirtualFile descriptor) {
+	private DependencyRules parseDescriptor(VirtualFile descriptor) {
 		PsiFile psiFile = PsiManager.getInstance(this.project).findFile(descriptor);
 		if (!(psiFile instanceof JsonFile jsonFile) || !(jsonFile.getTopLevelValue() instanceof JsonObject)) {
-			return Rules.absent();
+			return DependencyRules.absent();
 		}
 
 		return new RuleParser(jsonFile).parse();
 	}
 
 	private void invalidate() {
+		this.modificationTracker.incModificationCount();
 		this.rules = null;
 		restartAnalyzer();
 	}
@@ -284,6 +293,13 @@ public class DependencyfileService implements Disposable, DependencyRuleService 
 				return parent != null && this.descriptorDirectories.contains(normalize(Path.of(parent.getPath())))
 						&& (FILE_NAME.equals(propertyChange.getOldValue())
 								|| FILE_NAME.equals(propertyChange.getNewValue()));
+			}
+
+			// A move event reports the new path; moving a descriptor out of a watched
+			// location is only visible through its old path.
+			if (event instanceof VFileMoveEvent move
+					&& this.descriptorPaths.contains(normalize(Path.of(move.getOldPath())))) {
+				return true;
 			}
 
 			return this.descriptorPaths.contains(normalize(Path.of(event.getPath())));

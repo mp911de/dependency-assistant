@@ -32,8 +32,7 @@ import com.intellij.openapi.diagnostic.Logger;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Parses a {@code dependencyfile.json} descriptor into a {@link Rules}
- * resolution view.
+ * Parses a {@code dependencyfile.json} descriptor into {@link DependencyRules}.
  *
  * <p>Parsing is lenient: non-object branch entries are ignored, and failures in
  * an individual artifact or branch entry are logged and skipped rather than
@@ -42,12 +41,12 @@ import org.jspecify.annotations.Nullable;
  * values are logged and dropped, and a rule whose generations all fail to parse
  * stays present but unconstrained. Unknown upgrade strategies are ignored. A
  * descriptor whose top-level value is not a JSON object resolves to
- * {@link Rules#absent()}.
+ * {@link DependencyRules#absent()}.
  *
  * <p>The parser reads PSI and must be invoked inside a read action.
  *
  * @author Mark Paluch
- * @see Rules
+ * @see DependencyRules
  * @see DependencyfileService
  */
 class RuleParser {
@@ -69,13 +68,13 @@ class RuleParser {
 	 * Parse the descriptor into a resolution view using the lenient entry handling
 	 * described for this parser.
 	 *
-	 * @return the parsed rules, or {@link Rules#absent()} when the descriptor has
-	 * no JSON object root.
+	 * @return the parsed rules, or {@link DependencyRules#absent()} when the
+	 * descriptor has no JSON object root.
 	 */
-	Rules parse() {
+	DependencyRules parse() {
 
 		if (!(file.getTopLevelValue() instanceof JsonObject root)) {
-			return Rules.absent();
+			return DependencyRules.absent();
 		}
 
 		DependencyRules.Builder builder = DependencyRules.builder();

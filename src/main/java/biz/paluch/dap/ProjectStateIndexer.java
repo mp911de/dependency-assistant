@@ -18,6 +18,7 @@ package biz.paluch.dap;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.function.BiConsumer;
@@ -140,6 +141,9 @@ public class ProjectStateIndexer {
 		} catch (ExecutionException e) {
 			if (e.getCause() instanceof ProcessCanceledException pce) {
 				throw pce;
+			}
+			if (e.getCause() instanceof CancellationException) {
+				return;
 			}
 			throw new RuntimeException(e);
 		}
