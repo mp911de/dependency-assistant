@@ -144,6 +144,20 @@ public class CheckRequest {
 		 * @param versions the exact versions to check.
 		 * @return this builder.
 		 */
+		public Builder add(PackageIdentity pkg, ArtifactVersion... versions) {
+			return add(pkg, List.of(versions));
+		}
+
+		/**
+		 * Add the versions to check for a package.
+		 *
+		 * <p>A later call for the same package replaces its previous version list. The
+		 * supplied list is retained by the built request.
+		 *
+		 * @param pkg the package to check.
+		 * @param versions the exact versions to check.
+		 * @return this builder.
+		 */
 		public Builder add(PackageIdentity pkg, List<ArtifactVersion> versions) {
 			packages.put(pkg, versions);
 			return this;

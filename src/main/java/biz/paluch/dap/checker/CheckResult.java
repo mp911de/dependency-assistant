@@ -47,31 +47,21 @@ public class CheckResult {
 	}
 
 	/**
+	 * Return a builder collecting checked versions one at a time.
+	 *
+	 * @return a fresh builder.
+	 */
+	public static Builder builder() {
+		return new Builder();
+	}
+
+	/**
 	 * Return a result containing no checked version.
 	 *
 	 * @return the empty result.
 	 */
 	public static CheckResult empty() {
 		return EMPTY;
-	}
-
-	/**
-	 * Create a result from vulnerabilities grouped by package and version.
-	 *
-	 * <p>The package map is copied, while per-version maps are retained as the
-	 * result state.
-	 *
-	 * @param vulnerabilities the vulnerabilities per version and package.
-	 * @return the result, or {@link #empty()} when the map is empty.
-	 */
-	public static CheckResult of(Map<PackageIdentity, Map<ArtifactVersion, Vulnerabilities>> vulnerabilities) {
-
-		if (vulnerabilities.isEmpty()) {
-			return EMPTY;
-		}
-
-		Map<PackageIdentity, Map<ArtifactVersion, Vulnerabilities>> copy = new LinkedHashMap<>(vulnerabilities);
-		return new CheckResult(copy);
 	}
 
 	/**
@@ -124,6 +114,61 @@ public class CheckResult {
 		return "CheckResult{" +
 				"vulnerabilities=" + vulnerabilities +
 				'}';
+	}
+
+	/**
+	 * Builder that collects checked {@link Vulnerabilities} per package and version
+	 * for a {@link CheckResult}.
+	 *
+	 * <p>Sources that discover results incrementally use the builder instead of
+	 * assembling a nested map. Builders are not thread-safe.
+	 */
+	public static class Builder {
+
+		private final Map<PackageIdentity, Map<ArtifactVersion, Vulnerabilities>> vulnerabilities = new LinkedHashMap<>();
+
+		private Builder() {
+		}
+
+		/**
+		 * Add the checked result for a package version.
+		 *
+		 * <p>A later call for the same package and version replaces the previous
+		 * result. Add {@link Vulnerabilities#clean() clean} for a version that was
+		 * checked without finding an advisory; omit versions the source could not
+		 * answer for.
+		 *
+		 * @param ecosystemPackage the checked package.
+		 * @param version the checked version.
+		 * @param vulnerabilities the vulnerabilities found for the version.
+		 * @return this builder.
+		 */
+		public Builder add(PackageIdentity ecosystemPackage, ArtifactVersion version, Vulnerabilities vulnerabilities) {
+			this.vulnerabilities.computeIfAbsent(ecosystemPackage, key -> new LinkedHashMap<>()).put(version,
+					vulnerabilities);
+			return this;
+		}
+
+		/**
+		 * Build a result from the currently collected versions.
+		 *
+		 * <p>Subsequent changes to the builder do not affect the returned result.
+		 *
+		 * @return a new result, or {@link #empty()} when no version was added.
+		 */
+		public CheckResult build() {
+
+			if (vulnerabilities.isEmpty()) {
+				return EMPTY;
+			}
+
+			Map<PackageIdentity, Map<ArtifactVersion, Vulnerabilities>> copy = new LinkedHashMap<>(
+					vulnerabilities.size());
+			vulnerabilities.forEach((ecosystemPackage, byVersion) -> copy.put(ecosystemPackage,
+					new LinkedHashMap<>(byVersion)));
+			return new CheckResult(copy);
+		}
+
 	}
 
 }

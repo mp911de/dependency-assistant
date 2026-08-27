@@ -119,7 +119,7 @@ public class Vulnerabilities implements Iterable<Vulnerability> {
 	 * otherwise.
 	 */
 	public static Vulnerabilities of(Collection<Vulnerability> vulnerabilities) {
-		return vulnerabilities.isEmpty() ? CLEAN : new Vulnerabilities(List.copyOf(vulnerabilities));
+		return vulnerabilities.isEmpty() ? CLEAN : new Vulnerabilities(vulnerabilities);
 	}
 
 	/**

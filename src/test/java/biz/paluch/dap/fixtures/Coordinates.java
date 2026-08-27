@@ -61,6 +61,19 @@ public class Coordinates implements VersionedPackage {
 	}
 
 	/**
+	 * Create coordinates from the {@code group:artifact:version} form.
+	 */
+	public static PackageIdentity identity(PackageSystem packageSystem, String coordinates) {
+
+		String[] segments = coordinates.split(":");
+		if (segments.length != 2) {
+			throw new IllegalArgumentException(
+					"Coordinates '%s' must use the group:artifact form".formatted(coordinates));
+		}
+		return PackageIdentity.of(ArtifactId.of(segments[0], segments[1]), packageSystem);
+	}
+
+	/**
 	 * Create coordinates from group id, artifact id, and version.
 	 */
 	public static Coordinates of(String groupId, String artifactId, String version) {
