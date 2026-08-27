@@ -26,6 +26,7 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.HasArtifactId;
 import biz.paluch.dap.artifact.HasPackageIdentity;
 import biz.paluch.dap.artifact.PackageIdentity;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.assistant.presentation.DependencyPresentation;
 import biz.paluch.dap.assistant.presentation.DependencyPresentationFactory;
@@ -99,7 +100,8 @@ public class ArtifactReferenceContext implements HasArtifactId, HasPackageIdenti
 		this.evaluator = DependencyRuleEvaluator.absent();
 		this.releases = null;
 		this.projectMetadata = ProjectMetadata.absent();
-		this.presentation = null;
+		this.presentation = DependencyPresentation
+				.of(PackageIdentity.of(ArtifactId.of("absent", "absent"), PackageSystem.OTHER));
 	}
 
 	private ArtifactReferenceContext(ProjectDependencyContext dependencyContext, StateService stateService,

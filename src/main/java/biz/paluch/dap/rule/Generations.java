@@ -44,7 +44,7 @@ public class Generations implements Predicate<String> {
 	private final Predicate<ArtifactVersion> versionPredicate;
 
 	private Generations(List<Generation> generations) {
-		this.generations = generations;
+		this.generations = List.copyOf(generations);
 
 		List<String> values = generations.stream().map(Generation::value).toList();
 		this.rendered = switch (values.size()) {

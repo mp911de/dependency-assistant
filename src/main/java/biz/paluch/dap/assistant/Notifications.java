@@ -33,6 +33,7 @@ import com.intellij.openapi.command.undo.UndoManager;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.util.text.DateFormatUtil;
 
 /**
@@ -201,7 +202,8 @@ public class Notifications {
 	}
 
 	private static Notification updatesApplied(AppliedUpdates updates) {
-		return new Notification(UPGRADE_NOTIFICATIONS, getTitle(updates), updates.toString(),
+		return new Notification(UPGRADE_NOTIFICATIONS, getTitle(updates),
+				StringUtil.escapeXmlEntities(updates.toString()),
 				NotificationType.INFORMATION);
 	}
 
