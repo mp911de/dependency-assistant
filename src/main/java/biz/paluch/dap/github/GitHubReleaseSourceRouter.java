@@ -24,8 +24,8 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.GitArtifactId;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.artifact.ReleaseSourceRegistry;
 import biz.paluch.dap.util.Sequence;
-import com.intellij.ide.trustedProjects.TrustedProjects;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import org.jetbrains.plugins.github.api.GithubServerPath;
@@ -61,7 +61,7 @@ import org.jspecify.annotations.Nullable;
  * @see GitArtifactId
  * @see GitHubReleases
  */
-public class GitHubReleaseSourceRouter implements ReleaseSource {
+public class GitHubReleaseSourceRouter implements ReleaseSource, ReleaseSourceRegistry {
 
 	private final Project project;
 
@@ -111,19 +111,22 @@ public class GitHubReleaseSourceRouter implements ReleaseSource {
 	 */
 	@Override
 	public Sequence<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException {
+		return getReleaseSource(artifactId).getReleases(artifactId, indicator);
+	}
+
+	@Override
+	public ReleaseSource getReleaseSource(ArtifactId artifactId) {
 
 		ReleaseSource releaseSource;
-		ArtifactId id = artifactId;
 		if (artifactId instanceof GitArtifactId gitArtifactId) {
-			id = gitArtifactId.releaseSource();
 			releaseSource = doGetReleaseSource(GithubApiRequestExecutorFactory.getServerPath(gitArtifactId.host()));
 		} else if (strict) {
-			return Sequence.empty();
+			releaseSource = null;
 		} else {
 			releaseSource = doGetReleaseSource(GithubServerPath.DEFAULT_SERVER);
 		}
 
-		return releaseSource != null ? releaseSource.getReleases(id, indicator) : Sequence.empty();
+		return releaseSource == null ? EmptyReleaseSource.INSTANCE : releaseSource;
 	}
 
 	private @Nullable ReleaseSource doGetReleaseSource(GithubServerPath server) {
@@ -133,9 +136,7 @@ public class GitHubReleaseSourceRouter implements ReleaseSource {
 			return existing;
 		}
 
-		GithubApiRequestExecutorFactory.ExecutorResult executor = TrustedProjects.isProjectTrusted(project)
-				? getExecutor(server)
-				: factory.getAnonymousExecutor(server);
+		GithubApiRequestExecutorFactory.ExecutorResult executor = getExecutor(server);
 
 		if (!executor.hasExecutor()) {
 			return null;
@@ -153,6 +154,18 @@ public class GitHubReleaseSourceRouter implements ReleaseSource {
 	@Override
 	public String toString() {
 		return getId();
+	}
+
+	enum EmptyReleaseSource implements ReleaseSource {
+
+		INSTANCE;
+
+
+		@Override
+		public Sequence<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException {
+			return Sequence.empty();
+		}
+
 	}
 
 }

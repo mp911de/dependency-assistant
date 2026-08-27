@@ -30,6 +30,7 @@ import java.util.function.Consumer;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactNotFoundException;
+import biz.paluch.dap.artifact.GitArtifactId;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.TagSource;
@@ -123,9 +124,11 @@ public class GitHubReleases implements ReleaseSource, TagSource {
 	 * failure.
 	 */
 	public List<Release> fetchAllReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException {
+
+		ArtifactId id = getArtifactId(artifactId);
 		List<IOException> exceptions = new ArrayList<>();
-		Map<String, String> shaByTag = fetchTagShas(artifactId, indicator, exceptions::add);
-		List<GitHubReleaseDto> releases = fetchReleases(artifactId, indicator, exceptions::add);
+		Map<String, String> shaByTag = fetchTagShas(id, indicator, exceptions::add);
+		List<GitHubReleaseDto> releases = fetchReleases(id, indicator, exceptions::add);
 
 		if (shaByTag.isEmpty() && releases.isEmpty() && !exceptions.isEmpty()) {
 			throw exceptions.getFirst();
@@ -138,7 +141,7 @@ public class GitHubReleases implements ReleaseSource, TagSource {
 	public Sequence<String> getTags(ArtifactId artifactId, ProgressIndicator indicator) throws IOException {
 
 		List<IOException> exceptions = new ArrayList<>();
-		Map<String, String> shaByTag = fetchTagShas(artifactId, indicator, exceptions::add);
+		Map<String, String> shaByTag = fetchTagShas(getArtifactId(artifactId), indicator, exceptions::add);
 
 		if (exceptions.isEmpty()) {
 			return Sequence.of(shaByTag.keySet());
@@ -155,11 +158,11 @@ public class GitHubReleases implements ReleaseSource, TagSource {
 		for (GitHubReleaseDto gitHubRelease : releases) {
 
 			String tagName = gitHubRelease.tagName();
-			seenTags.add(tagName);
 			if (gitHubRelease.draft()) {
 				continue;
 			}
 
+			seenTags.add(tagName);
 			String publishedAt = gitHubRelease.publishedAt();
 			LocalDateTime releaseDate = StringUtils.hasText(publishedAt)
 					? OffsetDateTime.parse(publishedAt).toLocalDateTime()
@@ -267,6 +270,14 @@ public class GitHubReleases implements ReleaseSource, TagSource {
 	@Override
 	public int hashCode() {
 		return Objects.hashCode(server);
+	}
+
+	private static ArtifactId getArtifactId(ArtifactId artifactId) {
+		ArtifactId id = artifactId;
+		if (artifactId instanceof GitArtifactId gitArtifactId) {
+			id = gitArtifactId.releaseSource();
+		}
+		return id;
 	}
 
 	/**

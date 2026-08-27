@@ -16,7 +16,6 @@
 
 package biz.paluch.dap.github;
 
-import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -59,8 +58,18 @@ interface GitHubAction extends HasArtifactId {
 					"(?<paths>[/A-Za-z0-9._-]*)@" +
 					"(?<version>\\S*)\\s*(#(?<comment>[\\sA-Za-z0-9._-]+))?$");
 
+	/**
+	 * Return the repository owner.
+	 *
+	 * @return the repository owner.
+	 */
 	String owner();
 
+	/**
+	 * Return the repository name.
+	 *
+	 * @return the repository name.
+	 */
 	String repository();
 
 	/**
@@ -94,8 +103,8 @@ interface GitHubAction extends HasArtifactId {
 	 * @param repository the GitHub repository name.
 	 * @return the repository action identity.
 	 */
-	static GitHubAction of(String owner, String repository) {
-		return new DefaultGitHubAction(owner, repository, "");
+	static UsesRepositoryAction of(String owner, String repository) {
+		return new UsesRepositoryAction(ArtifactId.of(owner, repository), "");
 	}
 
 	/**
@@ -110,43 +119,12 @@ interface GitHubAction extends HasArtifactId {
 	 * @throws IllegalArgumentException if the value is not a valid {@code uses:}
 	 * reference for this dependency model.
 	 */
-	public static GitHubAction from(String uses) {
+	public static UsesRepositoryAction from(String uses) {
 
 		Matcher matcher = USES.matcher(uses);
 		Assert.isTrue(matcher.matches(), "Invalid GitHub Action: %s".formatted(uses));
 
-		return new DefaultGitHubAction(matcher.group(1), matcher.group(2), matcher.group(4));
-	}
-
-	record DefaultGitHubAction(String owner, String repository, String version) implements GitHubAction {
-
-		@Override
-		public ArtifactId getArtifactId() {
-			return ArtifactId.of(owner, repository);
-		}
-
-		@Override
-		public boolean equals(Object o) {
-
-			if (o instanceof GitHubAction that) {
-				return Objects.equals(owner, that.owner()) && Objects.equals(version, that.version())
-						&& Objects.equals(repository, that.repository());
-			}
-
-			return false;
-		}
-
-		@Override
-		public int hashCode() {
-			return Objects.hash(owner, repository);
-		}
-
-		@Override
-		public String toString() {
-			return StringUtils.hasText(version) ? "%s/%s@%s".formatted(owner, repository, version)
-					: "%s/%s".formatted(owner, repository);
-		}
-
+		return new UsesRepositoryAction(ArtifactId.of(matcher.group(1), matcher.group(2)), matcher.group(4));
 	}
 
 }

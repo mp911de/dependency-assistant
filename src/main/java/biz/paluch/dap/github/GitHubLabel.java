@@ -64,6 +64,10 @@ class GitHubLabel implements Label {
 		} catch (RuntimeException | ReflectiveOperationException ignore) {
 		}
 
+		if ("null".equalsIgnoreCase(description)) {
+			description = "";
+		}
+
 		return new GitHubLabel(label.getName(), description, label.getColor());
 	}
 

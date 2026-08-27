@@ -89,7 +89,7 @@ public class Cache implements ModificationTracker {
 	/**
 	 * Maximum cache age before {@link #shouldNag()} may request a refresh.
 	 */
-	public static final Duration LAST_TIME_CACHE_WAS_UPDATED = Duration.ofDays(2);
+	public static final Duration LAST_TIME_CACHE_WAS_UPDATED = Duration.ofDays(7);
 
 	@Transient
 	private final Clock clock;

@@ -38,6 +38,24 @@ public record ReleaseSources(PackageIdentity pkg, Collection<ReleaseSource> sour
 		implements Sequence<ReleaseSource> {
 
 	/**
+	 * Create a new {@link ReleaseSources} instance.
+	 * @param pkg the package associated with the release sources.
+	 * @param sources the release sources.
+	 * @return the release sources.
+	 */
+	public static ReleaseSources of(PackageIdentity pkg, Collection<ReleaseSource> sources) {
+
+		List<ReleaseSource> list = new ArrayList<>(sources.size());
+		for (ReleaseSource source : sources) {
+			ReleaseSource sourceToUse = source instanceof ReleaseSourceRegistry registry
+					? registry.getReleaseSource(pkg.getArtifactId())
+					: source;
+			list.add(sourceToUse);
+		}
+		return new ReleaseSources(pkg, list);
+	}
+
+	/**
 	 * Return the artifact coordinates of {@link #pkg()}.
 	 */
 	public ArtifactId artifactId() {
@@ -57,7 +75,7 @@ public record ReleaseSources(PackageIdentity pkg, Collection<ReleaseSource> sour
 	 * @return release sources narrowed to the accepted sources, possibly empty.
 	 */
 	public ReleaseSources filter(Predicate<ReleaseSource> predicate) {
-		return new ReleaseSources(pkg, sources.stream().filter(predicate).toList());
+		return ReleaseSources.of(pkg, sources.stream().filter(predicate).toList());
 	}
 
 	/**

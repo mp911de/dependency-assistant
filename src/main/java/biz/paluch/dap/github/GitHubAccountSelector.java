@@ -20,6 +20,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 import biz.paluch.dap.ticket.TicketSystemInvalidationListener;
+import com.intellij.ide.trustedProjects.TrustedProjects;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.components.Service;
 import com.intellij.openapi.project.Project;
@@ -79,6 +80,10 @@ final class GitHubAccountSelector {
 	 * compatible pair exists.
 	 */
 	public @Nullable Selection select() {
+
+		if (!TrustedProjects.isProjectTrusted(project)) {
+			return null;
+		}
 
 		Pair<String, GithubAccount> remembered = GithubPullRequestsProjectUISettings.getInstance(project)
 				.getSelectedUrlAndAccount();

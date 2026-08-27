@@ -169,7 +169,7 @@ public class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 	public List<ReleaseSources> getReleaseSources() {
 		List<ReleaseSources> sources = new ArrayList<>();
 		forEachArtifact((pkg, releaseSources) -> {
-			sources.add(new ReleaseSources(pkg, releaseSources));
+			sources.add(ReleaseSources.of(pkg, releaseSources));
 		});
 		return sources;
 	}

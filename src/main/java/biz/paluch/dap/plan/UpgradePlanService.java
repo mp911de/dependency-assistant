@@ -165,7 +165,7 @@ public final class UpgradePlanService implements Disposable {
 		return this.ticketSystem == candidate;
 	}
 
-	private void replaceTicketSystem(@Nullable TicketSystem replacement) {
+	public void replaceTicketSystem(@Nullable TicketSystem replacement) {
 
 		TicketSystem previous = this.ticketSystem;
 		if (previous == replacement) {

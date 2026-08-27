@@ -103,10 +103,13 @@
 		<severitiesProvider
 				implementation="biz.paluch.dap.severity.DependencyAssistantSeverities"/>
 		<platform.backend.documentation.psiTargetProvider
+				order="first"
 				implementation="biz.paluch.dap.assistant.documentation.DependencyDocumentationProvider"/>
 		<platform.backend.documentation.targetProvider
+				order="first"
 				implementation="biz.paluch.dap.assistant.documentation.DependencyDocumentationTargetProvider"/>
 		<platform.backend.documentation.lookupElementTargetProvider
+				order="first"
 				implementation="biz.paluch.dap.assistant.documentation.ReleaseLookupDocumentationProvider"/>
 		<platform.backend.documentation.linkHandler
 				implementation="biz.paluch.dap.assistant.documentation.DependencyUpgradeLinkHandler"/>

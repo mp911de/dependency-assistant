@@ -50,10 +50,20 @@ import org.jspecify.annotations.Nullable;
  * @see GitHubWorkflowParser
  * @see RefStyle
  */
-record UsesRepositoryAction(ArtifactId artifactId, @Nullable String version) implements HasArtifactId {
+record UsesRepositoryAction(ArtifactId artifactId, @Nullable String version) implements GitHubAction, HasArtifactId {
 
 	public UsesRepositoryAction(GitHubAction action) {
 		this(action.getArtifactId(), action.version());
+	}
+
+	@Override
+	public String owner() {
+		return artifactId.groupId();
+	}
+
+	@Override
+	public String repository() {
+		return artifactId.artifactId();
 	}
 
 	@Override

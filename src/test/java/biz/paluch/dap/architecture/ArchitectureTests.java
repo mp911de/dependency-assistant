@@ -23,6 +23,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.BillOfMaterials;
 import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.artifact.ReleaseSourceRegistry;
 import biz.paluch.dap.artifact.VersionedArtifact;
 import biz.paluch.dap.artifact.VersionedPackage;
 import biz.paluch.dap.assistant.presentation.DependencyPresentation;
@@ -54,6 +55,7 @@ class ArchitectureTests {
 	private CycleExclusions EXCLUSIONS = CycleExclusions.none()
 			.excludingClass(VersionedArtifact.class, "intentional")
 			.excludingClass(VersionedPackage.class, "intentional")
+			.excludingClass(ReleaseSourceRegistry.class, "SPI interface for ReleaseSource")
 			.excludingClass("biz.paluch.dap.gradle.VersionCatalogRegistry",
 					"Gradle catalog caching still depends on settings parsers")
 			.excludingClass("biz.paluch.dap.support.PropertyResolverUtil",
@@ -82,6 +84,7 @@ class ArchitectureTests {
 						.withStrictClosedHierarchy(VulnerabilityRepository.class)
 						.withStrictClosedHierarchy(VersionedArtifact.class)
 						.withStrictClosedHierarchy(VersionedPackage.class)
+						.withStrictClosedHierarchy("biz.paluch.dap.github.GitHubAction")
 						.withClosedHierarchy(DependencySite.class)
 						.withClosedHierarchy(DependencyRuleService.class)
 						.withClosedHierarchy(ReleaseSource.class)

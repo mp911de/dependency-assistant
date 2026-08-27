@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.List;
 
 import biz.paluch.dap.util.StringUtils;
+import com.intellij.ide.trustedProjects.TrustedProjects;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProcessCanceledException;
@@ -90,6 +91,10 @@ class GithubApiRequestExecutorFactory {
 	 */
 	public ExecutorResult getExecutor() {
 
+		if (!TrustedProjects.isProjectTrusted(project)) {
+			return anonymous(GithubServerPath.DEFAULT_SERVER, getSelectionDetails(GithubServerPath.DEFAULT_SERVER));
+		}
+
 		Collection<GHGitRepositoryMapping> repositories = getRepositoryMappings();
 		GHGitRepositoryMapping repository = firstOrNull(repositories);
 		GithubServerPath server = repository != null ? repository.getRepository().getServerPath()
@@ -114,10 +119,6 @@ class GithubApiRequestExecutorFactory {
 		}
 
 		return anonymous(server, selectionDetails);
-	}
-
-	public ExecutorResult getAnonymousExecutor(GithubServerPath server) {
-		return anonymous(server, getSelectionDetails(server));
 	}
 
 	/**
@@ -145,16 +146,6 @@ class GithubApiRequestExecutorFactory {
 	}
 
 	/**
-	 * Create an executor for the given server if the account choice is clear.
-	 *
-	 * @param server the GitHub server.
-	 * @return the executor resolution result.
-	 */
-	public ExecutorResult getExecutor(GithubServerPath server) {
-		return resolve(server, getSelectionDetails(server));
-	}
-
-	/**
 	 * Create an authenticated executor from an explicit repository/account pair.
 	 *
 	 * @param repository the selected GitHub repository.
@@ -166,6 +157,21 @@ class GithubApiRequestExecutorFactory {
 		GithubServerPath server = repository.getRepository().getServerPath();
 		SelectionDetails selectionDetails = getSelectionDetails(server, repository);
 		return createAuthenticated(server, repository, account, selectionDetails, Reason.EXPLICIT_SELECTION);
+	}
+
+	/**
+	 * Create an executor for the given server if the account choice is clear.
+	 *
+	 * @param server the GitHub server.
+	 * @return the executor resolution result.
+	 */
+	public ExecutorResult getExecutor(GithubServerPath server) {
+
+		if (!TrustedProjects.isProjectTrusted(project)) {
+			return anonymous(server, getSelectionDetails(server));
+		}
+
+		return resolve(server, getSelectionDetails(server));
 	}
 
 	/**
