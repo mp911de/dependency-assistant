@@ -165,11 +165,7 @@ class MavenAssistant implements DependencyAssistant {
 			throw new IllegalStateException("Maven integration does not support " + anchor);
 		}
 
-		MavenProjectContext context = anchor.getUserData(MavenProjectContext.KEY);
-		if (context == null) {
-			context = MavenProjectContext.of(project, anchor.getVirtualFile());
-		}
-
+		MavenProjectContext context = MavenProjectContext.of(project, anchor);
 		return new MavenDependencyContext(this, project, anchor.getVirtualFile(), context);
 	}
 

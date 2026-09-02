@@ -31,6 +31,7 @@ import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.ProjectBuildContext;
 import biz.paluch.dap.util.BetterPsiManager;
+import biz.paluch.dap.util.PsiFileCache;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
@@ -61,6 +62,10 @@ interface MavenProjectContext extends ProjectBuildContext {
 	/**
 	 * Look up the Maven context for the given PSI file.
 	 *
+	 * <p>The context is cached on the file and rebuilt after any project PSI edit,
+	 * project-root change, or Maven model change. A context injected through
+	 * {@link #KEY} takes precedence over the cache.
+	 *
 	 * @param project the IntelliJ project owning the file.
 	 * @param file the candidate Maven POM, or {@literal null}.
 	 * @return the imported Maven context, or an unavailable context when none
@@ -77,7 +82,12 @@ interface MavenProjectContext extends ProjectBuildContext {
 			return injected;
 		}
 
-		return of(project, file.getVirtualFile());
+		return PsiFileCache.withProjectRoot(file, MavenProjectContext::create,
+				MavenProjectsManager.getInstance(project).getModificationTracker());
+	}
+
+	private static MavenProjectContext create(PsiFile file) {
+		return of(file.getProject(), file.getVirtualFile());
 	}
 
 	/**
