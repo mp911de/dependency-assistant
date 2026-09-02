@@ -71,6 +71,35 @@ interface GradlePluginId extends ArtifactId, HasPackageSystem, HasPackageIdentit
 	}
 
 	/**
+	 * Return whether the call name declares a plugin: {@code id} or one of the
+	 * Kotlin DSL helpers {@code kotlin} and {@code embeddedKotlin}.
+	 * @param callName the callee name.
+	 */
+	static boolean isPluginCall(@Nullable String callName) {
+		return GradleUtils.isPlugin(callName) || GradleUtils.KOTLIN.equals(callName)
+				|| GradleUtils.EMBEDDED_KOTLIN.equals(callName);
+	}
+
+	/**
+	 * Resolve the plugin id declared by a plugin DSL call. {@code kotlin("jvm")}
+	 * declares {@code org.jetbrains.kotlin.jvm}.
+	 * @param callName the callee name.
+	 * @param argument the call's string argument.
+	 * @return the declared plugin id, or {@literal null} if the call does not
+	 * declare a plugin.
+	 */
+	static @Nullable GradlePluginId fromCall(@Nullable String callName, String argument) {
+
+		if (GradleUtils.isPlugin(callName)) {
+			return GradlePluginId.of(argument);
+		}
+		if (GradleUtils.KOTLIN.equals(callName) || GradleUtils.EMBEDDED_KOTLIN.equals(callName)) {
+			return GradlePluginId.of("org.jetbrains.kotlin." + argument);
+		}
+		return null;
+	}
+
+	/**
 	 * Create a normalized plugin identity for use in dependency-site and release
 	 * lookup pipelines.
 	 * <p>The given value must be the plugin id as declared in the build file, not

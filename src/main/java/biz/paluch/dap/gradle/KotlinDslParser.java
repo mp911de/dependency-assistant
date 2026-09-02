@@ -19,7 +19,6 @@ package biz.paluch.dap.gradle;
 import java.util.List;
 import java.util.function.BiFunction;
 
-import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.VersionSource;
@@ -27,7 +26,6 @@ import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.support.Expression;
-import biz.paluch.dap.support.Property;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
@@ -38,7 +36,6 @@ import org.jetbrains.kotlin.psi.KtCallElement;
 import org.jetbrains.kotlin.psi.KtCallExpression;
 import org.jetbrains.kotlin.psi.KtDotQualifiedExpression;
 import org.jetbrains.kotlin.psi.KtExpression;
-import org.jetbrains.kotlin.psi.KtLambdaArgument;
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression;
 import org.jetbrains.kotlin.psi.KtStringTemplateExpression;
 import org.jetbrains.kotlin.psi.KtValueArgumentList;
@@ -61,12 +58,12 @@ class KotlinDslParser {
 
 	private final List<ParsingStrategy<KotlinDeclarationCall, KtCallElement>> strategies;
 
-	KotlinDslParser(PropertyResolver propertyResolver, VersionCatalogRegistry registry) {
+	public KotlinDslParser(PropertyResolver propertyResolver, VersionCatalogRegistry registry) {
 		this.propertyResolver = propertyResolver;
 		this.registry = registry;
 		this.strategies = List.of(new VersionCatalogStrategy(),
 				new NamedArgumentsStrategy(), new PluginStrategy(),
-				new InlineNotationStrategy(), new VersionBlockStrategy());
+				new InlineNotationStrategy());
 	}
 
 	/**
@@ -83,7 +80,7 @@ class KotlinDslParser {
 	 * supported.
 	 */
 	@Nullable
-	ArtifactDeclaration parse(KtCallElement call) {
+	public ArtifactDeclaration parse(KtCallElement call) {
 
 		KotlinDeclarationCall declarationCall = KotlinDeclarationCall.from(call);
 		if (declarationCall == null) {
@@ -103,14 +100,41 @@ class KotlinDslParser {
 	}
 
 	@Nullable
-	TomlReference findCatalogReference(KtCallElement call) {
-
+	public TomlReference findCatalogReference(KtCallElement call) {
 		KtDotQualifiedExpression accessor = findCatalogAccessor(call);
 		if (accessor == null) {
 			return null;
 		}
-
 		return TomlReference.from(getSegments(accessor), registry.catalogPaths().keySet());
+	}
+
+	private ArtifactDeclaration dependency(DependencySite site) {
+		ArtifactReference artifactReference = ArtifactReferenceUtils.resolve(site, () -> propertyResolver);
+		return artifactReference.getDeclaration();
+	}
+
+	private boolean isCatalogConsumer(KotlinDeclarationCall call) {
+		return call.call instanceof KtCallExpression callExpression
+				&& KotlinDslUtils.isCatalogConsumerCall(callExpression) && findCatalogAccessor(call.call) != null;
+	}
+
+	private static @Nullable KtDotQualifiedExpression findCatalogAccessor(KtCallElement call) {
+
+		for (ValueArgument argument : call.getValueArguments()) {
+			if (argument.getArgumentExpression() instanceof KtDotQualifiedExpression accessor) {
+				return accessor;
+			}
+		}
+
+		return null;
+	}
+
+	private static List<String> getSegments(KtDotQualifiedExpression dots) {
+		return SyntaxTraverser.psiTraverser(dots)
+				.expand(it -> !(it instanceof KtNameReferenceExpression))
+				.filter(KtNameReferenceExpression.class)
+				.map(KtNameReferenceExpression::getReferencedName)
+				.toList();
 	}
 
 	/**
@@ -149,6 +173,13 @@ class KotlinDslParser {
 
 		private static @Nullable DeclarationSource declarationSource(KtCallElement call, String configurationName) {
 
+			// Only known declaration names can produce a declaration. Skip the parent
+			// walks for everything else.
+			if (!GradleUtils.isCatalogConsumerCall(configurationName)
+					&& !GradlePluginId.isPluginCall(configurationName)) {
+				return null;
+			}
+
 			boolean dependency = GradleUtils.isDependencySection(configurationName);
 			boolean platform = GradleUtils.isPlatformSection(configurationName)
 					|| KotlinDslUtils.isInsidePlatformBlock(call);
@@ -186,7 +217,10 @@ class KotlinDslParser {
 
 	}
 
-	private class VersionCatalogStrategy implements ParsingStrategy<KotlinDeclarationCall, KtCallElement> {
+	/**
+	 * TOML/version catalog reference.
+	 */
+	class VersionCatalogStrategy implements ParsingStrategy<KotlinDeclarationCall, KtCallElement> {
 
 		@Override
 		public boolean supports(KotlinDeclarationCall call) {
@@ -218,7 +252,10 @@ class KotlinDslParser {
 
 	}
 
-	private class NamedArgumentsStrategy implements ParsingStrategy<KotlinDeclarationCall, KtCallElement> {
+	/**
+	 * Named-argument declaration strategy (map-style).
+	 */
+	class NamedArgumentsStrategy implements ParsingStrategy<KotlinDeclarationCall, KtCallElement> {
 
 		@Override
 		public boolean supports(KotlinDeclarationCall call) {
@@ -238,50 +275,54 @@ class KotlinDslParser {
 
 			String group = null;
 			String artifact = null;
-			String version = null;
-			String versionProperty = null;
+			Expression version = null;
 			PsiElement versionLiteral = null;
 
 			for (ValueArgument argument : call.getValueArguments()) {
 				String name = argument.getArgumentName() != null
 						? argument.getArgumentName().getAsName().asString()
 						: null;
-				PsiElement expression = argument.getArgumentExpression();
-				String value = expression instanceof KtStringTemplateExpression template
-						? KtLiterals.from(template).toString(propertyResolver)
-						: null;
+				KtExpression expression = argument.getArgumentExpression();
 
 				if (GradleUtils.GROUP.equals(name)) {
-					group = value;
+					group = KtLiterals.from(expression).toString(propertyResolver);
 				} else if (GradleUtils.NAME.equals(name)) {
-					artifact = value;
+					artifact = KtLiterals.from(expression).toString(propertyResolver);
 				} else if (GradleUtils.VERSION.equals(name)) {
-					if (expression instanceof KtStringTemplateExpression template) {
-						KtLiterals literals = KtLiterals.from(template);
-						if (literals.hasProperty() && propertyResolver.containsProperty(literals.getProperty())) {
-							version = propertyResolver.getProperty(literals.getProperty());
-							versionLiteral = expression;
-							versionProperty = literals.getProperty();
-						} else {
-							version = literals.getText();
-							versionLiteral = expression;
-						}
-					} else if (expression instanceof KtNameReferenceExpression reference) {
-						String referenceName = reference.getReferencedName();
-						Property property = propertyResolver.getPropertyValue(referenceName);
-						if (property != null) {
-							version = property.getValue();
-							versionLiteral = property.getValueLiteral();
-							versionProperty = referenceName;
-						}
-					}
+					version = versionExpression(expression);
+					versionLiteral = version != null ? expression : null;
 				}
 			}
 
-			GradleDependency dependency = GradleDependency.fromNamed(group, artifact, versionProperty, version,
-					declarationSource, propertyResolver);
-			return dependency != null && versionLiteral != null ? dependency.toDependencySite(call, versionLiteral)
-					: null;
+			if (version == null) {
+				return null;
+			}
+
+			GradleDependency dependency = GradleDependency.fromNamed(group, artifact, version, declarationSource,
+					propertyResolver);
+			return dependency != null ? dependency.toDependencySite(call, versionLiteral) : null;
+		}
+
+		/**
+		 * Return the version expression of a {@code version = ...} argument. Property
+		 * references are resolved later by {@link #dependency(DependencySite)}.
+		 */
+		private @Nullable Expression versionExpression(@Nullable KtExpression expression) {
+
+			if (expression instanceof KtNameReferenceExpression reference) {
+				String referenceName = reference.getReferencedName();
+				return propertyResolver.containsProperty(referenceName) ? Expression.property(referenceName) : null;
+			}
+
+			if (!(expression instanceof KtStringTemplateExpression template)) {
+				return null;
+			}
+
+			KtLiterals literals = KtLiterals.from(template);
+			if (literals.hasProperty() && propertyResolver.containsProperty(literals.getProperty())) {
+				return Expression.property(literals.getProperty());
+			}
+			return StringUtils.hasText(literals.getText()) ? Expression.from(literals.getText()) : null;
 		}
 
 	}
@@ -293,7 +334,7 @@ class KotlinDslParser {
 	 * id("org.springframework.boot") version "3.3.2"
 	 * </pre>
 	 */
-	private class PluginStrategy implements ParsingStrategy<KotlinDeclarationCall, KtCallElement> {
+	class PluginStrategy implements ParsingStrategy<KotlinDeclarationCall, KtCallElement> {
 
 		@Override
 		public boolean supports(KotlinDeclarationCall call) {
@@ -321,8 +362,8 @@ class KotlinDslParser {
 		private @Nullable DependencySite fromBinary(KtCallElement call, @Nullable KtBinaryExpression be,
 				PropertyResolver scriptProperties) {
 
-			String id = KtLiterals.from(call.getValueArgumentList()).toString(scriptProperties);
-			if (StringUtils.isEmpty(id)) {
+			String argument = KtLiterals.from(call.getValueArgumentList()).toString(scriptProperties);
+			if (StringUtils.isEmpty(argument)) {
 				return null;
 			}
 
@@ -336,12 +377,17 @@ class KotlinDslParser {
 				return null;
 			}
 
-			if (!GradlePluginId.isValidPluginId(id)) {
+			if (!GradlePluginId.isValidPluginId(argument)) {
+				return null;
+			}
+
+			GradlePluginId artifactId = GradlePluginId.fromCall(KotlinDslUtils.getKotlinCallName(call), argument);
+			if (artifactId == null) {
 				return null;
 			}
 
 			String versionText = literals.toString();
-			GradlePluginId artifactId = GradlePluginId.of(id);
+
 			if (literals.hasProperty()) {
 				return DependencySite.of(artifactId,
 						VersionSource.property(literals.getProperty()),
@@ -370,47 +416,19 @@ class KotlinDslParser {
 	}
 
 	/**
-	 * Parse inline-notation Kotlin DSL dependency or plugin declarations whose
-	 * version is part of the call itself.
+	 * Parse Kotlin DSL dependency declarations from compact notation, with the
+	 * version either inline or in a {@code version { ... }} block.
 	 * <p>Supports declarations such as: <pre class="code">
 	 * implementation("org.junit.jupiter:junit-jupiter:5.11.0")
-	 * id("org.springframework.boot") version "3.3.2"
-	 * </pre> Named-argument and {@code version { ... }} block forms are handled by
-	 * {@link NamedArgumentsStrategy} and {@link VersionBlockStrategy}.
+	 * implementation("org.junit.jupiter:junit-jupiter") { version { prefer("5.11.0") } }
+	 * </pre> Named-argument and plugin forms are handled by
+	 * {@link NamedArgumentsStrategy} and {@link PluginStrategy}.
 	 */
 	class InlineNotationStrategy implements ParsingStrategy<KotlinDeclarationCall, KtCallElement> {
 
 		@Override
 		public boolean supports(KotlinDeclarationCall call) {
-
-			if (findInlineDependencyLiteral(call.getCall()) != null) {
-				return true;
-			}
-
-			KtVersion version = KtVersion.fromDependency(call.getCall());
-			return version != null && version.containsVersion();
-		}
-
-		private @Nullable KtStringTemplateExpression findInlineDependencyLiteral(KtCallElement call) {
-
-			// todo: GradleDependency construction just for supports(...) case
-			for (ValueArgument valueArgument : call.getValueArguments()) {
-				KtExpression expression = valueArgument.getArgumentExpression();
-				if (expression instanceof KtStringTemplateExpression template) {
-					GradleDependency dependency = GradleDependency.parse(KtLiterals.from(template).toString(),
-							DeclarationSource.dependency(), propertyResolver);
-					if (dependency != null && dependency.getVersionSource().isDefined()) {
-						return template;
-					}
-				}
-
-				if (expression instanceof KtCallElement nested
-						&& GradleUtils.isPlatformSection(KotlinDslUtils.getKotlinCallName(nested))) {
-					return findInlineDependencyLiteral(nested);
-				}
-			}
-
-			return null;
+			return call.isDependency();
 		}
 
 		@Override
@@ -421,93 +439,34 @@ class KotlinDslParser {
 
 		private @Nullable DependencySite findDependencySite(KtCallElement call, DeclarationSource declarationSource) {
 
-			KtStringTemplateExpression directNotation = findInlineDependencyLiteral(call);
-			if (directNotation != null) {
+			GradleDependency dependency = null;
+			KtStringTemplateExpression notation = null;
 
-				KtCallExpression nested = PsiTreeUtil.findChildOfType(call.getValueArgumentList(),
-						KtCallExpression.class);
-				KotlinDeclarationCall nestedCall = KotlinDeclarationCall.from(nested);
+			for (ValueArgument argument : call.getValueArguments()) {
+				KtExpression expression = argument.getArgumentExpression();
 
 				// The nested platform call owns implementation(platform(...)).
-				if (nestedCall != null && nestedCall.isDependency()) {
+				if (expression instanceof KtCallElement nested
+						&& GradleUtils.isPlatformSection(KotlinDslUtils.getKotlinCallName(nested))) {
 					return null;
 				}
 
-				String notation = KtLiterals.from(call.getValueArgumentList()).toString();
-				return getDependencySite(call, declarationSource, notation, null, directNotation);
-			}
-
-			KtVersion version = KtVersion.fromDependency(call);
-			if (version == null) {
-				return null;
-			}
-
-			Expression expression = version.getVersionExpression();
-			if (expression == null) {
-				return null;
-			}
-
-			return getDependencySite(call, declarationSource, KtLiterals.from(call.getValueArgumentList()).toString(),
-					expression, version.getVersionElement());
-		}
-
-		/**
-		 * Create a {@link DependencySite} from parsed Kotlin DSL dependency data.
-		 */
-		private @Nullable DependencySite getDependencySite(KtCallElement call, DeclarationSource declarationSource,
-				String gav, @Nullable Expression versionExpression, @Nullable PsiElement versionElement) {
-
-			if (versionElement instanceof KtCallElement && declarationSource instanceof DeclarationSource.Plugin
-					&& versionExpression != null) {
-
-				if (!GradlePluginId.isValidPluginId(gav)) {
-					return null;
+				if (expression instanceof KtStringTemplateExpression template) {
+					dependency = GradleDependency.parse(KtLiterals.from(template).toString(), declarationSource,
+							propertyResolver);
+					if (dependency != null) {
+						notation = template;
+						break;
+					}
 				}
-
-				GradleDependency dependency = GradleDependency.of(GradlePluginId.of(gav), versionExpression,
-						declarationSource);
-				return dependency.toDependencySite(call, versionElement);
 			}
 
-			GradleDependency dependency = GradleDependency.parse(gav, declarationSource);
 			if (dependency == null) {
 				return null;
 			}
 
-			if (versionExpression != null) {
-				dependency = dependency.withVersion(versionExpression);
-			}
-
-			if (versionElement != null) {
-				return dependency.toDependencySite(call, versionElement);
-			}
-
-			return dependency.toDependencySite(call);
-		}
-
-	}
-
-	private class VersionBlockStrategy implements ParsingStrategy<KotlinDeclarationCall, KtCallElement> {
-
-		@Override
-		public boolean supports(KotlinDeclarationCall call) {
-			return hasVersionBlock(call);
-		}
-
-		@Override
-		public @Nullable ArtifactDeclaration parse(KtCallElement call, DeclarationSource declarationSource) {
-
-			DependencySite site = parseVersionBlockDeclaration(call, declarationSource);
-			return site != null ? dependency(site) : null;
-		}
-
-		@Nullable
-		private DependencySite parseVersionBlockDeclaration(KtCallElement call,
-				DeclarationSource declarationSource) {
-
-			KtStringTemplateExpression gavTemplate = findArtifactLiteral(call);
-			if (gavTemplate == null) {
-				return null;
+			if (dependency.getVersionSource().isDefined()) {
+				return dependency.toDependencySite(call, notation);
 			}
 
 			KtVersion version = KtVersion.fromDependency(call);
@@ -515,77 +474,10 @@ class KotlinDslParser {
 				return null;
 			}
 
-			String gavText = KtLiterals.from(gavTemplate).toString(propertyResolver);
-			if (StringUtils.isEmpty(gavText) || !GradleArtifactId.isValid(gavText)) {
-				return null;
-			}
-
-			ArtifactId artifactId = GradleArtifactId.from(gavText);
-			return GradleDependency.of(artifactId, version.getVersionExpression(), declarationSource)
+			return dependency.withVersion(version.getVersionExpression())
 					.toDependencySite(call, version.getVersionElement());
 		}
 
-		private @Nullable KtStringTemplateExpression findArtifactLiteral(KtCallElement call) {
-
-			for (ValueArgument argument : call.getValueArguments()) {
-				if (argument instanceof KtLambdaArgument) {
-					continue;
-				}
-				if (argument.getArgumentExpression() instanceof KtStringTemplateExpression expression) {
-					String text = KtLiterals.from(expression).toString(propertyResolver);
-					if (GradleArtifactId.isValid(text)) {
-						return expression;
-					}
-				}
-			}
-
-			return null;
-		}
-
-	}
-
-	private ArtifactDeclaration dependency(DependencySite site) {
-		ArtifactReference artifactReference = ArtifactReferenceUtils.resolve(site, () -> propertyResolver);
-		return artifactReference.getDeclaration();
-	}
-
-	private boolean isCatalogConsumer(KotlinDeclarationCall call) {
-		return call.call instanceof KtCallExpression callExpression
-				&& KotlinDslUtils.isCatalogConsumerCall(callExpression) && findCatalogAccessor(call.call) != null;
-	}
-
-	private boolean hasVersionBlock(KotlinDeclarationCall call) {
-
-		if (!call.isDependency()) {
-			return false;
-		}
-
-		for (ValueArgument argument : call.call.getValueArguments()) {
-			if (argument instanceof KtLambdaArgument) {
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	private static @Nullable KtDotQualifiedExpression findCatalogAccessor(KtCallElement call) {
-
-		for (ValueArgument argument : call.getValueArguments()) {
-			if (argument.getArgumentExpression() instanceof KtDotQualifiedExpression accessor) {
-				return accessor;
-			}
-		}
-
-		return null;
-	}
-
-	private static List<String> getSegments(KtDotQualifiedExpression dots) {
-		return SyntaxTraverser.psiTraverser(dots)
-				.expand(it -> !(it instanceof KtNameReferenceExpression))
-				.filter(KtNameReferenceExpression.class)
-				.map(KtNameReferenceExpression::getReferencedName)
-				.toList();
 	}
 
 }

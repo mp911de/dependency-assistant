@@ -62,7 +62,7 @@ class KotlinDslUtils {
 		if (GradleUtils.isDependencySection(methodName) || GradleUtils.isPlatformSection(methodName)) {
 			return true;
 		}
-		return GradleUtils.isPlugin(methodName) && isInsidePluginsBlock(call);
+		return GradlePluginId.isPluginCall(methodName) && isInsidePluginsBlock(call);
 	}
 
 	static @Nullable String getKotlinCallName(KtCallElement call) {

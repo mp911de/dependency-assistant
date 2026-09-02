@@ -70,6 +70,22 @@ class KotlinDslParserTests {
 
 	@Test
 	@ProjectFile(name = "build.gradle.kts", content = """
+			plugins {
+			    kotlin("jvm") version "2.4.10"
+			    kotlin("plugin.spring") version "2.4.10"
+			}
+			""")
+	void kotlinPluginHelperDeclaresKotlinPluginId(PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector).hasDependencyUsage("org.jetbrains.kotlin.jvm").hasVersion("2.4.10");
+		assertThat(collector).hasDependencyUsage("org.jetbrains.kotlin.plugin.spring").hasVersion("2.4.10");
+		assertThat(collector).hasNoDependencyUsage("jvm");
+	}
+
+	@Test
+	@ProjectFile(name = "build.gradle.kts", content = """
 			dependencies {
 			    implementation("org.junit:junit-bom:6.0.0")
 			}

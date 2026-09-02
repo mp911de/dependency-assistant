@@ -202,15 +202,35 @@ interface GradleDependency extends HasPackageSystem, HasPackageIdentity {
 			@Nullable String versionProperty, @Nullable String version, DeclarationSource declarationSource,
 			PropertyResolver resolver) {
 
-		if (!StringUtils.hasText(group) || !StringUtils.hasText(artifact)
-				|| !StringUtils.hasText(versionProperty) && !StringUtils.hasText(version)) {
+		if (!StringUtils.hasText(versionProperty) && !StringUtils.hasText(version)) {
+			return null;
+		}
+
+		Expression expression = StringUtils.hasText(versionProperty) ? Expression.property(versionProperty)
+				: Expression.from(version);
+		return fromNamed(group, artifact, expression, declarationSource, resolver);
+	}
+
+	/**
+	 * Create a dependency descriptor from separately parsed named declaration
+	 * fields and a version expression.
+	 * @param group artifact group.
+	 * @param artifact artifact name.
+	 * @param version version expression.
+	 * @param declarationSource structural origin of the declaration.
+	 * @param resolver property resolver used for coordinate placeholders.
+	 * @return the dependency descriptor, or {@literal null} when the declaration is
+	 * incomplete.
+	 */
+	static @Nullable GradleDependency fromNamed(@Nullable String group, @Nullable String artifact,
+			Expression version, DeclarationSource declarationSource, PropertyResolver resolver) {
+
+		if (!StringUtils.hasText(group) || !StringUtils.hasText(artifact)) {
 			return null;
 		}
 
 		ArtifactId artifactId = GradleArtifactId.from(ArtifactId.of(group, artifact), "").resolve(resolver);
-		Expression expression = StringUtils.hasText(versionProperty) ? Expression.property(versionProperty)
-				: Expression.from(version);
-		return of(artifactId, expression, declarationSource);
+		return of(artifactId, version, declarationSource);
 	}
 
 	/**

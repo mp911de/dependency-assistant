@@ -92,6 +92,16 @@ class GradleUtils {
 	static final String ID = "id";
 
 	/**
+	 * Name of the Kotlin DSL {@code kotlin(...)} plugin helper.
+	 */
+	static final String KOTLIN = "kotlin";
+
+	/**
+	 * Name of the Kotlin DSL {@code embeddedKotlin(...)} plugin helper.
+	 */
+	static final String EMBEDDED_KOTLIN = "embeddedKotlin";
+
+	/**
 	 * Name of the {@code alias} catalog consumer call.
 	 */
 	private static final String ALIAS = "alias";
