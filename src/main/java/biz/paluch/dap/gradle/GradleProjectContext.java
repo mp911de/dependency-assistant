@@ -30,6 +30,7 @@ import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.ProjectBuildContext;
 import biz.paluch.dap.util.BetterPsiManager;
+import biz.paluch.dap.util.PsiFileCache;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.externalSystem.model.DataNode;
 import com.intellij.openapi.externalSystem.model.ExternalProjectInfo;
@@ -76,6 +77,10 @@ interface GradleProjectContext extends ProjectBuildContext {
 	 * Looks up the {@link GradleProjectContext} for the given PSI file, or returns
 	 * {@link EmptyGradleBuildContext#INSTANCE} when the file is not part of a
 	 * linked Gradle project.
+	 *
+	 * <p>The context is cached on the file and rebuilt after any project PSI edit,
+	 * project-root change, or Gradle model import. A context injected through
+	 * {@link #KEY} takes precedence over the cache.
 	 * @param project the IntelliJ project.
 	 * @param file the Gradle-related PSI file, or {@literal null}.
 	 * @return the available project context or the absent context.
@@ -91,6 +96,13 @@ interface GradleProjectContext extends ProjectBuildContext {
 			return context;
 		}
 
+		return PsiFileCache.withProjectRoot(file, GradleProjectContext::create,
+				GradleModelModificationTracker.getInstance(project));
+	}
+
+	private static GradleProjectContext create(PsiFile file) {
+
+		Project project = file.getProject();
 		VirtualFile virtualFile = file.getVirtualFile();
 		if (virtualFile == null) {
 			return EmptyGradleBuildContext.INSTANCE;
