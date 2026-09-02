@@ -220,7 +220,8 @@ class GradleArtifactReferenceResolver implements ArtifactReferenceResolver {
 	private ArtifactReference findArtifactReference(PsiElement element) {
 
 		PsiFile file = element.getContainingFile();
-		if (GradleUtils.isVersionCatalog(file) && element instanceof TomlLiteral literal) {
+		if (GradleUtils.isVersionCatalog(file) && TomlParser.isVersionElement(element)
+				&& element instanceof TomlLiteral literal) {
 			return tomlLocator.locate(literal);
 		}
 
@@ -234,7 +235,8 @@ class GradleArtifactReferenceResolver implements ArtifactReferenceResolver {
 			return ArtifactReference.unresolved();
 		}
 
-		if (GradleUtils.isGroovyDsl(file) && element instanceof GroovyPsiElement groovyElement) {
+		if (GradleUtils.isGroovyDsl(file) && element instanceof GroovyPsiElement groovyElement
+				&& GroovyArtifactReferenceLocator.isVersionElement(groovyElement)) {
 			return groovyLocator.locate(groovyElement);
 		}
 

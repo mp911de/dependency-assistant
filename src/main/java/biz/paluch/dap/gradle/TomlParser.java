@@ -37,12 +37,10 @@ import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.StringUtils;
-import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiManager;
 import com.intellij.psi.SyntaxTraverser;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.util.containers.JBIterable;
@@ -138,25 +136,6 @@ class TomlParser {
 	}
 
 	/**
-	 * Find the default Gradle version catalog for the given project.
-	 * @param project the IntelliJ project.
-	 * @param anchorFile the file used to locate the Gradle project root.
-	 */
-	public static @Nullable PsiFile findVersionCatalogToml(Project project, VirtualFile anchorFile) {
-
-		VirtualFile root = GradleUtils.findProjectRoot(project, anchorFile);
-		VirtualFile gradleDir = root.findChild("gradle");
-		if (gradleDir == null) {
-			return null;
-		}
-		VirtualFile toml = gradleDir.findChild(GradleUtils.LIBS_VERSIONS_TOML);
-		if (toml == null) {
-			return null;
-		}
-		return PsiManager.getInstance(project).findFile(toml);
-	}
-
-	/**
 	 * Locate the version-catalog TOML file registered at {@code relativePath}
 	 * relative to {@code projectRoot}.
 	 * <p>Rejects unsafe paths (absolute, or containing a {@code ..} parent segment)
@@ -199,6 +178,19 @@ class TomlParser {
 			}
 		}
 		return true;
+	}
+
+	/**
+	 * Return whether the given element can carry a catalog version such as a
+	 * literal inside a {@code [versions]}, {@code [libraries]} or {@code [plugins]}
+	 * table.
+	 *
+	 * @param element the PSI element to inspect.
+	 * @return {@literal true} if the element may resolve to an artifact reference.
+	 */
+	public static boolean isVersionElement(PsiElement element) {
+		return element instanceof TomlLiteral
+				&& isInsideTable(element, it -> VERSIONS.equals(it) || LIBRARIES.equals(it) || PLUGINS.equals(it));
 	}
 
 	/**

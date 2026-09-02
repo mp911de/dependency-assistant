@@ -66,6 +66,16 @@ class GroovyArtifactReferenceLocator implements ArtifactReferenceLocator<GroovyP
 	}
 
 	/**
+	 * Return whether the given element can occupy a Groovy DSL version position.
+	 *
+	 * @param element the PSI element to inspect.
+	 * @return {@literal true} if the element may resolve to an artifact reference.
+	 */
+	public static boolean isVersionElement(PsiElement element) {
+		return element instanceof GrLiteral || element instanceof GrReferenceExpression;
+	}
+
+	/**
 	 * Resolve the artifact reference owning the given Groovy PSI element.
 	 * <p>Supports direct dependency literals, property-backed declarations, and
 	 * version catalog references such as: <pre class="code">

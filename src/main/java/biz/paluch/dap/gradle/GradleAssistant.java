@@ -240,11 +240,15 @@ class GradleAssistant implements DependencyAssistant {
 			return GradlePropertiesParser.isPropertyValueElement(element);
 		}
 
-		if (GradleUtils.KOTLIN_AVAILABLE && GradleUtils.isKotlinDsl(file)) {
-			return KotlinArtifactReferenceLocator.isVersionElement(element);
+		if (GradleUtils.isVersionCatalog(file)) {
+			return TomlParser.isVersionElement(element);
 		}
 
-		return true;
+		if (GradleUtils.isKotlinDsl(file)) {
+			return GradleUtils.KOTLIN_AVAILABLE && KotlinArtifactReferenceLocator.isVersionElement(element);
+		}
+
+		return GroovyArtifactReferenceLocator.isVersionElement(element);
 	}
 
 	static class GradleDependencyContext extends ProjectBuildContextWrapper implements ProjectDependencyContext {
