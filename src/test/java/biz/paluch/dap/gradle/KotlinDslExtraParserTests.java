@@ -20,6 +20,7 @@ import java.util.Map;
 
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
+import biz.paluch.dap.support.PropertyValue;
 import com.intellij.psi.PsiFile;
 import org.junit.jupiter.api.Test;
 
@@ -96,6 +97,47 @@ class KotlinDslExtraParserTests {
 		Map<String, String> props = KotlinDslExtraParser.getExtraProperties(file);
 
 		assertThat(props).containsEntry("springModulithVersion", "2.0.3");
+	}
+
+	@Test
+	@ProjectFile(name = "build.gradle.kts", content = """
+			val springVersion = "6.2.0"
+			val lombokVersion by extra("1.18.36")
+			val unversioned = 42
+			""")
+	void scriptValPropertiesAreCollected(PsiFile file) {
+
+		Map<String, PropertyValue> props = KotlinDslExtraParser.parseValProperties(file);
+
+		assertThat(props).containsOnlyKeys("springVersion", "lombokVersion");
+		assertThat(props.get("springVersion").getValue()).isEqualTo("6.2.0");
+		assertThat(props.get("springVersion").getValueLiteral().getText()).isEqualTo("\"6.2.0\"");
+		assertThat(props.get("lombokVersion").getValue()).isEqualTo("1.18.36");
+		assertThat(props.get("lombokVersion").getValueLiteral().getText()).isEqualTo("\"1.18.36\"");
+	}
+
+	@Test
+	@ProjectFile(name = "build.gradle.kts", content = """
+			val topLevel = "1.0"
+
+			tasks.register("hello") {
+			    val inLambda = "2.0"
+			    val inLambdaExtra by extra("2.1")
+			}
+
+			fun helper() {
+			    val inFunction = "3.0"
+			}
+
+			object Versions {
+			    val inObject = "4.0"
+			}
+			""")
+	void nestedValPropertiesAreIgnored(PsiFile file) {
+
+		Map<String, PropertyValue> props = KotlinDslExtraParser.parseValProperties(file);
+
+		assertThat(props).containsOnlyKeys("topLevel");
 	}
 
 }
