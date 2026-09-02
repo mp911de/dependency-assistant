@@ -18,13 +18,11 @@ package biz.paluch.dap.gradle;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
 
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.SyntaxTraverser;
 import com.intellij.util.containers.JBIterable;
-import org.jetbrains.plugins.groovy.lang.psi.GroovyPsiElement;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.blocks.GrClosableBlock;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrAssignmentExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrExpression;
@@ -55,31 +53,30 @@ class GroovyDslSettingsParser {
 	public static VersionCatalogRegistry parseRegistry(PsiFile file) {
 
 		Map<String, String> catalogs = new LinkedHashMap<>();
-		AtomicReference<String> defaultAlias = new AtomicReference<>(TomlParser.LIBS);
+		String alias = TomlParser.LIBS;
 
-		SyntaxTraverser.psiTraverser(file).expand(it -> !(it instanceof GrMethodCall))
+		JBIterable<GrMethodCall> managementCalls = SyntaxTraverser.psiTraverser(file)
+				.expand(it -> !(it instanceof GrMethodCall))
 				.filter(GrMethodCall.class)
-				.filter(it -> "dependencyResolutionManagement".equals(GroovyDslUtils.getGroovyMethodName(it)))
-				.flatMap(it -> JBIterable.of(it.getClosureArguments()))
-				.flatMap(it -> JBIterable.of(it.getChildren()))
-				.filter(GroovyPsiElement.class)
-				.forEach(child -> {
+				.filter(it -> "dependencyResolutionManagement".equals(GroovyDslUtils.getGroovyMethodName(it)));
 
-					if (child instanceof GrMethodCall catalogsCall
+		for (GrMethodCall managementCall : managementCalls) {
+			for (GrClosableBlock closure : managementCall.getClosureArguments()) {
+				for (PsiElement statement : closure.getChildren()) {
+
+					if (statement instanceof GrMethodCall catalogsCall
 							&& "versionCatalogs".equals(GroovyDslUtils.getGroovyMethodName(catalogsCall))) {
 						parseVersionCatalogsBlock(catalogsCall, catalogs);
 					}
 
-					if (child instanceof GrAssignmentExpression assign && !assign.isOperatorAssignment()) {
-						String name = GroovyDslUtils.getText(assign.getLValue());
-						if ("defaultLibrariesExtensionName".equals(name)
-								&& assign.getRValue() instanceof GrLiteral literal) {
-							defaultAlias.set(GroovyDslUtils.getRequiredText(literal));
-						}
+					if (statement instanceof GrAssignmentExpression assign && !assign.isOperatorAssignment()
+							&& "defaultLibrariesExtensionName".equals(GroovyDslUtils.getText(assign.getLValue()))
+							&& assign.getRValue() instanceof GrLiteral literal) {
+						alias = GroovyDslUtils.getRequiredText(literal);
 					}
-				});
-
-		String alias = defaultAlias.get();
+				}
+			}
+		}
 
 		if (!catalogs.containsKey(alias)) {
 			catalogs.put(alias, GradleUtils.DEFAULT_TOML_LOCATION);

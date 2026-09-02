@@ -19,10 +19,12 @@ package biz.paluch.dap.gradle;
 import java.util.List;
 import java.util.function.Predicate;
 
+import biz.paluch.dap.support.Expression;
 import biz.paluch.dap.util.PsiElements;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.SyntaxTraverser;
+import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.plugins.groovy.lang.psi.GroovyElementTypes;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.arguments.GrArgumentList;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.arguments.GrNamedArgument;
@@ -152,6 +154,14 @@ class GroovyDslUtils {
 	}
 
 	/**
+	 * Return whether the literal carries a constant string value, that is it is not
+	 * an interpolated {@code GString}.
+	 */
+	public static boolean isConstantString(@Nullable GrLiteral literal) {
+		return literal != null && literal.getValue() instanceof String;
+	}
+
+	/**
 	 * Return the plain string content of a Groovy literal.
 	 * @param literal the literal to extract the text from.
 	 * @return the string value.
@@ -167,6 +177,28 @@ class GroovyDslUtils {
 			builder.append(child.getText());
 		}
 		return builder.toString();
+	}
+
+	/**
+	 * Return the given expression as version {@link Expression}: a property
+	 * reference for a reference expression, otherwise the literal text.
+	 * @param expression the version expression, or {@literal null}.
+	 * @return the version expression, or {@literal null} for unsupported shapes or
+	 * empty text.
+	 */
+	static @Nullable Expression toExpression(@Nullable GrExpression expression) {
+
+		if (expression instanceof GrReferenceExpression reference) {
+			String name = reference.getReferenceName();
+			return StringUtils.hasText(name) ? Expression.property(name) : null;
+		}
+
+		if (expression instanceof GrLiteral literal) {
+			String text = getText(literal);
+			return StringUtils.hasText(text) ? Expression.from(text) : null;
+		}
+
+		return null;
 	}
 
 	// -------------------------------------------------------------------------
@@ -238,6 +270,76 @@ class GroovyDslUtils {
 				.expand(it -> it instanceof GrReferenceExpression)
 				.filterTypes(GroovyElementTypes.IDENTIFIER::equals)
 				.map(PsiElement::getText).toList();
+	}
+
+	// -------------------------------------------------------------------------
+	// Command-style platform notation: implementation platform 'g:a:1.0'
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Return the quoted coordinate of a command-style platform declaration owned by
+	 * the given call. Groovy parses {@code implementation platform 'g:a:1.0'} as a
+	 * property access on {@code implementation(platform)} whose name is the quoted
+	 * coordinate, so the coordinate is the reference name.
+	 * @param call the candidate {@code implementation(platform)} call.
+	 * @return the coordinate reference, or {@literal null}.
+	 */
+	static @Nullable GrReferenceExpression getCommandPlatformString(GrMethodCall call) {
+
+		if (!GradleUtils.isDependencySection(getGroovyMethodName(call)) || !hasPlatformArgument(call)) {
+			return null;
+		}
+
+		if (call.getParent() instanceof GrReferenceExpression reference) {
+			PsiElement name = reference.getReferenceNameElement();
+			String text = name != null ? name.getText() : "";
+			if (text.length() > 1 && (text.charAt(0) == '\'' || text.charAt(0) == '"')) {
+				return reference;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Return the quoted coordinate of the command-style platform declaration at or
+	 * enclosing the given element.
+	 * @param element a call, the coordinate reference or an element inside it.
+	 * @return the coordinate reference, or {@literal null}.
+	 */
+	static @Nullable GrReferenceExpression findCommandPlatformString(PsiElement element) {
+
+		if (element instanceof GrMethodCall call) {
+			return getCommandPlatformString(call);
+		}
+
+		GrReferenceExpression reference = PsiTreeUtil.getParentOfType(element, GrReferenceExpression.class, false);
+		return reference != null && getCommandPlatformCall(reference) != null ? reference : null;
+	}
+
+	/**
+	 * Return the dependency call owning the given command-style platform
+	 * coordinate.
+	 * @param string the coordinate reference.
+	 * @return the owning call, or {@literal null} if the reference is not a
+	 * command-style platform coordinate.
+	 */
+	static @Nullable GrMethodCall getCommandPlatformCall(GrReferenceExpression string) {
+		return string.getQualifierExpression() instanceof GrMethodCall call && getCommandPlatformString(call) == string
+				? call
+				: null;
+	}
+
+	private static boolean hasPlatformArgument(GrMethodCall call) {
+
+		for (GrExpression argument : call.getExpressionArguments()) {
+			if (argument instanceof GrReferenceExpression reference
+					&& GradleUtils.isPlatformSection(reference.getReferenceName())) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**

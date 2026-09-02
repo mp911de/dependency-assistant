@@ -121,7 +121,7 @@ public class GroovyCompletionContributor extends CompletionContributor {
 		DeclarationStyle site = GroovyDeclarationStyleDetector.getInstance().detect(position);
 		return site.isPresent()
 				&& (!(site.versionElement() instanceof GrLiteral literal)
-						|| GroovyDeclarationStyleDetector.getInstance().isConstantStringLiteral(literal));
+						|| GroovyDslUtils.isConstantString(literal));
 	}
 
 	private static boolean isCompactNotationBeforeVersion(PsiElement position) {

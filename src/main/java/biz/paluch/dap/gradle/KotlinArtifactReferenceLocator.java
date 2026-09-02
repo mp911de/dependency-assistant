@@ -263,8 +263,7 @@ class KotlinArtifactReferenceLocator implements ArtifactReferenceLocator<KtEleme
 	}
 
 	private static boolean isVersionConstraintRange(DeclarationStyle site) {
-		return (site.kind() == DeclarationStyle.Kind.VERSION_BLOCK_PREFER
-				|| site.kind() == DeclarationStyle.Kind.VERSION_BLOCK_STRICTLY)
+		return (site.kind() == DeclarationStyle.Kind.VERSION_BLOCK_PREFER || site.kind().isBoundingConstraint())
 				&& site.versionElement() instanceof KtStringTemplateExpression template
 				&& GradleUtils.isVersionRange(KtLiterals.from(template).toString());
 	}

@@ -115,18 +115,24 @@ interface DeclarationStyle {
 
 	/**
 	 * Create a version-block constraint style.
-	 * @param kind {@link Kind#VERSION_BLOCK_PREFER} or
-	 * {@link Kind#VERSION_BLOCK_STRICTLY}.
+	 * @param constraintName the constraint call name, see
+	 * {@link GradleVersionConstraint#PRECEDENCE}.
 	 * @param versionElement the constraint version literal or reference.
 	 * @param owningCall the owning dependency call, or {@literal null} when it
 	 * cannot be resolved.
 	 * @return the declaration style.
-	 * @throws IllegalArgumentException if {@code kind} is not a version-block kind.
+	 * @throws IllegalArgumentException if {@code constraintName} is not a supported
+	 * constraint.
 	 */
-	static DeclarationStyle versionBlock(Kind kind, PsiElement versionElement, @Nullable PsiElement owningCall) {
-		if (kind != Kind.VERSION_BLOCK_PREFER && kind != Kind.VERSION_BLOCK_STRICTLY) {
-			throw new IllegalArgumentException("Not a version-block kind: %s".formatted(kind));
-		}
+	static DeclarationStyle versionBlock(String constraintName, PsiElement versionElement,
+			@Nullable PsiElement owningCall) {
+
+		Kind kind = switch (constraintName) {
+		case GradleVersionConstraint.PREFER -> Kind.VERSION_BLOCK_PREFER;
+		case GradleVersionConstraint.STRICTLY -> Kind.VERSION_BLOCK_STRICTLY;
+		case GradleVersionConstraint.REQUIRE -> Kind.VERSION_BLOCK_REQUIRE;
+		default -> throw new IllegalArgumentException("Not a version constraint: %s".formatted(constraintName));
+		};
 		return new Site(kind, versionElement, owningCall);
 	}
 
@@ -188,6 +194,11 @@ interface DeclarationStyle {
 		VERSION_BLOCK_STRICTLY(true),
 
 		/**
+		 * {@code version { require(...) }} constraint.
+		 */
+		VERSION_BLOCK_REQUIRE(true),
+
+		/**
 		 * Plugin DSL {@code version} operand, for example
 		 * {@code id("x") version "1.0"}.
 		 */
@@ -220,6 +231,14 @@ interface DeclarationStyle {
 		 */
 		boolean isInlineInCall() {
 			return inlineInCall;
+		}
+
+		/**
+		 * Return whether this kind is a {@code strictly} or {@code require} constraint,
+		 * whose value may be a version range that cannot be upgraded.
+		 */
+		boolean isBoundingConstraint() {
+			return this == VERSION_BLOCK_STRICTLY || this == VERSION_BLOCK_REQUIRE;
 		}
 
 	}

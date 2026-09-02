@@ -19,6 +19,7 @@ package biz.paluch.dap.gradle;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.util.PsiTreeUtil;
+import org.jetbrains.plugins.groovy.lang.psi.GroovyFile;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrVariable;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrVariableDeclaration;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrAssignmentExpression;
@@ -74,7 +75,7 @@ sealed interface GroovyExtAssignment extends ExtraDeclaration {
 	 */
 	static @Nullable GroovyExtAssignment from(@Nullable PsiElement element) {
 
-		if (!(element instanceof GrLiteral literal)) {
+		if (!(element instanceof GrLiteral literal) || !(literal.getValue() instanceof String)) {
 			return null;
 		}
 
@@ -100,7 +101,8 @@ sealed interface GroovyExtAssignment extends ExtraDeclaration {
 		static @Nullable SetCall from(GrLiteral literal) {
 
 			GrMethodCall setCall = PsiTreeUtil.getParentOfType(literal, GrMethodCall.class);
-			if (setCall == null || !SET.equals(GroovyDslUtils.getGroovyMethodName(setCall))) {
+			if (setCall == null || !SET.equals(GroovyDslUtils.getGroovyMethodName(setCall))
+					|| !GroovyDslUtils.isInsideGroovyBlock(setCall, EXT::equals)) {
 				return null;
 			}
 
@@ -195,21 +197,16 @@ sealed interface GroovyExtAssignment extends ExtraDeclaration {
 		static @Nullable ScriptVariable from(GrLiteral literal) {
 
 			GrVariableDeclaration declaration = PsiTreeUtil.getParentOfType(literal, GrVariableDeclaration.class);
-			if (declaration == null) {
+			if (declaration == null || !(declaration.getParent() instanceof GroovyFile)) {
 				return null;
 			}
 
 			for (GrVariable variable : declaration.getVariables()) {
 
-				GrExpression initializer = variable.getInitializerGroovy();
-				if (initializer == null || !PsiTreeUtil.isAncestor(initializer, literal, false)) {
-					continue;
-				}
 				String name = variable.getName();
-				if (!StringUtils.hasText(name)) {
-					continue;
+				if (variable.getInitializerGroovy() == literal && StringUtils.hasText(name)) {
+					return new ScriptVariable(name, literal, variable);
 				}
-				return new ScriptVariable(name, literal, variable);
 			}
 			return null;
 		}

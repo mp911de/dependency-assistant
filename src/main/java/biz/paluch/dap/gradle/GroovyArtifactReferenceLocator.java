@@ -150,7 +150,7 @@ class GroovyArtifactReferenceLocator implements ArtifactReferenceLocator<GroovyP
 	 */
 	private static boolean isExcludedVersionPosition(DeclarationStyle site, PsiElement element) {
 
-		if (site.kind() == DeclarationStyle.Kind.VERSION_BLOCK_STRICTLY && element instanceof GrLiteral literal
+		if (site.kind().isBoundingConstraint() && element instanceof GrLiteral literal
 				&& GradleUtils.isVersionRange(GroovyDslUtils.getText(literal))) {
 			return true;
 		}
@@ -195,20 +195,16 @@ class GroovyArtifactReferenceLocator implements ArtifactReferenceLocator<GroovyP
 
 	private ArtifactReference locateCommandPlatformString(PsiElement element) {
 
-		GrMethodCall call = GroovyDeclarationStyleDetector.getInstance().findCommandPlatformDependencyCall(element);
-		String text = GroovyDeclarationStyleDetector.getInstance().getCommandPlatformStringText(element);
-		if (call == null || !StringUtils.hasText(text)) {
+		GrReferenceExpression string = GroovyDslUtils.findCommandPlatformString(element);
+		GrMethodCall call = string != null ? GroovyDslUtils.getCommandPlatformCall(string) : null;
+		if (call == null || !StringUtils.hasText(string.getReferenceName())) {
 			return ArtifactReference.unresolved();
 		}
 
-		GradleDependency dependency = GradleDependency.parse(text, DeclarationSource.bom(), propertyResolver);
-		if (dependency == null) {
-			return ArtifactReference.unresolved();
-		}
-
-		PsiElement stringElement = GroovyDeclarationStyleDetector.getInstance().findCommandPlatformString(element);
-		PsiElement versionElement = stringElement != null ? stringElement : element;
-		return reference(dependency.toDependencySite(call, versionElement));
+		GradleDependency dependency = GradleDependency.parse(string.getReferenceName(), DeclarationSource.bom(),
+				propertyResolver);
+		return dependency != null ? reference(dependency.toDependencySite(call, string))
+				: ArtifactReference.unresolved();
 	}
 
 	private ArtifactReference locateCatalogReference(PsiElement element) {

@@ -32,7 +32,7 @@ import com.intellij.openapi.util.SimpleModificationTracker;
 class GradleModelModificationTracker extends SimpleModificationTracker {
 
 	private static final NotNullLazyKey<GradleModelModificationTracker, Project> KEY = NotNullLazyKey.createLazyKey(
-			"biz.paluch.dap.gradle.GradleModelModificationTracker", it -> new GradleModelModificationTracker());
+			GradleModelModificationTracker.class.getName(), it -> new GradleModelModificationTracker());
 
 	static GradleModelModificationTracker getInstance(Project project) {
 		return KEY.getValue(project);

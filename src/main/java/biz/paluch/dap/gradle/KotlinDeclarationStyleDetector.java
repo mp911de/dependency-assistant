@@ -19,14 +19,25 @@ package biz.paluch.dap.gradle;
 import java.util.HashSet;
 import java.util.Set;
 
+import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.gradle.KotlinDslParser.KotlinDeclarationCall;
+import biz.paluch.dap.support.ArtifactDeclaration;
+import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.util.PsiFileCache;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.SyntaxTraverser;
 import com.intellij.psi.util.PsiTreeUtil;
-import org.jetbrains.kotlin.psi.*;
+import org.jetbrains.kotlin.psi.KtBinaryExpression;
+import org.jetbrains.kotlin.psi.KtCallElement;
+import org.jetbrains.kotlin.psi.KtCallExpression;
+import org.jetbrains.kotlin.psi.KtExpression;
+import org.jetbrains.kotlin.psi.KtLambdaExpression;
+import org.jetbrains.kotlin.psi.KtNameReferenceExpression;
+import org.jetbrains.kotlin.psi.KtProperty;
+import org.jetbrains.kotlin.psi.KtStringTemplateExpression;
+import org.jetbrains.kotlin.psi.KtValueArgument;
+import org.jetbrains.kotlin.psi.ValueArgument;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -79,14 +90,9 @@ class KotlinDeclarationStyleDetector implements DeclarationStyleDetector {
 			return DeclarationStyle.mapNotation(template, enclosingDeclarationCall(template));
 		}
 
-		if (isVersionBlockLiteral(template, GradleVersionConstraint.PREFER)) {
-			return DeclarationStyle.versionBlock(DeclarationStyle.Kind.VERSION_BLOCK_PREFER, template,
-					versionBlockCall(template));
-		}
-
-		if (isVersionBlockLiteral(template, GradleVersionConstraint.STRICTLY)) {
-			return DeclarationStyle.versionBlock(DeclarationStyle.Kind.VERSION_BLOCK_STRICTLY, template,
-					versionBlockCall(template));
+		DeclarationStyle versionBlock = versionBlockStyle(template);
+		if (versionBlock != null) {
+			return versionBlock;
 		}
 
 		if (isPluginVersionLiteral(template)) {
@@ -106,17 +112,7 @@ class KotlinDeclarationStyleDetector implements DeclarationStyleDetector {
 			return DeclarationStyle.mapNotation(reference, enclosingDeclarationCall(reference));
 		}
 
-		if (isVersionBlockReference(reference, GradleVersionConstraint.PREFER)) {
-			return DeclarationStyle.versionBlock(DeclarationStyle.Kind.VERSION_BLOCK_PREFER, reference,
-					versionBlockCall(reference));
-		}
-
-		if (isVersionBlockReference(reference, GradleVersionConstraint.STRICTLY)) {
-			return DeclarationStyle.versionBlock(DeclarationStyle.Kind.VERSION_BLOCK_STRICTLY, reference,
-					versionBlockCall(reference));
-		}
-
-		return null;
+		return versionBlockStyle(reference);
 	}
 
 	private @Nullable KtCallExpression enclosingDeclarationCall(PsiElement versionElement) {
@@ -125,10 +121,22 @@ class KotlinDeclarationStyleDetector implements DeclarationStyleDetector {
 		return call != null && KotlinDslUtils.isDependencyCall(call) ? call : null;
 	}
 
-	private @Nullable KtCallExpression versionBlockCall(PsiElement versionElement) {
+	/**
+	 * Classify an argument of a constraint call inside a {@code version { ... }}
+	 * block: {@code prefer("1.0")}, {@code strictly(springVersion)},
+	 * {@code require("[1.0,2.0)")}.
+	 */
+	private @Nullable DeclarationStyle versionBlockStyle(PsiElement element) {
 
-		KtCallExpression constraintCall = PsiTreeUtil.getParentOfType(versionElement, KtCallExpression.class);
-		return constraintCall != null ? findVersionBlockDependencyCall(constraintCall) : null;
+		KtCallExpression constraintCall = PsiTreeUtil.getParentOfType(element, KtCallExpression.class);
+		String constraintName = constraintCall != null ? KotlinDslUtils.getKotlinCallName(constraintCall) : null;
+		if (constraintName == null || !GradleVersionConstraint.isConstraint(constraintName)
+				|| !isArgumentOfCall(element, constraintCall)) {
+			return null;
+		}
+
+		KtCallExpression owner = findVersionBlockDependencyCall(constraintCall);
+		return owner != null ? DeclarationStyle.versionBlock(constraintName, element, owner) : null;
 	}
 
 	private @Nullable PsiElement pluginIdCall(PsiElement versionElement) {
@@ -176,30 +184,6 @@ class KotlinDeclarationStyleDetector implements DeclarationStyleDetector {
 		return namedArgument != null && isVersionNamedArgument(namedArgument)
 				&& isExpressionOfValueArgument(reference, namedArgument)
 				&& isNamedArgumentOfDependencyCall(namedArgument);
-	}
-
-	/**
-	 * Return whether the literal is an argument to a Kotlin version-block
-	 * constraint call.
-	 */
-	private boolean isVersionBlockLiteral(KtStringTemplateExpression literal, String constraintName) {
-
-		KtCallExpression constraintCall = PsiTreeUtil.getParentOfType(literal, KtCallExpression.class);
-		return constraintCall != null && constraintName.equals(KotlinDslUtils.getKotlinCallName(constraintCall))
-				&& isArgumentOfCall(literal, constraintCall)
-				&& findVersionBlockDependencyCall(constraintCall) != null;
-	}
-
-	/**
-	 * Return whether the reference is an argument to a Kotlin version-block
-	 * constraint call.
-	 */
-	private boolean isVersionBlockReference(KtNameReferenceExpression reference, String constraintName) {
-
-		KtCallExpression constraintCall = PsiTreeUtil.getParentOfType(reference, KtCallExpression.class);
-		return constraintCall != null && constraintName.equals(KotlinDslUtils.getKotlinCallName(constraintCall))
-				&& isArgumentOfCall(reference, constraintCall)
-				&& findVersionBlockDependencyCall(constraintCall) != null;
 	}
 
 	/**
@@ -255,7 +239,7 @@ class KotlinDeclarationStyleDetector implements DeclarationStyleDetector {
 			return false;
 		}
 
-		return isReferencedBySupportedVersionSite(file, propertyName);
+		return referencedVersionProperties(file).contains(propertyName);
 	}
 
 	/**
@@ -320,93 +304,26 @@ class KotlinDeclarationStyleDetector implements DeclarationStyleDetector {
 		return null;
 	}
 
-	private boolean isReferencedBySupportedVersionSite(PsiFile file, String propertyName) {
-		return referencedVersionPropertyNames(file).contains(propertyName);
-	}
-
 	/**
-	 * Return the property names referenced by a supported declaration anywhere in
-	 * the file. The result is cached and recomputed when the PSI changes, so the
-	 * repeated completion-position checks do not each re-traverse the file.
+	 * Property names that declarations in the file reference as version. Derived
+	 * from the forward parse and cached until the file changes.
 	 */
-	private Set<String> referencedVersionPropertyNames(PsiFile file) {
-		return PsiFileCache.get(file, this::computeReferencedVersionPropertyNames);
+	private static Set<String> referencedVersionProperties(PsiFile file) {
+		return PsiFileCache.get(file, KotlinDeclarationStyleDetector::computeReferencedVersionProperties);
 	}
 
-	private Set<String> computeReferencedVersionPropertyNames(PsiFile file) {
+	private static Set<String> computeReferencedVersionProperties(PsiFile file) {
 
 		Set<String> names = new HashSet<>();
+		KotlinDslFileParser parser = new KotlinDslFileParser(file, PropertyResolver.empty());
 
-		for (KtNameReferenceExpression reference : SyntaxTraverser.psiTraverser(file)
-				.filter(KtNameReferenceExpression.class)) {
-			if (isVersionPropertyReference(reference)) {
-				String name = reference.getReferencedName();
-				if (StringUtils.hasText(name)) {
-					names.add(name);
-				}
-			}
-		}
-
-		for (KtArrayAccessExpression arrayAccess : SyntaxTraverser.psiTraverser(file)
-				.filter(KtArrayAccessExpression.class)) {
-			if (isReferenceInsideSupportedVersionLiteral(arrayAccess)) {
-				String name = getExtraPropertyKey(arrayAccess);
-				if (StringUtils.hasText(name)) {
-					names.add(name);
-				}
-			}
-		}
-
-		for (KtCallExpression call : SyntaxTraverser.psiTraverser(file).filter(KtCallExpression.class)) {
-			if ("property".equals(KotlinDslUtils.getKotlinCallName(call))
-					&& isReferenceInsideSupportedVersionLiteral(call)) {
-				KtExpression argument = KotlinDslUtils.getFirstValueArgument(call);
-				String name = KtLiterals.nameOf(argument);
-				if (StringUtils.hasText(name)) {
-					names.add(name);
-				}
+		for (ArtifactDeclaration declaration : parser.parseDeclarations()) {
+			if (declaration.getVersionSource() instanceof VersionSource.VersionProperty property) {
+				names.add(property.getProperty());
 			}
 		}
 
 		return names;
-	}
-
-	private boolean isVersionPropertyReference(KtNameReferenceExpression reference) {
-		return isVersionNamedArgumentReference(reference)
-				|| isVersionBlockReference(reference, GradleVersionConstraint.PREFER)
-				|| isVersionBlockReference(reference, GradleVersionConstraint.STRICTLY)
-				|| isReferenceInsideSupportedVersionLiteral(reference);
-	}
-
-	private boolean isReferenceInsideSupportedVersionLiteral(PsiElement reference) {
-
-		KtStringTemplateExpression template = PsiTreeUtil.getParentOfType(reference, KtStringTemplateExpression.class);
-		return template != null && isSupportedVersionLiteral(template);
-	}
-
-	private boolean isSupportedVersionLiteral(KtStringTemplateExpression template) {
-		return isDirectDependencyNotationLiteral(template)
-				|| isVersionNamedArgumentLiteral(template)
-				|| isVersionBlockLiteral(template, GradleVersionConstraint.PREFER)
-				|| isVersionBlockLiteral(template, GradleVersionConstraint.STRICTLY)
-				|| isPluginVersionLiteral(template);
-	}
-
-	private @Nullable String getExtraPropertyKey(KtArrayAccessExpression arrayAccess) {
-
-		if (!(arrayAccess.getArrayExpression() instanceof KtNameReferenceExpression nameReference)
-				|| !"extra".equals(nameReference.getReferencedName())) {
-			return null;
-		}
-
-		for (KtExpression indexExpression : arrayAccess.getIndexExpressions()) {
-			String key = KtLiterals.nameOf(indexExpression);
-			if (StringUtils.hasText(key)) {
-				return key;
-			}
-		}
-
-		return null;
 	}
 
 	private boolean isVersionNamedArgument(ValueArgument namedArgument) {

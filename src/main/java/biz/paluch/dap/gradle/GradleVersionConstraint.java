@@ -16,6 +16,8 @@
 
 package biz.paluch.dap.gradle;
 
+import java.util.List;
+
 import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
@@ -44,6 +46,17 @@ interface GradleVersionConstraint {
 	 * Constraint name for Gradle's {@code strictly(...)} version declaration.
 	 */
 	String STRICTLY = "strictly";
+
+	/**
+	 * Constraint name for Gradle's {@code require(...)} version declaration.
+	 */
+	String REQUIRE = "require";
+
+	/**
+	 * Constraint names from strongest to weakest. {@code prefer} applies only when
+	 * no stronger concrete version is declared.
+	 */
+	List<String> PRECEDENCE = List.of(STRICTLY, REQUIRE, PREFER);
 
 	/**
 	 * Return the declared version text for this constraint.
@@ -79,7 +92,7 @@ interface GradleVersionConstraint {
 	 * @return {@literal true} if the call matches a supported constraint name.
 	 */
 	static boolean isConstraint(@Nullable String call) {
-		return PREFER.equals(call) || STRICTLY.equals(call);
+		return call != null && PRECEDENCE.contains(call);
 	}
 
 }

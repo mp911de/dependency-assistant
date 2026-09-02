@@ -49,19 +49,14 @@ class GroovyPluginDependencySite {
 		}
 
 		String id = propertyResolver.resolvePlaceholders(GroovyDslUtils.getText(idLiteral));
-		GrLiteral versionLiteral = findInlineVersionLiteral(call);
-		if (versionLiteral == null) {
-			versionLiteral = findChainedVersionLiteral(call);
-		}
+		GrLiteral versionLiteral = findChainedVersionLiteral(call);
+		Expression version = GroovyDslUtils.toExpression(versionLiteral);
 
-		if (versionLiteral == null || !GradlePluginId.isValidPluginId(id)) {
+		if (version == null || !GradlePluginId.isValidPluginId(id)) {
 			return null;
 		}
 
-		String versionText = GroovyDslUtils.getText(versionLiteral);
-		Expression expression = Expression.from(versionText);
-
-		return GradleDependency.of(GradlePluginId.of(id), expression, DeclarationSource.plugin()).toDependencySite(call,
+		return GradleDependency.of(GradlePluginId.of(id), version, DeclarationSource.plugin()).toDependencySite(call,
 				versionLiteral);
 	}
 
@@ -75,25 +70,10 @@ class GroovyPluginDependencySite {
 		return null;
 	}
 
-	private static @Nullable GrLiteral findInlineVersionLiteral(GrMethodCall call) {
-
-		boolean sawVersionKeyword = false;
-
-		for (GroovyPsiElement argument : call.getArgumentList().getAllArguments()) {
-			if (!sawVersionKeyword && argument instanceof GrReferenceExpression referenceExpression
-					&& GradleUtils.VERSION.equals(referenceExpression.getReferenceName())) {
-				sawVersionKeyword = true;
-				continue;
-			}
-
-			if (sawVersionKeyword && argument instanceof GrLiteral literal) {
-				return literal;
-			}
-		}
-
-		return null;
-	}
-
+	/**
+	 * Return the version literal of {@code id 'x' version 'y'}, which Groovy parses
+	 * as the chained call {@code id('x').version('y')}.
+	 */
 	private static @Nullable GrLiteral findChainedVersionLiteral(GrMethodCall call) {
 
 		if (!(call.getParent() instanceof GrReferenceExpression versionRef)

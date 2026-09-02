@@ -429,11 +429,11 @@ class KotlinDslParser {
 			}
 
 			KtVersion version = KtVersion.fromDependency(call);
-			if (version == null) {
-				return null;
+			if (version != null) {
+				return dependency.withVersion(version.getExpression()).toDependencySite(call, version.getElement());
 			}
 
-			return dependency.withVersion(version.getExpression()).toDependencySite(call, version.getElement());
+			return dependency.toDependencySite(call, notation);
 		}
 
 	}

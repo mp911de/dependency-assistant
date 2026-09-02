@@ -32,10 +32,10 @@ import org.jspecify.annotations.Nullable;
  * given through a {@code version(...)} call or a {@code version { ... }}
  * constraint block.
  *
- * <p>A direct version argument takes precedence. Otherwise the first constraint
- * in declaration order that is property-backed or a concrete, non-range version
- * is used. Range constraints are ignored because callers need a single
- * upgradeable version value. The last declaration of a constraint name wins.
+ * <p>A direct version argument takes precedence. Otherwise the strongest
+ * constraint wins: {@code strictly}, then {@code require}, then {@code prefer}.
+ * Range constraints are skipped because callers need a single upgradeable
+ * version value. The last declaration of a constraint name wins.
  *
  * @author Mark Paluch
  */
@@ -73,15 +73,16 @@ class KtVersion {
 			return new KtVersion(literals.toExpression(), argument);
 		}
 
-		for (Constraint constraint : constraints(versionCall).values()) {
+		Map<String, Constraint> constraints = constraints(versionCall);
+		for (String name : GradleVersionConstraint.PRECEDENCE) {
 
-			KtExpression version = constraint.version();
-			if (version == null || !constraint.hasText()) {
+			Constraint constraint = constraints.get(name);
+			if (constraint == null || constraint.version() == null || !constraint.hasText()) {
 				continue;
 			}
 
 			if (constraint.literals().hasProperty() || !constraint.isRange()) {
-				return new KtVersion(constraint.literals().toExpression(), version);
+				return new KtVersion(constraint.literals().toExpression(), constraint.version());
 			}
 		}
 

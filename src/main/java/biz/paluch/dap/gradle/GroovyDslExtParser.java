@@ -20,23 +20,16 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import biz.paluch.dap.support.PropertyValue;
-import com.intellij.psi.PsiElement;
+import com.intellij.openapi.util.Condition;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.SyntaxTraverser;
-import com.intellij.psi.util.PsiTreeUtil;
-import com.intellij.util.containers.JBIterable;
-import org.jetbrains.plugins.groovy.lang.psi.GroovyFile;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrVariable;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrVariableDeclaration;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrAssignmentExpression;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrExpression;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrMethodCall;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrReferenceExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrLiteral;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrString;
 
 /**
  * Parser methods for Gradle {@code ext} property declarations using Groovy DSL.
+ *
+ * <p>Declaration shapes are recognized by {@link GroovyExtAssignment}; this
+ * parser only traverses the file.
  *
  * @author Mark Paluch
  */
@@ -58,38 +51,16 @@ class GroovyDslExtParser {
 	 * @return a map of property key to its {@link PropertyValue}.
 	 */
 	public static Map<String, PropertyValue> parseExtProperties(PsiFile file) {
-
-		Map<String, PropertyValue> elements = new LinkedHashMap<>();
-		SyntaxTraverser.psiTraverser(file)
-				.filter(it -> it instanceof GrMethodCall || it instanceof GrAssignmentExpression)
-				.forEach(it -> {
-// ext { key = 'value' } or ext { set('key', 'value') }
-					if (it instanceof GrMethodCall call
-							&& GroovyExtAssignment.EXT.equals(GroovyDslUtils.getGroovyMethodName(call))) {
-						elements.putAll(collectExtClosureProperties(call));
-					}
-					// ext.key = 'value'
-					if (it instanceof GrAssignmentExpression assign && !assign.isOperatorAssignment()) {
-						elements.putAll(collectExtDotProperty(assign));
-					}
-				});
-
-		return elements;
+		return parse(file, it -> !(it instanceof GroovyExtAssignment.ScriptVariable));
 	}
 
 	/**
 	 * Collect all Groovy {@code ext} property declarations from the given file as
 	 * plain string values.
-	 * <p>Supported syntax variants: <pre class="code">
-	 * ext {
-	 *     springVersion = '6.1.0'              // assignment form
-	 *     set('springVersion', '6.1.0')        // set() call form
-	 * }
-	 * ext.springVersion = '6.1.0'             // dot-qualified assignment form
-	 * </pre>
 	 *
 	 * @param file a Groovy {@code .gradle} file.
 	 * @return a map of property key to literal string value.
+	 * @see #parseExtProperties(PsiFile)
 	 */
 	public static Map<String, String> getExtProperties(PsiFile file) {
 
@@ -112,103 +83,21 @@ class GroovyDslExtParser {
 	 * @return a map of variable name to its {@link PropertyValue}.
 	 */
 	public static Map<String, PropertyValue> parseLocalVariables(PsiFile file) {
+		return parse(file, GroovyExtAssignment.ScriptVariable.class::isInstance);
+	}
+
+	private static Map<String, PropertyValue> parse(PsiFile file, Condition<GroovyExtAssignment> filter) {
 
 		Map<String, PropertyValue> elements = new LinkedHashMap<>();
 
 		SyntaxTraverser.psiTraverser(file)
-				.expand(it -> !(it instanceof GrVariableDeclaration))
-				.filter(GrVariableDeclaration.class)
-				.forEach(decl -> {
-
-					if (!(decl.getParent() instanceof GroovyFile)) {
-						return;
-					}
-
-					for (GrVariable variable : decl.getVariables()) {
-						String name = variable.getName();
-						GrExpression initializer = variable.getInitializerGroovy();
-						if (initializer instanceof GrLiteral literal
-								&& isStringLiteral(literal)) {
-							elements.put(name,
-									new PropertyValue(name, GroovyDslUtils.getRequiredText(literal), literal));
-							continue;
-						}
-
-						if (initializer instanceof GrString gstr && gstr.getInjections().length == 0) {
-							GrLiteral innerLiteral = PsiTreeUtil.findChildOfType(gstr, GrLiteral.class);
-							if (innerLiteral != null && isStringLiteral(innerLiteral)) {
-								elements.put(name,
-										new PropertyValue(name, GroovyDslUtils.getRequiredText(innerLiteral),
-												innerLiteral));
-							}
-						}
-					}
-				});
+				.filter(GrLiteral.class)
+				.filterMap(GroovyExtAssignment::from)
+				.filter(filter)
+				.forEach(it -> elements.put(it.getKey(),
+						new PropertyValue(it.getKey(), it.getValue(), it.getValueLiteral())));
 
 		return elements;
-	}
-
-	private static Map<String, PropertyValue> collectExtClosureProperties(GrMethodCall extCall) {
-
-		Map<String, PropertyValue> elements = new LinkedHashMap<>();
-
-		JBIterable.of(extCall.getClosureArguments())
-				.flatMap(SyntaxTraverser::psiTraverser)
-				.forEach(child -> {
-
-					// Assignment form: springVersion = '6.1.0'
-					if (child instanceof GrAssignmentExpression assign && !assign.isOperatorAssignment()) {
-						GrExpression lhs = assign.getLValue();
-						GrExpression rhs = assign.getRValue();
-						if (lhs instanceof GrReferenceExpression ref && ref.getQualifierExpression() == null) {
-							String key = ref.getReferenceName();
-							if (key != null && rhs instanceof GrLiteral literal && isStringLiteral(literal)) {
-								elements.put(key,
-										new PropertyValue(key, GroovyDslUtils.getRequiredText(literal), literal));
-							}
-						}
-					}
-
-					// set() call form: set('springVersion', '6.1.0')
-					if (child instanceof GrMethodCall setCall
-							&& GroovyExtAssignment.SET.equals(GroovyDslUtils.getGroovyMethodName(setCall))) {
-						PsiElement[] args = setCall.getArgumentList().getAllArguments();
-						if (args.length >= 2 && args[0] instanceof GrLiteral keyLit
-								&& keyLit.getValue() instanceof String key
-								&& args[1] instanceof GrLiteral literal && isStringLiteral(literal)) {
-							elements.put(key,
-									new PropertyValue(key, GroovyDslUtils.getRequiredText(literal), literal));
-						}
-					}
-				});
-
-		return elements;
-	}
-
-	private static Map<String, PropertyValue> collectExtDotProperty(GrAssignmentExpression assign) {
-
-		GrExpression lhs = assign.getLValue();
-		GrExpression rhs = assign.getRValue();
-
-		if (!(lhs instanceof GrReferenceExpression ref)) {
-			return Map.of();
-		}
-
-		Map<String, PropertyValue> elements = new LinkedHashMap<>();
-		GrExpression qualifier = ref.getQualifierExpression();
-		if (qualifier instanceof GrReferenceExpression qualRef
-				&& GroovyExtAssignment.EXT.equals(qualRef.getReferenceName())) {
-			String key = ref.getReferenceName();
-			if (key != null && rhs instanceof GrLiteral literal && isStringLiteral(literal)) {
-				elements.put(key, new PropertyValue(key, GroovyDslUtils.getRequiredText(literal), literal));
-			}
-		}
-
-		return elements;
-	}
-
-	private static boolean isStringLiteral(GrLiteral literal) {
-		return literal.getValue() instanceof String;
 	}
 
 }
