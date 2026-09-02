@@ -18,6 +18,7 @@ package biz.paluch.dap.gradle;
 
 import java.util.List;
 
+import biz.paluch.dap.support.Expression;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.util.containers.JBIterable;
@@ -32,10 +33,9 @@ import org.springframework.util.Assert;
  * references.
  *
  * <p>Supported inputs include plain string literals, interpolated fragments,
- * bare property references, {@code property(...)} lookups, {@code extra["..."]}
- * access (also qualified as {@code project.extra["..."]}), and argument lists
- * whose arguments are of the former shapes. Unsupported PSI shapes are
- * represented as an empty instance.
+ * bare property references, {@code property(...)} lookups, and
+ * {@code extra["..."]} access (also qualified as {@code project.extra["..."]}).
+ * Unsupported PSI shapes are represented as an empty instance.
  *
  * <p>The value position is served by {@link #from(KtElement)} and
  * {@link #getText(KtElement)}, rendering property references as {@code ${name}}
@@ -76,20 +76,10 @@ class KtLiterals {
 	}
 
 	/**
-	 * Return the shared instance that carries no fragments and renders to the empty
-	 * string.
-	 *
-	 * @return the empty {@link KtLiterals} instance.
-	 */
-	public static KtLiterals empty() {
-		return EMPTY;
-	}
-
-	/**
 	 * Create a {@link KtLiterals} view for the supplied Kotlin PSI element in value
 	 * position: references, {@code property(...)} lookups, and {@code extra["..."]}
 	 * access contribute property fragments; string-template text contributes
-	 * literal fragments. Unsupported shapes yield {@link #empty()}.
+	 * literal fragments. Unsupported shapes yield an empty instance.
 	 * @param element the Kotlin PSI element to inspect.
 	 * @return a {@link KtLiterals} representing the supported fragments contained
 	 * in the element.
@@ -116,10 +106,10 @@ class KtLiterals {
 			return from(entry.getExpression());
 		}
 		case KtLiteralStringTemplateEntry entry -> {
-			return new KtLiterals(new TextSegment(entry.getText(), entry));
+			return new KtLiterals(new TextSegment(entry.getText()));
 		}
 		case KtEscapeStringTemplateEntry entry -> {
-			return new KtLiterals(new TextSegment(entry.getUnescapedValue(), entry));
+			return new KtLiterals(new TextSegment(entry.getUnescapedValue()));
 		}
 		case KtCallExpression call when isPropertyCall(call) -> {
 			return fromPropertyCall(call);
@@ -136,17 +126,7 @@ class KtLiterals {
 			return from(parenthesized.getExpression());
 		}
 		case KtNameReferenceExpression nameRef -> {
-			return property(nameRef.getReferencedName(), nameRef);
-		}
-		case KtReferenceExpression reference -> {
-			return property(reference.getName(), reference);
-		}
-		case KtValueArgumentList argumentList -> {
-
-			List<Segment> segments = JBIterable.from(argumentList.getArguments())
-					.map(KtValueArgument::getArgumentExpression)
-					.flatMap(expression -> from(expression).segments).toList();
-			return new KtLiterals(segments);
+			return property(nameRef.getReferencedName());
 		}
 		default -> {
 			return EMPTY;
@@ -194,13 +174,7 @@ class KtLiterals {
 	}
 
 	private static KtLiterals fromPropertyCall(KtCallExpression call) {
-
-		KtExpression argument = KotlinDslUtils.getFirstValueArgument(call);
-		if (argument == null) {
-			return EMPTY;
-		}
-
-		return property(nameOf(argument), argument);
+		return property(nameOf(KotlinDslUtils.getFirstValueArgument(call)));
 	}
 
 	private static boolean isExtraAccess(KtArrayAccessExpression arrayAccess) {
@@ -221,20 +195,15 @@ class KtLiterals {
 
 			String propertyName = nameOf(index);
 			if (StringUtils.hasText(propertyName)) {
-				return new KtLiterals(new PropertySegment(propertyName, index));
+				return property(propertyName);
 			}
 		}
 
 		return EMPTY;
 	}
 
-	private static KtLiterals property(@Nullable String propertyName, KtElement element) {
-
-		if (StringUtils.isEmpty(propertyName)) {
-			return EMPTY;
-		}
-
-		return new KtLiterals(new PropertySegment(propertyName, element));
+	private static KtLiterals property(@Nullable String propertyName) {
+		return StringUtils.hasText(propertyName) ? new KtLiterals(new PropertySegment(propertyName)) : EMPTY;
 	}
 
 	/**
@@ -255,14 +224,7 @@ class KtLiterals {
 	 * property placeholder.
 	 */
 	public boolean hasText() {
-
-		for (Segment segment : segments) {
-			if (segment.hasText()) {
-				return true;
-			}
-		}
-
-		return false;
+		return StringUtils.hasText(text);
 	}
 
 	/**
@@ -287,6 +249,16 @@ class KtLiterals {
 	 */
 	public String getText() {
 		return text;
+	}
+
+	/**
+	 * Return this value as a version {@link Expression}: a property reference when
+	 * a fragment is property-backed, otherwise the rendered text as literal value.
+	 *
+	 * @return the version expression.
+	 */
+	public Expression toExpression() {
+		return property != null ? Expression.property(property.name()) : Expression.from(text);
 	}
 
 	/**
@@ -330,19 +302,9 @@ class KtLiterals {
 	/**
 	 * Single normalized fragment of a Kotlin DSL string-template value: either
 	 * concrete {@link TextSegment text} or a {@link PropertySegment property
-	 * reference}, together with its source PSI element.
+	 * reference}.
 	 */
 	private sealed interface Segment permits TextSegment, PropertySegment {
-
-		/**
-		 * The PSI element this fragment was derived from.
-		 */
-		KtElement element();
-
-		/**
-		 * Return whether this fragment contributes any renderable content.
-		 */
-		boolean hasText();
 
 		/**
 		 * Render this fragment as concrete text or a {@code ${property}} placeholder.
@@ -351,12 +313,7 @@ class KtLiterals {
 
 	}
 
-	private record TextSegment(String text, KtElement element) implements Segment {
-
-		@Override
-		public boolean hasText() {
-			return StringUtils.hasText(text);
-		}
+	private record TextSegment(String text) implements Segment {
 
 		@Override
 		public String render() {
@@ -365,12 +322,7 @@ class KtLiterals {
 
 	}
 
-	private record PropertySegment(String name, KtElement element) implements Segment {
-
-		@Override
-		public boolean hasText() {
-			return StringUtils.hasText(name);
-		}
+	private record PropertySegment(String name) implements Segment {
 
 		@Override
 		public String render() {

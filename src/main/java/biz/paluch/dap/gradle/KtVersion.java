@@ -20,259 +20,118 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import biz.paluch.dap.support.Expression;
-import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.SyntaxTraverser;
-import com.intellij.util.containers.JBIterable;
-import org.jetbrains.annotations.Contract;
 import org.jetbrains.kotlin.psi.KtCallElement;
 import org.jetbrains.kotlin.psi.KtCallExpression;
-import org.jetbrains.kotlin.psi.KtDotQualifiedExpression;
-import org.jetbrains.kotlin.psi.KtElement;
 import org.jetbrains.kotlin.psi.KtExpression;
 import org.jetbrains.kotlin.psi.KtLambdaExpression;
-import org.jetbrains.kotlin.psi.KtReferenceExpression;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Value object for version information in a Kotlin DSL dependency declaration.
+ * Effective version of a Kotlin DSL dependency declaration whose version is
+ * given through a {@code version(...)} call or a {@code version { ... }}
+ * constraint block.
  *
- * <p>Supports direct version expressions and constraints declared in a nested
- * {@code version { ... }} block. It extracts only the PSI needed for navigation
- * and upgrade logic, and exposes the effective version as a single
- * {@link Expression} via {@link #getVersionExpression()}.
+ * <p>A direct version argument takes precedence. Otherwise the first constraint
+ * in declaration order that is property-backed or a concrete, non-range version
+ * is used. Range constraints are ignored because callers need a single
+ * upgradeable version value. The last declaration of a constraint name wins.
  *
  * @author Mark Paluch
  */
 class KtVersion {
 
-	private final @Nullable KtExpression versionLiteral;
+	private final Expression expression;
 
-	private final @Nullable KtLiterals versionLiterals;
+	private final KtExpression element;
 
-	private final Map<String, Constraint> constraints;
-
-	private final @Nullable EffectiveVersion effectiveVersion;
-
-	private KtVersion(@Nullable KtExpression versionLiteral,
-			Map<String, Constraint> constraints) {
-		this.versionLiteral = versionLiteral;
-		this.versionLiterals = versionLiteral != null ? KtLiterals.from(versionLiteral) : null;
-		this.constraints = constraints;
-		this.effectiveVersion = computeEffectiveVersion();
+	private KtVersion(Expression expression, KtExpression element) {
+		this.expression = expression;
+		this.element = element;
 	}
 
 	/**
-	 * Create a {@link KtVersion} from a dependency declaration.
+	 * Determine the effective version declared within the given dependency call.
 	 * @param dependency the dependency declaration to inspect.
-	 * @return a {@link KtVersion} if the dependency exposes version information in
-	 * one of the supported forms.
+	 * @return the effective version, or {@literal null} if the declaration carries
+	 * no usable version.
 	 */
 	public static @Nullable KtVersion fromDependency(KtCallElement dependency) {
 
-		KtCallElement version = SyntaxTraverser.psiTraverser(dependency)
+		KtCallElement versionCall = SyntaxTraverser.psiTraverser(dependency)
 				.filter(KtCallElement.class)
 				.filter(it -> GradleUtils.VERSION.equals(KotlinDslUtils.getKotlinCallName(it)))
 				.first();
 
-		if (version == null) {
-
-			KtExpression property = getVersionLiteral(dependency.getValueArgumentList());
-			if (property != null) {
-				return new KtVersion(property, Map.of());
-			}
-
+		if (versionCall == null) {
 			return null;
 		}
 
-		return fromVersion(version);
-	}
-
-	/**
-	 * Create a {@link KtVersion} from a Kotlin DSL {@code version(...)} call.
-	 * @param versionCall the call to inspect.
-	 * @return a {@link KtVersion} describing the call, or {@literal null}.
-	 */
-	public static @Nullable KtVersion fromVersion(KtCallElement versionCall) {
-
-		if (!GradleUtils.VERSION.equals(KotlinDslUtils.getKotlinCallName(versionCall))) {
-			return null;
+		KtExpression argument = KotlinDslUtils.getFirstValueArgument(versionCall);
+		KtLiterals literals = KtLiterals.from(argument);
+		if (argument != null && literals.hasText()) {
+			return new KtVersion(literals.toExpression(), argument);
 		}
 
-		Map<String, Constraint> constraints = new LinkedHashMap<>();
-		SyntaxTraverser.psiTraverser(versionCall).filter(KtLambdaExpression.class)
-				.flatMap(SyntaxTraverser::psiTraverser)
-				.filter(KtCallExpression.class)
-				.filter(it -> {
-					return GradleVersionConstraint.isConstraint(KotlinDslUtils.getKotlinCallName(it));
-				}).forEach(it -> {
-
-					Constraint constraint = Constraint.of(it);
-					constraints.put(constraint.name, constraint);
-				});
-
-		KtExpression versionLiteral = getVersionLiteral(versionCall.getValueArgumentList());
-		return new KtVersion(versionLiteral, constraints);
-	}
-
-	@Contract("null -> null")
-	private static @Nullable KtExpression getVersionLiteral(@Nullable KtElement element) {
-
-		if (element == null) {
-			return null;
-		}
-
-		return SyntaxTraverser.psiTraverser(element)
-				.expand(it -> !(it instanceof KtLambdaExpression))
-				.filter(it -> {
-					return it instanceof KtReferenceExpression || it instanceof KtDotQualifiedExpression dotQualified
-							&& dotQualified.getSelectorExpression() instanceof KtCallExpression;
-				}).filter(KtExpression.class)
-				.flatMap(it -> {
-
-					String propertyName = KtLiterals.getText(it);
-					if (StringUtils.hasText(propertyName)) {
-						return JBIterable.of(it);
-					}
-
-					return JBIterable.empty();
-				}).first();
-	}
-
-	/**
-	 * Resolve the effective version under a single precedence rule: a directly
-	 * declared version/property expression takes precedence; otherwise the first
-	 * non-range constraint in declaration order is used.
-	 */
-	private @Nullable EffectiveVersion computeEffectiveVersion() {
-
-		if (versionLiteral != null && versionLiterals != null) {
-
-			if (versionLiterals.hasProperty()) {
-				return new EffectiveVersion(Expression.property(versionLiterals.getProperty()), versionLiteral);
-			}
-
-			String text = versionLiterals.getText();
-			if (StringUtils.hasText(text)) {
-				return new EffectiveVersion(Expression.from(text), versionLiteral);
-			}
-		}
-
-		for (Constraint constraint : constraints.values()) {
+		for (Constraint constraint : constraints(versionCall).values()) {
 
 			KtExpression version = constraint.version();
-			if (version == null) {
+			if (version == null || !constraint.hasText()) {
 				continue;
 			}
 
-			if (constraint.hasProperty()) {
-				return new EffectiveVersion(Expression.property(constraint.literals().getProperty()), version);
-			}
-
-			if (constraint.hasText() && !constraint.isRange()) {
-				return new EffectiveVersion(Expression.from(constraint.literals().getText()), version);
+			if (constraint.literals().hasProperty() || !constraint.isRange()) {
+				return new KtVersion(constraint.literals().toExpression(), version);
 			}
 		}
 
 		return null;
 	}
 
-	/**
-	 * Return the effective version as an {@link Expression}: a property reference
-	 * or a concrete literal value.
-	 * <p>A directly declared version/property expression takes precedence.
-	 * Otherwise, the first non-range constraint is used in declaration order. Range
-	 * constraints are intentionally ignored because callers need a single
-	 * upgradeable version value.
-	 *
-	 * @return the version expression, or {@literal null} if no usable version is
-	 * present.
-	 */
-	public @Nullable Expression getVersionExpression() {
-		return effectiveVersion != null ? effectiveVersion.expression() : null;
+	private static Map<String, Constraint> constraints(KtCallElement versionCall) {
+
+		Map<String, Constraint> constraints = new LinkedHashMap<>();
+		SyntaxTraverser.psiTraverser(versionCall).filter(KtLambdaExpression.class)
+				.flatMap(SyntaxTraverser::psiTraverser)
+				.filter(KtCallExpression.class)
+				.filter(it -> GradleVersionConstraint.isConstraint(KotlinDslUtils.getKotlinCallName(it)))
+				.forEach(it -> {
+
+					Constraint constraint = Constraint.of(it);
+					constraints.put(constraint.name(), constraint);
+				});
+		return constraints;
 	}
 
 	/**
-	 * Return the PSI element that contributes the effective version value.
-	 * <p>A directly declared version/property expression takes precedence.
-	 * Otherwise, the first non-range constraint value is returned in declaration
-	 * order.
-	 *
-	 * @return the contributing version element, or {@literal null} if no effective
-	 * version is available.
+	 * @return the effective version as property reference or literal value.
 	 */
-	public @Nullable KtExpression getVersionElement() {
-		return effectiveVersion != null ? effectiveVersion.element() : null;
+	public Expression getExpression() {
+		return expression;
 	}
 
 	/**
-	 * Return whether the declaration contains any usable version information.
-	 * <p>This includes a direct version/property expression or a constraint-backed
-	 * version/property.
-	 *
-	 * @return {@literal true} if {@link #getVersionExpression()} resolves to a
-	 * property or a concrete version value.
+	 * @return the PSI element that contributes the effective version.
 	 */
-	public boolean containsVersion() {
-		return effectiveVersion != null;
+	public KtExpression getElement() {
+		return element;
 	}
 
 	/**
-	 * The resolved version of a {@link KtVersion}: the {@link Expression} value
-	 * paired with the PSI element that contributes it.
+	 * Named version constraint declared inside a Kotlin DSL {@code version { ... }}
+	 * block, such as {@code strictly("1.2.3")}.
 	 */
-	private record EffectiveVersion(Expression expression, KtExpression element) {
-	}
-
-	/**
-	 * Representation of a named version constraint declared inside a Kotlin DSL
-	 * {@code version { ... }} block.
-	 * <p>The contract is intentionally narrow: the record exposes the constraint
-	 * name, the underlying PSI elements, and the literal rendering used by
-	 * {@link GradleVersionConstraint}.
-	 */
-	record Constraint(String name, KtCallElement call, @Nullable KtExpression version, KtLiterals literals)
+	record Constraint(String name, @Nullable KtExpression version, KtLiterals literals)
 			implements GradleVersionConstraint {
 
-		/**
-		 * Create a {@link Constraint} from a single constraint call such as
-		 * {@code strictly("1.2.3")}.
-		 *
-		 * @param call the constraint call.
-		 * @return the corresponding {@link Constraint}.
-		 */
-		public static Constraint of(KtCallElement call) {
+		static Constraint of(KtCallElement call) {
 			KtExpression version = KotlinDslUtils.getFirstValueArgument(call);
-			return new Constraint(KotlinDslUtils.getKotlinCallName(call), call, version, KtLiterals.from(version));
+			return new Constraint(KotlinDslUtils.getKotlinCallName(call), version, KtLiterals.from(version));
 		}
 
-		/**
-		 * Return whether the constraint renders textual content.
-		 *
-		 * @return {@literal true} if the constraint contributes text.
-		 */
-		@Override
-		public boolean hasText() {
-			return literals.hasText();
-		}
-
-		/**
-		 * Return whether the constraint resolves to a property reference.
-		 *
-		 * @return {@literal true} if the constraint value is property-backed.
-		 */
-		public boolean hasProperty() {
-			return literals.hasProperty();
-		}
-
-		/**
-		 * Return the rendered version text for this constraint.
-		 *
-		 * @return the literal representation, potentially including property
-		 * placeholders.
-		 */
 		@Override
 		public String getVersion() {
-			return literals().toString();
+			return literals.toString();
 		}
 
 	}

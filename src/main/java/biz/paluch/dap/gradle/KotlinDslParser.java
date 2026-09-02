@@ -19,9 +19,7 @@ package biz.paluch.dap.gradle;
 import java.util.List;
 import java.util.function.BiFunction;
 
-import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
-import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.DependencySite;
@@ -289,8 +287,11 @@ class KotlinDslParser {
 				} else if (GradleUtils.NAME.equals(name)) {
 					artifact = KtLiterals.from(expression).toString(propertyResolver);
 				} else if (GradleUtils.VERSION.equals(name)) {
-					version = versionExpression(expression);
-					versionLiteral = version != null ? expression : null;
+					KtLiterals literals = KtLiterals.from(expression);
+					if (literals.hasText()) {
+						version = literals.toExpression();
+						versionLiteral = expression;
+					}
 				}
 			}
 
@@ -301,28 +302,6 @@ class KotlinDslParser {
 			GradleDependency dependency = GradleDependency.fromNamed(group, artifact, version, declarationSource,
 					propertyResolver);
 			return dependency != null ? dependency.toDependencySite(call, versionLiteral) : null;
-		}
-
-		/**
-		 * Return the version expression of a {@code version = ...} argument. Property
-		 * references are resolved later by {@link #dependency(DependencySite)}.
-		 */
-		private @Nullable Expression versionExpression(@Nullable KtExpression expression) {
-
-			if (expression instanceof KtNameReferenceExpression reference) {
-				String referenceName = reference.getReferencedName();
-				return propertyResolver.containsProperty(referenceName) ? Expression.property(referenceName) : null;
-			}
-
-			if (!(expression instanceof KtStringTemplateExpression template)) {
-				return null;
-			}
-
-			KtLiterals literals = KtLiterals.from(template);
-			if (literals.hasProperty() && propertyResolver.containsProperty(literals.getProperty())) {
-				return Expression.property(literals.getProperty());
-			}
-			return StringUtils.hasText(literals.getText()) ? Expression.from(literals.getText()) : null;
 		}
 
 	}
@@ -362,22 +341,14 @@ class KotlinDslParser {
 		private @Nullable DependencySite fromBinary(KtCallElement call, @Nullable KtBinaryExpression be,
 				PropertyResolver scriptProperties) {
 
-			String argument = KtLiterals.from(call.getValueArgumentList()).toString(scriptProperties);
-			if (StringUtils.isEmpty(argument)) {
+			String argument = KtLiterals.from(KotlinDslUtils.getFirstValueArgument(call)).toString(scriptProperties);
+			if (!GradlePluginId.isValidPluginId(argument)) {
 				return null;
 			}
 
 			KtStringTemplateExpression versionExpr = findVersionLiteral(be);
-			if (versionExpr == null) {
-				return null;
-			}
-
 			KtLiterals literals = KtLiterals.from(versionExpr);
 			if (!literals.hasText()) {
-				return null;
-			}
-
-			if (!GradlePluginId.isValidPluginId(argument)) {
 				return null;
 			}
 
@@ -386,20 +357,8 @@ class KotlinDslParser {
 				return null;
 			}
 
-			String versionText = literals.toString();
-
-			if (literals.hasProperty()) {
-				return DependencySite.of(artifactId,
-						VersionSource.property(literals.getProperty()),
-						DeclarationSource.plugin(), call);
-			}
-
-			DependencySite dependencySite = DependencySite.of(artifactId,
-					VersionSource.declared(versionText),
-					DeclarationSource.plugin(), call);
-			return ArtifactVersion.from(versionText)
-					.map(it -> (DependencySite) dependencySite.withVersion(it, versionExpr))
-					.orElse(dependencySite);
+			return GradleDependency.of(artifactId, literals.toExpression(), DeclarationSource.plugin())
+					.toDependencySite(call, versionExpr);
 		}
 
 		private static @Nullable KtStringTemplateExpression findVersionLiteral(
@@ -470,12 +429,11 @@ class KotlinDslParser {
 			}
 
 			KtVersion version = KtVersion.fromDependency(call);
-			if (version == null || version.getVersionExpression() == null || version.getVersionElement() == null) {
+			if (version == null) {
 				return null;
 			}
 
-			return dependency.withVersion(version.getVersionExpression())
-					.toDependencySite(call, version.getVersionElement());
+			return dependency.withVersion(version.getExpression()).toDependencySite(call, version.getElement());
 		}
 
 	}
