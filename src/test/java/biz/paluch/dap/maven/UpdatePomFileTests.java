@@ -227,10 +227,10 @@ class UpdatePomFileTests {
 				</dependencyManagement>
 			</project>
 			""")
-	void dependencyManagementInlineVersionIsUpdated(PsiFile pom) {
+	void bomImportInlineVersionIsUpdated(PsiFile pom) {
 
 		UpdatedBuildFile updated = applyUpdate(pom, "org.springframework.boot", "spring-boot-dependencies",
-				DeclarationSource.managed(), "3.5.1");
+				DeclarationSource.bom(), "3.5.1");
 
 		assertThat(updated).hasDependency("spring-boot-dependencies", "3.5.1");
 	}
@@ -521,6 +521,127 @@ class UpdatePomFileTests {
 				DeclarationSource.profilePlugin("docs"), "3.11.2");
 
 		assertThat(updated).hasDependency("maven-javadoc-plugin", "3.11.2");
+	}
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+				<dependencyManagement>
+					<dependencies>
+						<dependency>
+							<groupId>org.springframework</groupId>
+							<artifactId>spring-core</artifactId>
+							<version>6.1.0</version>
+						</dependency>
+					</dependencies>
+				</dependencyManagement>
+				<profiles>
+					<profile>
+						<id>legacy</id>
+						<dependencyManagement>
+							<dependencies>
+								<dependency>
+									<groupId>org.springframework</groupId>
+									<artifactId>spring-core</artifactId>
+									<version>5.3.39</version>
+								</dependency>
+							</dependencies>
+						</dependencyManagement>
+					</profile>
+				</profiles>
+			</project>
+			""")
+	void managedUpdateLeavesProfileManagedDeclarationUntouched(PsiFile pom) {
+
+		applyUpdate(pom, "org.springframework", "spring-core", DeclarationSource.managed(), "6.2.0");
+
+		assertThat(pom).containsText("<version>6.2.0</version>").containsText("<version>5.3.39</version>")
+				.doesNotContainText("<version>6.1.0</version>");
+	}
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+				<dependencyManagement>
+					<dependencies>
+						<dependency>
+							<groupId>org.springframework.boot</groupId>
+							<artifactId>spring-boot-dependencies</artifactId>
+							<version>3.5.0</version>
+							<type>pom</type>
+							<scope>import</scope>
+						</dependency>
+					</dependencies>
+				</dependencyManagement>
+				<profiles>
+					<profile>
+						<id>legacy</id>
+						<dependencyManagement>
+							<dependencies>
+								<dependency>
+									<groupId>org.springframework.boot</groupId>
+									<artifactId>spring-boot-dependencies</artifactId>
+									<version>3.4.0</version>
+									<type>pom</type>
+									<scope>import</scope>
+								</dependency>
+							</dependencies>
+						</dependencyManagement>
+					</profile>
+				</profiles>
+			</project>
+			""")
+	void profileBomUpdateLeavesRootBomImportUntouched(PsiFile pom) {
+
+		applyUpdate(pom, "org.springframework.boot", "spring-boot-dependencies", DeclarationSource.profileBom("legacy"),
+				"3.4.1");
+
+		assertThat(pom).containsText("<version>3.5.0</version>").containsText("<version>3.4.1</version>")
+				.doesNotContainText("<version>3.4.0</version>");
+	}
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+				<profiles>
+					<profile>
+						<id>legacy</id>
+						<dependencyManagement>
+							<dependencies>
+								<dependency>
+									<groupId>org.springframework</groupId>
+									<artifactId>spring-core</artifactId>
+									<version>5.3.39</version>
+								</dependency>
+							</dependencies>
+						</dependencyManagement>
+						<dependencies>
+							<dependency>
+								<groupId>org.springframework</groupId>
+								<artifactId>spring-core</artifactId>
+								<version>5.3.38</version>
+							</dependency>
+						</dependencies>
+					</profile>
+				</profiles>
+			</project>
+			""")
+	void profileDependencyUpdateLeavesProfileManagedDeclarationUntouched(PsiFile pom) {
+
+		applyUpdate(pom, "org.springframework", "spring-core", DeclarationSource.profileDependency("legacy"),
+				"6.2.0");
+
+		assertThat(pom).containsText("<version>5.3.39</version>").containsText("<version>6.2.0</version>")
+				.doesNotContainText("<version>5.3.38</version>");
 	}
 
 }

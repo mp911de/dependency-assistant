@@ -138,6 +138,48 @@ class MavenWrapperUrlRewriterUnitTests {
 				.isEqualTo("maven-wrapper-3.9.6.jar");
 	}
 
+	@ParameterizedTest
+	@CsvSource(textBlock = """
+			# query tail is preserved
+			https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/wrong.tar.gz?token=abc   , https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.tar.gz?token=abc
+			# fragment tail is preserved
+			https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/wrong.zip#sha256          , https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip#sha256
+			# query containing slashes does not shift the file-name segment
+			https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/wrong.zip?next=/a/b/c    , https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip?next=/a/b/c
+			""")
+	void replaceFileNamePreservesQueryAndFragmentTail(String input, String expected) {
+		assertThat(MavenWrapperUrlRewriter.replaceFileName(input, WrapperProperty.DISTRIBUTION, "3.9.6"))
+				.isEqualTo(expected);
+	}
+
+	@Test
+	void replaceFileNameSuggestionIgnoresTail() {
+
+		String url = "https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/wrong.tar.gz?token=abc";
+
+		assertThat(MavenWrapperUrlRewriter.replaceFileNameSuggestion(url, WrapperProperty.DISTRIBUTION, "3.9.6"))
+				.isEqualTo("apache-maven-3.9.6-bin.tar.gz");
+	}
+
+	@ParameterizedTest
+	@CsvSource(textBlock = """
+			https://example.com/dir/apache-maven-3.9.6-bin.zip               , apache-maven-3.9.6-bin.zip
+			https://example.com/dir/apache-maven-3.9.6-bin.zip?token=a/b     , apache-maven-3.9.6-bin.zip
+			https://example.com/dir/apache-maven-3.9.6-bin.zip#frag/ment     , apache-maven-3.9.6-bin.zip
+			apache-maven-3.9.6-bin.zip?token=abc                             , apache-maven-3.9.6-bin.zip
+			""")
+	void lastUrlSegmentExcludesQueryAndFragment(String url, String expected) {
+		assertThat(MavenWrapperUrlRewriter.lastUrlSegment(url)).isEqualTo(expected);
+	}
+
+	@Test
+	void authorityEndStopsAtQueryOrFragment() {
+
+		String url = "https://alice:secret@repo1.maven.org?next=/x";
+
+		assertThat(MavenWrapperUrlRewriter.stripCredentials(url)).isEqualTo("https://repo1.maven.org?next=/x");
+	}
+
 	@Test
 	void replaceFileNameReturnsInputWhenNoSlashPresent() {
 		assertThat(MavenWrapperUrlRewriter.replaceFileName("nofilepart", WrapperProperty.DISTRIBUTION, "3.9.6"))

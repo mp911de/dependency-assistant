@@ -16,7 +16,7 @@
 
 package biz.paluch.dap.maven.wrapper;
 
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -43,7 +43,9 @@ import org.jspecify.annotations.Nullable;
  * <p>Collection requires the path and file-name versions to agree. It registers
  * the declaration even when the shared version is not a recognized
  * {@link ArtifactVersion}, but registers a dependency usage only for a parsed
- * version. Each distinct parsed repository is added as a release source.
+ * version. Each distinct repository of a collectable entry is added as a
+ * release source; {@link #parseRepositories(PropertiesFile)} exposes the same
+ * selection to wrapper contexts.
  *
  * @author Mark Paluch
  */
@@ -85,6 +87,33 @@ class MavenWrapperParser {
 	}
 
 	/**
+	 * Parse the collectable entries from the given wrapper {@link PropertiesFile}:
+	 * the parseable supported entries whose two version occurrences agree.
+	 *
+	 * @param propertiesFile the wrapper properties file.
+	 * @return the collectable entries in declaration order.
+	 */
+	public static List<WrapperEntry> parseCollectable(PropertiesFile propertiesFile) {
+		return parse(propertiesFile).stream().filter(WrapperEntry::hasConsistentVersions).toList();
+	}
+
+	/**
+	 * Return the distinct release repositories of the collectable entries in the
+	 * given wrapper {@link PropertiesFile}.
+	 *
+	 * @param propertiesFile the wrapper properties file.
+	 * @return the repositories in declaration order, without duplicates.
+	 */
+	public static Set<RemoteRepository> parseRepositories(PropertiesFile propertiesFile) {
+
+		Set<RemoteRepository> repositories = new LinkedHashSet<>();
+		for (WrapperEntry entry : parseCollectable(propertiesFile)) {
+			repositories.add(entry.repository());
+		}
+		return repositories;
+	}
+
+	/**
 	 * Parse supported properties from the given wrapper {@link PropertiesFile} and
 	 * register them with the {@link DependencyCollector} passed at construction.
 	 *
@@ -94,13 +123,9 @@ class MavenWrapperParser {
 	 */
 	public void collect(PropertiesFile propertiesFile) {
 
-		Set<RemoteRepository> repositories = new HashSet<>();
+		Set<RemoteRepository> repositories = new LinkedHashSet<>();
 
-		for (WrapperEntry entry : parse(propertiesFile)) {
-
-			if (!entry.hasConsistentVersions()) {
-				continue;
-			}
+		for (WrapperEntry entry : parseCollectable(propertiesFile)) {
 
 			ArtifactVersion version = entry.version();
 			VersionSource versionSource = entry.versionSource();

@@ -190,6 +190,23 @@ class MavenPomProperties implements PropertyResolver {
 		return PropertyResolver.fromMap(properties).withFallback(this);
 	}
 
+	/**
+	 * Return whether the profile enclosing the given POM member declares the named
+	 * property in its own {@code <properties>} section.
+	 *
+	 * @param propertyName the bare property name.
+	 * @param pomMember the declaration whose enclosing profile is inspected.
+	 * @return {@literal true} if the enclosing profile declares the property;
+	 * {@literal false} if there is no enclosing profile or the property is
+	 * inherited from the project or its ancestors.
+	 */
+	static boolean isDeclaredInEnclosingProfile(String propertyName, XmlTag pomMember) {
+
+		XmlTag profile = findEnclosingProfile(pomMember);
+		XmlTag propertiesTag = profile != null ? profile.findFirstSubTag(MavenPomSupport.PROPERTIES) : null;
+		return propertiesTag != null && propertiesTag.findFirstSubTag(propertyName) != null;
+	}
+
 	private static @Nullable XmlTag findEnclosingProfile(XmlTag declaration) {
 
 		for (XmlTag current = declaration; current != null; current = current.getParentTag()) {

@@ -129,7 +129,11 @@ class MavenParser extends MavenPomSupport {
 		Expression expression = Expression.from(versionText != null ? versionText : "");
 		VersionSource versionSource = StringUtils.hasText(versionText) ? expression.asVersionSource()
 				: VersionSource.none();
-		if (expression.isProperty() && declarationSource instanceof DeclarationSource.Profile profile) {
+		// A profile declaration may reference a root or inherited property. Only a
+		// property declared by the enclosing profile is a profile-scoped source, so
+		// updates are written where the property actually lives.
+		if (expression.isProperty() && declarationSource instanceof DeclarationSource.Profile profile
+				&& MavenPomProperties.isDeclaredInEnclosingProfile(expression.getPropertyName(), owner)) {
 			versionSource = VersionSource.profileProperty(profile.getProfileId(), expression.getPropertyName());
 		}
 		Property resolvedProperty = resolveProperty(expression, resolver);

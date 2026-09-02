@@ -17,22 +17,22 @@
 package biz.paluch.dap.artifact;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
+import java.net.Authenticator;
+import java.net.HttpURLConnection;
+import java.net.PasswordAuthentication;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
-import java.util.Base64;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
@@ -41,14 +41,12 @@ import java.util.regex.Pattern;
 import biz.paluch.dap.util.HttpClientUtil;
 import biz.paluch.dap.util.MavenMetadataProjection;
 import biz.paluch.dap.util.Sequence;
-import biz.paluch.dap.util.StringUtils;
 import biz.paluch.dap.util.XmlBeamProjectorFactory;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.util.io.HttpRequests;
+import com.intellij.util.io.RequestBuilder;
 import org.jspecify.annotations.Nullable;
-
-import org.springframework.util.CollectionUtils;
 
 /**
  * Release source backed by a remote Maven repository.
@@ -59,8 +57,9 @@ import org.springframework.util.CollectionUtils;
  * omitted. Invalid Maven coordinates fail with
  * {@link ArtifactNotFoundException} before any request is made.
  *
- * <p>HTTP Basic credentials are added only while a request remains on the
- * repository host and effective port, including after redirects.
+ * <p>HTTP Basic credentials are supplied in response to a server challenge and
+ * remain limited to the repository scheme, host, effective port, and base path,
+ * including after redirects.
  *
  * @author Mark Paluch
  */
@@ -101,10 +100,6 @@ public class MavenRepository implements ReleaseSource {
 		this.repository = repository;
 	}
 
-	public RemoteRepository getRepository() {
-		return repository;
-	}
-
 	@Override
 	public String getId() {
 		return "MavenRepository[%s@%s]".formatted(repository.getId(), repository.getUrl().getHost());
@@ -116,53 +111,33 @@ public class MavenRepository implements ReleaseSource {
 		validate(artifactId);
 
 		String path = artifactId.groupId().replace(".", "/") + "/" + artifactId.artifactId() + "/";
-		String metadataPath = path + "maven-metadata.xml";
-
 		URI repositoryBaseUri = repository.getUrl().normalize();
-		URI metadataUri = repositoryBaseUri.resolve(metadataPath);
 		URI directoryUri = repositoryBaseUri.resolve(path);
+		URI metadataUri = repositoryBaseUri.resolve(path + "maven-metadata.xml");
+
 		indicator.checkCanceled();
-		DirectoryResponse directoryResponse = fetchDirectoryListing(artifactId, directoryUri,
-				repository.credentials(), repositoryBaseUri);
-		String xml;
+		Map<String, LocalDateTime> releaseDates = fetchReleaseDates(artifactId, directoryUri);
+		Collection<String> versions;
+
 		try {
-			xml = fetchUrl(artifactId, metadataUri, repository.credentials(), true, repositoryBaseUri);
-		} catch (ArtifactNotFoundException e) {
-			if (StringUtils.hasText(directoryResponse.body())) {
-				Set<Release> releases = new TreeSet<>(Comparator.reverseOrder());
-				Map<String, LocalDateTime> releaseDates = directoryResponse.parse();
-				if (!releaseDates.isEmpty()) {
-					releaseDates.forEach((version, date) -> {
-						Release.tryFrom(version, date, null).ifPresent(releases::add);
-					});
-					return Sequence.of(releases);
-				}
+			String metadata = fetchMetadata(artifactId, metadataUri);
+			if (metadata == null || metadata.isEmpty()) {
+				return Sequence.empty();
 			}
-
-			throw e;
+			versions = parseReleaseVersions(metadata);
+		} catch (ArtifactNotFoundException e) {
+			if (releaseDates.isEmpty()) {
+				throw e;
+			}
+			versions = releaseDates.keySet();
 		}
 
-		if (StringUtils.isEmpty(xml)) {
-			return Sequence.empty();
-		}
-
-		Map<String, LocalDateTime> releaseDates = directoryResponse.parse();
 		Set<Release> releases = new TreeSet<>(Comparator.reverseOrder());
-		for (String rawVersion : parseReleaseVersions(xml)) {
-			Release.tryFrom(rawVersion, releaseDates.get(rawVersion), null).ifPresent(releases::add);
+		for (String version : versions) {
+			Release.tryFrom(version, releaseDates.get(version), null).ifPresent(releases::add);
 		}
 
 		return Sequence.of(releases);
-	}
-
-	static void validate(ArtifactId artifactId) {
-		if (!ARTIFACT_ID.matcher(artifactId.artifactId()).matches()) {
-			throw new ArtifactNotFoundException("Invalid artifactId", artifactId);
-		}
-
-		if (!GROUP_ID.matcher(artifactId.groupId()).matches()) {
-			throw new ArtifactNotFoundException("Invalid groupId", artifactId);
-		}
 	}
 
 	private List<String> parseReleaseVersions(String xml) {
@@ -170,84 +145,72 @@ public class MavenRepository implements ReleaseSource {
 		MavenMetadataProjection projection = XmlBeamProjectorFactory.INSTANCE.projectXMLString(xml,
 				MavenMetadataProjection.class);
 
-		List<String> versions = projection.getVersions();
-		if (CollectionUtils.isEmpty(versions)) {
-			return List.of();
-		}
-
 		List<String> result = new ArrayList<>();
-		for (String v : versions) {
-			String trimmed = StringUtils.hasText(v) ? v.trim() : "";
-			if (trimmed.endsWith("-SNAPSHOT") || trimmed.isEmpty()) {
+		for (String version : projection.getVersions()) {
+			String candidate = version.trim();
+			if (candidate.isEmpty() || candidate.endsWith("-SNAPSHOT")) {
 				continue;
 			}
-			if (SemanticArtifactVersion.isVersion(trimmed)
-					|| ReleaseTrainArtifactVersion.isReleaseTrainVersion(trimmed)) {
-				result.add(trimmed);
+			if (SemanticArtifactVersion.isVersion(candidate)
+					|| ReleaseTrainArtifactVersion.isReleaseTrainVersion(candidate)) {
+				result.add(candidate);
 			}
 		}
 
 		return result;
 	}
 
-	@Override
-	public boolean equals(Object o) {
-		if (!(o instanceof MavenRepository that)) {
-			return false;
-		}
-		return Objects.equals(repository, that.repository);
-	}
-
-	@Override
-	public int hashCode() {
-		return Objects.hashCode(repository);
-	}
-
-	@Override
-	public String toString() {
-		return getId();
-	}
-
-	private DirectoryResponse fetchDirectoryListing(ArtifactId artifactId, URI uri,
-			@Nullable RepositoryCredentials credentials, URI repositoryBaseUri) {
+	private Map<String, LocalDateTime> fetchReleaseDates(ArtifactId artifactId, URI uri) {
 
 		try {
-			DirectoryResponse response = HttpClientUtil.fetchUrl(uri,
-					requestBuilder -> requestBuilder.tuner(connection -> {
-						if (credentials != null
-								&& hasSameBaseUri(repositoryBaseUri, URI.create(connection.getURL().toString()))) {
-							connection.addRequestProperty("Authorization", basicAuthHeader(credentials));
-						}
-					}), request -> {
+			Map<String, LocalDateTime> releaseDates = HttpClientUtil.fetchUrl(uri,
+					this::configureAuthentication, request -> {
 						String dateHeader = request.getConnection().getHeaderField("Date");
 						String body = HttpClientUtil.readUtf8StreamCapped(request);
-						return new DirectoryResponse(body, dateHeader);
+						return parseDirectoryListing(body, dateHeader);
 					});
-			return response != null ? response : new DirectoryResponse(null, null);
-		} catch (HttpRequests.HttpStatusException e) {
-			LOG.debug("%s: HTTP %d fetching: %s".formatted(artifactId, e.getStatusCode(), uri), e);
-			return new DirectoryResponse(null, null);
+			return releaseDates != null ? releaseDates : Map.of();
 		} catch (IOException e) {
-			throw new UncheckedIOException("%s: Failed to fetch %s: %s".formatted(artifactId, uri, e.getMessage()), e);
+			LOG.debug("%s: Failed to fetch release dates from %s".formatted(artifactId, uri), e);
+			return Map.of();
 		}
 	}
 
-	private @Nullable String fetchUrl(ArtifactId artifactId, URI uri,
-			@Nullable RepositoryCredentials credentials, boolean failOnNotFound, URI repositoryBaseUri)
-			throws IOException {
+	private RequestBuilder configureAuthentication(RequestBuilder requestBuilder) {
+
+		RepositoryCredentials credentials = repository.credentials();
+		if (credentials == null) {
+			return requestBuilder;
+		}
+
+		URI repositoryBaseUri = repository.getUrl().normalize();
+		return requestBuilder.tuner(connection -> {
+			URI target = URI.create(connection.getURL().toString()).normalize();
+			if (!(connection instanceof HttpURLConnection http) || !isWithinRepository(repositoryBaseUri, target)) {
+				return;
+			}
+
+			http.setAuthenticator(new Authenticator() {
+
+				@Override
+				protected @Nullable PasswordAuthentication getPasswordAuthentication() {
+					if (getRequestorType() != RequestorType.SERVER
+							|| !"basic".equalsIgnoreCase(getRequestingScheme())) {
+						return null;
+					}
+					return new PasswordAuthentication(credentials.username(), credentials.password().toCharArray());
+				}
+
+			});
+		});
+	}
+
+	private @Nullable String fetchMetadata(ArtifactId artifactId, URI uri) throws IOException {
 
 		try {
-			return HttpClientUtil.fetchUrl(uri, requestBuilder -> {
-				return requestBuilder.tuner(connection -> {
-					if (credentials != null
-							&& hasSameBaseUri(repositoryBaseUri, URI.create(connection.getURL()
-									.toString()))) {
-						connection.addRequestProperty("Authorization", basicAuthHeader(credentials));
-					}
-				});
-			});
+			return HttpClientUtil.fetchUrl(uri, this::configureAuthentication);
 		} catch (HttpRequests.HttpStatusException e) {
-			if (failOnNotFound && e.getStatusCode() == 404) {
+			if (e.getStatusCode() == 404) {
 				LOG.debug("[%s][%s] HTTP Status %d: %s".formatted(artifactId, getId(),
 						e.getStatusCode(), uri), e);
 				throw new ArtifactNotFoundException("%s: HTTP Status 404".formatted(uri), artifactId);
@@ -258,110 +221,113 @@ public class MavenRepository implements ReleaseSource {
 		}
 	}
 
+	@Override
+	public boolean equals(Object o) {
+		return o instanceof MavenRepository that && repository.equals(that.repository);
+	}
+
+	@Override
+	public int hashCode() {
+		return repository.hashCode();
+	}
+
+	@Override
+	public String toString() {
+		return getId();
+	}
+
+	private static Map<String, LocalDateTime> parseDirectoryListing(String body, @Nullable String dateHeader) {
+
+		Map<String, LocalDateTime> result = new HashMap<>();
+		ZoneOffset serverOffset = getServerZoneOffset(dateHeader);
+
+		body.lines().forEach(line -> {
+			if (!collectReleaseDate(line, DIRECTORY_LISTING_PATTERN, DIRECTORY_LISTING_DATE_FORMATTER, serverOffset,
+					result)) {
+				collectReleaseDate(line, ARTIFACTORY_DIRECTORY_LISTING_PATTERN,
+						DIRECTORY_LISTING_ARTIFACTORY_DATE_FORMATTER, serverOffset, result);
+			}
+		});
+
+		return result;
+	}
+
 	/**
-	 * Return whether two URIs have the same host and effective port.
+	 * Record the release date of the listing entry in {@code line} when the line
+	 * follows the given listing format.
 	 *
-	 * <p>Host comparison is case-insensitive. Scheme and path are not compared.
-	 *
-	 * @param repositoryBase the configured repository URI.
-	 * @param requestTarget the effective request URI.
-	 * @return {@code true} if host and effective port match.
+	 * @return {@literal true} if the line is an entry of the given format.
 	 */
-	public static boolean hasSameBaseUri(URI repositoryBase, URI requestTarget) {
+	private static boolean collectReleaseDate(String line, Pattern format, DateTimeFormatter dateFormatter,
+			ZoneOffset serverOffset, Map<String, LocalDateTime> target) {
 
-		String baseHost = repositoryBase.getHost();
-		String targetHost = requestTarget.getHost();
-		if (baseHost == null || targetHost == null) {
+		Matcher match = format.matcher(line);
+		if (!match.find()) {
 			return false;
 		}
-		if (!baseHost.equalsIgnoreCase(targetHost)) {
+
+		String version = match.group(1).trim();
+		try {
+			target.put(version, parseTimestamp(match.group(2).trim(), dateFormatter, serverOffset));
+		} catch (DateTimeParseException e) {
+			LOG.debug("Could not parse directory listing date for version %s".formatted(version), e);
+		}
+		return true;
+	}
+
+	private static LocalDateTime parseTimestamp(String timestamp, DateTimeFormatter formatter,
+			ZoneOffset serverOffset) {
+
+		return LocalDateTime.parse(timestamp, formatter).atOffset(serverOffset)
+				.withOffsetSameInstant(ZoneOffset.UTC).toLocalDateTime();
+	}
+
+	private static ZoneOffset getServerZoneOffset(@Nullable String dateHeader) {
+
+		if (dateHeader == null || dateHeader.isBlank()) {
+			return ZoneOffset.UTC;
+		}
+		try {
+			return ZonedDateTime.parse(dateHeader, DateTimeFormatter.RFC_1123_DATE_TIME).getOffset();
+		} catch (DateTimeParseException e) {
+			LOG.debug("Could not parse HTTP Date header '%s', assuming UTC".formatted(dateHeader), e);
+			return ZoneOffset.UTC;
+		}
+	}
+
+	/**
+	 * Return whether {@code target} shares scheme, host, effective port, and base
+	 * path with the repository URL, so that repository credentials may be offered.
+	 */
+	static boolean isWithinRepository(URI repositoryBaseUri, URI target) {
+
+		String scheme = repositoryBaseUri.getScheme();
+		if (scheme == null || !scheme.equalsIgnoreCase(target.getScheme())
+				|| !HttpClientUtil.hasSameBaseUri(repositoryBaseUri, target)) {
 			return false;
 		}
-		return HttpClientUtil.getEffectivePort(repositoryBase) == HttpClientUtil.getEffectivePort(requestTarget);
+
+		String basePath = repositoryBaseUri.getPath();
+		String targetPath = target.getPath();
+		return basePath == null || basePath.isEmpty() || targetPath != null && targetPath.startsWith(basePath);
 	}
 
-	private static String basicAuthHeader(RepositoryCredentials credentials) {
+	/**
+	 * Reject coordinates that are not valid Maven identifiers or could escape the
+	 * repository path.
+	 *
+	 * @throws ArtifactNotFoundException if the group or artifact identifier is
+	 * invalid.
+	 */
+	static void validate(ArtifactId artifactId) {
 
-		String raw = credentials.username() + ":" + credentials.password();
-		return "Basic " + Base64.getEncoder().encodeToString(raw.getBytes(StandardCharsets.UTF_8));
-	}
-
-	record DirectoryResponse(@Nullable String body, @Nullable String dateHeader) {
-
-		public Map<String, LocalDateTime> parse() {
-
-			Map<String, LocalDateTime> result = new HashMap<>();
-			if (StringUtils.isEmpty(body)) {
-				return result;
-			}
-
-			ZoneOffset serverOffset = getServerZoneOffset();
-
-			for (String line : body.lines().toList()) {
-
-				Matcher match = DIRECTORY_LISTING_PATTERN.matcher(line);
-
-				if (match.find()) {
-					String version = match.group(1) != null ? match.group(1).trim() : null;
-					String dateStr = match.group(2) != null ? match.group(2).trim() : null;
-					if (version != null && dateStr != null) {
-						try {
-							result.put(version, parseTimestamp(dateStr, serverOffset));
-						} catch (Exception e) {
-							LOG.debug("Could not parse directory listing date for version " + version, e);
-						}
-					}
-					continue;
-				}
-
-				match = ARTIFACTORY_DIRECTORY_LISTING_PATTERN.matcher(line);
-
-				if (match.find()) {
-
-					String version = match.group(1) != null ? match.group(1).trim() : null;
-					String dateStr = match.group(2) != null ? match.group(2).trim() : null;
-
-					if (version != null && dateStr != null) {
-						try {
-							LocalDateTime localDateTime = parseArtifactoryTimestamp(dateStr, serverOffset);
-							result.put(version, localDateTime);
-						} catch (Exception e) {
-							LOG.debug("Could not parse directory listing date for version %s".formatted(version), e);
-						}
-					}
-				}
-			}
-
-			return result;
+		if (!ARTIFACT_ID.matcher(artifactId.artifactId()).matches()) {
+			throw new ArtifactNotFoundException("Invalid artifactId", artifactId);
 		}
 
-		private LocalDateTime parseArtifactoryTimestamp(String dateStr, ZoneOffset serverOffset) {
-			LocalDateTime local = LocalDateTime
-					.from(DIRECTORY_LISTING_ARTIFACTORY_DATE_FORMATTER.parse(dateStr));
-			return local.atOffset(serverOffset)
-					.withOffsetSameInstant(ZoneOffset.UTC)
-					.toLocalDateTime();
+		if (!GROUP_ID.matcher(artifactId.groupId()).matches()) {
+			throw new ArtifactNotFoundException("Invalid groupId", artifactId);
 		}
-
-		private LocalDateTime parseTimestamp(String timestamp, ZoneOffset serverOffset) {
-			LocalDateTime local = LocalDateTime.from(DIRECTORY_LISTING_DATE_FORMATTER.parse(timestamp));
-			return local.atOffset(serverOffset).withOffsetSameInstant(ZoneOffset.UTC)
-					.toLocalDateTime();
-		}
-
-		private ZoneOffset getServerZoneOffset() {
-			if (!StringUtils.hasText(dateHeader)) {
-				return ZoneOffset.UTC;
-			}
-			try {
-				ZonedDateTime serverTime = ZonedDateTime.parse(dateHeader, DateTimeFormatter.RFC_1123_DATE_TIME);
-				return serverTime.getOffset();
-			} catch (DateTimeParseException e) {
-				LOG.debug("Could not parse HTTP Date header '%s', assuming UTC".formatted(dateHeader), e);
-				return ZoneOffset.UTC;
-			}
-		}
-
 	}
 
 }

@@ -107,6 +107,67 @@ class MavenSiteSearchTests {
 		assertThat(definitions).first().satisfies(it -> assertThat(it.element()).containsText("6.1.0"));
 	}
 
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<project>
+			    <groupId>com.example</groupId>
+			    <artifactId>demo</artifactId>
+			    <version>1.0.0</version>
+			    <properties>
+			        <spring.version>6.1.0</spring.version>
+			    </properties>
+			    <dependencies>
+			        <dependency>
+			            <groupId>org.springframework</groupId>
+			            <artifactId>spring-core</artifactId>
+			            <version>${spring.version}</version>
+			        </dependency>
+			    </dependencies>
+			</project>
+			""")
+	void artifactQueryFindsPropertyBackedUsageAndDefinition(PsiFile pom) {
+
+		MavenFixtures.analyze(pom);
+		DependencySiteQuery query = DependencySiteQuery.ofArtifact("org.springframework", "spring-core");
+
+		List<DependencySiteSearchHit> usages = search(pom, query, SiteRole.VERSION_USAGE);
+		assertThat(usages).hasSize(1);
+		assertThat(usages).first().satisfies(it -> assertThat(it.element()).containsText("spring-core"));
+
+		List<DependencySiteSearchHit> definitions = search(pom, query, SiteRole.DECLARATION);
+		assertThat(definitions).hasSize(1);
+		assertThat(definitions).first().satisfies(it -> assertThat(it.element()).containsText("6.1.0"));
+	}
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<project>
+			    <groupId>com.example</groupId>
+			    <artifactId>demo</artifactId>
+			    <version>1.0.0</version>
+			    <properties>
+			        <spring.version>6.1.0</spring.version>
+			    </properties>
+			    <profiles>
+			        <profile>
+			            <id>next</id>
+			            <properties>
+			                <spring.version>6.2.0</spring.version>
+			            </properties>
+			        </profile>
+			    </profiles>
+			</project>
+			""")
+	void findsEveryDefinitionOfRedefinedProperty(PsiFile pom) {
+
+		MavenFixtures.analyze(pom);
+
+		List<DependencySiteSearchHit> definitions = search(pom, DependencySiteQuery.ofProperty("spring.version"),
+				SiteRole.DECLARATION);
+
+		assertThat(definitions).extracting(DependencySiteSearchHit::label).containsExactly("6.1.0", "6.2.0");
+	}
+
 	private List<DependencySiteSearchHit> search(PsiFile file, DependencySiteQuery query, SiteRole role) {
 		return resolverFor(file).search(query).stream().filter(finding -> finding.role() == role).toList();
 	}

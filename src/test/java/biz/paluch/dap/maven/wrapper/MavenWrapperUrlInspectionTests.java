@@ -24,6 +24,7 @@ import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.extension.TestFixture;
 import biz.paluch.dap.fixtures.DependencyAssistantFixtures;
 import biz.paluch.dap.fixtures.Inspections;
+import biz.paluch.dap.fixtures.TrustedFixture;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.CachedRelease;
@@ -32,8 +33,6 @@ import com.intellij.codeInsight.intention.IntentionAction;
 import com.intellij.codeInspection.ProblemDescriptor;
 import com.intellij.codeInspection.ProblemHighlightType;
 import com.intellij.codeInspection.QuickFix;
-import com.intellij.ide.trustedProjects.TrustedProjects;
-import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.BeforeEach;
@@ -156,13 +155,9 @@ class MavenWrapperUrlInspectionTests {
 			""")
 	void doesNotRegisterMissingChecksumWhenProjectIsUntrusted(PsiFile file) {
 
-		Project project = fixture.getProject();
-		TrustedProjects.setProjectTrusted(project, false);
-		try {
+		TrustedFixture.of(fixture.getProject()).runUntrusted(() -> {
 			assertThat(inspectWrapperFile(file)).isEmpty();
-		} finally {
-			TrustedProjects.setProjectTrusted(project, true);
-		}
+		});
 	}
 
 	@Test

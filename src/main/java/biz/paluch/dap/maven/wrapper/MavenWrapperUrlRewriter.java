@@ -168,14 +168,16 @@ class MavenWrapperUrlRewriter {
 	 */
 	static String replaceFileName(String url, WrapperProperty property, String version) {
 
-		int lastSlash = url.lastIndexOf('/');
+		int tailStart = tailStart(url);
+		int lastSlash = url.lastIndexOf('/', tailStart);
 		if (lastSlash < 0) {
 			return url;
 		}
 
-		String existingFile = url.substring(lastSlash + 1);
+		String existingFile = url.substring(lastSlash + 1, tailStart);
 		return url.substring(0, lastSlash + 1)
-				+ property.canonicalFileName(version, property.getSupportedExtension(existingFile));
+				+ property.canonicalFileName(version, property.getSupportedExtension(existingFile))
+				+ url.substring(tailStart);
 	}
 
 	/**
@@ -189,10 +191,7 @@ class MavenWrapperUrlRewriter {
 	 * @return the suggested file name.
 	 */
 	static String replaceFileNameSuggestion(String url, WrapperProperty property, String version) {
-
-		int lastSlash = url.lastIndexOf('/');
-		String preservedExtension = lastSlash < 0 ? null : property.getSupportedExtension(url.substring(lastSlash + 1));
-		return property.canonicalFileName(version, preservedExtension);
+		return property.canonicalFileName(version, property.getSupportedExtension(lastUrlSegment(url)));
 	}
 
 	/**
@@ -254,8 +253,8 @@ class MavenWrapperUrlRewriter {
 
 	/**
 	 * Return the end offset of the authority segment (the index of the first
-	 * {@code /} at or after {@code authorityStart}, or the string length when no
-	 * path separator follows).
+	 * {@code /}, {@code ?}, or {@code #} at or after {@code authorityStart}, or the
+	 * string length when neither follows).
 	 * @param url the URL to inspect.
 	 * @param authorityStart the non-negative offset returned by
 	 * {@link #authorityStart(String)}.
@@ -263,8 +262,27 @@ class MavenWrapperUrlRewriter {
 	 */
 	static int authorityEnd(String url, int authorityStart) {
 
-		int end = url.indexOf('/', authorityStart);
-		return end < 0 ? url.length() : end;
+		int path = url.indexOf('/', authorityStart);
+		int tail = tailStart(url, authorityStart);
+		return path < 0 ? tail : Math.min(path, tail);
+	}
+
+	/**
+	 * Return the offset at which the query or fragment tail of the URL starts, or
+	 * the string length when the URL has no tail.
+	 */
+	static int tailStart(String url) {
+		return tailStart(url, 0);
+	}
+
+	private static int tailStart(String url, int from) {
+
+		int query = url.indexOf('?', from);
+		int fragment = url.indexOf('#', from);
+		if (query < 0) {
+			return fragment < 0 ? url.length() : fragment;
+		}
+		return fragment < 0 ? query : Math.min(query, fragment);
 	}
 
 	static String lastSegments(String groupPath, int count) {
@@ -276,9 +294,17 @@ class MavenWrapperUrlRewriter {
 		return String.join("/", Arrays.asList(segments).subList(segments.length - count, segments.length));
 	}
 
+	/**
+	 * Return the file-name segment of the URL, excluding any query or fragment
+	 * tail.
+	 * @param url the URL to inspect.
+	 * @return the last path segment, or the whole tail-less input without a path
+	 * separator.
+	 */
 	static String lastUrlSegment(String url) {
 
-		int lastSlash = url.lastIndexOf('/');
-		return lastSlash < 0 ? url : url.substring(lastSlash + 1);
+		int tailStart = tailStart(url);
+		int lastSlash = url.lastIndexOf('/', tailStart);
+		return url.substring(lastSlash < 0 ? 0 : lastSlash + 1, tailStart);
 	}
 }

@@ -17,18 +17,13 @@
 package biz.paluch.dap.maven;
 
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
-import com.intellij.psi.xml.XmlText;
-import org.jetbrains.annotations.Contract;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Classifies Maven POM and extension files and their recognized version PSI
- * elements.
+ * Classifies Maven POM and extension files.
  *
  * @author Mark Paluch
  */
@@ -90,43 +85,6 @@ class MavenUtils {
 		}
 		String namespace = rootTag.getNamespace();
 		return namespace.isEmpty() || "http://maven.apache.org/POM/4.0.0".equals(namespace);
-	}
-
-	/**
-	 * Return whether the element is the text of a recognized Maven version or
-	 * property value.
-	 *
-	 * <p>Recognized version owners are dependencies, plugins, build extensions, and
-	 * parents. Any direct child of a {@code properties} tag is a supported property
-	 * value.
-	 *
-	 * @param element the PSI element to classify, or {@literal null}.
-	 * @return {@code true} if the element is recognized as a Maven version
-	 * candidate.
-	 */
-	@Contract("null -> false")
-	public static boolean isVersionElement(@Nullable PsiElement element) {
-
-		if (element == null || !(element instanceof XmlText)) {
-			return false;
-		}
-
-		XmlTag currentTag = PsiTreeUtil.getParentOfType(element, XmlTag.class);
-		if (currentTag == null) {
-			return false;
-		}
-
-		XmlTag parentTag = currentTag.getParentTag();
-		if (parentTag == null) {
-			return false;
-		}
-
-		String tagName = currentTag.getLocalName();
-		String parentName = parentTag.getLocalName();
-
-		return "properties".equals(parentName) || "version".equals(tagName)
-				&& ("dependency".equals(parentName) || "plugin".equals(parentName)
-						|| "extension".equals(parentName) || "parent".equals(parentName));
 	}
 
 }

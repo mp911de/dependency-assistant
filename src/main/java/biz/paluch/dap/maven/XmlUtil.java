@@ -21,6 +21,8 @@ import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
+import com.intellij.psi.xml.XmlText;
+import org.jetbrains.annotations.Contract;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -29,6 +31,26 @@ import org.jspecify.annotations.Nullable;
  * @author Mark Paluch
  */
 public class XmlUtil {
+
+	/**
+	 * Return whether the element is the text of a Maven version or property value
+	 * that the Maven reference resolvers accept.
+	 *
+	 * <p>Eligibility follows {@link #findVersionTag(PsiElement)} and
+	 * {@link #findPropertyTag(PsiElement)}: dependency, plugin, build extension,
+	 * and external parent versions in a POM, extension versions in
+	 * {@code extensions.xml}, and {@code properties} children in a POM. Whether a
+	 * property is a tracked version property is decided by the resolver.
+	 *
+	 * @param element the PSI element to classify, or {@literal null}.
+	 * @return {@code true} if the element is recognized as a Maven version
+	 * candidate.
+	 */
+	@Contract("null -> false")
+	public static boolean isVersionElement(@Nullable PsiElement element) {
+		return element instanceof XmlText
+				&& (findVersionTag(element) != null || findPropertyTag(element) != null);
+	}
 
 	/**
 	 * Return the property tag for the given context element if the element is a

@@ -17,8 +17,8 @@
 package biz.paluch.dap.maven;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import biz.paluch.dap.artifact.ArtifactId;
@@ -40,7 +40,6 @@ import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.Expression;
 import biz.paluch.dap.support.Property;
 import biz.paluch.dap.support.PropertyResolver;
-import biz.paluch.dap.support.PropertyValue;
 import com.intellij.codeInsight.completion.CompletionUtilCore;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.project.Project;
@@ -116,33 +115,57 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 		List<DependencySiteSearchHit> hits = new ArrayList<>(
 				findPropertyDefinitions(pomFile, query.versionProperties()));
 		hits.addAll(findVersionSites(pomFile, query));
-		return DependencySearchResults.of(hits);
+
+		// A property-backed artifact hit and a queried property definition can name
+		// the same tag; keep the first hit per element.
+		List<DependencySiteSearchHit> deduplicated = new ArrayList<>(hits.size());
+		Set<PsiElement> seen = new HashSet<>();
+		for (DependencySiteSearchHit hit : hits) {
+			if (seen.add(hit.element())) {
+				deduplicated.add(hit);
+			}
+		}
+		return DependencySearchResults.of(deduplicated);
 	}
 
 	/**
-	 * Collect every {@code <properties>} entry whose name is part of the query, as
-	 * a version-property definition.
+	 * Collect every root and profile {@code <properties>} entry whose name is part
+	 * of the query, as a version-property definition. A property redefined in
+	 * several sections yields one hit per definition.
 	 */
-	private List<DependencySiteSearchHit> findPropertyDefinitions(XmlFile pomFile, Set<String> properties) {
+	private static List<DependencySiteSearchHit> findPropertyDefinitions(XmlFile pomFile, Set<String> properties) {
 
 		if (properties.isEmpty()) {
 			return List.of();
 		}
 
 		List<DependencySiteSearchHit> hits = new ArrayList<>();
-		Map<String, PropertyValue> declaredProperties = MavenPomSupport.parseProperties(pomFile);
-		for (Property value : declaredProperties.values()) {
-			if (properties.contains(value.getKey())) {
-				hits.add(DependencySiteSearchHit.declaration(value.getValueLiteral(), value.getValue()));
-			}
-		}
+		MavenPomSupport.doWithRoot(pomFile, root -> {
+			MavenPomSupport.PomTag pomTag = MavenPomSupport.PomTag.of(root);
+			pomTag.subtags(MavenPomSupport.PROPERTIES)
+					.forEach(section -> collectPropertyDefinitions(section, properties, hits));
+			MavenPomSupport.doWithProfiles(pomTag, profile -> profile.subtags(MavenPomSupport.PROPERTIES)
+					.forEach(section -> collectPropertyDefinitions(section, properties, hits)));
+		});
 
 		return hits;
 	}
 
+	private static void collectPropertyDefinitions(MavenPomSupport.PomTag section, Set<String> properties,
+			List<DependencySiteSearchHit> hits) {
+
+		for (XmlTag property : section.getTag().getSubTags()) {
+			if (properties.contains(property.getLocalName())) {
+				hits.add(DependencySiteSearchHit.declaration(property, property.getValue().getTrimmedText().trim()));
+			}
+		}
+	}
+
 	/**
-	 * Collect every dependency or plugin {@code <version>} tag that contributes to
-	 * the query, as a {@code ${property}} usage or an inline definition.
+	 * Collect every dependency or plugin declaration that contributes to the query.
+	 * A property-backed declaration is a {@code ${property}} usage whether it is
+	 * matched by artifact or by property name; its in-file property definition is
+	 * reported for artifact matches as well. An inline version is a definition.
 	 */
 	private List<DependencySiteSearchHit> findVersionSites(XmlFile pomFile, DependencySiteQuery query) {
 
@@ -150,13 +173,19 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 		MavenParser parser = new MavenParser(buildContext.getPomProperties());
 		for (ArtifactDeclaration declaration : parser.parsePomFile(pomFile)) {
 			ProgressManager.checkCanceled();
+
+			boolean artifactMatch = query.artifacts().contains(declaration.getArtifactId());
 			VersionSource versionSource = declaration.getVersionSource();
 			if (versionSource instanceof VersionSource.VersionProperty property) {
-				if (query.versionProperties().contains(property.getProperty())) {
+				if (artifactMatch || query.matches(property)) {
 					hits.add(DependencySiteSearchHit.usage(declaration.getDeclarationElement(), declaration));
 				}
-			} else if (query.artifacts().contains(declaration.getArtifactId())
-					&& declaration.getVersionLiteral() != null) {
+				if (artifactMatch && declaration.getVersionLiteral() != null
+						&& declaration.isVersionDefinedInSameFile()) {
+					hits.add(DependencySiteSearchHit.declaration(declaration.getRequiredVersionLiteral(),
+							declaration));
+				}
+			} else if (artifactMatch && declaration.getVersionLiteral() != null) {
 				hits.add(DependencySiteSearchHit.declaration(declaration.getRequiredVersionLiteral(), declaration));
 			}
 		}
@@ -211,7 +240,7 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 		}
 		PropertyResolver propertyResolver = buildContext.getPomProperties();
 		Property propertyValue = null;
-		Set<String> visited = new java.util.HashSet<>();
+		Set<String> visited = new HashSet<>();
 		while (expression.isProperty() && visited.add(expression.getPropertyName())) {
 
 			String propertyName = expression.getPropertyName();

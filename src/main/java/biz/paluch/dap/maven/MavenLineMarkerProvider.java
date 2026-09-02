@@ -47,7 +47,7 @@ public class MavenLineMarkerProvider extends DependencyLineMarkerProvider {
 	@Override
 	protected ProjectDependencyContext getContext(PsiElement element) {
 
-		if (!MavenUtils.isVersionElement(element)
+		if (!XmlUtil.isVersionElement(element)
 				&& !"maven-wrapper.properties".equals(element.getContainingFile().getName())) {
 			return ProjectDependencyContext.absent();
 		}

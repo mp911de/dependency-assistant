@@ -132,6 +132,17 @@ class MavenWrapperParserTests {
 		DependencyCollector collector = analyze(file);
 
 		assertThat(collector).isEmpty();
+		assertThat(MavenWrapperParser.parseRepositories((PropertiesFile) file)).isEmpty();
+		assertThat(MavenWrapperAssistant.collectReleaseSources(file)).isEmpty();
+	}
+
+	@Test
+	@ProjectFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
+			distributionUrl=https://nexus.example.com/repository/maven-public/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
+			wrapperUrl=https://nexus.example.com/repository/maven-public/org/apache/maven/wrapper/maven-wrapper/3.3.2/maven-wrapper-3.3.2.jar
+			""")
+	void entriesSharingRepositoryContributeSingleReleaseSource(PsiFile file) {
+		assertThat(MavenWrapperAssistant.collectReleaseSources(file)).hasSize(1);
 	}
 
 	@Test

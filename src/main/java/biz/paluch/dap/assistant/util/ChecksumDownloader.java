@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.maven.wrapper;
+package biz.paluch.dap.assistant.util;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -22,10 +22,13 @@ import java.net.URI;
 import java.net.URLConnection;
 import java.security.DigestOutputStream;
 import java.util.HexFormat;
-import java.util.function.Consumer;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
 
+import biz.paluch.dap.assistant.Notifications;
 import biz.paluch.dap.util.HttpClientUtil;
 import biz.paluch.dap.util.MessageBundle;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
@@ -37,44 +40,58 @@ import org.apache.http.HttpHeaders;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Downloads the artifact referenced by a Maven Wrapper URL and computes its
+ * Utility that downloads the artifact referenced by a URL and computes its
  * lowercase SHA-256 digest.
  *
- * <p>The asynchronous operation uses a cancellable IntelliJ background task. It
- * routes invalid URLs and download failures to the failure callback, while task
- * cancellation, project disposal, and uncaught task failures invoke the
- * canceled callback.
+ * <p>{@link #computeSha(Project, String)} runs a cancellable IntelliJ
+ * background task and completes the returned future on the EDT: with the digest
+ * on success, exceptionally on an invalid URL or download failure, and
+ * cancelled when the task is cancelled or the project is disposed. Tests
+ * replace the service to supply a checksum without network access.
  *
  * @author Mark Paluch
  */
-class WrapperChecksumDownloader {
+public class ChecksumDownloader {
 
-	private WrapperChecksumDownloader() {
+	protected ChecksumDownloader() {
+	}
+
+	/**
+	 * Return the checksum downloader service.
+	 */
+	public static ChecksumDownloader getInstance() {
+		return ApplicationManager.getApplication().getService(ChecksumDownloader.class);
 	}
 
 	/**
 	 * Queue a cancellable checksum download.
 	 *
-	 * <p>An invalid URI invokes {@code failure} immediately without queuing a task.
-	 * A queued task dispatches the callback corresponding to completion, failure,
-	 * cancellation, or project disposal.
-	 *
 	 * @param project the project that owns the background task.
 	 * @param url the artifact URL.
-	 * @param success callback receiving the lowercase SHA-256 digest.
-	 * @param failure callback receiving URL and download failures.
-	 * @param canceled callback for cancellation, disposal, or an uncaught task
-	 * failure.
+	 * @return a future completed on the EDT with the lowercase SHA-256 digest,
+	 * completed exceptionally with an {@link IOException} for an invalid URL or a
+	 * download failure, or cancelled on task cancellation or project disposal.
 	 */
-	static void downloadAndComputeSha(Project project, String url, Consumer<String> success,
-			Consumer<IOException> failure, Runnable canceled) {
+	public CompletableFuture<String> computeSha(Project project, String url) {
+
+		CompletableFuture<String> future = doComputeSha(project, url);
+
+		return future.whenComplete((sha, failure) -> {
+			if (failure != null) {
+				notifyFailure(project, url, failure);
+			}
+		});
+	}
+
+	private CompletableFuture<String> doComputeSha(Project project, String url) {
+		CompletableFuture<String> future = new CompletableFuture<>();
 
 		URI uri;
 		try {
 			uri = URI.create(url);
 		} catch (IllegalArgumentException ex) {
-			failure.accept(new IOException("Invalid wrapper URL", ex));
-			return;
+			future.completeExceptionally(new IOException("Invalid wrapper URL", ex));
+			return future;
 		}
 
 		new Task.Backgroundable(project, MessageBundle.message("wrapper.checksum.task"), true) {
@@ -94,26 +111,45 @@ class WrapperChecksumDownloader {
 
 			@Override
 			public void onSuccess() {
-				if (project.isDisposed()) {
-					canceled.run();
+				if (project.isDisposed() || result == null && error == null) {
+					future.cancel(false);
 				} else if (error != null) {
-					failure.accept(error);
-				} else if (result != null) {
-					success.accept(result);
+					future.completeExceptionally(error);
+				} else {
+					future.complete(result);
 				}
 			}
 
 			@Override
 			public void onCancel() {
-				canceled.run();
+				future.cancel(false);
 			}
 
 			@Override
 			public void onThrowable(Throwable error) {
-				canceled.run();
+				future.completeExceptionally(error);
 			}
 
 		}.queue();
+
+		return future;
+	}
+
+	/**
+	 * Report a failed checksum computation through a project notification.
+	 * Cancellation and a disposed project are not reported.
+	 *
+	 * @param project the project to notify.
+	 * @param url the artifact URL whose checksum failed.
+	 * @param failure the failure from {@link #computeSha(Project, String)}.
+	 */
+	private static void notifyFailure(Project project, String url, Throwable failure) {
+
+		if (failure instanceof CancellationException || project.isDisposed()) {
+			return;
+		}
+		Notifications.error(project, MessageBundle.message("wrapper.checksum.error.title"),
+				MessageBundle.message("wrapper.checksum.error", url, Notifications.errorMessage(failure)));
 	}
 
 	/**
@@ -124,7 +160,7 @@ class WrapperChecksumDownloader {
 	 * @return the lowercase hexadecimal SHA-256 digest.
 	 * @throws IOException if the request or response stream fails.
 	 */
-	static String downloadAndComputeSha(URI uri, ProgressIndicator indicator) throws IOException {
+	public static String downloadAndComputeSha(URI uri, ProgressIndicator indicator) throws IOException {
 
 		return HttpRequests.request(uri.toASCIIString())
 				.userAgent(HttpClientUtil.getUserAgent())
@@ -136,7 +172,7 @@ class WrapperChecksumDownloader {
 							DigestUtils.getSha256Digest());
 					URLConnection connection = request.getConnection();
 
-					long contentLength = contentLength(connection.getHeaderField(HttpHeaders.CONTENT_LENGTH));
+					long contentLength = getContentLength(connection.getHeaderField(HttpHeaders.CONTENT_LENGTH));
 					try (InputStream in = request.getInputStream()) {
 
 						NetUtils.copyStreamContent(indicator, in, dos, contentLength);
@@ -145,7 +181,7 @@ class WrapperChecksumDownloader {
 				});
 	}
 
-	private static long contentLength(@Nullable String header) {
+	private static long getContentLength(@Nullable String header) {
 
 		if (header == null) {
 			return -1;

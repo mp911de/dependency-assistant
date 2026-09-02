@@ -81,7 +81,7 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 
 	@Override
 	public boolean isVersionElement(PsiElement element) {
-		return MavenUtils.isVersionElement(element);
+		return XmlUtil.isVersionElement(element);
 	}
 
 	@Override
@@ -158,7 +158,7 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 
 		@Override
 		public boolean isVersionElement(PsiElement element) {
-			return MavenUtils.isVersionElement(element);
+			return XmlUtil.isVersionElement(element);
 		}
 
 		@Override

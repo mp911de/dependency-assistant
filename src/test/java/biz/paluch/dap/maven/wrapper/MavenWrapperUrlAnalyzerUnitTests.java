@@ -203,6 +203,21 @@ class MavenWrapperUrlAnalyzerUnitTests {
 		assertThat(analyzeWrapper(url)).isEmpty();
 	}
 
+	@StringTest("https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip?token=abc")
+	void canonicalFileNameWithQueryTailIsNotMalformed(String url) {
+		assertThat(analyzeDistribution(url)).isEmpty();
+	}
+
+	@StringTest("https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip#checksum")
+	void canonicalFileNameWithFragmentTailIsNotMalformed(String url) {
+		assertThat(analyzeDistribution(url)).isEmpty();
+	}
+
+	@StringTest("https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6.zip?token=abc")
+	void malformedFileNameExcludesQueryTail(String url) {
+		assertThat(analyzeDistribution(url)).containsExactly(new MalformedFileName("apache-maven-3.9.6.zip", "3.9.6"));
+	}
+
 	@StringTest("https://repo1.maven.org/maven2/org/apache/wrong/wrapper/maven-wrapper/3.9.6/maven-wrapper-3.9.6.jar")
 	void emitsImproperGroupIdForWrapper(String url) {
 

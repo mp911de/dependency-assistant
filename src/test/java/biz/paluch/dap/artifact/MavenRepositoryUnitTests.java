@@ -16,8 +16,11 @@
 
 package biz.paluch.dap.artifact;
 
+import java.net.URI;
+
 import biz.paluch.dap.fixtures.Coordinates;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.*;
@@ -43,6 +46,21 @@ class MavenRepositoryUnitTests {
 		assertThatExceptionOfType(ArtifactNotFoundException.class)
 				.isThrownBy(() -> MavenRepository.validate(Coordinates.of(coordinates)
 						.getArtifactId()));
+	}
+
+	@ParameterizedTest
+	@CsvSource(textBlock = """
+			https://repo.example.com/maven2/, https://repo.example.com/maven2/org/foo/maven-metadata.xml , true
+			https://repo.example.com/maven2/, https://repo.example.com:443/maven2/org/foo/               , true
+			https://repo.example.com/maven2/, https://REPO.example.com/maven2/org/foo/                   , true
+			https://repo.example.com/maven2/, http://repo.example.com/maven2/org/foo/                    , false
+			https://repo.example.com/maven2/, https://repo.example.com:8443/maven2/org/foo/              , false
+			https://repo.example.com/maven2/, https://other.example.com/maven2/org/foo/                  , false
+			https://repo.example.com/maven2/, https://repo.example.com/other/org/foo/                    , false
+			https://repo.example.com        , https://repo.example.com/anything                          , true
+			""")
+	void credentialsAreLimitedToRepositoryScope(String repository, String target, boolean expected) {
+		assertThat(MavenRepository.isWithinRepository(URI.create(repository), URI.create(target))).isEqualTo(expected);
 	}
 
 }

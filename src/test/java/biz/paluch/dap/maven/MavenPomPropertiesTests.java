@@ -134,9 +134,9 @@ class MavenPomPropertiesTests {
 		XmlText version = dependency.findFirstSubTag("version").getValue().getTextElements()[0];
 		XmlText property = project.findFirstSubTag("properties").getSubTags()[0].getValue().getTextElements()[0];
 
-		assertThat(MavenUtils.isVersionElement(groupId)).isFalse();
-		assertThat(MavenUtils.isVersionElement(version)).isTrue();
-		assertThat(MavenUtils.isVersionElement(property)).isTrue();
+		assertThat(XmlUtil.isVersionElement(groupId)).isFalse();
+		assertThat(XmlUtil.isVersionElement(version)).isTrue();
+		assertThat(XmlUtil.isVersionElement(property)).isTrue();
 	}
 
 	@Test

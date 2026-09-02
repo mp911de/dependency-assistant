@@ -251,6 +251,25 @@ public class HttpClientUtil {
 	}
 
 	/**
+	 * Return whether two URIs have the same host and effective port.
+	 *
+	 * <p>Host comparison is case-insensitive. Scheme and path are not compared.
+	 *
+	 * @param u1 the configured repository URI.
+	 * @param u2 the effective request URI.
+	 * @return {@code true} if host and effective port match.
+	 */
+	public static boolean hasSameBaseUri(URI u1, URI u2) {
+
+		String baseHost = u1.getHost();
+		String targetHost = u2.getHost();
+		if (baseHost == null || targetHost == null) {
+			return false;
+		}
+		return baseHost.equalsIgnoreCase(targetHost) && getEffectivePort(u1) == getEffectivePort(u2);
+	}
+
+	/**
 	 * Stream that fails once the number of bytes read exceeds the configured cap.
 	 */
 	private static class CappedInputStream extends FilterInputStream {

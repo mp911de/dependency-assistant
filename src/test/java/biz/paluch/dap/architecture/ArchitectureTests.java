@@ -198,7 +198,7 @@ class ArchitectureTests {
 	@ArchTest
 	ArchRule mavenWrapper = packageDependencies("maven.wrapper",
 			"biz.paluch.dap", "artifact", "assistant", "assistant",
-			"assistant.completion", "state", "lookup", "support", "util");
+			"assistant.completion", "assistant.util", "state", "lookup", "support", "util");
 
 	@ArchTest
 	ArchRule npm = packageDependencies("npm", "biz.paluch.dap",

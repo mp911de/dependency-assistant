@@ -46,7 +46,8 @@
 	</extensionPoints>
 
 	<extensions defaultExtensionNs="biz.paluch.dap">
-		<pomLocator implementation="biz.paluch.dap.maven.SimpleMavenPomLocator"/>
+		<pomLocator order="last"
+		            implementation="biz.paluch.dap.maven.SimpleMavenPomLocator"/>
 		<platform implementation="biz.paluch.dap.metadata.GitLabPlatform"/>
 		<platform implementation="biz.paluch.dap.metadata.BitbucketPlatform"/>
 		<platform implementation="biz.paluch.dap.metadata.CodebergPlatform"/>
@@ -61,6 +62,8 @@
 		<renameHandler implementation="biz.paluch.dap.plan.RenameItemHandler"/>
 		<applicationService
 				serviceImplementation="biz.paluch.dap.state.ApplicationSettings"/>
+		<applicationService
+				serviceImplementation="biz.paluch.dap.assistant.util.ChecksumDownloader"/>
 		<fileTemplateGroup implementation="biz.paluch.dap.plan.UpgradePlanTemplateGroup"/>
 		<toolWindow id="Upgrade Plan" anchor="bottom" doNotActivateOnStart="true"
 		            factoryClass="biz.paluch.dap.plan.UpgradePlanToolWindowFactory"

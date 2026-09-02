@@ -98,8 +98,6 @@ import org.jspecify.annotations.Nullable;
  */
 public class ReleaseCompletionProvider extends CompletionProvider<CompletionParameters> {
 
-	private final NumberFormat format = NumberFormat.getIntegerInstance();
-
 	/**
 	 * Add release completions for the artifact resolved at the current completion
 	 * position.
@@ -224,7 +222,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	 * history regardless of the typed prefix, including the history size when the
 	 * curated first invocation hides releases.
 	 */
-	private void advertiseShowAllReleases(CompletionParameters parameters,
+	private static void advertiseShowAllReleases(CompletionParameters parameters,
 			CompletionResultSet result, int total, int shown) {
 
 		if (showsFullHistory(parameters)) {
@@ -236,6 +234,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 			return;
 		}
 
+		NumberFormat format = NumberFormat.getIntegerInstance();
 		result.addLookupAdvertisement(shown < total
 				? MessageBundle.message("completion.advertisement.show-all-count", shortcut, format.format(total))
 				: MessageBundle.message("completion.advertisement.show-all", shortcut));

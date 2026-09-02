@@ -82,6 +82,34 @@ class MavenProjectContextTests {
 		assertThat(context(pomFile).getProjectVersion()).isEqualTo(Versioned.unversioned());
 	}
 
+	@Test
+	@EditorFile(name = "pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>${revision}</version>
+				<properties>
+					<revision>4.0.0-SNAPSHOT</revision>
+				</properties>
+			</project>
+			""")
+	void expandsCiFriendlyRevisionPlaceholder(PsiFile pomFile) {
+		assertThat(context(pomFile).getProjectVersion())
+				.isEqualTo(Versioned.of(ArtifactVersion.of("4.0.0-SNAPSHOT")));
+	}
+
+	@Test
+	@EditorFile(name = "pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>${revision}</version>
+			</project>
+			""")
+	void returnsUnversionedWhenPlaceholderCannotBeExpanded(PsiFile pomFile) {
+		assertThat(context(pomFile).getProjectVersion()).isEqualTo(Versioned.unversioned());
+	}
+
 	private MavenProjectContext context(PsiFile pomFile) {
 		MavenFixtures.analyze(pomFile);
 		return MavenProjectContext.of(fixture.getProject(), pomFile);

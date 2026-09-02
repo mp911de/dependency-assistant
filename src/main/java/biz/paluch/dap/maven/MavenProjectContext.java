@@ -177,7 +177,13 @@ interface MavenProjectContext extends ProjectBuildContext {
 		private Versioned resolveProjectVersion() {
 
 			String version = propertyResolver.getProperty("project.version");
-			if (!StringUtils.hasText(version)) {
+			if (StringUtils.hasText(version)) {
+				version = propertyResolver.resolvePlaceholders(version.trim());
+			}
+			if (!StringUtils.hasText(version) || version.contains("${")) {
+				version = mavenProject.getMavenId().getVersion();
+			}
+			if (!StringUtils.hasText(version) || version.contains("${")) {
 				return Versioned.unversioned();
 			}
 			return ArtifactVersion.from(version.trim()).map(Versioned::of)

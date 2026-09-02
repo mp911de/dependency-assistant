@@ -27,6 +27,7 @@ import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.PackageSystem;
+import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.extension.TestFixture;
@@ -115,6 +116,36 @@ class MavenParserTests {
 
 		assertThat(declarations).extracting(it -> it.getArtifactId().artifactId() + ":" + it.getVersion())
 				.containsExactly("root:1.0", "one:2.0", "two:3.0");
+	}
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<project>
+				<properties><shared.version>1.0</shared.version></properties>
+				<profiles>
+					<profile><id>inherits</id>
+						<dependencies><dependency>
+							<groupId>com.example</groupId><artifactId>inherits</artifactId>
+							<version>${shared.version}</version>
+						</dependency></dependencies>
+					</profile>
+					<profile><id>overrides</id>
+						<properties><shared.version>2.0</shared.version></properties>
+						<dependencies><dependency>
+							<groupId>com.example</groupId><artifactId>overrides</artifactId>
+							<version>${shared.version}</version>
+						</dependency></dependencies>
+					</profile>
+				</profiles>
+			</project>
+			""")
+	void scopesPropertySourceToProfileOnlyWhenProfileDeclaresProperty(XmlFile pomFile) {
+
+		List<ArtifactDeclaration> declarations = new MavenParser().parsePomFile(pomFile);
+
+		assertThat(declarations).extracting(ArtifactDeclaration::getVersionSource).containsExactly(
+				VersionSource.property("shared.version"),
+				VersionSource.profileProperty("overrides", "shared.version"));
 	}
 
 	@Test

@@ -16,16 +16,22 @@
 
 package biz.paluch.dap.maven.wrapper;
 
+import java.util.concurrent.CompletableFuture;
+
+import biz.paluch.dap.assistant.util.ChecksumDownloader;
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.TestFixture;
-import com.intellij.ide.trustedProjects.TrustedProjects;
+import biz.paluch.dap.fixtures.TrustedFixture;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiFile;
+import com.intellij.testFramework.ServiceContainerUtil;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static biz.paluch.dap.assertions.Assertions.*;
@@ -42,14 +48,26 @@ class ChecksumIntentionTests {
 
 	private @TestFixture CodeInsightTestFixture fixture;
 
+	private MavenWrapperChecksumIntention action = new MavenWrapperChecksumIntention.Distribution();
+
+	@BeforeEach
+	void setUp() {
+		useDownloader(new ChecksumDownloader() {
+
+			@Override
+			public CompletableFuture<String> computeSha(Project project, String url) {
+				return CompletableFuture.completedFuture(SHA);
+			}
+
+		});
+	}
+
 	@Test
 	@EditorFile(name = "maven-wrapper.properties", content = """
 			# <caret>comment
 			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
 			""")
 	void distributionIntentionIsAvailableFileWide(PsiFile file) {
-
-		MavenWrapperChecksumIntention action = new MavenWrapperChecksumIntention.Distribution(checksum());
 
 		assertThat(action.isAvailable(fixture.getProject(), fixture.getEditor(), file)).isTrue();
 		assertThat(action.getText()).isEqualTo("Compute 'distributionUrl' SHA-256 checksum");
@@ -62,9 +80,6 @@ class ChecksumIntentionTests {
 			distributionSha256Sum=
 			""")
 	void distributionIntentionIsNotAvailableWhenShaPropertyExists(PsiFile file) {
-
-		MavenWrapperChecksumIntention action = new MavenWrapperChecksumIntention.Distribution(checksum());
-
 		assertThat(action.isAvailable(fixture.getProject(), fixture.getEditor(), file)).isFalse();
 	}
 
@@ -74,15 +89,9 @@ class ChecksumIntentionTests {
 			""")
 	void distributionIntentionIsNotAvailableWhenProjectIsUntrusted(PsiFile file) {
 
-		Project project = fixture.getProject();
-		MavenWrapperChecksumIntention action = new MavenWrapperChecksumIntention.Distribution(checksum());
-
-		TrustedProjects.setProjectTrusted(project, false);
-		try {
-			assertThat(action.isAvailable(project, fixture.getEditor(), file)).isFalse();
-		} finally {
-			TrustedProjects.setProjectTrusted(project, true);
-		}
+		TrustedFixture.of(fixture.getProject()).runUntrusted(() -> {
+			assertThat(action.isAvailable(fixture.getProject(), fixture.getEditor(), file)).isFalse();
+		});
 	}
 
 	@Test
@@ -90,9 +99,6 @@ class ChecksumIntentionTests {
 			distributionUrl=https://repo1.maven.org/maven2/${prefix}/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
 			""")
 	void distributionIntentionIsNotAvailableWhenUrlContainsInterpolation(PsiFile file) {
-
-		MavenWrapperChecksumIntention action = new MavenWrapperChecksumIntention.Distribution(checksum());
-
 		assertThat(action.isAvailable(fixture.getProject(), fixture.getEditor(), file)).isFalse();
 	}
 
@@ -104,7 +110,7 @@ class ChecksumIntentionTests {
 			""")
 	void blankCaretLineIsReplaced(PsiFile file) {
 
-		invoke(new MavenWrapperChecksumIntention.Distribution(checksum()), file);
+		invoke(file);
 
 		assertThat(file).containsText(
 				"""
@@ -121,7 +127,7 @@ class ChecksumIntentionTests {
 			""")
 	void nonBlankCaretLineInsertsBelow(PsiFile file) {
 
-		invoke(new MavenWrapperChecksumIntention.Distribution(checksum()), file);
+		invoke(file);
 
 		assertThat(file).containsText(
 				"""
@@ -138,29 +144,59 @@ class ChecksumIntentionTests {
 			""")
 	void discardsChecksumWhenUrlChangesDuringComputation(PsiFile file) {
 
-		MavenWrapperChecksumIntention action = new MavenWrapperChecksumIntention.Distribution((project, url) -> {
-			Document document = fixture.getEditor().getDocument();
-			WriteCommandAction.runWriteCommandAction(project, () -> {
-				String current = document.getText();
-				document.replaceString(current.indexOf("3.9.6"), current.indexOf("3.9.6") + "3.9.6".length(),
-						"3.9.7");
-				PsiDocumentManager.getInstance(project).commitDocument(document);
-			});
-			return SHA;
+		useDownloader(new ChecksumDownloader() {
+
+			@Override
+			public CompletableFuture<String> computeSha(Project project, String url) {
+
+				Document document = fixture.getEditor().getDocument();
+				WriteCommandAction.runWriteCommandAction(project, () -> {
+					String current = document.getText();
+					document.replaceString(current.indexOf("3.9.6"), current.indexOf("3.9.6") + "3.9.6".length(),
+							"3.9.7");
+					PsiDocumentManager.getInstance(project).commitDocument(document);
+				});
+				return CompletableFuture.completedFuture(SHA);
+			}
+
 		});
 
-		invoke(action, file);
+		invoke(file);
 
 		assertThat(file).containsText("apache-maven/3.9.7")
 				.doesNotContainText("distributionSha256Sum");
 	}
 
-	private void invoke(MavenWrapperChecksumIntention action, PsiFile file) {
+	@Test
+	@EditorFile(name = "maven-wrapper.properties", content = """
+			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
+			<caret>
+			""")
+	void cancelledDownloadLeavesFileUnchanged(PsiFile file) {
+
+		useDownloader(new ChecksumDownloader() {
+
+			@Override
+			public CompletableFuture<String> computeSha(Project project, String url) {
+				CompletableFuture<String> cancelled = new CompletableFuture<>();
+				cancelled.cancel(false);
+				return cancelled;
+			}
+
+		});
+
+		invoke(file);
+
+		assertThat(file).doesNotContainText("distributionSha256Sum");
+	}
+
+	private void invoke(PsiFile file) {
 		action.invoke(fixture.getProject(), fixture.getEditor(), file);
 	}
 
-	private MavenWrapperChecksumQuickFix.ChecksumComputer checksum() {
-		return (project, url) -> SHA;
+	private void useDownloader(ChecksumDownloader downloader) {
+		ServiceContainerUtil.registerOrReplaceServiceInstance(ApplicationManager.getApplication(),
+				ChecksumDownloader.class, downloader, fixture.getTestRootDisposable());
 	}
 
 }

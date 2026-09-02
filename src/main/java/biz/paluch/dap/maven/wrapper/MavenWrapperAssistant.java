@@ -17,9 +17,7 @@
 package biz.paluch.dap.maven.wrapper;
 
 import java.util.Collection;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 
 import javax.swing.Icon;
 
@@ -32,7 +30,6 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.MavenRepository;
 import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.ReleaseSource;
-import biz.paluch.dap.artifact.RemoteRepository;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.AbstractProjectBuildContext;
@@ -155,12 +152,13 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 	 * Return the wrapper-derived release sources for the given wrapper file,
 	 * deduplicated by repository URL.
 	 *
-	 * <p>The result is cached until the PSI file changes. Non-properties files and
-	 * files without parseable supported URL properties produce an empty list.
+	 * <p>The result is cached until the PSI file changes. It follows the
+	 * {@link MavenWrapperParser} collection policy: non-properties files, files
+	 * without parseable supported URL properties, and entries whose two version
+	 * occurrences differ contribute no release source.
 	 *
 	 * @param wrapperFile the wrapper properties file.
-	 * @return the release sources declared by parseable supported wrapper URL
-	 * properties.
+	 * @return the release sources declared by collectable wrapper URL properties.
 	 */
 	public static List<ReleaseSource> collectReleaseSources(PsiFile wrapperFile) {
 
@@ -168,11 +166,7 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 			if (!(it instanceof PropertiesFile propertiesFile)) {
 				return List.of();
 			}
-			Set<RemoteRepository> repositories = new LinkedHashSet<>();
-			for (WrapperEntry entry : MavenWrapperParser.parse(propertiesFile)) {
-				repositories.add(entry.repository());
-			}
-			return repositories.stream().map(MavenRepository::new)
+			return MavenWrapperParser.parseRepositories(propertiesFile).stream().map(MavenRepository::new)
 					.map(rs -> (ReleaseSource) rs)
 					.toList();
 		});

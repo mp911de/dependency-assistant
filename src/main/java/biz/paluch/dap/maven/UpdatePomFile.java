@@ -174,31 +174,15 @@ class UpdatePomFile implements FileDependencyUpdater {
 									&& expected.getProfileId().equals(actual.getProfileId()));
 		}
 
+		// Declaration sources are identities (section, BOM import, profile id). A
+		// root, profile, plain managed, or BOM entry is only rewritten by an update
+		// that names that very source.
 		if (source instanceof VersionSource.VersionDeclarationSource declaredBy) {
-			return declarationSourceMatches(declaredBy.getDeclarationSource(), declaration.getDeclarationSource());
+			return declaredBy.getDeclarationSource().equals(declaration.getDeclarationSource());
 		}
 
 		return source instanceof VersionSource.DeclaredVersion
-				&& update.declarationSources().stream()
-						.anyMatch(expected -> declarationSourceMatches(expected, declaration.getDeclarationSource()));
-	}
-
-	private static boolean declarationSourceMatches(DeclarationSource expected, DeclarationSource actual) {
-
-		if (expected.equals(actual)) {
-			return true;
-		}
-		if (expected instanceof DeclarationSource.Managed && !(actual instanceof DeclarationSource.Managed)
-				|| expected instanceof DeclarationSource.Plugin && !(actual instanceof DeclarationSource.Plugin)
-				|| expected instanceof DeclarationSource.Dependency
-						&& !(actual instanceof DeclarationSource.Dependency)) {
-			return false;
-		}
-		if (expected instanceof DeclarationSource.Profile expectedProfile) {
-			return actual instanceof DeclarationSource.Profile actualProfile
-					&& expectedProfile.getProfileId().equals(actualProfile.getProfileId());
-		}
-		return expected instanceof DeclarationSource.Managed && actual instanceof DeclarationSource.Managed;
+				&& update.declarationSources().contains(declaration.getDeclarationSource());
 	}
 
 	private static boolean isPropertiesChild(XmlTag tag) {
