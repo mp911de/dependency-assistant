@@ -43,7 +43,12 @@ public class MavenFixtures {
 
 	static final MavenId MAVEN_ID = new MavenId("com.example", "demo", "");
 
-		static final ProjectId PROJECT_ID = ProjectId.of("com.example", "demo");
+	/**
+	 * Return the project identity the Maven context assigns to the given POM.
+	 */
+	public static ProjectId projectId(PsiFile pom) {
+		return MavenProjectContext.createProjectId(MAVEN_ID, pom.getVirtualFile());
+	}
 
 	/**
 	 * Set up Dependency Assistant for the given project.

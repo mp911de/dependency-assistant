@@ -69,6 +69,13 @@ public interface ProjectState {
 	void invalidateDependencies();
 
 	/**
+	 * Remove the project state from the cache.
+	 * <p>Useful when a project file has been deleted.
+	 * @see #invalidateDependencies()
+	 */
+	void remove();
+
+	/**
 	 * Find a property by name that is associated with at least one artifact.
 	 *
 	 * @param propertyName the property name to locate.

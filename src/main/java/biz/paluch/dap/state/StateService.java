@@ -400,6 +400,12 @@ public class StateService
 		}
 
 		@Override
+		public void remove() {
+			getCache().removeProject(identity);
+			dependencies.remove(identity);
+		}
+
+		@Override
 		public @Nullable VersionProperty findProperty(String propertyName, Predicate<VersionProperty> filter) {
 			ProjectProperty projectProperty = findProjectProperty(propertyName, filter);
 			return projectProperty != null ? projectProperty.property() : null;

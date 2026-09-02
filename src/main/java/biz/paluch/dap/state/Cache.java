@@ -449,6 +449,23 @@ public class Cache implements ModificationTracker {
 	}
 
 	/**
+	 * Remove the cache entry for the given project identity.
+	 * <p>Removing an entry counts as a cache modification. Ignoring unknown
+	 * {@link ProjectId id}.
+	 *
+	 * @param identity the project identity to remove.
+	 */
+	public void removeProject(ProjectId identity) {
+
+		synchronized (projects) {
+			boolean removed = projects.removeIf(project -> project != null && project.matches(identity));
+			if (removed) {
+				modificationTracker.incModificationCount();
+			}
+		}
+	}
+
+	/**
 	 * Find the first project property with the given name that satisfies the
 	 * supplied filter.
 	 *
@@ -475,16 +492,6 @@ public class Cache implements ModificationTracker {
 		}
 
 		return null;
-	}
-
-	/**
-	 * Invoke the given consumer for each property known to this cache.
-	 * <p>Iteration is based on a snapshot of the current project entries.
-	 *
-	 * @param propertyConsumer the consumer to invoke.
-	 */
-	public void doWithProperties(Consumer<VersionProperty> propertyConsumer) {
-		getProjects().forEach(project -> project.getProperties().forEach(propertyConsumer));
 	}
 
 	/**

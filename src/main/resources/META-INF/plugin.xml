@@ -54,6 +54,11 @@
 		<platform implementation="biz.paluch.dap.metadata.SourceForgePlatform"/>
 	</extensions>
 
+	<projectListeners>
+		<listener class="biz.paluch.dap.state.ProjectFileRemovalListener"
+		          topic="com.intellij.openapi.vfs.newvfs.BulkFileListener"/>
+	</projectListeners>
+
 	<extensions defaultExtensionNs="org.jetbrains.kotlin">
 		<supportsKotlinPluginMode supportsK1="true" supportsK2="true"/>
 	</extensions>

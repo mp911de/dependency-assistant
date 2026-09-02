@@ -19,6 +19,7 @@ package biz.paluch.dap.state;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.PackageSystem;
+import biz.paluch.dap.fixtures.Releases;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -37,8 +38,9 @@ class CacheUnitTests {
 	@Test
 	void shouldFindByIdentity() {
 
-		CachedArtifact maven = artifact(PackageSystem.MAVEN);
-		CachedArtifact npm = artifact(PackageSystem.NPM);
+		CachedArtifact maven = Releases.LETTUCE_CORE;
+		CachedArtifact npm = Releases.LETTUCE_CORE.snapshot();
+		npm.setPackageSystem(PackageSystem.NPM);
 		cache.addArtifacts(maven, npm);
 
 		assertThat(cache.findCachedArtifact(PackageIdentity.of(LETTUCE, PackageSystem.MAVEN))).isSameAs(maven);
@@ -48,7 +50,7 @@ class CacheUnitTests {
 	@Test
 	void identityLookupAcceptsUndetachedCoordinates() {
 
-		CachedArtifact maven = artifact(PackageSystem.MAVEN);
+		CachedArtifact maven = Releases.LETTUCE_CORE;
 		cache.addArtifacts(maven);
 
 		// a CachedArtifact is itself an ArtifactId with identity equality
@@ -67,16 +69,24 @@ class CacheUnitTests {
 	@Test
 	void identityLookupMissesForeignEcosystem() {
 
-		cache.addArtifacts(artifact(PackageSystem.MAVEN));
+		cache.addArtifacts(Releases.LETTUCE_CORE);
 
 		assertThat(cache.findCachedArtifact(PackageIdentity.of(LETTUCE, PackageSystem.NPM))).isNull();
 	}
 
-	private static CachedArtifact artifact(PackageSystem packageSystem) {
+	@Test
+	void removeProjectDropsMatchingEntry() {
 
-		CachedArtifact artifact = new CachedArtifact(LETTUCE);
-		artifact.setPackageSystem(packageSystem);
-		return artifact;
+		ProjectId root = ProjectId.of("com.example", "root", "/repo/pom.xml");
+		ProjectId module = ProjectId.of("com.example", "module", "/repo/module/pom.xml");
+		cache.getProject(root);
+		cache.getProject(module);
+		long before = cache.getModificationCount();
+
+		cache.removeProject(module);
+
+		assertThat(cache.getProjects()).extracting(ProjectCache::getId).containsExactly(root);
+		assertThat(cache.getModificationCount()).isGreaterThan(before);
 	}
 
 }

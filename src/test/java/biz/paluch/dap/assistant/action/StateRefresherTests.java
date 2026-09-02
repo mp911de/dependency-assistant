@@ -24,7 +24,6 @@ import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.TestFixture;
 import biz.paluch.dap.maven.MavenFixtures;
-import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.editor.Document;
@@ -75,7 +74,7 @@ class StateRefresherTests {
 		StateRefresher.getInstance(fixture.getProject()).refreshNow(List.of(pomFile.getVirtualFile()));
 
 		Dependency dependency = StateService.getInstance(fixture.getProject())
-				.getProjectState(ProjectId.of("com.example", "demo"))
+				.getProjectState(MavenFixtures.projectId(pomFile))
 				.findDependency(ArtifactId.of("hello.world", "drift-bom"));
 
 		assertThat(dependency).isNotNull();

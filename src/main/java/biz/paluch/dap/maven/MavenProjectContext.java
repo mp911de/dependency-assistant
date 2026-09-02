@@ -129,10 +129,15 @@ interface MavenProjectContext extends ProjectBuildContext {
 		return StringUtils.hasText(mavenId.getGroupId()) && StringUtils.hasText(mavenId.getArtifactId());
 	}
 
-	static ProjectId createProjectId(MavenId mavenId) {
+	/**
+	 * Create the project identity for a Maven project: its coordinates plus the POM
+	 * path, so the entry is file-keyed like every other ecosystem and can be
+	 * evicted when the POM is removed.
+	 */
+	static ProjectId createProjectId(MavenId mavenId, VirtualFile pom) {
 		Assert.hasText(mavenId.getGroupId(), "groupId must not be null or empty");
-		Assert.hasText(mavenId.getArtifactId(), "groupId must not be null or empty");
-		return new ProjectId(mavenId.getGroupId(), mavenId.getArtifactId(), null);
+		Assert.hasText(mavenId.getArtifactId(), "artifactId must not be null or empty");
+		return new ProjectId(mavenId.getGroupId(), mavenId.getArtifactId(), pom.getPath());
 	}
 
 	/**
@@ -180,7 +185,7 @@ interface MavenProjectContext extends ProjectBuildContext {
 			PsiFile file = psiManager.findFile(mavenProject.getFile());
 			this.propertyResolver = file instanceof XmlFile pomFile ? createPomProperties(pomFile)
 					: MavenPomProperties.from(List.of());
-			this.projectId = createProjectId(mavenProject.getMavenId());
+			this.projectId = createProjectId(mavenProject.getMavenId(), mavenProject.getFile());
 			this.projectVersion = resolveProjectVersion();
 		}
 
