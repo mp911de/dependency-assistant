@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.CancellationException;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
@@ -54,6 +55,8 @@ public class GradleInitService implements ProjectActivity {
 	public @Nullable Object execute(Project project, Continuation<? super Unit> continuation) {
 		try {
 			ɑΩ();
+		} catch (CancellationException e) {
+			throw e;
 		} catch (Exception e) {
 			LOG.error("Failed to initialize Gradle extension point", e);
 		}

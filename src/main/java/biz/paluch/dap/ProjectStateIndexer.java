@@ -18,9 +18,7 @@ package biz.paluch.dap;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 
@@ -28,13 +26,13 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ProjectBuildContext;
+import biz.paluch.dap.util.Await;
 import biz.paluch.dap.util.StepsProgressIndicator;
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -123,30 +121,16 @@ public class ProjectStateIndexer {
 		steps.setIndeterminate(false);
 		List<CancellablePromise<Void>> promises = new ArrayList<>();
 		ProjectStateIndexer indexer = new ProjectStateIndexer(project, indicator);
-		CompletableFuture<Void> future = new CompletableFuture<>();
 		for (DependencyAssistant assistant : assistants) {
 			if (filter.test(assistant)) {
 				promises.add(indexer.refreshAfterImport(assistant).onSuccess(__ -> steps.nextStep()));
 			}
 		}
 
-		Promises.all(promises).onSuccess(__ -> steps.nextStep()).onError(future::completeExceptionally)
-				.onSuccess(__ -> future.complete(null));
+		CompletableFuture<?> future = Promises.asCompletableFuture(
+				Promises.all(promises).onSuccess(__ -> steps.nextStep()));
 
-		try {
-			future.get();
-		} catch (InterruptedException e) {
-			Thread.currentThread().interrupt();
-			throw new RuntimeException(e);
-		} catch (ExecutionException e) {
-			if (e.getCause() instanceof ProcessCanceledException pce) {
-				throw pce;
-			}
-			if (e.getCause() instanceof CancellationException) {
-				return;
-			}
-			throw new RuntimeException(e);
-		}
+		Await.await(future, indicator);
 
 		DaemonCodeAnalyzer.getInstance(project).restart();
 	}

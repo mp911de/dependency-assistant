@@ -43,6 +43,7 @@ import com.intellij.openapi.project.DumbService;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.startup.ProjectActivity;
 import com.intellij.openapi.util.Predicates;
+import com.intellij.util.JavaCoroutines;
 import com.intellij.util.progress.StepsProgressIndicator;
 import kotlin.Unit;
 import kotlin.coroutines.Continuation;
@@ -69,21 +70,22 @@ public class PostStartup implements ProjectActivity {
 	@Override
 	public @Nullable Object execute(Project project, Continuation<? super Unit> continuation) {
 
-		FlushStateOnEdit.install(project);
+		return JavaCoroutines.suspendJava(jc -> {
+			FlushStateOnEdit.install(project);
 
-		DumbService.getInstance(project).runWhenSmart(() -> {
+			DumbService.getInstance(project).runWhenSmart(() -> {
 
-			new Task.Backgroundable(project, MessageBundle.message("post-startup.loading"), true) {
+				new Task.Backgroundable(project, MessageBundle.message("post-startup.loading"), true) {
 
-						@Override
-						public void run(ProgressIndicator indicator) {
-							postStartup(indicator, project);
-						}
+					@Override
+					public void run(ProgressIndicator indicator) {
+						postStartup(indicator, project);
+					}
 
-			}.queue();
-		});
-
-		return null;
+				}.queue();
+			});
+			jc.resume(Unit.INSTANCE);
+		}, continuation);
 	}
 
 	private void postStartup(ProgressIndicator indicator, Project project) {

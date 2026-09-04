@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
@@ -144,6 +145,8 @@ public class ReleaseResolver {
 			return fetchAndCache(sources, consistency);
 		} catch (ProcessCanceledException e) {
 			throw e;
+		} catch (CancellationException e) {
+			throw new ProcessCanceledException(e);
 		} catch (RuntimeException e) {
 			return ReleaseLookupResult.failed(sources.artifactId() + ": " + e.getMessage());
 		}
@@ -192,7 +195,7 @@ public class ReleaseResolver {
 							? metadata.getProjectMetadata()
 							: null;
 					return new SourceAwareReleases(source, Releases.of(fetched), projectMetadata, null);
-				} catch (ProcessCanceledException e) {
+				} catch (CancellationException e) {
 					throw e;
 				} catch (ArtifactNotFoundException e) {
 					if (LOG.isDebugEnabled()) {
@@ -223,13 +226,24 @@ public class ReleaseResolver {
 				}
 				pending.remove(future);
 				results.add(future.get());
+			} catch (ProcessCanceledException e) {
+				cancel(pending);
+				throw e;
+			} catch (CancellationException e) {
+				cancel(pending);
+				throw new ProcessCanceledException(e);
 			} catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
 				cancel(pending);
 				return new FetchResult(artifactId, results);
 			} catch (ExecutionException e) {
 				if (e.getCause() instanceof ProcessCanceledException pce) {
+					cancel(pending);
 					throw pce;
+				}
+				if (e.getCause() instanceof CancellationException cancellation) {
+					cancel(pending);
+					throw new ProcessCanceledException(cancellation);
 				}
 				errors.add(e.getCause());
 			}

@@ -33,6 +33,7 @@ import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.startup.ProjectActivity;
+import com.intellij.util.JavaCoroutines;
 import com.intellij.util.concurrency.AppExecutorUtil;
 import kotlin.Unit;
 import kotlin.coroutines.Continuation;
@@ -162,8 +163,10 @@ final class MavenSyncRefresher implements MavenSyncListener, Disposable {
 
 		@Override
 		public @Nullable Object execute(Project project, Continuation<? super Unit> continuation) {
-			getInstance(project);
-			return null;
+			return JavaCoroutines.suspendJava(jc -> {
+				getInstance(project);
+				jc.resume(Unit.INSTANCE);
+			}, continuation);
 		}
 
 	}

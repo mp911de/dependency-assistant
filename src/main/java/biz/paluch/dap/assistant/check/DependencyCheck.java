@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -279,11 +280,18 @@ public class DependencyCheck {
 				entry.getValue().cancel(true);
 				cancelRemainingFutures(futures);
 				throw e;
+			} catch (CancellationException e) {
+				cancelRemainingFutures(futures);
+				throw new ProcessCanceledException(e);
 			} catch (ExecutionException e) {
 				if (e.getCause() instanceof ProcessCanceledException c) {
 					entry.getValue().cancel(true);
 					cancelRemainingFutures(futures);
 					throw c;
+				}
+				if (e.getCause() instanceof CancellationException cancellation) {
+					cancelRemainingFutures(futures);
+					throw new ProcessCanceledException(cancellation);
 				}
 
 				entry.getValue().cancel(true);
@@ -322,12 +330,19 @@ public class DependencyCheck {
 			indicator.checkCanceled();
 			try {
 				scanFuture.get(VulnerabilityScanner.VULNERABILITY_SCAN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+			} catch (ProcessCanceledException e) {
+				throw e;
+			} catch (CancellationException e) {
+				throw new ProcessCanceledException(e);
 			} catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
 				return results;
 			} catch (ExecutionException e) {
 				if (e.getCause() instanceof ProcessCanceledException c) {
 					throw c;
+				}
+				if (e.getCause() instanceof CancellationException cancellation) {
+					throw new ProcessCanceledException(cancellation);
 				}
 				LOG.warn("Vulnerability scan failed", e);
 			} catch (TimeoutException e) {
