@@ -18,7 +18,9 @@ package biz.paluch.dap;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 
@@ -26,14 +28,15 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ProjectBuildContext;
-import biz.paluch.dap.util.Await;
 import biz.paluch.dap.util.StepsProgressIndicator;
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressIndicator;
+import com.intellij.openapi.progress.util.ProgressIndicatorUtils;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
@@ -130,7 +133,13 @@ public class ProjectStateIndexer {
 		CompletableFuture<?> future = Promises.asCompletableFuture(
 				Promises.all(promises).onSuccess(__ -> steps.nextStep()));
 
-		Await.await(future, indicator);
+		try {
+			ProgressIndicatorUtils.awaitWithCheckCanceled((Future<?>) future, indicator);
+		} catch (ProcessCanceledException e) {
+			throw e;
+		} catch (CancellationException e) {
+			throw new ProcessCanceledException(e);
+		}
 
 		DaemonCodeAnalyzer.getInstance(project).restart();
 	}

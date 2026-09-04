@@ -18,26 +18,19 @@ package biz.paluch.dap.assistant.action;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.PackageIdentity;
-import biz.paluch.dap.artifact.ReleaseSources;
 import biz.paluch.dap.assistant.check.DependencyCheck;
 import biz.paluch.dap.assistant.check.DependencyCheckResult;
-import biz.paluch.dap.assistant.check.ReleaseLookupResult;
-import biz.paluch.dap.assistant.check.ReleaseResolver;
 import biz.paluch.dap.assistant.check.UpgradeScope;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.fixtures.DependencyAssistantFixtures;
 import biz.paluch.dap.gradle.GradleFixtures;
 import com.intellij.openapi.progress.EmptyProgressIndicator;
-import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
-import com.intellij.util.SameThreadExecutorService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -107,18 +100,7 @@ class DependencyCheckScopeTests {
 		List<VirtualFile> files = Arrays.stream(selection).map(PsiFile::getVirtualFile).toList();
 		UpgradeScope scope = UpgradeScopeResolver.resolve(project, new UpgradeRequest(files, null));
 
-		DependencyCheck dependencyCheck = new DependencyCheck(project) {
-
-			@Override
-			protected Map<PackageIdentity, ReleaseLookupResult> resolveReleases(ProgressIndicator indicator,
-					List<ReleaseSources> artifactSources, ReleaseResolver.Consistency consistency) {
-				return super.resolveReleases(indicator, artifactSources, consistency, new SameThreadExecutorService(),
-						new SameThreadExecutorService());
-			}
-
-		};
-
-		return dependencyCheck.findDependencyUpgrades(new EmptyProgressIndicator(), scope);
+		return new DependencyCheck(project).findDependencyUpgrades(new EmptyProgressIndicator(), scope);
 	}
 
 }

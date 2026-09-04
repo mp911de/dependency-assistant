@@ -20,9 +20,6 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
 
 import biz.paluch.dap.artifact.ArtifactNotFoundException;
 import biz.paluch.dap.artifact.TagSource;
@@ -33,12 +30,12 @@ import biz.paluch.dap.state.CachedRepository;
 import biz.paluch.dap.util.Sequence;
 import biz.paluch.dap.util.StepsProgressIndicator;
 import biz.paluch.dap.util.StringUtils;
-import biz.paluch.dap.util.VirtualThreads;
+import biz.paluch.dap.util.TaskScope;
+import biz.paluch.dap.util.TaskScope.Subtask;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
-import com.intellij.util.concurrency.AppExecutorUtil;
 
 /**
  * Startup sweep that connects captured project metadata to cached repository
@@ -73,10 +70,6 @@ public class RepositoryTagScanner {
 	static final Duration SCAN_INTERVAL = Duration.ofDays(5);
 
 	private static final int MAX_CONCURRENT_TASKS = Runtime.getRuntime().availableProcessors();
-
-	private static final ThreadFactory THREAD_FACTORY = VirtualThreads.ofVirtual()
-			.name("DependencyAssistant")
-			.factory();
 
 	private final Project project;
 
@@ -139,12 +132,20 @@ public class RepositoryTagScanner {
 
 		StepsProgressIndicator steps = StepsProgressIndicator.forSteps(indicator, candidates.size());
 
-		try (ExecutorService virtualExecutor = Executors.newThreadPerTaskExecutor(THREAD_FACTORY);
-				ExecutorService executor = AppExecutorUtil.createBoundedApplicationPoolExecutor(
-						"Dependency Assistant Repository Tags", virtualExecutor, MAX_CONCURRENT_TASKS)) {
+		try (TaskScope scope = TaskScope.open("RepositoryTags", indicator, MAX_CONCURRENT_TASKS)) {
 
 			for (TagScanCandidate candidate : candidates) {
-				executor.execute(() -> scanRepository(candidate, steps));
+				scope.fork(() -> {
+					scanRepository(candidate, steps);
+					return null;
+				});
+			}
+
+			scope.joinAll();
+
+			// scanRepository records lookup failures itself, anything left is an error
+			for (Subtask<?> subtask : scope.getSubtasks()) {
+				subtask.getOrThrow();
 			}
 		}
 	}
@@ -203,8 +204,7 @@ public class RepositoryTagScanner {
 				it.setLastUpdateTimestamp(cache.now());
 			});
 		} catch (ProcessCanceledException e) {
-			// ignore to avoid JVM default exception handler from handling this exception
-			return;
+			throw e;
 		} catch (ArtifactNotFoundException e) {
 			LOG.info("[" + key + "] Repository not found", e);
 			recordFailure(key);

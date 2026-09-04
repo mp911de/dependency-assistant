@@ -16,11 +16,9 @@
 
 package biz.paluch.dap.assistant.check;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.PackageIdentity;
@@ -32,7 +30,6 @@ import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.util.Sequence;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.util.AbstractProgressIndicatorBase;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
@@ -50,18 +47,11 @@ class ReleaseResolverUnitTests {
 
 	static final PackageIdentity LETTUCE = PackageIdentity.of(LETTUCE_CORE, PackageSystem.MAVEN);
 
-	ExecutorService executor = Executors.newFixedThreadPool(2);
-
-	@AfterEach
-	void tearDown() {
-		executor.shutdownNow();
-	}
-
 	@Test
 	void keepsCompletedReleasesWhenSiblingSourceTimesOut() {
 
-		ReleaseResolver resolver = new ReleaseResolver(executor, new AbstractProgressIndicatorBase(), new Cache(), 250,
-				TimeUnit.MILLISECONDS);
+		ReleaseResolver resolver = new ReleaseResolver(new AbstractProgressIndicatorBase(), new Cache(),
+				Duration.ofMillis(250));
 		ReleaseSources sources = new ReleaseSources(LETTUCE,
 				List.of(new ReleasingSource("central", "1.0.0"), new BlockingSource("slow")));
 
@@ -74,8 +64,8 @@ class ReleaseResolverUnitTests {
 	@Test
 	void reportsTimeoutWhenNoSourceCompletes() {
 
-		ReleaseResolver resolver = new ReleaseResolver(executor, new AbstractProgressIndicatorBase(), new Cache(), 250,
-				TimeUnit.MILLISECONDS);
+		ReleaseResolver resolver = new ReleaseResolver(new AbstractProgressIndicatorBase(), new Cache(),
+				Duration.ofMillis(250));
 		ReleaseSources sources = new ReleaseSources(LETTUCE, List.of(new BlockingSource("slow")));
 
 		ReleaseLookupResult result = resolver.getReleases(sources, ReleaseResolver.reset());

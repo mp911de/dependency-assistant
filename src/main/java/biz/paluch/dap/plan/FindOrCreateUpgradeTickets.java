@@ -19,9 +19,6 @@ package biz.paluch.dap.plan;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -33,7 +30,8 @@ import biz.paluch.dap.ticket.TicketState;
 import biz.paluch.dap.ticket.TicketSystem;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
-import biz.paluch.dap.util.VirtualThreads;
+import biz.paluch.dap.util.TaskScope;
+import biz.paluch.dap.util.TaskScope.Subtask;
 import biz.paluch.dap.util.WeightedStepsProgressIndicator;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProcessCanceledException;
@@ -41,13 +39,13 @@ import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.util.text.HtmlBuilder;
 import com.intellij.openapi.util.text.HtmlChunk;
-import com.intellij.util.ExceptionUtil;
-import com.intellij.util.concurrency.AppExecutorUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
  * Background task to find or create dependency upgrade tickets. Pending plan
- * items are processed by at most four concurrent virtual-thread workers.
+ * items are processed by at most four concurrent virtual-thread workers. The
+ * first failure stops items not yet started; items in flight complete and link
+ * their ticket. The failure is reported together with the partial summary.
  *
  * @author Mark Paluch
  */
@@ -56,10 +54,6 @@ class FindOrCreateUpgradeTickets extends Task.Backgroundable {
 	private static final Logger LOG = Logger.getInstance(FindOrCreateUpgradeTickets.class);
 
 	private static final int MAX_CONCURRENT_TASKS = 4;
-
-	private static final ThreadFactory THREAD_FACTORY = VirtualThreads.ofVirtual()
-			.name("DependencyAssistant")
-			.factory();
 
 	private final UpgradePlanService service;
 
@@ -123,19 +117,29 @@ class FindOrCreateUpgradeTickets extends Task.Backgroundable {
 		WeightedStepsProgressIndicator steps = WeightedStepsProgressIndicator.forTasks(indicator, pending.size());
 		TicketRepository repository = ticketSystem.getRepository();
 		List<TicketState> openStates = getOpenStates(repository, indicator);
-		AtomicReference<Throwable> taskFailure = new AtomicReference<>();
+		AtomicReference<TicketCreationFailed> taskFailure = new AtomicReference<>();
 
-		try (ExecutorService virtualExecutor = Executors.newThreadPerTaskExecutor(THREAD_FACTORY);
-				ExecutorService executor = AppExecutorUtil.createBoundedApplicationPoolExecutor(
-						"Find or Create Upgrade Tickets", virtualExecutor,
-						MAX_CONCURRENT_TASKS)) {
+		try (TaskScope scope = TaskScope.open("UpgradeTickets", indicator, MAX_CONCURRENT_TASKS)) {
 
 			for (UpgradePlanItem item : pending) {
-				executor.execute(() -> findOrCreate(repository, openStates, steps, item, taskFailure));
+				scope.fork(() -> {
+					findOrCreate(repository, openStates, steps, item, taskFailure);
+					return null;
+				});
+			}
+
+			scope.joinAll();
+
+			// findOrCreate records ticket failures itself, anything left is an error
+			for (Subtask<?> subtask : scope.getSubtasks()) {
+				subtask.getOrThrow();
 			}
 		}
 
-		ExceptionUtil.rethrowAllAsUnchecked(taskFailure.get());
+		TicketCreationFailed failure = taskFailure.get();
+		if (failure != null) {
+			throw failure;
+		}
 	}
 
 	private static List<TicketState> getOpenStates(TicketRepository repository, ProgressIndicator indicator) {
@@ -154,7 +158,8 @@ class FindOrCreateUpgradeTickets extends Task.Backgroundable {
 	}
 
 	private void findOrCreate(TicketRepository repository, List<TicketState> openStates,
-			WeightedStepsProgressIndicator indicator, UpgradePlanItem item, AtomicReference<Throwable> taskFailure) {
+			WeightedStepsProgressIndicator indicator, UpgradePlanItem item,
+			AtomicReference<TicketCreationFailed> taskFailure) {
 
 		if (taskFailure.get() != null) {
 			indicator.nextStep();
@@ -182,8 +187,7 @@ class FindOrCreateUpgradeTickets extends Task.Backgroundable {
 		} catch (IOException | RuntimeException e) {
 			failed.incrementAndGet();
 			LOG.warn("Failed to create or find ticket for " + title, e);
-			TicketCreationFailed failure = new TicketCreationFailed(e, title);
-			taskFailure.compareAndSet(null, failure);
+			taskFailure.compareAndSet(null, new TicketCreationFailed(e, title));
 		} finally {
 			indicator.nextStep();
 		}
@@ -191,24 +195,7 @@ class FindOrCreateUpgradeTickets extends Task.Backgroundable {
 
 	@Override
 	public void onSuccess() {
-		notifications.info(service.getProject(), summary());
-	}
-
-	private String summary() {
-
-		int created = this.created.get();
-		int found = this.found.get();
-		int failed = this.failed.get();
-		String message;
-		if (created > 0 && found > 0) {
-			message = MessageBundle.message("plan.tickets.summary.created-and-found", created, found);
-		} else if (found > 0) {
-			message = MessageBundle.message("plan.tickets.summary.found", found);
-		} else {
-			message = MessageBundle.message("plan.tickets.summary.created", created);
-		}
-
-		return failed > 0 ? message + MessageBundle.message("plan.tickets.summary.failed", failed) : message;
+		notifications.info(service.getProject(), getSummary());
 	}
 
 	@Override
@@ -229,14 +216,36 @@ class FindOrCreateUpgradeTickets extends Task.Backgroundable {
 			}
 
 			notifications.error(service.getProject(), title, builder.toString());
+		} else {
+			notifications.error(service.getProject(), title, error);
 		}
 
-		notifications.error(service.getProject(), title, error);
+		// items in flight when the failure hit still completed, report them
+		if (created.get() + found.get() > 0) {
+			notifications.info(service.getProject(), getSummary());
+		}
 	}
 
 	@Override
 	public void onFinished() {
 		service.setBusy(false);
+	}
+
+	private String getSummary() {
+
+		int created = this.created.get();
+		int found = this.found.get();
+		int failed = this.failed.get();
+		String message;
+		if (created > 0 && found > 0) {
+			message = MessageBundle.message("plan.tickets.summary.created-and-found", created, found);
+		} else if (found > 0) {
+			message = MessageBundle.message("plan.tickets.summary.found", found);
+		} else {
+			message = MessageBundle.message("plan.tickets.summary.created", created);
+		}
+
+		return failed > 0 ? message + MessageBundle.message("plan.tickets.summary.failed", failed) : message;
 	}
 
 	private static @Nullable Ticket findExisting(TicketRepository repository, List<TicketState> openStates,

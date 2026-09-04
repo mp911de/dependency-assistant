@@ -16,20 +16,12 @@
 
 package biz.paluch.dap.assistant.check;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 import biz.paluch.dap.BomMembershipResolver;
 import biz.paluch.dap.DependencyAssistant;
@@ -45,11 +37,10 @@ import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StepsProgressIndicator;
-import biz.paluch.dap.util.VirtualThreads;
+import biz.paluch.dap.util.TaskScope;
+import biz.paluch.dap.util.TaskScope.Subtask;
 import biz.paluch.dap.util.WeightedStepsProgressIndicator;
-import com.google.common.base.Supplier;
 import com.intellij.openapi.application.ReadAction;
-import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
@@ -68,7 +59,7 @@ import com.intellij.openapi.project.Project;
  */
 public class DependencyCheck {
 
-	private static final Logger LOG = Logger.getInstance(DependencyCheck.class);
+	static final Duration LOOKUP_TIMEOUT = Duration.ofSeconds(60);
 
 	private final Project project;
 
@@ -203,32 +194,20 @@ public class DependencyCheck {
 
 	/**
 	 * Resolve releases for each artifact in parallel, collecting one
-	 * {@link ReleaseLookupResult} per artifact with timeout and cancellation
-	 * handling.
+	 * {@link ReleaseLookupResult} per artifact.
 	 *
 	 * @param indicator the progress indicator.
 	 * @param artifactSources the release sources to query per artifact.
 	 * @param consistency the release-cache consistency to use.
-	 * @return the resolver result per artifact, in encounter order. An artifact
-	 * timeout is represented as a failed result; interruption yields a partial map.
+	 * @return the resolver result per artifact, in encounter order. A lookup
+	 * exceeding {@link #LOOKUP_TIMEOUT} or throwing is represented as a failed
+	 * result. Cancellation propagates as {@link ProcessCanceledException} and
+	 * cancels outstanding lookups.
 	 */
 	protected Map<PackageIdentity, ReleaseLookupResult> resolveReleases(ProgressIndicator indicator,
 			List<ReleaseSources> artifactSources, ReleaseResolver.Consistency consistency) {
 
-		ThreadFactory threadFactory = VirtualThreads.ofVirtual().name("DependencyAssistant").factory();
-		ThreadFactory resolverFactory = VirtualThreads.ofVirtual().name("DependencyAssistant-ReleaseResolver")
-				.factory();
-		try (ExecutorService executor = Executors.newThreadPerTaskExecutor(threadFactory);
-				ExecutorService resolverExecutor = Executors.newThreadPerTaskExecutor(resolverFactory)) {
-			return resolveReleases(indicator, artifactSources, consistency, resolverExecutor, executor);
-		}
-	}
-
-	protected Map<PackageIdentity, ReleaseLookupResult> resolveReleases(ProgressIndicator indicator,
-			List<ReleaseSources> artifactSources, ReleaseResolver.Consistency consistency,
-			ExecutorService resolverExecutor, ExecutorService executor) {
-
-		VulnerabilityScanner scanner = VulnerabilityScanner.create(project);
+		VulnerabilityScanner scanner = VulnerabilityScanner.create(project, stateService);
 		int stepCount = artifactSources.size() + 1;
 		if (scanner.isPresent()) {
 			stepCount++;
@@ -237,79 +216,43 @@ public class DependencyCheck {
 		steps.setIndeterminate(false);
 
 		Cache cache = stateService.getCache();
-		ReleaseResolver resolver = new ReleaseResolver(resolverExecutor, indicator, cache);
-
-		Map<PackageIdentity, Future<ReleaseLookupResult>> futures = new LinkedHashMap<>();
-
-		for (ReleaseSources artifactSource : artifactSources) {
-
-			Supplier<ReleaseLookupResult> lookupReleaseSupplier = () -> {
-				indicator.checkCanceled();
-				String name = artifactSource.artifactId().toString();
-				indicator.setText(MessageBundle.message("action.check.dependency.loading", name));
-				ReleaseLookupResult result = resolver.getReleases(artifactSource, consistency);
-
-				indicator.setText(MessageBundle.message("action.check.dependency.checked", name));
-				steps.nextStep();
-				return result;
-			};
-
-			futures.put(artifactSource.pkg(), executor.submit(lookupReleaseSupplier::get));
-		}
-
-		steps.nextStep();
+		ReleaseResolver resolver = new ReleaseResolver(indicator, cache);
 
 		Map<PackageIdentity, ReleaseLookupResult> results = new LinkedHashMap<>();
-		for (Map.Entry<PackageIdentity, Future<ReleaseLookupResult>> entry : futures.entrySet()) {
 
-			PackageIdentity pkg = entry.getKey();
-			String name = pkg.toString();
+		try (TaskScope scope = TaskScope.open("ReleaseLookup", indicator)) {
 
-			try {
-				indicator.checkCanceled();
-			} catch (ProcessCanceledException e) {
-				cancelRemainingFutures(futures);
-				throw e;
+			Map<PackageIdentity, Subtask<ReleaseLookupResult>> lookups = new LinkedHashMap<>();
+			for (ReleaseSources artifactSource : artifactSources) {
+
+				lookups.put(artifactSource.pkg(), scope.fork(() -> {
+					indicator.checkCanceled();
+					String name = artifactSource.artifactId().toString();
+					indicator.setText(MessageBundle.message("action.check.dependency.loading", name));
+					ReleaseLookupResult result = resolver.getReleases(artifactSource, consistency);
+
+					indicator.setText(MessageBundle.message("action.check.dependency.checked", name));
+					steps.nextStep();
+					return result;
+				}));
 			}
 
-			ReleaseLookupResult res;
-			boolean abort = false;
-			try {
-				res = entry.getValue().get(60, TimeUnit.SECONDS);
-			} catch (ProcessCanceledException e) {
-				entry.getValue().cancel(true);
-				cancelRemainingFutures(futures);
-				throw e;
-			} catch (CancellationException e) {
-				cancelRemainingFutures(futures);
-				throw new ProcessCanceledException(e);
-			} catch (ExecutionException e) {
-				if (e.getCause() instanceof ProcessCanceledException c) {
-					entry.getValue().cancel(true);
-					cancelRemainingFutures(futures);
-					throw c;
+			steps.nextStep();
+
+			lookups.forEach((pkg, lookup) -> {
+
+				lookup.join(LOOKUP_TIMEOUT);
+
+				results.put(pkg, switch (lookup.state()) {
+				case SUCCESS -> lookup.get();
+				case CANCELLED -> throw new ProcessCanceledException();
+				default -> {
+					Throwable failure = lookup.exception();
+					yield ReleaseLookupResult.failed("%s: %s".formatted(pkg,
+							failure != null ? failure.getMessage() : lookup.state()));
 				}
-				if (e.getCause() instanceof CancellationException cancellation) {
-					cancelRemainingFutures(futures);
-					throw new ProcessCanceledException(cancellation);
-				}
-
-				entry.getValue().cancel(true);
-				Throwable cause = e.getCause() != null ? e.getCause() : e;
-				res = ReleaseLookupResult.failed("%s: %s".formatted(name, cause.getMessage()));
-			} catch (InterruptedException e) {
-				res = cancelAndRecord(pkg, futures, e);
-				Thread.currentThread().interrupt();
-				abort = true;
-			} catch (TimeoutException e) {
-				res = ReleaseLookupResult.failed("%s: %s".formatted(name, e.getMessage()));
-			}
-
-			results.put(pkg, res);
-
-			if (abort) {
-				break;
-			}
+				});
+			});
 		}
 
 		List<PackageIdentity> artifactIds = results.entrySet().stream()
@@ -325,48 +268,12 @@ public class DependencyCheck {
 
 		if (scanner.isPresent()) {
 			indicator.setText(MessageBundle.message("action.check.dependency.vulnerability-scan"));
-			indicator.checkCanceled();
-			CompletableFuture<Void> scanFuture = scanner.scanNewReleasesBestEffort(artifactSources, results);
-			indicator.checkCanceled();
-			try {
-				scanFuture.get(VulnerabilityScanner.VULNERABILITY_SCAN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-			} catch (ProcessCanceledException e) {
-				throw e;
-			} catch (CancellationException e) {
-				throw new ProcessCanceledException(e);
-			} catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-				return results;
-			} catch (ExecutionException e) {
-				if (e.getCause() instanceof ProcessCanceledException c) {
-					throw c;
-				}
-				if (e.getCause() instanceof CancellationException cancellation) {
-					throw new ProcessCanceledException(cancellation);
-				}
-				LOG.warn("Vulnerability scan failed", e);
-			} catch (TimeoutException e) {
-				LOG.warn("Vulnerability scan timed out", e);
-			}
+			scanner.scanNewReleases(indicator, artifactSources, results);
 		}
 		steps.nextStep();
 
 		cache.recordUpdate();
 		return results;
-	}
-
-	private static void cancelRemainingFutures(Map<?, ? extends Future<?>> futures) {
-		for (Future<?> future : futures.values()) {
-			if (!future.isDone()) {
-				future.cancel(true);
-			}
-		}
-	}
-
-	private static ReleaseLookupResult cancelAndRecord(PackageIdentity pkg,
-			Map<?, ? extends Future<?>> futures, Throwable cause) {
-		cancelRemainingFutures(futures);
-		return ReleaseLookupResult.failed("%s: %s".formatted(pkg, cause.getMessage()));
 	}
 
 }

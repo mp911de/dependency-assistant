@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.assistant.check;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -25,13 +26,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.CancellationException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorCompletionService;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.function.Consumer;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactNotFoundException;
@@ -46,6 +42,8 @@ import biz.paluch.dap.state.FetchedReleases;
 import biz.paluch.dap.state.HasProjectMetadata;
 import biz.paluch.dap.util.Sequence;
 import biz.paluch.dap.util.StringUtils;
+import biz.paluch.dap.util.TaskScope;
+import biz.paluch.dap.util.TaskScope.Subtask;
 import com.intellij.ide.nls.NlsMessages;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProcessCanceledException;
@@ -72,39 +70,30 @@ public class ReleaseResolver {
 
 	private static final Logger LOG = Logger.getInstance(ReleaseResolver.class);
 
-	private static final long DEFAULT_SOURCE_TIMEOUT = 30;
-
-	private static final TimeUnit DEFAULT_SOURCE_TIMEOUT_UNIT = TimeUnit.SECONDS;
-
-	private final ExecutorService executor;
+	private static final Duration DEFAULT_SOURCE_TIMEOUT = Duration.ofSeconds(30);
 
 	private final ProgressIndicator indicator;
 
 	private final Cache cache;
 
-	private final long sourceTimeout;
-
-	private final TimeUnit sourceTimeoutUnit;
+	private final Duration sourceTimeout;
 
 	/**
-	 * Create a resolver fetching through the given executor, honoring the given
-	 * progress indicator for cancellation, and backed by the given cache.
+	 * Create a resolver honoring the given progress indicator for cancellation,
+	 * backed by the given cache. Sources are fetched on virtual threads scoped to
+	 * each lookup.
 	 *
-	 * @param executor the executor used to query sources in parallel.
 	 * @param indicator the progress indicator used for cancellation.
 	 * @param cache the release cache consulted and updated by the resolver.
 	 */
-	public ReleaseResolver(ExecutorService executor, ProgressIndicator indicator, Cache cache) {
-		this(executor, indicator, cache, DEFAULT_SOURCE_TIMEOUT, DEFAULT_SOURCE_TIMEOUT_UNIT);
+	public ReleaseResolver(ProgressIndicator indicator, Cache cache) {
+		this(indicator, cache, DEFAULT_SOURCE_TIMEOUT);
 	}
 
-	ReleaseResolver(ExecutorService executor, ProgressIndicator indicator, Cache cache, long sourceTimeout,
-			TimeUnit sourceTimeoutUnit) {
-		this.executor = executor;
+	ReleaseResolver(ProgressIndicator indicator, Cache cache, Duration sourceTimeout) {
 		this.indicator = indicator;
 		this.cache = cache;
 		this.sourceTimeout = sourceTimeout;
-		this.sourceTimeoutUnit = sourceTimeoutUnit;
 	}
 
 	public static Consistency cached() {
@@ -178,75 +167,41 @@ public class ReleaseResolver {
 		return ReleaseLookupResult.of(result.toReleases(), Releases.of(newReleases));
 	}
 
+	/**
+	 * Fetch all sources concurrently, giving them {@link #sourceTimeout} together.
+	 * A source still pending at the deadline is cancelled and recorded as a
+	 * timeout; completed siblings are retained. Results keep the declared source
+	 * order, which decides precedence for the preferred source and project
+	 * metadata. Cancellation propagates as {@link ProcessCanceledException}.
+	 */
 	private FetchResult fetch(ReleaseSources releaseSources) {
 
 		ArtifactId artifactId = releaseSources.artifactId();
 		Set<ReleaseSource> sources = releaseSources.sources() instanceof Set<ReleaseSource> s ? s
 				: new LinkedHashSet<>(releaseSources.sources());
 
-		ExecutorCompletionService<SourceAwareReleases> completionService = new ExecutorCompletionService<>(executor);
-		Map<Future<SourceAwareReleases>, ReleaseSource> pending = new LinkedHashMap<>();
-		for (ReleaseSource source : sources) {
-			indicator.checkCanceled();
-			Future<SourceAwareReleases> future = completionService.submit(() -> {
-				try {
-					Sequence<Release> fetched = source.getReleases(artifactId, indicator);
-					CachedMetadata projectMetadata = fetched instanceof HasProjectMetadata metadata
-							? metadata.getProjectMetadata()
-							: null;
-					return new SourceAwareReleases(source, Releases.of(fetched), projectMetadata, null);
-				} catch (CancellationException e) {
-					throw e;
-				} catch (ArtifactNotFoundException e) {
-					if (LOG.isDebugEnabled()) {
-						LOG.debug("[%s][%s] No artifacts found.".formatted(source.toString(artifactId),
-								source.getId()));
-					}
-					return new SourceAwareReleases(source, Releases.empty(), null, e);
-				} catch (Exception e) {
-					LOG.warn("[%s][%s] Failed to fetch releases".formatted(source.toString(artifactId),
-							source.getId()), e);
-					return new SourceAwareReleases(source, Releases.empty(), null, e);
-				}
-			});
-			pending.put(future, source);
-		}
-
 		List<Throwable> errors = new ArrayList<>();
 		List<SourceAwareReleases> results = new ArrayList<>();
 		ArtifactNotFoundException notFoundException = null;
 
-		while (!pending.isEmpty()) {
-			indicator.checkCanceled();
-			try {
-				Future<SourceAwareReleases> future = completionService.poll(sourceTimeout, sourceTimeoutUnit);
-				if (future == null) {
-					recordTimeouts(pending, errors::add, sourceTimeout, sourceTimeoutUnit);
-					break;
-				}
-				pending.remove(future);
-				results.add(future.get());
-			} catch (ProcessCanceledException e) {
-				cancel(pending);
-				throw e;
-			} catch (CancellationException e) {
-				cancel(pending);
-				throw new ProcessCanceledException(e);
-			} catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-				cancel(pending);
-				return new FetchResult(artifactId, results);
-			} catch (ExecutionException e) {
-				if (e.getCause() instanceof ProcessCanceledException pce) {
-					cancel(pending);
-					throw pce;
-				}
-				if (e.getCause() instanceof CancellationException cancellation) {
-					cancel(pending);
-					throw new ProcessCanceledException(cancellation);
-				}
-				errors.add(e.getCause());
+		try (TaskScope scope = TaskScope.open("ReleaseSources", indicator)) {
+
+			Map<Subtask<SourceAwareReleases>, ReleaseSource> fetches = new LinkedHashMap<>();
+			for (ReleaseSource source : sources) {
+				fetches.put(scope.fork(() -> fetch(source, artifactId)), source);
 			}
+
+			scope.joinAll(sourceTimeout);
+
+			fetches.forEach((fetch, source) -> {
+				switch (fetch.state()) {
+				case SUCCESS -> results.add(fetch.get());
+				case TIMED_OUT -> errors.add(new TimeoutException(
+						"Release source %s timed out (Timeout: %s)".formatted(source.getId(), formatTimeout())));
+				case CANCELLED -> throw new ProcessCanceledException();
+				default -> errors.add(fetch.exception());
+				}
+			});
 		}
 
 		int releaseCount = 0;
@@ -281,28 +236,38 @@ public class ReleaseResolver {
 		return new FetchResult(artifactId, results);
 	}
 
-	private void recordTimeouts(Map<Future<SourceAwareReleases>, ReleaseSource> pending,
-			Consumer<? super Exception> errorConsumer, long sourceTimeout, TimeUnit sourceTimeoutUnit) {
+	/**
+	 * Query one source. Not found and ordinary failures are captured in the result,
+	 * cancellation propagates.
+	 */
+	private SourceAwareReleases fetch(ReleaseSource source, ArtifactId artifactId) {
 
-		NlsMessages.NlsDurationFormatter formatter = new NlsMessages.NlsDurationFormatter();
-		formatter.setDurationTimeUnit(sourceTimeoutUnit);
-		formatter.setNarrow(true);
-
-		for (Map.Entry<Future<SourceAwareReleases>, ReleaseSource> entry : pending.entrySet()) {
-			entry.getKey().cancel(true);
-			errorConsumer
-					.accept(new TimeoutException("Release source %s timed out (Timeout: %s)".formatted(entry.getValue()
-							.getId(), formatter.formatDuration(sourceTimeout))));
+		try {
+			Sequence<Release> fetched = source.getReleases(artifactId, indicator);
+			CachedMetadata projectMetadata = fetched instanceof HasProjectMetadata metadata
+					? metadata.getProjectMetadata()
+					: null;
+			return new SourceAwareReleases(source, Releases.of(fetched), projectMetadata, null);
+		} catch (CancellationException e) {
+			// covers ProcessCanceledException, which extends CancellationException
+			throw e;
+		} catch (ArtifactNotFoundException e) {
+			if (LOG.isDebugEnabled()) {
+				LOG.debug("[%s][%s] No artifacts found.".formatted(source.toString(artifactId), source.getId()));
+			}
+			return new SourceAwareReleases(source, Releases.empty(), null, e);
+		} catch (Exception e) {
+			LOG.warn("[%s][%s] Failed to fetch releases".formatted(source.toString(artifactId), source.getId()), e);
+			return new SourceAwareReleases(source, Releases.empty(), null, e);
 		}
-		pending.clear();
 	}
 
-	private static void cancel(Map<Future<SourceAwareReleases>, ReleaseSource> pending) {
+	private String formatTimeout() {
 
-		for (Future<SourceAwareReleases> future : pending.keySet()) {
-			future.cancel(true);
-		}
-		pending.clear();
+		NlsMessages.NlsDurationFormatter formatter = new NlsMessages.NlsDurationFormatter();
+		formatter.setDurationTimeUnit(TimeUnit.MILLISECONDS);
+		formatter.setNarrow(true);
+		return formatter.formatDuration(sourceTimeout.toMillis());
 	}
 
 	record SourceAwareReleases(ReleaseSource source, Releases releases, @Nullable CachedMetadata projectMetadata,
