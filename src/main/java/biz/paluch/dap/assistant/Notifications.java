@@ -40,22 +40,19 @@ import com.intellij.util.text.DateFormatUtil;
  * Notification facade for dependency checks, release metadata, and applied
  * updates.
  *
- * <p>Notification operations dispatch to the group registered for their
- * lifecycle. Release-cache prompts own their refresh and dismissal actions.
- * Applied-update notifications own the platform Undo action and, when needed, a
- * separate flagged-entry reversal action supplied by the caller.
- *
  * @author Mark Paluch
  */
 public class Notifications {
 
-	private static final String BALLOON_REFRESHED = "biz.paluch.dependency-assistant.releases-refreshed";
+	private static final String RELEASE_METADATA = "biz.paluch.dependency-assistant.release-metadata";
 
-	private static final String STICKY_NOTIFICATION = "biz.paluch.dependency-assistant.releases-sticky";
+	private static final String RELEASE_METADATA_STICKY = "biz.paluch.dependency-assistant.release-metadata-sticky";
 
-	private static final String ERROR_NOTIFICATION = "biz.paluch.dependency-assistant.errors";
+	private static final String INFO_NOTIFICATION = "biz.paluch.dependency-assistant.info";
 
 	private static final String UPGRADE_NOTIFICATIONS = "biz.paluch.dependency-assistant.upgrades";
+
+	private static final String UPGRADE_STICKY_NOTIFICATIONS = "biz.paluch.dependency-assistant.upgrades-sticky";
 
 	/**
 	 * Notify the user about an error under the default error title.
@@ -76,7 +73,7 @@ public class Notifications {
 	 */
 	public static void error(Project project, String title, String content) {
 
-		Notification notification = new Notification(ERROR_NOTIFICATION, title, content, NotificationType.ERROR);
+		Notification notification = new Notification(INFO_NOTIFICATION, title, content, NotificationType.ERROR);
 		notification.notify(project);
 	}
 
@@ -89,7 +86,7 @@ public class Notifications {
 	 */
 	public static void info(Project project, String title, String content) {
 
-		Notification notification = new Notification(BALLOON_REFRESHED, title, content,
+		Notification notification = new Notification(INFO_NOTIFICATION, title, content,
 				NotificationType.INFORMATION);
 		notification.notify(project);
 	}
@@ -123,7 +120,7 @@ public class Notifications {
 				.collect(Collectors.joining(", "));
 
 		Notification notification = new Notification(
-				BALLOON_REFRESHED, MessageBundle.message("action.refresh-releases.task.done.title"),
+				RELEASE_METADATA, MessageBundle.message("action.refresh-releases.task.done.title"),
 				MessageBundle.message("action.refresh-releases.task.done.message", count, duration, detail),
 				NotificationType.INFORMATION);
 		notification.notify(project);
@@ -144,7 +141,7 @@ public class Notifications {
 			Runnable notNow) {
 
 		Notification notification = new Notification(
-				STICKY_NOTIFICATION, MessageBundle.message("notification.cache.no.releases.title"),
+				RELEASE_METADATA_STICKY, MessageBundle.message("notification.cache.no.releases.title"),
 				MessageBundle.message("notification.cache.no.releases.description"),
 				NotificationType.INFORMATION);
 
@@ -230,7 +227,8 @@ public class Notifications {
 					majorCrossings)).append("</p>");
 		}
 
-		Notification notification = new Notification(STICKY_NOTIFICATION, getTitle(updates), message.toString(),
+		Notification notification = new Notification(UPGRADE_STICKY_NOTIFICATIONS, getTitle(updates),
+				message.toString(),
 				NotificationType.INFORMATION);
 
 		notification.addAction(NotificationAction.createSimpleExpiring(
@@ -273,7 +271,7 @@ public class Notifications {
 		String ago = getDurationMessage(cacheUpdate);
 
 		Notification notification = new Notification(
-				STICKY_NOTIFICATION, MessageBundle.message("notification.cache.stale.releases.title"),
+				RELEASE_METADATA_STICKY, MessageBundle.message("notification.cache.stale.releases.title"),
 				MessageBundle.message("notification.cache.stale.releases.description", ago),
 				NotificationType.INFORMATION);
 

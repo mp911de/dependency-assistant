@@ -57,7 +57,7 @@ import org.jetbrains.annotations.Nullable;
  */
 public class PluginUpdateActivity implements ProjectActivity, DumbAware, LightEditCompatible {
 
-	private static final String NOTIFICATION_GROUP = "biz.paluch.dependency-assistant.update";
+	private static final String NOTIFICATION_GROUP = "biz.paluch.dependency-assistant.plugin-update";
 
 	@Override
 	public @Nullable Object execute(Project project, Continuation<? super Unit> continuation) {

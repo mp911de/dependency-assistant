@@ -77,24 +77,39 @@
 				implementation="biz.paluch.dap.assistant.action.PostStartup"/>
 		<postStartupActivity
 				implementation="biz.paluch.dap.support.PluginUpdateActivity"/>
-		<notificationGroup id="biz.paluch.dependency-assistant.releases-refreshed"
+
+		<notificationGroup id="biz.paluch.dependency-assistant.release-metadata"
+		                   displayType="BALLOON"
+		                   bundle="messages.MessageBundle"
+		                   key="notification.release-metadata"/>
+
+		<notificationGroup id="biz.paluch.dependency-assistant.release-metadata-sticky"
+		                   displayType="STICKY_BALLOON"
+		                   bundle="messages.MessageBundle"
+		                   key="notification.release-metadata"/>
+
+		<notificationGroup id="biz.paluch.dependency-assistant.info"
 		                   displayType="BALLOON"
 		                   bundle="messages.MessageBundle" key="plugin.name"/>
-		<notificationGroup id="biz.paluch.dependency-assistant.releases-sticky"
-		                   displayType="STICKY_BALLOON"
-		                   bundle="messages.MessageBundle" key="notification.refresh-release-metadata"/>
-		<notificationGroup id="biz.paluch.dependency-assistant.errors"
-		                   displayType="BALLOON"
-	                   bundle="messages.MessageBundle" key="UpdateBuildFile.notification.error.title"/>
+
 		<notificationGroup id="biz.paluch.dependency-assistant.upgrades"
-		                   displayType="NONE"
+		                   displayType="BALLOON"
 		                   isLogByDefault="true"
-		                   bundle="messages.MessageBundle" key="notification.updates"/>
+		                   bundle="messages.MessageBundle"
+		                   key="notification.group.upgrades"/>
+
+		<notificationGroup id="biz.paluch.dependency-assistant.upgrades-sticky"
+		                   displayType="STICKY_BALLOON"
+		                   isLogByDefault="true"
+		                   bundle="messages.MessageBundle"
+		                   key="notification.group.upgrades"/>
+
 		<notificationGroup id="biz.paluch.dependency-assistant.plan"
 		                   displayType="BALLOON"
 		                   bundle="messages.MessageBundle" key="plan.notification.group"/>
+
 		<notificationGroup displayType="STICKY_BALLOON"
-		                   id="biz.paluch.dependency-assistant.update"
+		                   id="biz.paluch.dependency-assistant.plugin-update"
 		                   bundle="messages.MessageBundle"
 		                   key="notification.plugin-update" isLogByDefault="true"/>
 

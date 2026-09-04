@@ -132,26 +132,26 @@ class ArchitectureTests {
 	@ArchTest
 	ArchRule assistantCheck = packageDependencies("assistant.check",
 			"biz.paluch.dap", "artifact", "assistant", "assistant.presentation",
-			"checker", "lookup", "metadata", "presentation", "rule", "state",
+			"checker", "lookup", "metadata", "rule", "state",
 			"support", "upgrade", "util");
 
 	@ArchTest
 	ArchRule assistantCompletion = packageDependencies("assistant.completion",
 			"biz.paluch.dap", "artifact", "assistant", "assistant.presentation",
-			"checker", "lookup", "metadata", "presentation", "rule", "state",
+			"checker", "lookup", "metadata", "rule", "state",
 			"support", "util");
 
 	@ArchTest
 	ArchRule assistantDocumentation = packageDependencies("assistant.documentation",
 			"biz.paluch.dap", "artifact", "assistant", "assistant.action",
-			"assistant.presentation", "checker", "lookup", "metadata", "presentation",
+			"assistant.presentation", "checker", "lookup", "metadata",
 			"rule", "state", "support", "util");
 
 	@ArchTest
 	ArchRule assistantEditor = packageDependencies("assistant.editor",
 			"biz.paluch.dap", "artifact", "assistant", "assistant.action",
 			"assistant.check", "assistant.presentation", "checker", "lookup", "metadata",
-			"presentation", "rule", "severity", "state", "support", "upgrade", "util");
+			"rule", "severity", "state", "support", "upgrade", "util");
 
 	@ArchTest
 	ArchRule assistantReview = packageDependencies("assistant.review",
