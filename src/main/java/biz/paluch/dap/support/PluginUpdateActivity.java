@@ -21,6 +21,7 @@ import java.io.InputStream;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.state.ApplicationSettings;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
@@ -119,6 +120,7 @@ public class PluginUpdateActivity implements ProjectActivity, DumbAware, LightEd
 			Notification notification = group.createNotification(
 					MessageBundle.message("notification.plugin-update.title", metadata.version()),
 					changesToShow, NotificationType.INFORMATION);
+			notification.setIcon(DependencyAssistantIcons.ICON);
 			Notifications.Bus.notify(notification, project);
 		});
 	}

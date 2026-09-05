@@ -98,12 +98,6 @@
 		                   bundle="messages.MessageBundle"
 		                   key="notification.group.upgrades"/>
 
-		<notificationGroup id="biz.paluch.dependency-assistant.upgrades-sticky"
-		                   displayType="STICKY_BALLOON"
-		                   isLogByDefault="true"
-		                   bundle="messages.MessageBundle"
-		                   key="notification.group.upgrades"/>
-
 		<notificationGroup id="biz.paluch.dependency-assistant.plan"
 		                   displayType="BALLOON"
 		                   bundle="messages.MessageBundle" key="plan.notification.group"/>

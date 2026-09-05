@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.ide.nls.NlsMessages;
@@ -51,8 +52,6 @@ public class Notifications {
 	private static final String INFO_NOTIFICATION = "biz.paluch.dependency-assistant.info";
 
 	private static final String UPGRADE_NOTIFICATIONS = "biz.paluch.dependency-assistant.upgrades";
-
-	private static final String UPGRADE_STICKY_NOTIFICATIONS = "biz.paluch.dependency-assistant.upgrades-sticky";
 
 	/**
 	 * Notify the user about an error under the default error title.
@@ -102,62 +101,6 @@ public class Notifications {
 
 		String message = error.getMessage();
 		return message != null && !message.isBlank() ? message : error.getClass().getSimpleName();
-	}
-
-	/**
-	 * Notify the user that release metadata was refreshed, reporting how many
-	 * artifacts were updated and how long the refresh took.
-	 *
-	 * @param project the project to notify.
-	 * @param updates the artifacts whose release metadata was refreshed.
-	 * @param durationMs the refresh duration in milliseconds.
-	 */
-	public static void releaseMetadataRefreshed(Project project, List<ArtifactId> updates, long durationMs) {
-
-		int count = updates.size();
-		String duration = NlsMessages.formatDuration(durationMs, 1, true);
-		String detail = updates.stream().map(Object::toString)
-				.collect(Collectors.joining(", "));
-
-		Notification notification = new Notification(
-				RELEASE_METADATA, MessageBundle.message("action.refresh-releases.task.done.title"),
-				MessageBundle.message("action.refresh-releases.task.done.message", count, duration, detail),
-				NotificationType.INFORMATION);
-		notification.notify(project);
-	}
-
-	/**
-	 * Notify the user that release metadata is unavailable and offer to update the
-	 * cache.
-	 *
-	 * <p>The task factory is evaluated only when the user chooses refresh. Choosing
-	 * not now invokes the dismissal callback and expires the notification.
-	 *
-	 * @param project the project to notify.
-	 * @param taskFunction the factory for the refresh task.
-	 * @param notNow the callback that records dismissal of the prompt.
-	 */
-	public static void releaseMetadataUnavailable(Project project, Function<Project, Task> taskFunction,
-			Runnable notNow) {
-
-		Notification notification = new Notification(
-				RELEASE_METADATA_STICKY, MessageBundle.message("notification.cache.no.releases.title"),
-				MessageBundle.message("notification.cache.no.releases.description"),
-				NotificationType.INFORMATION);
-
-		notification
-				.setSuggestionType(true)
-				.addAction(NotificationAction
-						.createSimpleExpiring(MessageBundle.message("notification.action.refresh-releases-metadata"),
-								() -> {
-									ProgressManager.getInstance().run(taskFunction.apply(project));
-								}))
-				.addAction(NotificationAction.createSimple(MessageBundle.message("notification.not-now"),
-						() -> {
-							notNow.run();
-							notification.expire();
-						}))
-				.notify(project);
 	}
 
 	/**
@@ -227,7 +170,7 @@ public class Notifications {
 					majorCrossings)).append("</p>");
 		}
 
-		Notification notification = new Notification(UPGRADE_STICKY_NOTIFICATIONS, getTitle(updates),
+		Notification notification = new Notification(UPGRADE_NOTIFICATIONS, getTitle(updates),
 				message.toString(),
 				NotificationType.INFORMATION);
 
@@ -254,6 +197,70 @@ public class Notifications {
 	}
 
 	/**
+	 * Notify the user that release metadata was refreshed, reporting how many
+	 * artifacts were updated and how long the refresh took.
+	 *
+	 * @param project the project to notify.
+	 * @param updates the artifacts whose release metadata was refreshed.
+	 * @param durationMs the refresh duration in milliseconds.
+	 */
+	public static void releaseMetadataRefreshed(Project project, List<ArtifactId> updates, long durationMs) {
+
+		int count = updates.size();
+		String duration = NlsMessages.formatDuration(durationMs, 1, true);
+		String detail = updates.stream().map(Object::toString)
+				.collect(Collectors.joining(", "));
+
+		Notification notification = new Notification(
+				RELEASE_METADATA, MessageBundle.message("action.refresh-releases.task.done.title"),
+				MessageBundle.message("action.refresh-releases.task.done.message", count, duration, detail),
+				NotificationType.INFORMATION);
+
+		notification.configureDoNotAskOption("action.refresh-releases.task.done.message",
+				MessageBundle.message("notification.do-not-show-again"));
+		notification
+				.notify(project);
+	}
+
+	/**
+	 * Notify the user that release metadata is unavailable and offer to update the
+	 * cache.
+	 *
+	 * <p>The task factory is evaluated only when the user chooses refresh. Choosing
+	 * not now invokes the dismissal callback and expires the notification.
+	 *
+	 * @param project the project to notify.
+	 * @param taskFunction the factory for the refresh task.
+	 * @param notNow the callback that records dismissal of the prompt.
+	 */
+	public static void releaseMetadataUnavailable(Project project, Function<Project, Task> taskFunction,
+			Runnable notNow) {
+
+		Notification notification = new Notification(
+				RELEASE_METADATA_STICKY, MessageBundle.message("notification.cache.no.releases.title"),
+				MessageBundle.message("notification.cache.no.releases.description"),
+				NotificationType.INFORMATION);
+
+		notification.configureDoNotAskOption("notification.cache.no.releases",
+				MessageBundle.message("notification.do-not-show-again"));
+
+		notification
+				.setSuggestionType(true)
+				.setIcon(DependencyAssistantIcons.ICON)
+				.addAction(NotificationAction
+						.createSimpleExpiring(MessageBundle.message("notification.action.refresh-releases-metadata"),
+								() -> {
+									ProgressManager.getInstance().run(taskFunction.apply(project));
+								}))
+				.addAction(NotificationAction.createSimple(MessageBundle.message("notification.not-now"),
+						() -> {
+							notNow.run();
+							notification.expire();
+						}))
+				.notify(project);
+	}
+
+	/**
 	 * Notify the user that release metadata is probably old and offer to update the
 	 * cache.
 	 *
@@ -262,11 +269,11 @@ public class Notifications {
 	 *
 	 * @param project the project to notify.
 	 * @param cacheUpdate when the release cache was last updated.
-	 * @param taskFunction the factory for the refresh task.
+	 * @param runRefresh the callback that performs the refresh task.
 	 * @param notNow the callback that records dismissal of the prompt.
 	 */
 	public static void releaseMetadataStale(Project project, Instant cacheUpdate,
-			Function<Project, Task> taskFunction, Runnable notNow) {
+			Runnable runRefresh, Runnable notNow) {
 
 		String ago = getDurationMessage(cacheUpdate);
 
@@ -275,12 +282,16 @@ public class Notifications {
 				MessageBundle.message("notification.cache.stale.releases.description", ago),
 				NotificationType.INFORMATION);
 
+		notification.configureDoNotAskOption("notification.cache.stale.releases",
+				MessageBundle.message("notification.do-not-show-again"));
+
 		notification
+				.setIcon(DependencyAssistantIcons.ICON)
 				.setSuggestionType(true)
 				.addAction(NotificationAction
 						.createSimpleExpiring(MessageBundle.message("notification.action.refresh-releases-metadata"),
 								() -> {
-									ProgressManager.getInstance().run(taskFunction.apply(project));
+
 								}))
 				.addAction(NotificationAction.createSimple(MessageBundle.message("notification.not-now"),
 						() -> {

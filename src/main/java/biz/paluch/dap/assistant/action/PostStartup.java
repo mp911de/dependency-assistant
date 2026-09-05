@@ -38,6 +38,7 @@ import biz.paluch.dap.util.MessageBundle;
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
 import com.intellij.ide.PowerSaveMode;
 import com.intellij.openapi.progress.ProgressIndicator;
+import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.DumbService;
 import com.intellij.openapi.project.Project;
@@ -148,7 +149,9 @@ public class PostStartup implements ProjectActivity {
 		Instant lastUpdate = cache.getLastUpdate();
 		if (lastUpdate != null && cache.shouldNag()) {
 			Notifications.releaseMetadataStale(project, lastUpdate,
-					RefreshReleaseMetadata::new, cache::doNotNag);
+					() -> {
+						ProgressManager.getInstance().run(new RefreshReleaseMetadata(project));
+					}, cache::doNotNag);
 		}
 	}
 
