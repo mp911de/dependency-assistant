@@ -47,7 +47,7 @@ abstract class UpgradePlanAction extends DumbAwareAction {
 	 * @param service the plan service; {@literal null} when the event carries no
 	 * project.
 	 */
-	void update(AnActionEvent e, @Nullable UpgradePlanService service) {
+	public void update(AnActionEvent e, @Nullable UpgradePlanService service) {
 		e.getPresentation().setEnabled(service != null && service.hasItems() && !service.isBusy());
 	}
 
@@ -68,6 +68,6 @@ abstract class UpgradePlanAction extends DumbAwareAction {
 		}
 	}
 
-	abstract void perform(Project project);
+	public abstract void perform(Project project);
 
 }

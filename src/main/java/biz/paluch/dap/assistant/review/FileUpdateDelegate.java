@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.function.BiConsumer;
 
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.assistant.Notifications;
+import biz.paluch.dap.notify.Notifications;
 import biz.paluch.dap.support.DependencyUpdates;
 import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.upgrade.FileUpdateEngine;
@@ -173,8 +173,9 @@ public class FileUpdateDelegate {
 
 		PsiFile psiFile = psiManager.findFile(file);
 		if (psiFile == null) {
-			Notifications.error(project, MessageBundle.message("UpdateBuildFile.notification.error.title"),
-					MessageBundle.message("UpdateBuildFile.notification.no-file", file.getPresentableUrl()));
+			Notifications.error(MessageBundle.message("UpdateBuildFile.notification.error.title"),
+					MessageBundle.message("UpdateBuildFile.notification.no-file", file.getPresentableUrl()))
+					.notify(project);
 			return;
 		}
 
@@ -184,9 +185,10 @@ public class FileUpdateDelegate {
 			throw ex;
 		} catch (Exception ex) {
 			LOG.warn("Build file update failed", ex);
-			Notifications.error(project, MessageBundle.message("UpdateBuildFile.notification.error.title"),
+			Notifications.error(MessageBundle.message("UpdateBuildFile.notification.error.title"),
 					MessageBundle.message("UpdateBuildFile.notification.failed", file.getPresentableUrl(),
-							Notifications.errorMessage(ex)));
+							Notifications.errorMessage(ex)))
+					.notify(project);
 		}
 	}
 

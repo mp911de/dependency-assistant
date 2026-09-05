@@ -24,10 +24,10 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.assistant.Notifications;
 import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
 import biz.paluch.dap.metadata.ProjectMetadata;
 import biz.paluch.dap.metadata.ProjectMetadataService;
+import biz.paluch.dap.notify.Notifications;
 import biz.paluch.dap.rule.ArtifactPattern;
 import biz.paluch.dap.rule.DependencyfileArtifacts;
 import biz.paluch.dap.rule.DependencyfileArtifacts.ArtifactEntry;
@@ -103,8 +103,8 @@ class DependencyfileArtifactWriter {
 
 			openInEditor(descriptor, selection);
 		} catch (IOException | IncorrectOperationException ex) {
-			Notifications.error(project, MessageBundle.message("dialog.action.addToDependencyfile"),
-					Notifications.errorMessage(ex));
+			Notifications.error(MessageBundle.message("dialog.action.addToDependencyfile"),
+					Notifications.errorMessage(ex)).notify(project);
 		}
 	}
 

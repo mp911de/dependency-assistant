@@ -31,6 +31,8 @@ import javax.swing.JComponent;
 import javax.swing.JPanel;
 
 import biz.paluch.dap.assistant.check.DependencySiteNavigator;
+import biz.paluch.dap.notify.NotificationChannel;
+import biz.paluch.dap.notify.Notifications;
 import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
@@ -402,8 +404,8 @@ class UpgradePlanPanel extends SimpleToolWindowPanel implements Disposable, Upgr
 			public void onSuccess() {
 
 				if (affectedFiles.isEmpty()) {
-					new PlanNotifications().warning(project, MessageBundle.message("plan.paste.invalid.title"),
-							MessageBundle.message("plan.paste.invalid.message"));
+					Notifications.warning(NotificationChannel.PLAN, MessageBundle.message("plan.paste.invalid.title"),
+							MessageBundle.message("plan.paste.invalid.message")).notify(project);
 					return;
 				}
 

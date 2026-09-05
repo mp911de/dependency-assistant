@@ -17,7 +17,6 @@
 package biz.paluch.dap.assistant;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -29,9 +28,7 @@ import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.DependencyUpdates;
 import biz.paluch.dap.support.FileScope;
-import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.Sequence;
-import com.intellij.openapi.util.text.HtmlChunk;
 import com.intellij.openapi.vfs.VirtualFile;
 
 /**
@@ -145,46 +142,6 @@ public class AppliedUpdates implements Sequence<AppliedUpdate> {
 	 */
 	public FileScope getReverseFiles() {
 		return FileScope.of(outOfBounds.stream().map(Reversible::file).toList());
-	}
-
-	/**
-	 * Render flagged summaries as an HTML heading followed by a list.
-	 *
-	 * @param heading the trusted HTML heading to prepend without escaping.
-	 * @param entries the summaries to render. Entry labels and versions are escaped
-	 * as text.
-	 * @return the notification HTML fragment.
-	 */
-	public String renderOutOfBounds(String heading,
-			Collection<AppliedUpdate> entries) {
-
-		HtmlChunk.Element ul = HtmlChunk.ul();
-
-		for (AppliedUpdate update : entries) {
-			ul = ul.children(HtmlChunk.li()
-					.addText(MessageBundle.message("notification.out-of-bounds.entry",
-							update.displayName(), update.getTargetVersion())));
-		}
-
-		return heading + ul;
-	}
-
-	/**
-	 * Render the summary entries as an HTML list of upgrades, downgrades, or
-	 * same-order updates.
-	 *
-	 * @return the notification HTML fragment.
-	 */
-	public String renderApplied() {
-
-		HtmlChunk.Element ul = HtmlChunk.ul();
-		for (AppliedUpdate update : this) {
-
-			HtmlChunk li = HtmlChunk.li().addText(update.toString());
-			ul = ul.children(li);
-		}
-
-		return ul.toString();
 	}
 
 	@Override

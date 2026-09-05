@@ -127,7 +127,7 @@ class ArchitectureTests {
 	@ArchTest
 	ArchRule assistantAction = packageDependencies("assistant.action",
 			"biz.paluch.dap", "artifact", "assistant", "assistant.check",
-			"assistant.review", "metadata", "rule", "state", "support", "upgrade", "util");
+			"assistant.review", "metadata", "notify", "rule", "state", "support", "upgrade", "util");
 
 	@ArchTest
 	ArchRule assistantCheck = packageDependencies("assistant.check",
@@ -156,7 +156,7 @@ class ArchitectureTests {
 	@ArchTest
 	ArchRule assistantReview = packageDependencies("assistant.review",
 			"biz.paluch.dap", "artifact", "assistant", "assistant.check",
-			"assistant.presentation", "checker", "lookup", "metadata", "plan", "rule",
+			"assistant.presentation", "checker", "lookup", "metadata", "notify", "plan", "rule",
 			"state", "support", "upgrade", "util");
 
 	@ArchTest
@@ -212,7 +212,7 @@ class ArchitectureTests {
 	@ArchTest
 	ArchRule plan = packageDependencies("plan",
 			"biz.paluch.dap", "artifact", "assistant", "assistant.check",
-			"checker", "lookup", "metadata", "rule", "state", "support", "ticket", "upgrade", "util");
+			"checker", "lookup", "metadata", "notify", "rule", "state", "support", "ticket", "upgrade", "util");
 
 	@ArchTest
 	ArchRule rule = packageDependencies("rule",

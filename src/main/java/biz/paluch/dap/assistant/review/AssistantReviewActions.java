@@ -25,9 +25,13 @@ import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.assistant.AppliedUpdates;
-import biz.paluch.dap.assistant.Notifications;
 import biz.paluch.dap.assistant.presentation.DependencyPresentation;
 import biz.paluch.dap.assistant.presentation.DependencyPresentationFactory;
+import biz.paluch.dap.notify.NotificationActions;
+import biz.paluch.dap.notify.NotificationBuilder;
+import biz.paluch.dap.notify.NotificationChannel;
+import biz.paluch.dap.notify.Notifications;
+import biz.paluch.dap.notify.UpgradeNotification;
 import biz.paluch.dap.plan.PlannedUpgrade;
 import biz.paluch.dap.plan.UpgradePlanToolWindowFactory;
 import biz.paluch.dap.rule.DependencyRule;
@@ -38,11 +42,13 @@ import biz.paluch.dap.support.DependencyUpdates;
 import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.upgrade.FileUpdateEngine;
 import biz.paluch.dap.util.MessageBundle;
+import com.intellij.notification.NotificationType;
 import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.command.UndoConfirmationPolicy;
 import com.intellij.openapi.progress.EmptyProgressIndicator;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.vcs.ProjectLevelVcsManager;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import com.intellij.util.Consumer;
@@ -87,12 +93,35 @@ class AssistantReviewActions {
 		new FileUpdateDelegate(project).withGlobalUndo(undoConfirmationPolicy)
 				.updateFiles(indicator, scope, dependencyUpdates);
 
-		Runnable undoFlagged = () -> new FileUpdateDelegate(project)
-				.updateFiles(new EmptyProgressIndicator(ModalityState.nonModal()),
-						applied.getReverseFiles(),
-						applied.getReverse());
+		if (applied.isEmpty()) {
+			return;
+		}
 
-		Notifications.updatesApplied(project, applied, undoFlagged);
+		notifyApplied(applied);
+	}
+
+	/**
+	 * Notify about applied updates. The balloon describes flagged entries
+	 * (compliance or major crossing), offers to reverse only those when several
+	 * updates were applied (a single flagged update is fully reverted by Undo),
+	 * offers a commit under version control, and always offers Undo.
+	 */
+	private void notifyApplied(AppliedUpdates applied) {
+
+		UpgradeNotification wording = UpgradeNotification.applied(applied).withFlagged();
+		NotificationBuilder notification = Notifications.applied(NotificationChannel.UPGRADES, wording);
+
+		if (wording.getType() == NotificationType.WARNING && !wording.isSingle()) {
+			notification.action(NotificationActions.revertFlagged(() -> new FileUpdateDelegate(project)
+					.updateFiles(new EmptyProgressIndicator(ModalityState.nonModal()), applied.getReverseFiles(),
+							applied.getReverse())));
+		}
+
+		if (ProjectLevelVcsManager.getInstance(project).hasActiveVcss()) {
+			notification.action(NotificationActions.commit(project, applied));
+		}
+
+		notification.action(NotificationActions.undo(project)).notify(project);
 	}
 
 	private DependencyUpdates getDependencyUpdates(List<DependencyUpdate> updates, DependencyRuleService ruleService,
@@ -127,8 +156,8 @@ class AssistantReviewActions {
 	}
 
 	public void reportApplyError(Throwable error) {
-		Notifications.error(project, MessageBundle.message("UpdateBuildFile.notification.error.title"),
-				Notifications.errorMessage(error));
+		Notifications.error(MessageBundle.message("UpdateBuildFile.notification.error.title"),
+				Notifications.errorMessage(error)).notify(project);
 	}
 
 	public void openInUpgradePlan(Map<PlannedUpgrade, ArtifactVersion> upgrades, FileScope scope) {

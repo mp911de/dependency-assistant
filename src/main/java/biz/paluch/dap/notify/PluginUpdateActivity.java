@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.support;
+package biz.paluch.dap.notify;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -27,10 +27,7 @@ import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.ide.lightEdit.LightEditCompatible;
 import com.intellij.notification.Notification;
-import com.intellij.notification.NotificationGroup;
-import com.intellij.notification.NotificationGroupManager;
 import com.intellij.notification.NotificationType;
-import com.intellij.notification.Notifications;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.DumbAware;
@@ -51,14 +48,11 @@ import org.jetbrains.annotations.Nullable;
  * <p>The activity reads version and change-note metadata from the bundled
  * {@code META-INF/plugin.xml}. It shows at most five change-note sections newer
  * than the version stored in {@link ApplicationSettings}. Missing or unreadable
- * metadata, blank change notes, and an unavailable notification group are
- * ignored.
+ * metadata and blank change notes are ignored.
  *
  * @author Mark Paluch
  */
 public class PluginUpdateActivity implements ProjectActivity, DumbAware, LightEditCompatible {
-
-	private static final String NOTIFICATION_GROUP = "biz.paluch.dependency-assistant.plugin-update";
 
 	@Override
 	public @Nullable Object execute(Project project, Continuation<? super Unit> continuation) {
@@ -104,10 +98,7 @@ public class PluginUpdateActivity implements ProjectActivity, DumbAware, LightEd
 
 		// collect the recent changes the user hasn't seen yet
 		String changes = createChanges(metadata, oldVersion);
-		NotificationGroup group = NotificationGroupManager.getInstance()
-				.getNotificationGroup(NOTIFICATION_GROUP);
-
-		if (group == null || StringUtils.isEmpty(changes)) {
+		if (StringUtils.isEmpty(changes)) {
 			return;
 		}
 
@@ -117,11 +108,11 @@ public class PluginUpdateActivity implements ProjectActivity, DumbAware, LightEd
 				.replaceAll("(?ms)\\n[\\s]+", "\n");
 
 		application.invokeLater(() -> {
-			Notification notification = group.createNotification(
+			Notification notification = NotificationChannel.PLUGIN_UPDATE.create(
 					MessageBundle.message("notification.plugin-update.title", metadata.version()),
 					changesToShow, NotificationType.INFORMATION);
 			notification.setIcon(DependencyAssistantIcons.ICON);
-			Notifications.Bus.notify(notification, project);
+			notification.notify(project);
 		});
 	}
 

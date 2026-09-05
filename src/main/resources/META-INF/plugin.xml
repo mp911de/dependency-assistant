@@ -77,7 +77,7 @@
 		<postStartupActivity
 				implementation="biz.paluch.dap.assistant.action.PostStartup"/>
 		<postStartupActivity
-				implementation="biz.paluch.dap.support.PluginUpdateActivity"/>
+				implementation="biz.paluch.dap.notify.PluginUpdateActivity"/>
 
 		<notificationGroup id="biz.paluch.dependency-assistant.release-metadata"
 		                   displayType="BALLOON"
@@ -87,7 +87,7 @@
 		<notificationGroup id="biz.paluch.dependency-assistant.release-metadata-sticky"
 		                   displayType="STICKY_BALLOON"
 		                   bundle="messages.MessageBundle"
-		                   key="notification.release-metadata"/>
+		                   key="notification.release-metadata.prompts"/>
 
 		<notificationGroup id="biz.paluch.dependency-assistant.info"
 		                   displayType="BALLOON"

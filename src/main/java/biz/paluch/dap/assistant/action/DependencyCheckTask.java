@@ -22,11 +22,11 @@ import java.util.List;
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.artifact.PackageIdentity;
-import biz.paluch.dap.assistant.Notifications;
 import biz.paluch.dap.assistant.check.DependencyCheck;
 import biz.paluch.dap.assistant.check.DependencyCheckResult;
 import biz.paluch.dap.assistant.check.UpgradeScope;
 import biz.paluch.dap.assistant.review.DependencyCheckDialog;
+import biz.paluch.dap.notify.Notifications;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.ide.nls.NlsMessages;
 import com.intellij.openapi.application.ReadAction;
@@ -110,9 +110,10 @@ public class DependencyCheckTask extends Task.Backgroundable {
 
 		DependencyCheckResult result = resultRef;
 		if (result == null || result.isEmpty()) {
-			Notifications.info(project, MessageBundle.message("action.check.dependencies.empty.title"),
+			Notifications.info(MessageBundle.message("action.check.dependencies.empty.title"),
 					MessageBundle.message("action.check.dependencies.empty.checked", scope.size(),
-							format(DependencyAssistantDispatcher.findAll(project))));
+							format(DependencyAssistantDispatcher.findAll(project))))
+					.notify(project);
 			return;
 		}
 
@@ -130,8 +131,8 @@ public class DependencyCheckTask extends Task.Backgroundable {
 	public void onThrowable(Throwable error) {
 		LOG.warn("Dependency check failed", error);
 
-		Notifications.error(project,
-				MessageBundle.message("action.check.dependencies.task.error", Notifications.errorMessage(error)));
+		Notifications.error(MessageBundle.message("action.check.dependencies.task.error",
+				Notifications.errorMessage(error))).notify(project);
 	}
 
 	private void notifyNotFound(UpgradeScope.Reason reason) {
@@ -141,12 +142,13 @@ public class DependencyCheckTask extends Task.Backgroundable {
 		if (assistants.isEmpty()) {
 			assistants = DependencyAssistantDispatcher.findAll();
 			if (assistants.isEmpty()) {
-				Notifications.info(project, MessageBundle.message("action.check.dependencies.no-assistants.title"),
-						MessageBundle.message("action.check.dependencies.no-assistants.installed"));
+				Notifications.info(MessageBundle.message("action.check.dependencies.no-assistants.title"),
+						MessageBundle.message("action.check.dependencies.no-assistants.installed")).notify(project);
 
 			} else {
-				Notifications.info(project, MessageBundle.message("action.check.dependencies.no-assistants.title"),
-						MessageBundle.message("action.check.dependencies.no-assistants.available", format(assistants)));
+				Notifications.info(MessageBundle.message("action.check.dependencies.no-assistants.title"),
+						MessageBundle.message("action.check.dependencies.no-assistants.available", format(assistants)))
+						.notify(project);
 			}
 			return;
 		}
@@ -166,7 +168,7 @@ public class DependencyCheckTask extends Task.Backgroundable {
 							supportedAssistants);
 		}
 
-		Notifications.info(project, MessageBundle.message("action.check.dependencies.empty.title"), message);
+		Notifications.info(MessageBundle.message("action.check.dependencies.empty.title"), message).notify(project);
 	}
 
 	private String format(Collection<DependencyAssistant> assistants) {

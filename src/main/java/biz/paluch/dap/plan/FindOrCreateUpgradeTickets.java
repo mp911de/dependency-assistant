@@ -22,6 +22,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import biz.paluch.dap.notify.NotificationChannel;
+import biz.paluch.dap.notify.Notifications;
 import biz.paluch.dap.ticket.Label;
 import biz.paluch.dap.ticket.Milestone;
 import biz.paluch.dap.ticket.Ticket;
@@ -29,7 +31,6 @@ import biz.paluch.dap.ticket.TicketRepository;
 import biz.paluch.dap.ticket.TicketState;
 import biz.paluch.dap.ticket.TicketSystem;
 import biz.paluch.dap.util.MessageBundle;
-import biz.paluch.dap.util.StringUtils;
 import biz.paluch.dap.util.TaskScope;
 import biz.paluch.dap.util.TaskScope.Subtask;
 import biz.paluch.dap.util.WeightedStepsProgressIndicator;
@@ -70,8 +71,6 @@ class FindOrCreateUpgradeTickets extends Task.Backgroundable {
 	private final AtomicInteger found = new AtomicInteger();
 
 	private final AtomicInteger failed = new AtomicInteger();
-
-	private final PlanNotifications notifications = new PlanNotifications();
 
 	FindOrCreateUpgradeTickets(UpgradePlanService service, TicketSystem ticketSystem, List<Milestone> milestones,
 			List<Label> labels, List<UpgradePlanItem> items) {
@@ -195,7 +194,12 @@ class FindOrCreateUpgradeTickets extends Task.Backgroundable {
 
 	@Override
 	public void onSuccess() {
-		notifications.info(service.getProject(), getSummary());
+		notifySummary();
+	}
+
+	private void notifySummary() {
+		Notifications.info(NotificationChannel.PLAN, MessageBundle.message("plugin.name"), getSummary())
+				.notify(service.getProject());
 	}
 
 	@Override
@@ -209,20 +213,17 @@ class FindOrCreateUpgradeTickets extends Task.Backgroundable {
 			HtmlBuilder builder = new HtmlBuilder();
 			builder.append(
 					HtmlChunk.p().addText(MessageBundle.message("plan.tickets.error.detail", failure.getTicket())));
-			String detail = PlanNotifications.unwrapReason(failure);
+			builder.append(HtmlChunk.p().addText(Notifications.errorMessage(failure)));
 
-			if (StringUtils.hasText(detail)) {
-				builder.append(HtmlChunk.p().addText(detail));
-			}
-
-			notifications.error(service.getProject(), title, builder.toString());
+			Notifications.error(NotificationChannel.PLAN, title, builder.toString()).notify(service.getProject());
 		} else {
-			notifications.error(service.getProject(), title, error);
+			Notifications.error(NotificationChannel.PLAN, title, Notifications.errorMessage(error))
+					.notify(service.getProject());
 		}
 
 		// items in flight when the failure hit still completed, report them
 		if (created.get() + found.get() > 0) {
-			notifications.info(service.getProject(), getSummary());
+			notifySummary();
 		}
 	}
 

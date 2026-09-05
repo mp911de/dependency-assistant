@@ -14,11 +14,14 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.assistant;
+package biz.paluch.dap.notify;
 
 import java.io.IOException;
 import java.util.Properties;
 
+import biz.paluch.dap.assistant.AppliedUpdate;
+import biz.paluch.dap.assistant.AppliedUpdates;
+import biz.paluch.dap.assistant.AssistantTemplateGroup;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.ide.fileTemplates.FileTemplate;
 import com.intellij.ide.fileTemplates.FileTemplateManager;
@@ -41,7 +44,7 @@ class NotificationTextTemplates {
 	/**
 	 * Commit message for multiple dependency updates.
 	 */
-	String getCommitMessage(AppliedUpdates updates) {
+	public String getCommitMessage(AppliedUpdates updates) {
 
 		if (updates.size() == 1) {
 			return render(AssistantTemplateGroup.COMMIT_TEMPLATE, "plan.template.commit", updates.first());

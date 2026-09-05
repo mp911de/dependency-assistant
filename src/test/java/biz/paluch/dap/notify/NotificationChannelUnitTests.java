@@ -14,22 +14,26 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.plan;
+package biz.paluch.dap.notify;
 
-import com.intellij.openapi.project.Project;
+import biz.paluch.dap.extension.IdeaProjectTests;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+
+import static org.assertj.core.api.Assertions.*;
 
 /**
- * Remove all planned upgrades from the plan. Deliberately unguarded: the plan
- * is a cheap, replaceable staging area, the transition is undoable, and the
- * last-resort confirmations sit on the apply actions instead.
+ * Unit tests for {@link NotificationChannel}.
  *
  * @author Mark Paluch
  */
-public class DiscardPlanAction extends UpgradePlanAction {
+@IdeaProjectTests
+class NotificationChannelUnitTests {
 
-	@Override
-	public void perform(Project project) {
-		UpgradePlanService.getInstance(project).clear();
+	@ParameterizedTest
+	@EnumSource(NotificationChannel.class)
+	void channelCreatesNotificationOnRegisteredGroup(NotificationChannel channel) {
+		assertThat(channel.getGroup()).isNotNull();
 	}
 
 }

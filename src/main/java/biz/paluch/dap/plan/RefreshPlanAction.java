@@ -33,12 +33,12 @@ public class RefreshPlanAction extends UpgradePlanAction {
 	 * Enabled without items: a refresh is useful on an empty plan view as well.
 	 */
 	@Override
-	void update(AnActionEvent e, @Nullable UpgradePlanService service) {
+	public void update(AnActionEvent e, @Nullable UpgradePlanService service) {
 		e.getPresentation().setEnabled(service != null && !service.isBusy());
 	}
 
 	@Override
-	void perform(Project project) {
+	public void perform(Project project) {
 		UpgradePlanService.getInstance(project).requestReload();
 	}
 

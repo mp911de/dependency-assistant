@@ -39,7 +39,7 @@ import org.jspecify.annotations.Nullable;
 public class CreateTicketsAction extends UpgradePlanAction {
 
 	@Override
-	void update(AnActionEvent e, @Nullable UpgradePlanService service) {
+	public void update(AnActionEvent e, @Nullable UpgradePlanService service) {
 
 		super.update(e, service);
 
@@ -94,7 +94,7 @@ public class CreateTicketsAction extends UpgradePlanAction {
 	 * {@link #actionPerformed} instead, which honours the selection.
 	 */
 	@Override
-	void perform(Project project) {
+	public void perform(Project project) {
 
 		UpgradePlanService service = UpgradePlanService.getInstance(project);
 		if (service.hasTicketSystem()) {

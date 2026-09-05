@@ -18,6 +18,7 @@ package biz.paluch.dap.plan;
 
 import java.util.List;
 
+import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.assistant.AppliedUpdates;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.FileScope;
@@ -28,8 +29,7 @@ import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.vcs.VcsException;
 
 /**
- * Plain apply strategy. Owns the platform command and semantic plan transition,
- * while {@link FileUpdateEngine} owns the underlying file mutations.
+ * Plain apply strategy.
  *
  * @author Mark Paluch
  */
@@ -56,12 +56,10 @@ class UpdateApplier implements PlanUpdateApplier {
 		FileScope scope = plan.getScope();
 		doWithItems(plan.toList(), indicator, it -> {
 
-			String commandName = MessageBundle.message("plan.apply.upgrade", it.getDisplayName(),
-					it.getToVersion());
 			List<DependencyUpdate> updates = it.createUpdates();
 
 			WriteCommandAction.writeCommandAction(service.getProject())
-					.withName(commandName)
+					.withName(getCommandName(it.getDisplayName(), it.getToVersion()))
 					.withGlobalUndo()
 					.run(() -> {
 						engine.apply(scope, updates, applied -> {
@@ -72,6 +70,13 @@ class UpdateApplier implements PlanUpdateApplier {
 		});
 
 		return appliedUpdates;
+	}
+
+	/**
+	 * Return the undoable command name for upgrading the given dependency.
+	 */
+	static String getCommandName(String displayName, ArtifactVersion version) {
+		return MessageBundle.message("plan.apply.upgrade", displayName, version);
 	}
 
 }

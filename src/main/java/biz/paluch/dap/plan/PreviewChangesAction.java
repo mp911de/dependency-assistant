@@ -19,6 +19,8 @@ package biz.paluch.dap.plan;
 import java.util.ArrayList;
 import java.util.List;
 
+import biz.paluch.dap.notify.NotificationChannel;
+import biz.paluch.dap.notify.Notifications;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.upgrade.FileUpdateEngine;
@@ -69,7 +71,7 @@ public class PreviewChangesAction extends UpgradePlanAction {
 	 * Selection-less entry: previews the whole plan.
 	 */
 	@Override
-	void perform(Project project) {
+	public void perform(Project project) {
 
 		UpgradePlanService service = UpgradePlanService.getInstance(project);
 		preview(service, service.getUpgradePlan());
@@ -91,9 +93,8 @@ public class PreviewChangesAction extends UpgradePlanAction {
 		UpgradePlan rebuilt = plan.rebuild();
 		FileScope scope = rebuilt.getScope();
 		if (scope.hasMissingFiles()) {
-			// preview the resolvable rest; unlike apply, reading a partial scope is safe
-			new PlanNotifications().warning(project, MessageBundle.message("plan.apply.missing.title"),
-					MessageBundle.message("plan.preview.missing.message", scope.getMissingPaths()));
+			Notifications.warning(NotificationChannel.PLAN, MessageBundle.message("plan.apply.missing.title"),
+					MessageBundle.message("plan.preview.missing.message", scope.getMissingPaths())).notify(project);
 		}
 
 		PlanPreview preview = new PlanPreview(service, rebuilt);

@@ -20,6 +20,7 @@ import java.util.Comparator;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.assistant.presentation.DependencyPresentation;
+import biz.paluch.dap.metadata.ProjectName;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.support.ArtifactVersionChange;
 import biz.paluch.dap.support.DependencyUpdate;
@@ -61,8 +62,19 @@ public record AppliedUpdate(ArtifactVersionChange update,
 	 */
 	public static AppliedUpdate from(DependencyUpdate update, DependencyRule rule,
 			DependencyPresentation presentation) {
-		return new AppliedUpdate(update, presentation.getDisplayName(),
+		return new AppliedUpdate(update, getDisplayName(presentation),
 				flagFor(update, rule, update.getUpgradeStrategy()));
+	}
+
+	private static String getDisplayName(DependencyPresentation presentation) {
+		if (presentation.hasDependencyName()) {
+			return presentation.getDependencyName();
+		}
+		ProjectName projectName = presentation.getProjectName();
+		if (projectName.hasDisplayName()) {
+			return projectName.getDisplayName();
+		}
+		return presentation.getDisplayName();
 	}
 
 	/**

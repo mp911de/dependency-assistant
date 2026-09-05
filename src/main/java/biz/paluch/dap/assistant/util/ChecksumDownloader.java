@@ -25,7 +25,7 @@ import java.util.HexFormat;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 
-import biz.paluch.dap.assistant.Notifications;
+import biz.paluch.dap.notify.Notifications;
 import biz.paluch.dap.util.HttpClientUtil;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.openapi.application.ApplicationManager;
@@ -148,8 +148,9 @@ public class ChecksumDownloader {
 		if (failure instanceof CancellationException || project.isDisposed()) {
 			return;
 		}
-		Notifications.error(project, MessageBundle.message("wrapper.checksum.error.title"),
-				MessageBundle.message("wrapper.checksum.error", url, Notifications.errorMessage(failure)));
+		Notifications.error(MessageBundle.message("wrapper.checksum.error.title"),
+				MessageBundle.message("wrapper.checksum.error", url, Notifications.errorMessage(failure)))
+				.notify(project);
 	}
 
 	/**

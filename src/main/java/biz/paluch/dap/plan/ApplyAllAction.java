@@ -19,9 +19,15 @@ package biz.paluch.dap.plan;
 import java.util.List;
 
 import biz.paluch.dap.assistant.AppliedUpdates;
+import biz.paluch.dap.notify.NotificationActions;
+import biz.paluch.dap.notify.NotificationBuilder;
+import biz.paluch.dap.notify.NotificationChannel;
+import biz.paluch.dap.notify.Notifications;
+import biz.paluch.dap.notify.UpgradeNotification;
 import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.ide.util.PropertiesComponent;
+import com.intellij.notification.NotificationAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProgressIndicator;
@@ -49,7 +55,7 @@ public class ApplyAllAction extends UpgradePlanAction {
 	private static final Logger LOG = Logger.getInstance(ApplyAllAction.class);
 
 	@Override
-	void perform(Project project) {
+	public void perform(Project project) {
 		// no-op
 	}
 
@@ -73,8 +79,9 @@ public class ApplyAllAction extends UpgradePlanAction {
 
 		FileScope scope = toApply.getScope();
 		if (scope.hasMissingFiles()) {
-			new PlanNotifications().warning(service.getProject(), MessageBundle.message("plan.apply.missing.title"),
-					MessageBundle.message("plan.apply.missing.message", scope.getMissingPaths()));
+			Notifications.warning(NotificationChannel.PLAN, MessageBundle.message("plan.apply.missing.title"),
+					MessageBundle.message("plan.apply.missing.message", scope.getMissingPaths()))
+					.notify(service.getProject());
 			return;
 		}
 		FileScope dirty = service.getVcs().dirtyInScope(scope);
@@ -88,7 +95,7 @@ public class ApplyAllAction extends UpgradePlanAction {
 
 		Task.Modal task = new Task.Modal(project, MessageBundle.message("plan.apply.progress"), true) {
 
-			private @Nullable Runnable unshelve;
+			private @Nullable NotificationAction unshelve;
 
 			private AppliedUpdates appliedUpdates = new AppliedUpdates();
 
@@ -102,7 +109,7 @@ public class ApplyAllAction extends UpgradePlanAction {
 						ShelvedChangeList shelf = service.getVcs().shelve(dirty,
 								MessageBundle.message("plan.shelve.message"));
 						if (shelf != null) {
-							unshelve = () -> service.getVcs().unshelve(shelf);
+							unshelve = NotificationActions.unshelve(() -> service.getVcs().unshelve(shelf));
 						}
 					}
 					appliedUpdates = applier.apply(toApply, indicator);
@@ -113,19 +120,26 @@ public class ApplyAllAction extends UpgradePlanAction {
 
 			@Override
 			public void onSuccess() {
-				notifyDone(service, items, appliedUpdates, unshelve);
+				notifyDone(service, appliedUpdates, unshelve);
 			}
 
 			@Override
 			public void onCancel() {
-				new PlanNotifications().cancelled(project, unshelve);
+				withUnshelve(Notifications.warning(NotificationChannel.PLAN, "",
+						MessageBundle.message("plan.apply.cancelled"))).notify(project);
 			}
 
 			@Override
 			public void onThrowable(Throwable error) {
 
 				LOG.warn("Apply failed", error);
-				new PlanNotifications().error(project, MessageBundle.message("plan.apply.error"), error, unshelve);
+				withUnshelve(Notifications.error(NotificationChannel.PLAN, MessageBundle.message("plan.apply.error"),
+						Notifications.errorMessage(error))).notify(project);
+			}
+
+			// offer shelf recovery once a shelf exists
+			private NotificationBuilder withUnshelve(NotificationBuilder notification) {
+				return unshelve != null ? notification.action(unshelve) : notification;
 			}
 
 			@Override
@@ -171,12 +185,30 @@ public class ApplyAllAction extends UpgradePlanAction {
 	}
 
 	/**
-	 * Notify that the plan was applied, offering to restore a shelf created for the
-	 * run.
+	 * Notify that the plan was applied.
+	 * @param unshelve restores the shelf created for the run; {@literal null} when
+	 * no shelf was created.
 	 */
-	void notifyDone(UpgradePlanService service, List<UpgradePlanItem> items, AppliedUpdates applied,
-			@Nullable Runnable unshelve) {
-		new PlanNotifications().applied(service.getProject(), false, items, applied, null, unshelve);
+	void notifyDone(UpgradePlanService service, AppliedUpdates applied,
+			@Nullable NotificationAction unshelve) {
+
+		Project project = service.getProject();
+		NotificationBuilder notification = Notifications.applied(NotificationChannel.PLAN,
+				UpgradeNotification.applied(applied));
+
+		if (!applied.isEmpty()) {
+			if (service.hasVcs()) {
+				notification.action(NotificationActions.commit(project, applied));
+			}
+			List<String> commandNames = applied.stream()
+					.map(update -> UpdateApplier.getCommandName(update.displayName(), update.getTargetVersion()))
+					.toList();
+			notification.action(NotificationActions.undoAll(project, commandNames));
+		}
+		if (unshelve != null) {
+			notification.action(unshelve);
+		}
+		notification.notify(project);
 	}
 
 	/**

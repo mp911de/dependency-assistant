@@ -26,10 +26,10 @@ import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.Releases;
-import biz.paluch.dap.assistant.Notifications;
 import biz.paluch.dap.assistant.check.DependencyCheck;
 import biz.paluch.dap.assistant.check.DependencyCheckAggregator;
 import biz.paluch.dap.assistant.check.ReleaseResolver;
+import biz.paluch.dap.notify.Notifications;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StepsProgressIndicator;
 import biz.paluch.dap.util.WeightedStepsProgressIndicator;
@@ -122,7 +122,7 @@ class RefreshReleaseMetadata extends Task.Backgroundable {
 			return;
 		}
 
-		Notifications.releaseMetadataRefreshed(project, result, getDuration());
+		Notifications.releaseMetadataRefreshed(result, getDuration()).notify(project);
 		// MessageBundle.message("action.refresh-releases.task.done.title")
 		DaemonCodeAnalyzer.getInstance(project)
 				.restart();
@@ -131,8 +131,8 @@ class RefreshReleaseMetadata extends Task.Backgroundable {
 	@Override
 	public void onThrowable(Throwable error) {
 		LOG.warn("Dependency release metadata refresh failed", error);
-		Notifications.error(project,
-				MessageBundle.message("action.refresh-releases.task.error", Notifications.errorMessage(error)));
+		Notifications.error(MessageBundle.message("action.refresh-releases.task.error",
+				Notifications.errorMessage(error))).notify(project);
 	}
 
 	private @Nullable List<ArtifactId> getUpdates() {

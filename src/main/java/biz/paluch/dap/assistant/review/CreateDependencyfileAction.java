@@ -21,7 +21,7 @@ import java.io.IOException;
 import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantDispatcher;
-import biz.paluch.dap.assistant.Notifications;
+import biz.paluch.dap.notify.Notifications;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.actionSystem.ActionUpdateThread;
@@ -78,9 +78,9 @@ public class CreateDependencyfileAction extends AnAction implements DumbAware, I
 		try {
 			new DependencyfileArtifactWriter(project).createOrOpen();
 		} catch (IOException | IncorrectOperationException ex) {
-			Notifications.error(project,
-					MessageBundle.message("dependencyfile.create.error.title"),
-					MessageBundle.message("dependencyfile.create.error", Notifications.errorMessage(ex)));
+			Notifications.error(MessageBundle.message("dependencyfile.create.error.title"),
+					MessageBundle.message("dependencyfile.create.error", Notifications.errorMessage(ex)))
+					.notify(project);
 		}
 	}
 

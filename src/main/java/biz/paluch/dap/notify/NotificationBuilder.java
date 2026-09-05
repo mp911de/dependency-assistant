@@ -14,22 +14,34 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.plan;
+package biz.paluch.dap.notify;
 
+import com.intellij.notification.NotificationAction;
 import com.intellij.openapi.project.Project;
 
 /**
- * Remove all planned upgrades from the plan. Deliberately unguarded: the plan
- * is a cheap, replaceable staging area, the transition is undoable, and the
- * last-resort confirmations sit on the apply actions instead.
+ * Builder for a notification whose wording and channel are fixed. Follow-up
+ * actions are added one at a time; {@link #notify(Project)} shows the balloon.
  *
  * @author Mark Paluch
+ * @see Notifications
+ * @see NotificationActions
  */
-public class DiscardPlanAction extends UpgradePlanAction {
+public interface NotificationBuilder {
 
-	@Override
-	public void perform(Project project) {
-		UpgradePlanService.getInstance(project).clear();
-	}
+	/**
+	 * Offer a follow-up action on the notification.
+	 *
+	 * @param action the action to offer.
+	 * @return {@code this} builder.
+	 */
+	NotificationBuilder action(NotificationAction action);
+
+	/**
+	 * Show the notification in the given project.
+	 *
+	 * @param project the project to notify.
+	 */
+	void notify(Project project);
 
 }

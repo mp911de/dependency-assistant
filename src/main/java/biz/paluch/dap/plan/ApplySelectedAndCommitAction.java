@@ -34,7 +34,7 @@ public class ApplySelectedAndCommitAction extends ApplyAllAndCommitAction {
 	 * Disabled without a plan-item selection to apply.
 	 */
 	@Override
-	void update(AnActionEvent e, @Nullable UpgradePlanService service) {
+	public void update(AnActionEvent e, @Nullable UpgradePlanService service) {
 
 		super.update(e, service);
 

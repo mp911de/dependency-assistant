@@ -17,12 +17,17 @@
 package biz.paluch.dap.plan;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import biz.paluch.dap.assistant.AppliedUpdates;
+import biz.paluch.dap.notify.NotificationActions;
+import biz.paluch.dap.notify.NotificationBuilder;
+import biz.paluch.dap.notify.NotificationChannel;
+import biz.paluch.dap.notify.Notifications;
+import biz.paluch.dap.notify.UpgradeNotification;
 import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.util.MessageBundle;
+import com.intellij.notification.NotificationAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
@@ -47,7 +52,7 @@ public class ApplyAllAndCommitAction extends ApplyAllAction {
 	 * Disabled when the project has no version control to commit into.
 	 */
 	@Override
-	void update(AnActionEvent e, @Nullable UpgradePlanService service) {
+	public void update(AnActionEvent e, @Nullable UpgradePlanService service) {
 
 		super.update(e, service);
 
@@ -88,10 +93,20 @@ public class ApplyAllAndCommitAction extends ApplyAllAction {
 	}
 
 	@Override
-	void notifyDone(UpgradePlanService service, List<UpgradePlanItem> items, AppliedUpdates applied,
-			@Nullable Runnable unshelve) {
-		new PlanNotifications().applied(service.getProject(), true, items, applied,
-				service.getVcs().canPush() ? () -> push(service) : null, unshelve);
+	void notifyDone(UpgradePlanService service, AppliedUpdates applied,
+			@Nullable NotificationAction unshelve) {
+
+		NotificationBuilder notification = Notifications.applied(NotificationChannel.PLAN,
+				UpgradeNotification.committed(applied));
+
+		// nothing to push when nothing was committed
+		if (!applied.isEmpty() && service.getVcs().canPush()) {
+			notification.action(NotificationActions.push(() -> push(service)));
+		}
+		if (unshelve != null) {
+			notification.action(unshelve);
+		}
+		notification.notify(service.getProject());
 	}
 
 	private static void push(UpgradePlanService service) {
@@ -99,7 +114,8 @@ public class ApplyAllAndCommitAction extends ApplyAllAction {
 			service.getVcs().push();
 		} catch (IllegalStateException e) {
 			LOG.warn("Push failed", e);
-			new PlanNotifications().error(service.getProject(), MessageBundle.message("plan.push.error"), e);
+			Notifications.error(NotificationChannel.PLAN, MessageBundle.message("plan.push.error"),
+					Notifications.errorMessage(e)).notify(service.getProject());
 		}
 	}
 

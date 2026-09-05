@@ -27,10 +27,11 @@ import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.ProjectStateIndexer;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.PackageIdentity;
-import biz.paluch.dap.assistant.Notifications;
 import biz.paluch.dap.assistant.check.VulnerabilityScanner;
 import biz.paluch.dap.metadata.ProjectMetadataIndexer;
 import biz.paluch.dap.metadata.RepositoryTagScanner;
+import biz.paluch.dap.notify.NotificationActions;
+import biz.paluch.dap.notify.Notifications;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.StateService;
@@ -142,17 +143,24 @@ public class PostStartup implements ProjectActivity {
 		Cache cache = service.getCache();
 
 		if (!cache.hasReleases() && cache.shouldNag()) {
-			Notifications.releaseMetadataUnavailable(project, RefreshReleaseMetadata::new, cache::doNotNag);
+			Notifications.releaseMetadataUnavailable()
+					.action(NotificationActions.refreshReleaseMetadata(() -> refreshReleaseMetadata(project)))
+					.action(NotificationActions.notNow(cache::doNotNag))
+					.notify(project);
 			return;
 		}
 
 		Instant lastUpdate = cache.getLastUpdate();
 		if (lastUpdate != null && cache.shouldNag()) {
-			Notifications.releaseMetadataStale(project, lastUpdate,
-					() -> {
-						ProgressManager.getInstance().run(new RefreshReleaseMetadata(project));
-					}, cache::doNotNag);
+			Notifications.releaseMetadataStale(lastUpdate)
+					.action(NotificationActions.refreshReleaseMetadata(() -> refreshReleaseMetadata(project)))
+					.action(NotificationActions.notNow(cache::doNotNag))
+					.notify(project);
 		}
+	}
+
+	private static void refreshReleaseMetadata(Project project) {
+		ProgressManager.getInstance().run(new RefreshReleaseMetadata(project));
 	}
 
 	private void scanRepositoryTags(Project project, StateService service) {

@@ -21,6 +21,8 @@ import java.io.UncheckedIOException;
 import java.util.List;
 import java.util.Locale;
 
+import biz.paluch.dap.notify.NotificationChannel;
+import biz.paluch.dap.notify.Notifications;
 import biz.paluch.dap.ticket.Label;
 import biz.paluch.dap.ticket.Milestone;
 import biz.paluch.dap.ticket.TicketRepository;
@@ -55,14 +57,14 @@ class RefreshMilestonesAction extends UpgradePlanAction {
 	}
 
 	@Override
-	void update(AnActionEvent e, @Nullable UpgradePlanService service) {
+	public void update(AnActionEvent e, @Nullable UpgradePlanService service) {
 		boolean visible = this.service.hasTicketSystem();
 		e.getPresentation().setVisible(visible);
 		e.getPresentation().setEnabled(visible && this.service.isRefreshingListsEnabled());
 	}
 
 	@Override
-	void perform(Project project) {
+	public void perform(Project project) {
 		perform(project, true);
 	}
 
@@ -146,7 +148,8 @@ class RefreshMilestonesAction extends UpgradePlanAction {
 			@Override
 			public void onThrowable(Throwable error) {
 				LOG.warn("Failed to load milestones and labels", error);
-				new PlanNotifications().error(project, MessageBundle.message("plan.lists.error"), error);
+				Notifications.error(NotificationChannel.PLAN, MessageBundle.message("plan.lists.error"),
+						Notifications.errorMessage(error)).notify(project);
 			}
 
 			@Override
