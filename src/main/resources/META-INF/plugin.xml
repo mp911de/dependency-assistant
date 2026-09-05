@@ -69,7 +69,8 @@
 				serviceImplementation="biz.paluch.dap.state.ApplicationSettings"/>
 		<applicationService
 				serviceImplementation="biz.paluch.dap.assistant.util.ChecksumDownloader"/>
-		<fileTemplateGroup implementation="biz.paluch.dap.plan.UpgradePlanTemplateGroup"/>
+		<fileTemplateGroup
+				implementation="biz.paluch.dap.assistant.AssistantTemplateGroup"/>
 		<toolWindow id="Upgrade Plan" anchor="bottom" doNotActivateOnStart="true"
 		            factoryClass="biz.paluch.dap.plan.UpgradePlanToolWindowFactory"
 		            icon="biz.paluch.dap.DependencyAssistantIcons.TOOL_WINDOW_UPGRADE_PLAN"/>

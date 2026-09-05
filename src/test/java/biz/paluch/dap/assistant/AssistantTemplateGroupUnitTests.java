@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.plan;
+package biz.paluch.dap.assistant;
 
 import biz.paluch.dap.DependencyAssistantIcons;
 import com.intellij.icons.AllIcons;
@@ -25,16 +25,16 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.*;
 
 /**
- * Unit tests for {@link UpgradePlanTemplateGroup}.
+ * Unit tests for {@link AssistantTemplateGroup}.
  *
  * @author Mark Paluch
  */
-class UpgradePlanTemplateGroupUnitTests {
+class AssistantTemplateGroupUnitTests {
 
 	@Test
 	void groupsTicketAndCommitTemplatesWithTheirPlanIcons() {
 
-		FileTemplateGroupDescriptor descriptor = new UpgradePlanTemplateGroup().getFileTemplatesDescriptor();
+		FileTemplateGroupDescriptor descriptor = new AssistantTemplateGroup().getFileTemplatesDescriptor();
 
 		assertThat(descriptor.getTitle()).isEqualTo("Dependency Assistant");
 		assertThat(descriptor.getIcon()).isSameAs(DependencyAssistantIcons.ICON);

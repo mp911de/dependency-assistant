@@ -18,7 +18,7 @@ package biz.paluch.dap.plan;
 
 import java.util.List;
 
-import biz.paluch.dap.assistant.AppliedDependencyUpdate;
+import biz.paluch.dap.assistant.AppliedUpdate;
 import biz.paluch.dap.assistant.AppliedUpdates;
 import biz.paluch.dap.assistant.Notifications;
 import biz.paluch.dap.util.MessageBundle;
@@ -28,6 +28,7 @@ import com.intellij.notification.NotificationGroup;
 import com.intellij.notification.NotificationGroupManager;
 import com.intellij.notification.NotificationType;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.text.StringUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -63,13 +64,25 @@ class PlanNotifications {
 		Notification notification;
 		if (applied.isEmpty()) {
 			notification = group.createNotification(MessageBundle.message("plan.notifications.apply.none"),
-					NotificationType.INFORMATION);
+					NotificationType.INFORMATION).setImportant(true);
 		} else {
+			if (commit) {
+				notification = group
+						.createNotification(getCommitTitle(applied), StringUtil.escapeXmlEntities(applied.toString()),
+								NotificationType.INFORMATION);
+			} else {
 
-			String title = commit ? getCommitTitle(applied) : Notifications.getTitle(applied);
-			notification = group
-					.createNotification(title, applied.toString(), NotificationType.INFORMATION)
-					.setImportant(true);
+				if (items.size() == 1) {
+					notification = group
+							.createNotification(Notifications.getTitle(applied),
+									NotificationType.INFORMATION);
+				} else {
+					notification = group
+							.createNotification(Notifications.getTitle(applied),
+									StringUtil.escapeXmlEntities(applied.toString()),
+									NotificationType.INFORMATION);
+				}
+			}
 			addAction(notification, "plan.apply.push", push);
 			addAction(notification, "plan.apply.unshelve", unshelve);
 		}
@@ -79,7 +92,7 @@ class PlanNotifications {
 
 	public static String getCommitTitle(AppliedUpdates updates) {
 		if (updates.size() == 1) {
-			AppliedDependencyUpdate item = updates.iterator().next();
+			AppliedUpdate item = updates.iterator().next();
 			return MessageBundle.message("plan.notifications.apply.updated", item.displayName());
 		}
 		return MessageBundle.message("plan.notifications.apply.updates", updates.size());
@@ -129,8 +142,8 @@ class PlanNotifications {
 	 */
 	void cancelled(Project project, @Nullable Runnable unshelve) {
 
-		Notification notification = group.createNotification(MessageBundle.message("plugin.name"),
-				MessageBundle.message("plan.apply.cancelled"), NotificationType.INFORMATION);
+		Notification notification = group.createNotification(MessageBundle.message("plan.apply.cancelled"),
+				NotificationType.WARNING);
 		addAction(notification, "plan.apply.unshelve", unshelve);
 		notification.notify(project);
 	}

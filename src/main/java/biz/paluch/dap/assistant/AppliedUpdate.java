@@ -24,7 +24,10 @@ import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.support.ArtifactVersionChange;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.UpgradeStrategy;
+import biz.paluch.dap.util.MessageBundle;
+import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.PropertyKey;
 
 /**
  * Summary of a dependency update recorded after it changes a build file.
@@ -40,12 +43,43 @@ import org.jetbrains.annotations.Nullable;
  * @param displayName the user-facing dependency label.
  * @param flag the follow-up classification for the applied change.
  */
-public record AppliedDependencyUpdate(ArtifactVersionChange update,
+public record AppliedUpdate(ArtifactVersionChange update,
 		String displayName, Flag flag)
-		implements Comparable<AppliedDependencyUpdate> {
+		implements Comparable<AppliedUpdate> {
 
-	private static final Comparator<AppliedDependencyUpdate> COMPARATOR = Comparator
-			.comparing(AppliedDependencyUpdate::displayName);
+	private static final Comparator<AppliedUpdate> COMPARATOR = Comparator
+			.comparing(AppliedUpdate::displayName);
+
+	/**
+	 * Create an applied update from a {@link DependencyUpdate} and its governing
+	 * rule.
+	 *
+	 * @param update the update that changed a build file.
+	 * @param rule the rule governing the dependency.
+	 * @param presentation the source of the user-facing dependency label.
+	 * @return the classified applied-update summary.
+	 */
+	public static AppliedUpdate from(DependencyUpdate update, DependencyRule rule,
+			DependencyPresentation presentation) {
+		return new AppliedUpdate(update, presentation.getDisplayName(),
+				flagFor(update, rule, update.getUpgradeStrategy()));
+	}
+
+	/**
+	 * Create an applied update from a {@link DependencyUpdate}.
+	 *
+	 * <p>Without a governing rule, only a major version crossing receives a
+	 * follow-up flag.
+	 *
+	 * @param update the update that changed a build file.
+	 * @param displayName the user-facing dependency label.
+	 * @return the classified applied-update summary.
+	 */
+	public static AppliedUpdate from(DependencyUpdate update,
+			String displayName) {
+		return new AppliedUpdate(update, displayName,
+				flagFor(update, DependencyRule.absent(), null));
+	}
 
 	public ArtifactVersion getFromVersion() {
 		return update.from().getVersion();
@@ -53,6 +87,48 @@ public record AppliedDependencyUpdate(ArtifactVersionChange update,
 
 	public ArtifactVersion getTargetVersion() {
 		return update.to();
+	}
+
+	/**
+	 * Return whether this update is called out in the after-apply balloon.
+	 *
+	 * @return {@code true} if the update carries a follow-up {@link Flag}.
+	 */
+	public boolean isFlagged() {
+		return flag != Flag.NONE;
+	}
+
+	public boolean isUpgrade() {
+		return getTargetVersion().isNewer(getFromVersion());
+	}
+
+	public boolean isDowngrade() {
+		return getFromVersion().isNewer(getTargetVersion());
+	}
+
+	@Override
+	public int compareTo(AppliedUpdate o) {
+		return COMPARATOR.compare(this, o);
+	}
+
+	/**
+	 * Render a message for the given key using the display name and target version.
+	 */
+	@Nls
+	public String getMessage(@PropertyKey(resourceBundle = MessageBundle.BUNDLE) String messageKey) {
+		return MessageBundle.message(messageKey,
+				displayName(), getTargetVersion());
+	}
+
+	@Override
+	public String toString() {
+		if (isUpgrade()) {
+			return getMessage("AppliedUpdate.upgrade");
+		}
+		if (isDowngrade()) {
+			return getMessage("AppliedUpdate.downgrade");
+		}
+		return getMessage("AppliedUpdate.update");
 	}
 
 	/**
@@ -93,51 +169,6 @@ public record AppliedDependencyUpdate(ArtifactVersionChange update,
 		}
 
 		return update.crossesMajor() ? Flag.MAJOR_CROSSING : Flag.NONE;
-	}
-
-	/**
-	 * Return whether this update is called out in the after-apply balloon.
-	 *
-	 * @return {@code true} if the update carries a follow-up {@link Flag}.
-	 */
-	public boolean isFlagged() {
-		return flag != Flag.NONE;
-	}
-
-	/**
-	 * Create an applied update from a {@link DependencyUpdate} and its governing
-	 * rule.
-	 *
-	 * @param update the update that changed a build file.
-	 * @param rule the rule governing the dependency.
-	 * @param presentation the source of the user-facing dependency label.
-	 * @return the classified applied-update summary.
-	 */
-	public static AppliedDependencyUpdate from(DependencyUpdate update, DependencyRule rule,
-			DependencyPresentation presentation) {
-		return new AppliedDependencyUpdate(update, presentation.getDisplayName(),
-				flagFor(update, rule, update.getUpgradeStrategy()));
-	}
-
-	/**
-	 * Create an applied update from a {@link DependencyUpdate}.
-	 *
-	 * <p>Without a governing rule, only a major version crossing receives a
-	 * follow-up flag.
-	 *
-	 * @param update the update that changed a build file.
-	 * @param displayName the user-facing dependency label.
-	 * @return the classified applied-update summary.
-	 */
-	public static AppliedDependencyUpdate from(DependencyUpdate update,
-			String displayName) {
-		return new AppliedDependencyUpdate(update, displayName,
-				flagFor(update, DependencyRule.absent(), null));
-	}
-
-	@Override
-	public int compareTo(AppliedDependencyUpdate o) {
-		return COMPARATOR.compare(this, o);
 	}
 
 }

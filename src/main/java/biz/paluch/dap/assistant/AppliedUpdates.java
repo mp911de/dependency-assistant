@@ -45,11 +45,11 @@ import com.intellij.openapi.vfs.VirtualFile;
  * update path.
  *
  * @author Mark Paluch
- * @see AppliedDependencyUpdate
+ * @see AppliedUpdate
  */
-public class AppliedUpdates implements Sequence<AppliedDependencyUpdate> {
+public class AppliedUpdates implements Sequence<AppliedUpdate> {
 
-	private final Set<AppliedDependencyUpdate> applied = new TreeSet<>();
+	private final Set<AppliedUpdate> applied = new TreeSet<>();
 
 	private final List<Reversible> outOfBounds = new ArrayList<>();
 
@@ -65,7 +65,7 @@ public class AppliedUpdates implements Sequence<AppliedDependencyUpdate> {
 	public void record(VirtualFile file, DependencyUpdate update, DependencyRule rule,
 			DependencyPresentation presentation) {
 
-		AppliedDependencyUpdate summary = AppliedDependencyUpdate.from(update, rule, presentation);
+		AppliedUpdate summary = AppliedUpdate.from(update, rule, presentation);
 		applied.add(summary);
 		if (summary.isFlagged()) {
 			outOfBounds.add(new Reversible(file, update));
@@ -99,7 +99,7 @@ public class AppliedUpdates implements Sequence<AppliedDependencyUpdate> {
 	 * @param displayName the user-facing dependency label.
 	 */
 	public void record(Iterable<VirtualFile> files, DependencyUpdate update, String displayName) {
-		AppliedDependencyUpdate summary = AppliedDependencyUpdate.from(update, displayName);
+		AppliedUpdate summary = AppliedUpdate.from(update, displayName);
 		applied.add(summary);
 		if (summary.isFlagged()) {
 			for (VirtualFile file : files) {
@@ -115,8 +115,15 @@ public class AppliedUpdates implements Sequence<AppliedDependencyUpdate> {
 	 *
 	 * @return the applied-update summaries.
 	 */
-	public Set<AppliedDependencyUpdate> applied() {
+	public Set<AppliedUpdate> applied() {
 		return applied;
+	}
+
+	/**
+	 * Return the first applied update.
+	 */
+	public AppliedUpdate first() {
+		return applied.iterator().next();
 	}
 
 	/**
@@ -149,11 +156,11 @@ public class AppliedUpdates implements Sequence<AppliedDependencyUpdate> {
 	 * @return the notification HTML fragment.
 	 */
 	public String renderOutOfBounds(String heading,
-			Collection<AppliedDependencyUpdate> entries) {
+			Collection<AppliedUpdate> entries) {
 
 		HtmlChunk.Element ul = HtmlChunk.ul();
 
-		for (AppliedDependencyUpdate update : entries) {
+		for (AppliedUpdate update : entries) {
 			ul = ul.children(HtmlChunk.li()
 					.addText(MessageBundle.message("notification.out-of-bounds.entry",
 							update.displayName(), update.getTargetVersion())));
@@ -171,19 +178,9 @@ public class AppliedUpdates implements Sequence<AppliedDependencyUpdate> {
 	public String renderApplied() {
 
 		HtmlChunk.Element ul = HtmlChunk.ul();
-		for (AppliedDependencyUpdate update : this) {
+		for (AppliedUpdate update : this) {
 
-			HtmlChunk li;
-			if (update.getTargetVersion().isNewer(update.getFromVersion())) {
-				li = HtmlChunk.li().addText(MessageBundle.message("notification.upgrade",
-						update.displayName(), update.getTargetVersion()));
-			} else if (update.getFromVersion().isNewer(update.getTargetVersion())) {
-				li = HtmlChunk.li().addText(MessageBundle.message("notification.downgrade",
-						update.displayName(), update.getTargetVersion()));
-			} else {
-				li = HtmlChunk.li().addText(MessageBundle.message("notification.update",
-						update.displayName(), update.getTargetVersion()));
-			}
+			HtmlChunk li = HtmlChunk.li().addText(update.toString());
 			ul = ul.children(li);
 		}
 
@@ -191,7 +188,7 @@ public class AppliedUpdates implements Sequence<AppliedDependencyUpdate> {
 	}
 
 	@Override
-	public Iterator<AppliedDependencyUpdate> iterator() {
+	public Iterator<AppliedUpdate> iterator() {
 		return applied.iterator();
 	}
 
@@ -205,7 +202,7 @@ public class AppliedUpdates implements Sequence<AppliedDependencyUpdate> {
 	}
 
 	@Override
-	public List<AppliedDependencyUpdate> toList() {
+	public List<AppliedUpdate> toList() {
 		return List.copyOf(applied);
 	}
 

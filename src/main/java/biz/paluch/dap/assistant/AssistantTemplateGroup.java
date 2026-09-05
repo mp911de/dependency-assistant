@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.plan;
+package biz.paluch.dap.assistant;
 
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.util.MessageBundle;
@@ -29,11 +29,11 @@ import com.intellij.ide.fileTemplates.FileTemplateGroupDescriptorFactory;
  *
  * @author Mark Paluch
  */
-public class UpgradePlanTemplateGroup implements FileTemplateGroupDescriptorFactory {
+public class AssistantTemplateGroup implements FileTemplateGroupDescriptorFactory {
 
-	static final String TICKET_TEMPLATE = "Dependency Assistant Upgrade Ticket.txt";
+	public static final String TICKET_TEMPLATE = "Dependency Assistant Upgrade Ticket.txt";
 
-	static final String COMMIT_TEMPLATE = "Dependency Assistant Commit Message.txt";
+	public static final String COMMIT_TEMPLATE = "Dependency Assistant Commit Message.txt";
 
 	@Override
 	public FileTemplateGroupDescriptor getFileTemplatesDescriptor() {
@@ -45,7 +45,7 @@ public class UpgradePlanTemplateGroup implements FileTemplateGroupDescriptorFact
 
 			@Override
 			public String getDisplayName() {
-				return MessageBundle.message("plan.template.ticket");
+				return MessageBundle.message("template.ticket");
 			}
 
 		});
@@ -54,7 +54,7 @@ public class UpgradePlanTemplateGroup implements FileTemplateGroupDescriptorFact
 
 			@Override
 			public String getDisplayName() {
-				return MessageBundle.message("plan.template.commit");
+				return MessageBundle.message("template.commit");
 			}
 
 		});

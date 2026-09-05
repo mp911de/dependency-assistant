@@ -31,10 +31,15 @@ import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationAction;
 import com.intellij.notification.NotificationType;
 import com.intellij.openapi.command.undo.UndoManager;
+import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.text.StringUtil;
+import com.intellij.openapi.vcs.AbstractVcsHelper;
+import com.intellij.openapi.vcs.ProjectLevelVcsManager;
+import com.intellij.openapi.vcs.changes.ChangeListManager;
+import com.intellij.openapi.vcs.changes.LocalChangeList;
 import com.intellij.util.text.DateFormatUtil;
 
 /**
@@ -122,11 +127,29 @@ public class Notifications {
 			return;
 		}
 
-		List<AppliedDependencyUpdate> flagged = updates.stream().filter(AppliedDependencyUpdate::isFlagged)
+		List<AppliedUpdate> flagged = updates.stream().filter(AppliedUpdate::isFlagged)
 				.toList();
 
 		Notification notification = flagged.isEmpty() ? updatesApplied(updates)
 				: updatesAppliedFlagged(updates, flagged, undoFlagged);
+
+		if (ProjectLevelVcsManager.getInstance(project).hasActiveVcss()) {
+
+			NotificationTextTemplates templates = new NotificationTextTemplates(project);
+			String message = templates.getCommitMessage(updates);
+
+			notification.addAction(NotificationAction.createSimpleExpiring(
+					MessageBundle.message("notification.commit"), () -> {
+						FileDocumentManager.getInstance().saveAllDocuments();
+
+						ChangeListManager manager = ChangeListManager.getInstance(project);
+						manager.invokeAfterUpdate(true, () -> {
+							LocalChangeList changeList = manager.getDefaultChangeList();
+							AbstractVcsHelper.getInstance(project).commitChanges(
+									changeList.getChanges(), changeList, message, null);
+						});
+					}));
+		}
 
 		Runnable undo = () -> {
 
@@ -138,45 +161,69 @@ public class Notifications {
 
 		notification.addAction(NotificationAction.createSimpleExpiring(
 				MessageBundle.message("notification.undo"), undo));
+
 		notification.notify(project);
 	}
 
 	private static Notification updatesApplied(AppliedUpdates updates) {
+
+		if (updates.size() == 1) {
+			return new Notification(UPGRADE_NOTIFICATIONS, getTitle(updates),
+					NotificationType.INFORMATION);
+		}
+
 		return new Notification(UPGRADE_NOTIFICATIONS, getTitle(updates),
 				StringUtil.escapeXmlEntities(updates.toString()),
 				NotificationType.INFORMATION);
 	}
 
 	private static Notification updatesAppliedFlagged(AppliedUpdates updates,
-			Collection<AppliedDependencyUpdate> flagged,
-			Runnable undoFlagged) {
+			Collection<AppliedUpdate> flagged, Runnable undoFlagged) {
 
 		StringBuilder message = new StringBuilder();
-		message.append("<p>").append(updates).append("</p>");
-
-		List<AppliedDependencyUpdate> outOfBounds = flagged.stream()
-				.filter(update -> update.flag() == AppliedDependencyUpdate.Flag.COMPLIANCE).toList();
-		if (!outOfBounds.isEmpty()) {
-			message.append("<br/><p>").append(updates.renderOutOfBounds(
-					MessageBundle.message("notification.out-of-bounds", outOfBounds.size()),
-					outOfBounds)).append("</p>");
+		boolean many = updates.size() > 1;
+		if (many) {
+			message.append("<p>").append(StringUtil.escapeXmlEntities(updates.toString())).append("</p>");
 		}
 
-		List<AppliedDependencyUpdate> majorCrossings = flagged.stream()
-				.filter(update -> update.flag() == AppliedDependencyUpdate.Flag.MAJOR_CROSSING).toList();
+		List<AppliedUpdate> outOfBounds = flagged.stream()
+				.filter(update -> update.flag() == AppliedUpdate.Flag.COMPLIANCE).toList();
+		if (!outOfBounds.isEmpty()) {
+			if (many) {
+				String oobMessage = MessageBundle.message("notification.out-of-bounds", outOfBounds.size());
+				message.append("<p>").append(updates.renderOutOfBounds(
+						oobMessage,
+						outOfBounds)).append("</p>");
+			} else {
+				String oobMessage = MessageBundle.message("notification.out-of-bounds.single");
+				message.append("<p>").append(oobMessage).append("</p>");
+			}
+		}
+
+		List<AppliedUpdate> majorCrossings = flagged.stream()
+				.filter(update -> update.flag() == AppliedUpdate.Flag.MAJOR_CROSSING).toList();
 		if (!majorCrossings.isEmpty()) {
-			message.append("<br/><p>").append(updates.renderOutOfBounds(
-					MessageBundle.message("notification.major-crossing", majorCrossings.size()),
-					majorCrossings)).append("</p>");
+
+			if (many) {
+				String majorMessage = MessageBundle.message("notification.major-crossing", majorCrossings.size());
+				message.append("<p>").append(updates.renderOutOfBounds(
+						majorMessage,
+						majorCrossings)).append("</p>");
+			} else {
+				String majorMessage = MessageBundle.message("notification.major-crossing.single");
+				message.append("<p>").append(majorMessage).append("</p>");
+			}
 		}
 
 		Notification notification = new Notification(UPGRADE_NOTIFICATIONS, getTitle(updates),
-				message.toString(),
-				NotificationType.INFORMATION);
+				message.toString(), NotificationType.WARNING);
+		notification.setImportant(true);
 
-		notification.addAction(NotificationAction.createSimpleExpiring(
-				MessageBundle.message("notification.undo-out-of-bounds"),
-				undoFlagged));
+		if (many || (updates.size() != outOfBounds.size() + majorCrossings.size())) {
+			notification.addAction(NotificationAction.createSimpleExpiring(
+					MessageBundle.message("notification.undo-out-of-bounds"),
+					undoFlagged));
+		}
 
 		return notification;
 	}
@@ -189,10 +236,18 @@ public class Notifications {
 	 * several summaries.
 	 */
 	public static String getTitle(AppliedUpdates updates) {
+
 		if (updates.size() == 1) {
-			AppliedDependencyUpdate item = updates.iterator().next();
-			return MessageBundle.message("notification.updated", item.displayName());
+			AppliedUpdate update = updates.first();
+			if (update.isUpgrade()) {
+				return update.getMessage("notification.upgraded");
+			}
+			if (update.isDowngrade()) {
+				return update.getMessage("notification.downgraded");
+			}
+			return update.getMessage("notification.updated");
 		}
+
 		return MessageBundle.message("notification.updates", updates.size());
 	}
 

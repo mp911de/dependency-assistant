@@ -14,45 +14,48 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.plan;
+package biz.paluch.dap.assistant;
 
 import java.io.IOException;
 import java.util.Properties;
 
-import biz.paluch.dap.assistant.AssistantTemplateGroup;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.ide.fileTemplates.FileTemplate;
 import com.intellij.ide.fileTemplates.FileTemplateManager;
 import com.intellij.openapi.project.Project;
 
 /**
- * Renders user-editable Upgrade Plan ticket and commit text from the project's
- * File and Code Templates scheme.
+ * Renders user-editable commit text from the project's File and Code Templates
+ * scheme.
  *
  * @author Mark Paluch
  */
-class PlanTextTemplates {
+class NotificationTextTemplates {
 
 	private final FileTemplateManager manager;
 
-	PlanTextTemplates(Project project) {
+	NotificationTextTemplates(Project project) {
 		this.manager = FileTemplateManager.getInstance(project);
 	}
 
-	String ticketTitle(UpgradePlanItem item) {
-		return render(AssistantTemplateGroup.TICKET_TEMPLATE, "plan.template.ticket", item);
+	/**
+	 * Commit message for multiple dependency updates.
+	 */
+	String getCommitMessage(AppliedUpdates updates) {
+
+		if (updates.size() == 1) {
+			return render(AssistantTemplateGroup.COMMIT_TEMPLATE, "plan.template.commit", updates.first());
+		}
+
+		return "%s%n%n%s".formatted(MessageBundle.message("notification.commit.title.many"), updates);
 	}
 
-	String commitMessage(UpgradePlanItem item) {
-		return render(AssistantTemplateGroup.COMMIT_TEMPLATE, "plan.template.commit", item);
-	}
-
-	private String render(String templateName, String messageKey, UpgradePlanItem item) {
+	private String render(String templateName, String messageKey, AppliedUpdate item) {
 
 		Properties properties = new Properties();
-		properties.setProperty("DEPENDENCY", item.getDisplayName());
+		properties.setProperty("DEPENDENCY", item.displayName());
 		properties.setProperty("FROM_VERSION", item.getFromVersion().toString());
-		properties.setProperty("TO_VERSION", item.getToVersion().toString());
+		properties.setProperty("TO_VERSION", item.getTargetVersion().toString());
 
 		FileTemplate template = manager.getJ2eeTemplate(templateName);
 		try {

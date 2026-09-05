@@ -28,7 +28,7 @@ import org.jetbrains.annotations.PropertyKey;
  */
 public class MessageBundle {
 
-	private static final @NonNls String BUNDLE = "messages.MessageBundle";
+	public static final @NonNls String BUNDLE = "messages.MessageBundle";
 
 	private static final DynamicBundle INSTANCE = new DynamicBundle(MessageBundle.class, BUNDLE);
 
