@@ -33,6 +33,7 @@ import biz.paluch.dap.ProjectStateIndexer;
 import biz.paluch.dap.util.BetterPsiManager;
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
 import com.intellij.openapi.Disposable;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.components.Service;
@@ -89,8 +90,6 @@ public final class StateRefresher implements Disposable {
 	/**
 	 * Schedule a dependency-state refresh for one changed file.
 	 *
-	 * <p>This method has the same lifecycle as {@link #refresh(Collection)}.
-	 *
 	 * @param file the changed file.
 	 */
 	public void refresh(VirtualFile file) {
@@ -105,10 +104,7 @@ public final class StateRefresher implements Disposable {
 
 	/**
 	 * Schedule a dependency-state refresh for the given changed files.
-	 *
-	 * <p>Each call re-arms the quiet-period timer and adds its files to the pending
-	 * batch. Unsupported files are ignored during re-collection. An empty
-	 * collection schedules no work.
+	 * <p>Each call re-arms the quiet-period timer.
 	 *
 	 * @param files the changed files.
 	 */
@@ -210,7 +206,9 @@ public final class StateRefresher implements Disposable {
 
 	private void restartHighlighting(Collection<VirtualFile> refreshed) {
 
-		if (refreshed.isEmpty()) {
+		// Tests run highlighting explicitly and reject asynchronous daemon restarts
+		// during a pass.
+		if (refreshed.isEmpty() || ApplicationManager.getApplication().isUnitTestMode()) {
 			return;
 		}
 

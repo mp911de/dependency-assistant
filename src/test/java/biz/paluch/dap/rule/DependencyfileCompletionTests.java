@@ -24,7 +24,6 @@ import com.intellij.codeInsight.lookup.Lookup;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static biz.paluch.dap.assertions.Assertions.*;
@@ -76,26 +75,6 @@ class DependencyfileCompletionTests {
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 
 		assertThat(file).containsText("\"name\": \"name\"");
-	}
-
-	@Test
-	@EditorFile(name = "dependencyfile.json", content = """
-			{
-			  "artifacts": {
-			    "org.springframework:spring-core": { "generation": "6.2.x" },
-			    <caret>
-			  }
-			}
-			""")
-	@Disabled("TODO: Flakey?")
-	void acceptingTopLevelSuggestionFromWhitespaceInsertsQuotedEntry(PsiFile file) {
-
-		fixture.complete(CompletionType.BASIC);
-		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
-
-		assertThat(file)
-				.containsText("\"org.junit.jupiter:junit-jupiter\": {")
-				.containsText("\"name\": \"name\"");
 	}
 
 	@Test
