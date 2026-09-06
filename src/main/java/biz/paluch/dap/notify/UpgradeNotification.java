@@ -85,6 +85,14 @@ public class UpgradeNotification {
 		return updates.size() == 1;
 	}
 
+	/**
+	 * @return whether the reported changes are applied but not committed, so they
+	 * still sit on the undo stack.
+	 */
+	public boolean isUndoable() {
+		return wording == Wording.APPLIED && !isEmpty();
+	}
+
 	public NotificationType getType() {
 		return type;
 	}

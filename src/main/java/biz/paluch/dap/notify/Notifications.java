@@ -18,6 +18,7 @@ package biz.paluch.dap.notify;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -28,6 +29,9 @@ import com.intellij.ide.nls.NlsMessages;
 import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationAction;
 import com.intellij.notification.NotificationType;
+import com.intellij.openapi.application.Application;
+import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.project.Project;
 import com.intellij.util.text.DateFormatUtil;
 
@@ -74,8 +78,18 @@ public class Notifications {
 		return new Builder(channel.create(title, content, NotificationType.ERROR));
 	}
 
+	/**
+	 * Create an upgrade notification. Uncommitted changes expire the notification
+	 * once the undo stack changes, so Undo and Commit never act on stale state.
+	 */
 	public static NotificationBuilder applied(NotificationChannel channel, UpgradeNotification wording) {
-		return new Builder(wording.create(channel));
+
+		Builder builder = new Builder(wording.create(channel));
+		if (wording.isUndoable()) {
+			builder.expireWhen(NotificationExpiry.onUndoAction());
+		}
+
+		return builder;
 	}
 
 	/**
@@ -170,6 +184,8 @@ public class Notifications {
 
 		private final Notification notification;
 
+		private final List<NotificationExpiry> expiries = new ArrayList<>();
+
 		Builder(Notification notification) {
 			this.notification = notification;
 		}
@@ -181,8 +197,31 @@ public class Notifications {
 		}
 
 		@Override
+		public NotificationBuilder expireWhen(NotificationExpiry expiry) {
+			expiries.add(expiry);
+			return this;
+		}
+
+		@Override
 		public void notify(Project project) {
+
 			notification.notify(project);
+			if (expiries.isEmpty()) {
+				return;
+			}
+
+			Application application = ApplicationManager.getApplication();
+			if (application.isDispatchThread()) {
+				watch(project);
+			} else {
+				application.invokeLater(() -> watch(project), ModalityState.any(), project.getDisposed());
+			}
+		}
+
+		private void watch(Project project) {
+			for (NotificationExpiry expiry : expiries) {
+				expiry.watch(project, notification);
+			}
 		}
 
 	}

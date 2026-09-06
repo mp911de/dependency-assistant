@@ -33,6 +33,12 @@ public interface NotificationBuilder {
 	 */
 	NotificationBuilder action(NotificationAction action);
 
+	/**
+	 * Expire the shown notification once the condition holds.
+	 * @return this builder.
+	 */
+	NotificationBuilder expireWhen(NotificationExpiry expiry);
+
 	void notify(Project project);
 
 }
