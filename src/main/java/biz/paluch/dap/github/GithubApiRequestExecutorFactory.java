@@ -68,11 +68,6 @@ class GithubApiRequestExecutorFactory {
 
 	private final GithubProjectDefaultAccountHolder defaultAccountHolder;
 
-	/**
-	 * Production constructor invoked by the IntelliJ service container.
-	 *
-	 * @param project the project whose repositories and default account are used.
-	 */
 	GithubApiRequestExecutorFactory(Project project) {
 		this.project = project;
 		this.repositoriesManager = project.getService(GHHostedRepositoriesManager.class);
@@ -85,9 +80,8 @@ class GithubApiRequestExecutorFactory {
 	}
 
 	/**
-	 * Create a best-effort executor for the first known GitHub repository.
-	 *
-	 * @return the executor resolution result.
+	 * Create a best-effort executor for the first known repository, with anonymous
+	 * fallback.
 	 */
 	public ExecutorResult getExecutor() {
 
@@ -122,22 +116,16 @@ class GithubApiRequestExecutorFactory {
 	}
 
 	/**
-	 * Create an executor for the given repository coordinates if the account choice
-	 * is clear.
-	 *
-	 * @param repository the GitHub repository coordinates.
-	 * @return the executor resolution result.
+	 * Resolve an executor for the repository's server.
+	 * @see #getExecutor(GithubServerPath)
 	 */
 	public ExecutorResult getExecutor(GHRepositoryCoordinates repository) {
 		return getExecutor(repository.getServerPath());
 	}
 
 	/**
-	 * Create an executor for the given GitHub repository mapping if the account
-	 * choice is clear.
-	 *
-	 * @param repository the GitHub repository mapping.
-	 * @return the executor resolution result.
+	 * Resolve an executor for the repository when the account choice is
+	 * unambiguous.
 	 */
 	public ExecutorResult getExecutor(GHGitRepositoryMapping repository) {
 		GithubServerPath server = repository.getRepository().getServerPath();
@@ -146,12 +134,9 @@ class GithubApiRequestExecutorFactory {
 	}
 
 	/**
-	 * Create an authenticated executor from an explicit repository/account pair.
-	 *
-	 * @param repository the selected GitHub repository.
-	 * @param account the selected account.
-	 * @return the executor resolution result, including a failure reason when the
-	 * pair cannot be authenticated.
+	 * Authenticate the selected repository and account.
+	 * @return the executor or a result explaining why authentication was
+	 * unavailable.
 	 */
 	public ExecutorResult getExecutor(GHGitRepositoryMapping repository, GithubAccount account) {
 		GithubServerPath server = repository.getRepository().getServerPath();
@@ -160,10 +145,8 @@ class GithubApiRequestExecutorFactory {
 	}
 
 	/**
-	 * Create an executor for the given server if the account choice is clear.
-	 *
-	 * @param server the GitHub server.
-	 * @return the executor resolution result.
+	 * Resolve an executor when account selection is unambiguous.
+	 * <p>Untrusted projects use anonymous access.
 	 */
 	public ExecutorResult getExecutor(GithubServerPath server) {
 
@@ -174,12 +157,6 @@ class GithubApiRequestExecutorFactory {
 		return resolve(server, getSelectionDetails(server));
 	}
 
-	/**
-	 * Return the repositories, accounts, and current suggestions for a server.
-	 *
-	 * @param server the GitHub server.
-	 * @return immutable selector details.
-	 */
 	private SelectionDetails getSelectionDetails(GithubServerPath server) {
 		return getSelectionDetails(server, getRepositoryMappings(server));
 	}

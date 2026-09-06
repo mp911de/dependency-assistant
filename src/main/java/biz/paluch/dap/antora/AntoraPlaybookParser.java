@@ -28,23 +28,14 @@ import org.jetbrains.yaml.psi.YAMLScalar;
 import org.jspecify.annotations.Nullable;
 
 /**
- * YAML PSI parser for Antora playbook {@code ui.bundle.url} declarations.
- *
- * <p>Scans an Antora playbook for scalar {@code url} values nested directly
- * under {@code ui.bundle} and returns detached {@link AntoraBundleUrl} values.
- * Unrelated keys, non-scalar values, invalid PSI, and malformed URLs are
- * ignored. Parsing does not modify the PSI or open a read action. Callers
- * supply the required PSI read access.
+ * Parse Antora {@code ui.bundle.url} scalars into detached bundle references.
+ * <p>Malformed URLs and invalid PSI are ignored. Callers provide PSI read
+ * access.
  *
  * @author Mark Paluch
  */
 class AntoraPlaybookParser {
 
-	/**
-	 * Collect all {@code ui.bundle.url} references from the given Antora playbook.
-	 * @param file the Antora playbook PSI file to scan.
-	 * @return a new list of parsed bundle URLs, possibly empty.
-	 */
 	List<AntoraBundleUrl> parse(PsiFile file) {
 
 		List<AntoraBundleUrl> result = new ArrayList<>();
@@ -63,22 +54,12 @@ class AntoraPlaybookParser {
 		return result;
 	}
 
-	/**
-	 * Parse a single {@code url} key-value pair into an {@link AntoraBundleUrl}.
-	 * @param keyValue the YAML key-value PSI element.
-	 * @return the parsed bundle URL, or {@literal null} if the scalar value cannot
-	 * be parsed.
-	 */
 	static @Nullable AntoraBundleUrl parseUrl(YAMLKeyValue keyValue) {
 		return AntoraBundleUrl.from(keyValue.getValueText());
 	}
 
 	/**
-	 * Return whether the given key-value pair represents the {@code url:} key
-	 * directly under {@code ui.bundle}.
-	 * @param keyValue the YAML key-value pair to test.
-	 * @return {@literal true} if the key-value pair declares a
-	 * {@code ui.bundle.url} entry; {@literal false} otherwise.
+	 * Return whether the key is {@code url} directly under {@code ui.bundle}.
 	 */
 	static boolean isBundleUrlKeyValue(YAMLKeyValue keyValue) {
 

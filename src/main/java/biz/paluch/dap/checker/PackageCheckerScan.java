@@ -32,24 +32,17 @@ import com.intellij.openapi.project.Project;
 import com.intellij.packageChecker.model.Package;
 import com.intellij.packageChecker.model.PackageType;
 import com.intellij.packageChecker.service.Malicious;
-import com.intellij.packageChecker.service.PackageChecker;
 import com.intellij.packageChecker.service.PackageStatus;
 import com.intellij.packageChecker.service.Unchecked;
 import com.intellij.packageChecker.service.Vulnerable;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Single-use translation of one {@link CheckRequest} into the Package Checker
- * model and of the resulting statuses back into a {@link CheckResult}.
- *
- * <p>Versions of an unsupported {@link PackageSystem} are dropped on
- * {@link #create(Project, CheckRequest) creation}. A malicious status becomes
- * one synthesized critical advisory.
- *
- * <p>The class must only be loaded when the Package Checker plugin is present.
+ * Single-use adapter between a vulnerability request and Package Checker.
+ * <p>Unsupported package systems are omitted. Malicious packages produce a
+ * critical advisory. Load only while the Package Checker plugin is present.
  *
  * @author Mark Paluch
- * @see PackageCheckerVulnerabilitySource
  */
 class PackageCheckerScan implements BiConsumer<Package, PackageStatus> {
 
@@ -70,12 +63,7 @@ class PackageCheckerScan implements BiConsumer<Package, PackageStatus> {
 	}
 
 	/**
-	 * Create a scan for the versions of the given request that Package Checker can
-	 * evaluate.
-	 *
-	 * @param project the project whose context packages resolve against.
-	 * @param request the packages and versions to evaluate.
-	 * @return the scan, {@link #isEmpty() empty} if no version is supported.
+	 * Create a scan containing only supported package versions.
 	 */
 	static PackageCheckerScan create(Project project, CheckRequest request) {
 
@@ -95,40 +83,21 @@ class PackageCheckerScan implements BiConsumer<Package, PackageStatus> {
 		return new PackageCheckerScan(project, versions);
 	}
 
-	/**
-	 * Return whether packages of the given system can be translated into the
-	 * Package Checker model.
-	 *
-	 * @param packageSystem the package system to check support for.
-	 * @return {@literal true} if the package system is supported; {@literal false}
-	 * otherwise.
-	 */
 	static boolean supports(PackageSystem packageSystem) {
 		return toPackageType(packageSystem) != null;
 	}
 
 	/**
-	 * Return whether the request contained no version Package Checker can evaluate.
-	 *
-	 * @return {@literal true} if no supported version remains; {@literal false}
-	 * otherwise.
+	 * Return whether no supported version remains.
 	 */
 	boolean isEmpty() {
 		return versions.isEmpty();
 	}
 
 	/**
-	 * Return the packages that Package Checker has not evaluated yet, recording the
-	 * already-known statuses in the result along the way.
-	 *
-	 * <p>Already-known statuses carry no fresh scan to force, so only the returned
-	 * packages need to be sent to
-	 * {@link PackageCheckerDelegate#checkPackages(PackageChecker, List)}. Calling
-	 * this method more than once repeats the lookup and is not intended.
-	 *
-	 * @param packageStatus the current status lookup, typically
-	 * {@link PackageChecker#packageStatus(Package)}.
-	 * @return the packages awaiting a scan, empty if every version is known.
+	 * Collect known results and return packages that still need scanning.
+	 * <p>Invoke once before submitting results through
+	 * {@link #accept(Package, PackageStatus)}.
 	 */
 	List<Package> pending(Function<Package, PackageStatus> packageStatus) {
 
@@ -150,13 +119,7 @@ class PackageCheckerScan implements BiConsumer<Package, PackageStatus> {
 	}
 
 	/**
-	 * Record the scanned status of a package previously reported as
-	 * {@code pending}.
-	 *
-	 * <p>A package this scan did not request is ignored.
-	 *
-	 * @param ecosystemPackage the scanned package.
-	 * @param status the status Package Checker returned.
+	 * Record a pending package's result. Unrequested packages are ignored.
 	 */
 	@Override
 	public void accept(Package ecosystemPackage, PackageStatus status) {
@@ -170,18 +133,12 @@ class PackageCheckerScan implements BiConsumer<Package, PackageStatus> {
 	}
 
 	/**
-	 * Return the result collected so far, covering the already-known and the
-	 * scanned versions.
-	 *
-	 * @return the check result.
+	 * Snapshot the known and newly scanned results.
 	 */
 	public CheckResult toCheckResult() {
 		return result.build();
 	}
 
-	/**
-	 * Return the vulnerabilities for a specific version.
-	 */
 	Vulnerabilities getVulnerabilities(PackageIdentity pkg, ArtifactVersion version) {
 		return toCheckResult().getVulnerabilities(pkg, version);
 	}

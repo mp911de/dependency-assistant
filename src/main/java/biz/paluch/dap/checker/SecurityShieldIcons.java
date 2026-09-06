@@ -19,15 +19,10 @@ package biz.paluch.dap.checker;
 import biz.paluch.dap.util.ResolvableIcon;
 
 /**
- * Visual style for resolving a {@link CvssSeverity} to a vulnerability shield.
- *
- * <p>Critical and high severities share the high-severity shield. None and
- * unknown share the unchecked shield. The style changes only the shield weight,
- * not that severity mapping.
+ * Filled or outline vulnerability shields.
  *
  * @author Mark Paluch
  * @see CheckerIcons
- * @see CvssSeverity
  */
 public enum SecurityShieldIcons {
 
@@ -92,10 +87,7 @@ public enum SecurityShieldIcons {
 			"biz.paluch.dap.checker.CheckerIcons.UNKNOWN_OUTLINE");
 
 	/**
-	 * Resolve the shield for the given severity in this style.
-	 *
-	 * @param severity the severity to represent.
-	 * @return the corresponding resolvable shield icon.
+	 * Resolve a shield for the severity in this style.
 	 */
 	public abstract ResolvableIcon resolve(CvssSeverity severity);
 

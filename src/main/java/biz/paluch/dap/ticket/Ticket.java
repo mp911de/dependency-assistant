@@ -20,65 +20,29 @@ import java.net.URI;
 import java.util.List;
 
 /**
- * User-facing ticket exposed by the connected ticket system.
- *
- * <p>A ticket is an implementation-owned handle returned by a
- * {@link TicketRepository}. It exposes display and planning data while keeping
- * assignment identifiers and other remote-system keys private. Use
- * {@link #getKey()} for the portable identifier and let {@link TicketSystem}
- * render that key for IDE text or commit messages.
- *
- * <p>Mutating tickets, including closing them, is outside this API.
+ * Repository-owned ticket data. Persist {@link #getKey()} with its system
+ * association to render references without fetching the ticket again.
  *
  * @author Mark Paluch
  * @see TicketRepository
- * @see TicketKey
  */
 public interface Ticket {
 
-	/**
-	 * Return the portable key identifying this ticket in user-facing contexts.
-	 *
-	 * @return the portable ticket key.
-	 */
 	TicketKey getKey();
 
-	/**
-	 * Return the ticket title.
-	 *
-	 * @return the ticket title.
-	 */
 	String getTitle();
 
-	/**
-	 * Return the lifecycle state reported for this ticket.
-	 *
-	 * @return the ticket state.
-	 */
 	TicketState getState();
 
-	/**
-	 * Return the browser link supplied for this ticket.
-	 *
-	 * @return the browser link for this ticket.
-	 */
 	URI getWebLink();
 
 	/**
-	 * Return the milestones this ticket is attached to.
-	 *
-	 * <p>Milestones attached to a ticket can be closed, even though
-	 * {@link TicketRepository#getMilestones(com.intellij.openapi.progress.ProgressIndicator)}
-	 * lists open milestones only.
-	 *
-	 * @return the milestones this ticket is attached to, or an empty list if none.
+	 * Return attached milestones, including closed ones. An empty list means none.
 	 */
 	List<Milestone> getMilestones();
 
 	/**
-	 * Return the labels attached to this ticket.
-	 *
-	 * @return the labels attached to this ticket, or an empty list if none.
+	 * Return attached labels, or an empty list if none.
 	 */
 	List<Label> getLabels();
 

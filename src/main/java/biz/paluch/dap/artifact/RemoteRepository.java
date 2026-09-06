@@ -27,7 +27,7 @@ import org.springframework.util.ObjectUtils;
  * Remote Maven repository endpoint with optional HTTP Basic credentials.
  *
  * <p>The URL is normalized to a trailing slash for relative artifact-path
- * resolution. Equality uses the URL and credential server id; the repository id
+ * resolution. Equality uses the URL and credential server id. The repository id
  * is descriptive and does not participate.
  *
  * @author Mark Paluch
@@ -45,9 +45,7 @@ public class RemoteRepository {
 
 	/**
 	 * Create a remote Maven repository descriptor.
-	 * @param id the repository id.
-	 * @param url the repository base URL.
-	 * @param credentials the credentials to use, or {@literal null}.
+	 * @param credentials the credentials, or {@literal null} for anonymous access.
 	 * @throws IllegalArgumentException if the id or URL is blank or the URL is
 	 * malformed.
 	 */

@@ -53,21 +53,6 @@ class KotlinArtifactReferenceLocator implements ArtifactReferenceLocator<KtEleme
 		this.projectState = projectState;
 	}
 
-	/**
-	 * Resolve the artifact reference owning the given Kotlin PSI element.
-	 * <p>Supports direct dependency literals, property-backed declarations,
-	 * {@code extra} assignments, and version catalog references such as:
-	 * <pre class="code">
-	 * implementation("org.springframework:spring-core:6.2.0")
-	 * implementation("org.springframework:spring-core:$springVersion")
-	 * extra["springVersion"] = "6.2.0"
-	 * implementation(libs.spring.core)
-	 * </pre>
-	 *
-	 * @param element the PSI element to inspect.
-	 * @return the artifact reference, or an unresolved reference if no supported
-	 * declaration can be derived.
-	 */
 	@Override
 	public ArtifactReference locate(KtElement element) {
 
@@ -198,9 +183,7 @@ class KotlinArtifactReferenceLocator implements ArtifactReferenceLocator<KtEleme
 	}
 
 	/**
-	 * Resolve a dependency call to its reference by delegating to the forward
-	 * parser, so reverse lookup and dependency collection share one declaration
-	 * model.
+	 * Use the forward parser so lookup and collection share the declaration model.
 	 */
 	private ArtifactReference locateDeclaration(KtCallExpression declaration) {
 		return reference(parserFor(declaration).parse(declaration));
@@ -229,10 +212,8 @@ class KotlinArtifactReferenceLocator implements ArtifactReferenceLocator<KtEleme
 	}
 
 	/**
-	 * Return whether the element is the leading entry of a multi-entry string
-	 * template (for example, the {@code "group:artifact:"} prefix before a
-	 * {@code $version} interpolation). Such an entry is the coordinate, not the
-	 * version.
+	 * The leading entry in {@code "group:artifact:$version"} is a coordinate, not a
+	 * version site.
 	 */
 	private static boolean isLeadingTemplateEntry(PsiElement element) {
 		return element instanceof KtStringTemplateEntry
@@ -241,12 +222,8 @@ class KotlinArtifactReferenceLocator implements ArtifactReferenceLocator<KtEleme
 	}
 
 	/**
-	 * Find the dependency or plugin call that owns the given version element.
-	 * <p>Delegates to {@link KotlinDeclarationStyleDetector} so reverse lookup and
-	 * version completion share one version-position grammar. Returns
-	 * {@literal null} for positions resolved through a dedicated path (backing
-	 * properties and {@code extra} assignments) and for range-only version
-	 * constraints, which carry no single navigable version.
+	 * Use the shared declaration grammar for lookup and completion.
+	 * <p>Range-only constraints have no single navigable version.
 	 */
 	private static @Nullable KtCallExpression findDependencyExpression(PsiElement element) {
 
@@ -269,8 +246,7 @@ class KotlinArtifactReferenceLocator implements ArtifactReferenceLocator<KtEleme
 	}
 
 	/**
-	 * Find the Kotlin property declaration that owns the given PSI element.
-	 * <p>Used for literal entries nested within property initializers.
+	 * Find the property owning a literal template entry, or {@literal null}.
 	 */
 	public static @Nullable KtProperty findProperty(KtElement element) {
 		return element instanceof KtLiteralStringTemplateEntry
@@ -279,8 +255,8 @@ class KotlinArtifactReferenceLocator implements ArtifactReferenceLocator<KtEleme
 	}
 
 	/**
-	 * Find the {@code extra["key"] = ...} assignment that owns the given value PSI.
-	 * <p>Also supports the {@code "value".also { extra["key"] = it }} form.
+	 * Find an {@code extra["key"] = value} assignment, including an {@code also}
+	 * receiver.
 	 */
 	public static @Nullable KtBinaryExpression findPropertyExpression(KtElement element) {
 
@@ -302,7 +278,7 @@ class KotlinArtifactReferenceLocator implements ArtifactReferenceLocator<KtEleme
 	}
 
 	/**
-	 * Extract the property key from an {@code extra["key"] = ...} assignment.
+	 * Extract the key of an {@code extra} assignment, or {@literal null}.
 	 */
 	@Contract("null -> null")
 	public static @Nullable String findProperty(@Nullable KtBinaryExpression element) {

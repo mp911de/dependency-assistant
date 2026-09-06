@@ -31,13 +31,10 @@ import biz.paluch.dap.util.Sequence;
 import org.springframework.util.Assert;
 
 /**
- * A grouped upgrade over two or more member upgrades.
- *
- * <p>The group recomputes one {@link DependencyUpgradeCandidate} from the
- * intersection of member releases, the composite vulnerability repository, the
- * lowest member version, the first member's rule, presentation, and assistant,
- * and the merged declared versions of all members. Member order is retained for
- * update fan-out.
+ * A joint upgrade for two or more dependencies.
+ * <p>Targets come from the intersection of member releases. The lowest current
+ * version is the baseline. Rule, presentation, and assistant come from the
+ * first member. Vulnerabilities and declared versions combine all members.
  *
  * @author Mark Paluch
  */
@@ -55,14 +52,8 @@ public class UpgradeGroup implements Sequence<DependencyUpgradeCandidate> {
 	}
 
 	/**
-	 * Create a group from the given member upgrades.
-	 *
-	 * <p>The member list is retained as supplied and must not be mutated after this
-	 * call.
-	 *
-	 * @param members the upgrades to group, in member order. At least two are
-	 * required.
-	 * @return a group with a candidate recomputed from all members.
+	 * Group dependencies in the supplied order.
+	 * <p>The member list is retained and must not be modified.
 	 * @throws IllegalArgumentException if fewer than two members are supplied.
 	 */
 	public static UpgradeGroup of(List<DependencyUpgradeCandidate> members) {
@@ -106,18 +97,14 @@ public class UpgradeGroup implements Sequence<DependencyUpgradeCandidate> {
 	}
 
 	/**
-	 * Return the grouped member upgrades in their original order.
-	 *
-	 * @return the retained member list.
+	 * Return the retained member list in its original order.
 	 */
 	public List<DependencyUpgradeCandidate> getMembers() {
 		return members;
 	}
 
 	/**
-	 * Return the upgrade recomputed from the grouped member facts.
-	 *
-	 * @return the grouped upgrade.
+	 * Return the candidate computed from all members.
 	 */
 	public DependencyUpgradeCandidate getUpgrade() {
 		return upgrade;

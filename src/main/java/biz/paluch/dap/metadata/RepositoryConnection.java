@@ -20,44 +20,28 @@ import com.intellij.openapi.project.Project;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Detected link between a declared repository URL and its hosting
- * {@link Platform}.
- *
- * <p>A connection is the result of platform detection: it identifies the
- * repository through its canonical {@link #getKey() key} and browsable
- * {@link #getUrl() URL} and creates the {@link ProjectRepository} handle on
- * demand. Connections are cheap, immutable detection results. They hold no
- * network resources and involve no network access.
+ * A repository supported by a {@link Platform}.
+ * <p>Connections are immutable detection results with no network resources. Use
+ * {@link #createRepository(Project)} to obtain a repository handle.
  *
  * @author Mark Paluch
  * @see Platform#findConnection
- * @see ProjectRepository
  */
 public interface RepositoryConnection {
 
 	/**
-	 * Return the canonical repository key used to address cached repository
-	 * entries, typically in {@code host/owner/repository} form.
-	 *
-	 * @return the canonical repository cache key.
+	 * Return the canonical cache key, typically {@code host/owner/repository}.
 	 */
 	String getKey();
 
 	/**
-	 * Return the browsable https URL of the repository main page in its
-	 * platform-canonical form, independent of how the repository URL was declared.
-	 *
-	 * @return the canonical browsable repository URL.
+	 * Return the canonical browsable HTTPS URL, independent of how the repository
+	 * URL was declared.
 	 */
 	String getUrl();
 
 	/**
-	 * Create the repository handle for this connection through the detecting
-	 * platform.
-	 *
-	 * @param project the project requesting the handle.
-	 * @return the repository handle, or {@literal null} if the platform cannot
-	 * create one.
+	 * Create a repository handle, or return {@literal null} if unavailable.
 	 */
 	default @Nullable ProjectRepository createRepository(Project project) {
 		return null;

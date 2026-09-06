@@ -36,13 +36,8 @@ class PropertyResolverUtil {
 	static final int MAX_RESOLUTION_DEPTH = 10;
 
 	/**
-	 * Resolves all {@code ${key}} and {@code $key} placeholders within
-	 * {@code value} using {@code resolver}. Unresolved placeholders are left
-	 * in-place so that callers can detect them. Returns {@literal null} if
-	 * {@code value} is {@literal null}.
-	 * <p>After this call, callers must check that the result contains no residual
-	 * placeholder tokens (via {@link #hasUnresolvedPlaceholder(String)}) before
-	 * accepting the value as fully resolved.
+	 * Expand placeholders once, preserving unresolved tokens. A non-null result may
+	 * still need resolution, including placeholders introduced by replacements.
 	 */
 	static @Nullable String resolveInterpolated(@Nullable String value, PropertyResolver resolver) {
 
@@ -68,11 +63,6 @@ class PropertyResolverUtil {
 		return result.toString();
 	}
 
-	/**
-	 * Resolves {@code value} by repeatedly applying {@link #resolveInterpolated}
-	 * until no placeholders remain, no progress is made, or the iteration cap is
-	 * reached.
-	 */
 	@Contract("null, _ -> null")
 	static @Nullable String resolvePlaceholders(@Nullable String value, PropertyResolver resolver) {
 

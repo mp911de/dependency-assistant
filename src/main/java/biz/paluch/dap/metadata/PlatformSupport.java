@@ -28,15 +28,9 @@ import com.intellij.util.Urls;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Support class base for platforms whose browsable URLs are fixed path
- * templates below a canonical repository base URL. A subclass implements
- * {@link Platform#detect} and returns a {@link SimpleRepositoryConnection}. The
- * repository handle and issue tracker are rendered here from the configured
- * path templates.
- *
- * <p>Suited for platforms without tag fetching. Platforms with richer needs
- * such as tag sources or hint-aided host detection implement {@link Platform}
- * directly.
+ * Base class for platforms with fixed URL paths and no tag fetching.
+ * <p>Subclasses detect repositories and return
+ * {@link SimpleRepositoryConnection}.
  *
  * @author Mark Paluch
  */
@@ -51,14 +45,12 @@ abstract class PlatformSupport implements Platform {
 	private final @Nullable String issuesPath;
 
 	/**
-	 * @param hintToken lower-case token required in a non-empty declared hint for
-	 * issue-tracker derivation. The value is irrelevant when {@code issuesPath} is
-	 * {@literal null}.
-	 * @param releasesPath path below the base URL to the releases listing.
-	 * @param releaseNotesPath path below the base URL to which the encoded tag name
-	 * is appended, or {@literal null} if the platform has no per-tag page.
-	 * @param issuesPath path below the base URL to the issue tracker, or
-	 * {@literal null} if no tracker is derived.
+	 * @param hintToken lower-case token accepted in an issue-tracker hint, or
+	 * {@literal null} to accept only absent or empty hints.
+	 * @param releasesPath releases path relative to the repository URL.
+	 * @param releaseNotesPath path to which an encoded tag is appended, or
+	 * {@literal null} if no per-tag page is available.
+	 * @param issuesPath issue-tracker path, or {@literal null} if none is derived.
 	 */
 	PlatformSupport(@Nullable String hintToken, String releasesPath, @Nullable String releaseNotesPath,
 			@Nullable String issuesPath) {

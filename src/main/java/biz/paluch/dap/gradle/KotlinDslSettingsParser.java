@@ -46,12 +46,8 @@ import org.jspecify.annotations.Nullable;
 class KotlinDslSettingsParser {
 
 	/**
-	 * Parse the given {@code settings.gradle.kts} file into a catalog registry.
-	 *
-	 * <p>The configured default alias is always registered. If it has no explicit
-	 * catalog declaration, it uses {@code gradle/libs.versions.toml}.
-	 * @param file the Kotlin DSL settings file to parse.
-	 * @return the configured catalogs and default alias.
+	 * Read catalog declarations, supplying {@code gradle/libs.versions.toml} for
+	 * the default alias when it has no explicit declaration.
 	 */
 	static VersionCatalogRegistry parseRegistry(PsiFile file) {
 
@@ -114,9 +110,6 @@ class KotlinDslSettingsParser {
 		return null;
 	}
 
-	/**
-	 * Return the statements of the call's trailing lambda, or none.
-	 */
 	private static List<KtExpression> getLambdaStatements(KtCallExpression call) {
 
 		KtLambdaExpression lambda = KotlinDslUtils.getLambdaArgument(call);

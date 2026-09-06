@@ -22,7 +22,6 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.ProjectStateIndexer;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.openapi.Disposable;
@@ -42,24 +41,10 @@ import org.jetbrains.idea.maven.project.MavenSyncListener;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Project service re-indexing the Maven assistant's project state when a Maven
- * sync settles, so members resolved from the effective dependency management
- * surface in highlighting.
- *
- * <p>Both terminal edges of the Maven pipeline schedule a refresh:
- * {@link #importFinished} once the workspace model has been committed, and
- * {@link #syncFinished} once the surrounding sync has settled. An import is
- * nested inside a sync, so a sync reports the former first and the latter last,
- * while a plain re-import (for example folder resolution) reports only the
- * former. Refreshes are debounced by {@link #REFRESH_DELAY_MS} milliseconds and
- * each event re-arms the timer, so one sync re-indexes once, against the state
- * left by its last edge, and a sync that never reaches {@link #syncFinished}
- * still refreshes.
- *
- * <p>The topic is published on the application message bus and broadcast to
- * child buses, so events for other projects arrive here as well and are
- * filtered by project identity. The subscription is bound to this service and
- * therefore to the project lifetime.
+ * Refreshes dependency state after Maven imports and syncs.
+ * <p>Both completion events are observed because a plain re-import may not
+ * finish with a sync event. Nearby events are debounced. Events for other
+ * projects are ignored, and disposal cancels pending refreshes.
  *
  * @author Mark Paluch
  * @see ProjectStateIndexer#refreshAfterImport
@@ -67,10 +52,6 @@ import org.jspecify.annotations.Nullable;
 @Service(Service.Level.PROJECT)
 final class MavenSyncRefresher implements MavenSyncListener, Disposable {
 
-	/**
-	 * Quiet period after the last sync notification before the project state is
-	 * re-indexed.
-	 */
 	static final int REFRESH_DELAY_MS = 500;
 
 	private static final Logger LOG = Logger.getInstance(MavenSyncRefresher.class);
@@ -84,13 +65,6 @@ final class MavenSyncRefresher implements MavenSyncListener, Disposable {
 		project.getMessageBus().connect(this).subscribe(MavenSyncListener.Companion.getTOPIC(), this);
 	}
 
-	/**
-	 * Return the project-scoped refresher instance, subscribing it to Maven sync
-	 * notifications on first access.
-	 *
-	 * @param project the IntelliJ project.
-	 * @return the corresponding service instance.
-	 */
 	public static MavenSyncRefresher getInstance(Project project) {
 		return project.getService(MavenSyncRefresher.class);
 	}
@@ -152,12 +126,9 @@ final class MavenSyncRefresher implements MavenSyncListener, Disposable {
 	}
 
 	/**
-	 * Startup activity arming the refresher for a project.
-	 * <p>Registered as a startup activity rather than driven from
-	 * {@link DependencyAssistant#prepare(Project)} because
-	 * {@link MavenAssistant#supports(Project)} reports {@literal false} until the
-	 * Maven model has been read, which is exactly the state the sync subscription
-	 * must recover from.
+	 * Installs the listener before the Maven model is available.
+	 * <p>Assistant preparation cannot do this because Maven support is reported
+	 * only after a model has been imported.
 	 */
 	public static final class Installer implements ProjectActivity {
 

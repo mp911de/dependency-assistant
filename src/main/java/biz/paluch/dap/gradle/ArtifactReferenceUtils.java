@@ -37,7 +37,8 @@ import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Utility methods for resolving Gradle {@link ArtifactReference}s.
+ * Resolve Gradle dependency sites and backing properties to artifact
+ * references.
  *
  * @author Mark Paluch
  */
@@ -110,10 +111,6 @@ class ArtifactReferenceUtils {
 		});
 	}
 
-	/**
-	 * Build a reference carrying the structural identity of the given site, with
-	 * the version-specific builder steps applied on top.
-	 */
 	private static ArtifactReference reference(DependencySite dependencySite,
 			Consumer<ArtifactDeclaration.Builder> version) {
 

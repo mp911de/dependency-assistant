@@ -26,19 +26,7 @@ import org.assertj.core.api.AbstractAssert;
 /**
  * AssertJ assertions for a single {@link Release}.
  *
- * <p>Instances are obtained from {@link Assertions#assertThat(Release)} or by
- * navigation from {@link ReleasesAssert#containsRelease(String)} after the
- * containing {@code Releases} assertion has established that the release
- * exists.
- *
- * <p>Example: <pre class="code">
- * assertThat(releases)
- *     .containsRelease("8.14.3")
- *     .hasReleaseDate("2025-07-04T10:12:13");
- * </pre>
- *
  * @author Mark Paluch
- * @see ReleasesAssert
  */
 public class ReleaseAssert extends AbstractAssert<ReleaseAssert, Release> {
 
@@ -46,20 +34,10 @@ public class ReleaseAssert extends AbstractAssert<ReleaseAssert, Release> {
 		super(release, ReleaseAssert.class);
 	}
 
-	/**
-	 * Verifies that the actual release version string equals the given value.
-	 * @param expected the expected version string.
-	 * @return this assertion object.
-	 */
 	public ReleaseAssert hasVersion(String expected) {
 		return hasVersion(ArtifactVersion.of(expected));
 	}
 
-	/**
-	 * Verifies that the actual release version equals the given value.
-	 * @param expected the expected version.
-	 * @return this assertion object.
-	 */
 	public ReleaseAssert hasVersion(ArtifactVersion expected) {
 		isNotNull();
 		if (!expected.equals(this.actual.version())) {
@@ -69,19 +47,12 @@ public class ReleaseAssert extends AbstractAssert<ReleaseAssert, Release> {
 	}
 
 	/**
-	 * Verifies that the actual release date equals the given ISO date or date-time.
-	 * @param expected the expected ISO-8601 date or date-time string.
-	 * @return this assertion object.
+	 * Compare the release date with an ISO-8601 date or date-time.
 	 */
 	public ReleaseAssert hasReleaseDate(String expected) {
 		return hasReleaseDate(Release.parseReleaseDate(expected));
 	}
 
-	/**
-	 * Verifies that the actual release date equals the given value.
-	 * @param expected the expected release date.
-	 * @return this assertion object.
-	 */
 	public ReleaseAssert hasReleaseDate(LocalDateTime expected) {
 		isNotNull();
 		if (!expected.equals(this.actual.releaseDate())) {
@@ -91,12 +62,6 @@ public class ReleaseAssert extends AbstractAssert<ReleaseAssert, Release> {
 		return this;
 	}
 
-	/**
-	 * Verifies that the actual release version is a {@link GitVersion} carrying the
-	 * given commit SHA.
-	 * @param expected the expected commit SHA.
-	 * @return this assertion object.
-	 */
 	public ReleaseAssert hasSha(String expected) {
 		isNotNull();
 		if (!(this.actual.version() instanceof GitVersion gitVersion)) {
@@ -111,10 +76,6 @@ public class ReleaseAssert extends AbstractAssert<ReleaseAssert, Release> {
 		return this;
 	}
 
-	/**
-	 * Verifies that the actual release carries no release date.
-	 * @return this assertion object.
-	 */
 	public ReleaseAssert hasNoReleaseDate() {
 		isNotNull();
 		if (this.actual.releaseDate() != null) {

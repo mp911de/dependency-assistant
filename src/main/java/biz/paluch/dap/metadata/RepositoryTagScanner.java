@@ -38,26 +38,12 @@ import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 
 /**
- * Startup sweep that connects captured project metadata to cached repository
- * entries and keeps their tag listings fresh.
- *
- * <p>The sweep runs in two phases. The populate phase walks all cached
- * artifacts carrying project metadata with a repository URL, detects the
- * hosting {@link Platform}, and ensures a {@link CachedRepository} exists under
- * the connection's canonical key and URL. The scan phase selects up to
- * {@link #MAX_CANDIDATES} repositories whose last scan lies beyond the
- * {@link #SCAN_INTERVAL} and fetches their tags through the platform's
- * {@link TagSource}, processed by virtual-thread workers.
- *
- * <p>Failure back-off mirrors the cached artifact's empty-lookup scheme on the
- * repository's {@code lastUpdateTimestamp}: a failed lookup advances a small
- * counter, and once {@link #EMPTY_THRESHOLD} consecutive lookups failed, the
- * timestamp switches to the current time so further attempts wait out the scan
- * interval.
+ * Refreshes cached repository tags from captured project metadata.
+ * <p>Repeated lookup failures delay further attempts. Cancellation does not
+ * count as a failed lookup.
  *
  * @author Mark Paluch
  * @see CachedRepository
- * @see Platform
  */
 public class RepositoryTagScanner {
 
@@ -81,14 +67,8 @@ public class RepositoryTagScanner {
 	}
 
 	/**
-	 * Run the sweep: populate repository entries from captured project metadata,
-	 * then scan due repositories for their tags.
-	 *
-	 * <p>A successful scan replaces the cached tag list and records the scan time.
-	 * Cancellation is not recorded as a failed lookup. Failed remote lookups
-	 * advance the repository's back-off state.
-	 *
-	 * @param indicator the progress indicator to report cancellation through.
+	 * Refresh repositories whose tags are due for a scan.
+	 * <p>Successful scans replace the cached tags. Failed lookups retain them.
 	 */
 	public void scan(ProgressIndicator indicator) {
 
@@ -96,11 +76,6 @@ public class RepositoryTagScanner {
 		scanTags(indicator);
 	}
 
-	/**
-	 * Ensure a {@link CachedRepository} exists for every artifact whose captured
-	 * metadata carries a platform-detectable repository URL. Entries are keyed and
-	 * addressed by the canonical connection key and URL. Timestamps stay untouched.
-	 */
 	private void populateRepositories(ProgressIndicator indicator) {
 
 		for (CachedArtifact artifact : cache.getCachedArtifacts()) {
@@ -143,7 +118,8 @@ public class RepositoryTagScanner {
 
 			scope.joinAll();
 
-			// scanRepository records lookup failures itself, anything left is an error
+			// Lookup failures are already recorded. Propagate cancellation and other
+			// errors.
 			for (Subtask<?> subtask : scope.getSubtasks()) {
 				subtask.getOrThrow();
 			}
@@ -216,13 +192,8 @@ public class RepositoryTagScanner {
 		}
 	}
 
-	/**
-	 * Advance the failed-lookup counter on {@code lastUpdateTimestamp}. Once
-	 * {@link #EMPTY_THRESHOLD} consecutive lookups failed, the value switches to
-	 * the current time, delaying further attempts by the scan interval. An expired
-	 * delay timestamp restarts the counter cycle.
-	 */
 	private void recordFailure(String key) {
+		// The timestamp also stores the failure count until retries are exhausted.
 		cache.doWithRepository(key, it -> {
 			long counter = it.getLastUpdateTimestamp() < EMPTY_THRESHOLD ? it.getLastUpdateTimestamp() + 1 : 1;
 			it.setLastUpdateTimestamp(counter >= EMPTY_THRESHOLD ? cache.now() : counter);

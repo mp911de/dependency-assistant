@@ -30,16 +30,12 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
 /**
- * Groups ungoverned candidates by coordinate {@link Family} within one
- * {@link PackageSystem}.
- *
- * <p>Within each family, the largest version-agreeing cohort is partitioned by
- * {@link ReleaseLine}. A partition of at least two members forms an inferred
- * group when its exact package constellation has a remembered name or its name
- * can be derived from the members' {@link CoordinateShape}.
+ * Infer groups for candidates without a rule-defined dependency name.
+ * <p>Members share a coordinate family, package system, current version and
+ * release line. A group needs a remembered name or one derived from its
+ * coordinates.
  *
  * @author Mark Paluch
- * @see GroupByRule#isApplicable(TableRow)
  */
 class InferredGrouping implements GroupingPolicy<SingleTableRow, GroupRow> {
 
@@ -107,9 +103,7 @@ class InferredGrouping implements GroupingPolicy<SingleTableRow, GroupRow> {
 	}
 
 	/**
-	 * Grouping identity for an ungoverned candidate: its coordinate family, the
-	 * artifact id up to the first {@code -} or {@code .} boundary, within its group
-	 * id and package system.
+	 * Coordinate family within one group id and package system.
 	 */
 	private record Family(String groupId, PackageSystem packageSystem, String token) {
 

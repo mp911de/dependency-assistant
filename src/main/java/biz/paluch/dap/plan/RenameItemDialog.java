@@ -35,17 +35,9 @@ import com.intellij.util.ui.JBUI;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Slim name editor for renaming an Upgrade Plan item: a label, a
- * {@link NameSuggestionsField} seeded with names derived from the item, two
- * choices below the field, and the standard OK and Cancel buttons. OK stays
- * disabled while the entered name is blank; the accepted name is returned
- * {@link #sanitize(String) sanitized}.
- *
- * <p>The two choices are "remember name" (store the name as a personal name
- * hint for the item's constellation) and "update dependencyfile.json" (write
- * the name into the project's descriptor). The dialog only reports them through
- * {@link #isRememberName()} and {@link #isUpdateDependencyfile()}; the handler
- * preselects them from the persisted preferences and acts on the answers.
+ * Collect a plan item name and optional persistence choices.
+ * <p>The dialog reports choices to the handler. It does not change the plan or
+ * descriptor.
  *
  * @author Mark Paluch
  */
@@ -79,11 +71,8 @@ class RenameItemDialog extends DialogWrapper {
 	}
 
 	/**
-	 * Normalize a typed or pasted name: trim surrounding whitespace and collapse
-	 * line breaks so the result renders as one tree row and one commit subject.
-	 *
-	 * @param name the raw entered name.
-	 * @return the sanitized name, or {@literal null} when nothing remains.
+	 * Trim and collapse line breaks so the name fits a tree row and commit subject.
+	 * @return the normalized name, or {@literal null} if blank.
 	 */
 	static @Nullable String sanitize(@Nullable String name) {
 
@@ -96,17 +85,13 @@ class RenameItemDialog extends DialogWrapper {
 	}
 
 	/**
-	 * Return the accepted name, sanitized, or {@literal null} when the field is
-	 * blank. Meaningful after {@link #showAndGet()} returned {@literal true}.
+	 * Return the normalized entered name, or {@literal null} if blank.
 	 */
 	@Nullable
 	public String getEnteredName() {
 		return sanitize(nameField.getEnteredName());
 	}
 
-	/**
-	 * Preselect the "remember name" choice.
-	 */
 	public void setRememberName(boolean selected) {
 		rememberName.setSelected(selected);
 	}
@@ -116,11 +101,8 @@ class RenameItemDialog extends DialogWrapper {
 	}
 
 	/**
-	 * Enable and preselect the "update dependencyfile.json" choice. A disabled
-	 * choice always shows unchecked and explains itself through its tooltip.
-	 *
-	 * @param available whether a descriptor exists to write to.
-	 * @param selected the preselection, honoured only when {@code available}.
+	 * Set descriptor-write availability and preselection. An unavailable choice
+	 * remains unchecked.
 	 */
 	public void setUpdateDependencyfile(boolean available, boolean selected) {
 
@@ -130,10 +112,6 @@ class RenameItemDialog extends DialogWrapper {
 				available ? "plan.rename.dependencyfile.tooltip" : "plan.rename.dependencyfile.disabled"));
 	}
 
-	/**
-	 * Whether the name should be written to {@code dependencyfile.json}; always
-	 * {@literal false} when the choice was not available.
-	 */
 	public boolean isUpdateDependencyfile() {
 		return updateDependencyfile.isEnabled() && updateDependencyfile.isSelected();
 	}

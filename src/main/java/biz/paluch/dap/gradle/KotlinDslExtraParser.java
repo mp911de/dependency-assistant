@@ -45,10 +45,7 @@ class KotlinDslExtraParser {
 	}
 
 	/**
-	 * Parse {@code extra["key"]} property declarations from a Kotlin DSL file to
-	 * {@link Property} instances.
-	 * @param file the Kotlin build script.
-	 * @return a map of property key to its {@link Property}.
+	 * Parse {@code extra} declarations with their editable value PSI.
 	 */
 	public static Map<String, Property> parseExtraProperties(PsiFile file) {
 
@@ -67,11 +64,6 @@ class KotlinDslExtraParser {
 		return result;
 	}
 
-	/**
-	 * Collect {@code extra["key"]} property declarations from a Kotlin DSL file.
-	 * @param file the Kotlin build script.
-	 * @return a map of property key to literal value.
-	 */
 	public static Map<String, String> getExtraProperties(PsiFile file) {
 
 		Map<String, String> result = new HashMap<>();
@@ -80,10 +72,7 @@ class KotlinDslExtraParser {
 	}
 
 	/**
-	 * Parse top-level {@code val} declarations from a Kotlin DSL file and return
-	 * them as {@link PropertyValue} instances.
-	 * @param file the Kotlin build script.
-	 * @return a map of variable name to literal value element.
+	 * Parse file-scoped literal properties and {@code by extra(...)} declarations.
 	 */
 	public static Map<String, PropertyValue> parseValProperties(PsiFile file) {
 
@@ -98,8 +87,7 @@ class KotlinDslExtraParser {
 	}
 
 	/**
-	 * Locates the PSI element whose text should be updated or highlighted as the
-	 * declared value for {@code propertyKey}.
+	 * Find an extra property with its editable value, or {@literal null}.
 	 */
 	public static @Nullable Property findExtraPropertyLocation(PsiFile file, String propertyKey) {
 
@@ -110,10 +98,6 @@ class KotlinDslExtraParser {
 				.first();
 	}
 
-	/**
-	 * Return {@literal true} when {@code expression} is an
-	 * {@code extra["key"] = value} assignment.
-	 */
 	public static boolean isExtra(@Nullable KtBinaryExpression expression) {
 		return KotlinExtraAssignment.from(expression) != null;
 	}
@@ -122,9 +106,6 @@ class KotlinDslExtraParser {
 		return PsiTreeUtil.getParentOfType(property, KtDeclaration.class) instanceof KtScript;
 	}
 
-	/**
-	 * Parse {@code val x = "1.0"} and {@code val x by extra("1.0")}.
-	 */
 	private static @Nullable PropertyValue parseValProperty(KtProperty property) {
 
 		String name = property.getName();

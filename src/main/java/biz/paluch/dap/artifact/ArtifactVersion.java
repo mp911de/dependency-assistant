@@ -39,19 +39,14 @@ import org.springframework.lang.Contract;
 public interface ArtifactVersion extends Comparable<ArtifactVersion> {
 
 	/**
-	 * Create a release version from numeric version components.
-	 * @param version the numeric version components.
-	 * @return an artifact version with release suffix.
+	 * Create a release version from numeric components.
 	 */
 	static ArtifactVersion of(NumericVersionComponents version) {
 		return new SemanticArtifactVersion(version);
 	}
 
 	/**
-	 * Parse the given version string.
-	 *
-	 * @param version the version string to parse.
-	 * @return the parsed artifact version.
+	 * Parse a numeric or release-train version, preserving a leading {@code v}.
 	 * @throws IllegalArgumentException if the string cannot be parsed.
 	 */
 	static ArtifactVersion of(String version) {
@@ -63,9 +58,7 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion> {
 	}
 
 	/**
-	 * Attempt to parse the given version string.
-	 * @param version the version string to parse.
-	 * @return the parsed artifact version, or an empty {@link Optional}.
+	 * Parse a version, or return an empty result if absent or unrecognized.
 	 */
 	static Optional<ArtifactVersion> from(@Nullable String version) {
 
@@ -80,28 +73,18 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion> {
 	}
 
 	/**
-	 * Create an artifact version using the requested suffix format.
-	 * @param version the numeric version components.
+	 * Create a version with the requested suffix notation.
 	 * @param useModifierFormat whether to use hyphen notation for the suffix.
-	 * @return an artifact version with the appropriate release suffix.
 	 */
 	static ArtifactVersion of(NumericVersionComponents version, boolean useModifierFormat) {
 		return new SemanticArtifactVersion(version, useModifierFormat);
 	}
 
 	/**
-	 * Attempt to derive a version from a Git tag name.
-	 * <p>Tag names frequently carry a project prefix, such as
-	 * {@code assertj-build-3.27.7}. The tag is cut where the version literal
-	 * starts, so qualifier suffixes ({@code -M1}, {@code -RC1}) remain part of the
-	 * parsed version, and the prefix is preserved so {@link Object#toString()}
-	 * round-trips the original tag. The prefixed-semantic interpretation wins over
-	 * the release-train fallback, so a prefixed tag is not misread as a release
-	 * train; tags without any version literal (e.g. {@code latest}) yield an empty
-	 * {@link Optional}.
-	 * @param tag the tag name to parse; can be {@literal null}.
-	 * @return the parsed version equal to its unprefixed form, or an empty
-	 * {@link Optional}.
+	 * Parse a version from a Git tag, preserving its prefix for rendering.
+	 * <p>For example, {@code assertj-build-3.27.7} compares as {@code 3.27.7}.
+	 * Prefixed numeric versions take precedence over release-train names.
+	 * @return an empty result if the tag is absent or has no recognized version.
 	 */
 	static Optional<ArtifactVersion> fromTag(@Nullable String tag) {
 
@@ -114,129 +97,81 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion> {
 	}
 
 	/**
-	 * Return whether this version is strictly newer than the given version.
-	 * @param other the version to compare with.
-	 * @return {@code true} if the versions are comparable and this version is
-	 * newer.
+	 * Return whether this version is comparable to and newer than the other
+	 * version.
 	 */
 	default boolean isNewer(ArtifactVersion other) {
 		return canCompare(other) && compareTo(other) > 0;
 	}
 
 	/**
-	 * Return whether the given version is a newer minor in the same version line.
-	 * @param other the version to compare with.
-	 * @return {@code true} if the given version is a newer minor.
+	 * Return whether the other version is a newer minor in the same version line.
 	 */
 	boolean isNewerMinor(ArtifactVersion other);
 
 	/**
-	 * Return whether this version is strictly older than the given version.
-	 * @param other the version to compare with.
-	 * @return {@code true} if the versions are comparable and this version is
-	 * older.
+	 * Return whether this version is comparable to and older than the other
+	 * version.
 	 */
 	default boolean isOlder(ArtifactVersion other) {
 		return canCompare(other) && compareTo(other) < 0;
 	}
 
 	/**
-	 * Return whether this version shares the same major line or release train.
-	 * @param other the version to compare with.
-	 * @return {@code true} if both versions share the same major line or release
-	 * train.
+	 * Return whether both versions share a major line or release train.
 	 */
 	boolean hasSameMajor(ArtifactVersion other);
 
 	/**
-	 * Return whether this version shares the same major/minor line or release
-	 * train.
-	 * @param other the version to compare with.
-	 * @return {@code true} if both versions share the same major/minor line or
-	 * release train.
+	 * Return whether both versions share a major/minor line or release train.
 	 */
 	boolean hasSameMajorMinor(ArtifactVersion other);
 
 	/**
-	 * Return whether this version shares the same base version as the given
-	 * version, ignoring any suffix or qualifier.
-	 * @param other the version to compare with.
-	 * @return {@code true} if both versions share the same base version.
+	 * Return whether both versions share a base version, ignoring qualifiers.
 	 */
 	boolean hasSameBaseVersion(ArtifactVersion other);
 
-	/**
-	 * Return whether this version is a snapshot.
-	 * @return {@code true} if this is a snapshot version.
-	 */
 	boolean isSnapshotVersion();
 
-	/**
-	 * Return whether this version is a milestone.
-	 * @return {@code true} if this is a milestone version.
-	 */
 	boolean isMilestoneVersion();
 
-	/**
-	 * Return whether this version is a release candidate.
-	 * @return {@code true} if this is a release candidate.
-	 */
 	boolean isReleaseCandidateVersion();
 
 	/**
-	 * Return whether this version is a preview release.
-	 * @return {@code true} if this is a milestone or release candidate.
+	 * Return whether this is a milestone or release candidate.
 	 */
 	default boolean isPreview() {
 		return isMilestoneVersion() || isReleaseCandidateVersion();
 	}
 
 	/**
-	 * Return whether this version is a general-availability release.
-	 * @return {@code true} if this is a general-availability release.
+	 * Return whether this is a general-availability release.
 	 */
 	boolean isReleaseVersion();
 
 	/**
-	 * Return whether this version is a service or bugfix release.
-	 * @return {@code true} if this is a service or bugfix release.
+	 * Return whether this is a service or bugfix release.
 	 */
 	boolean isBugFixVersion();
 
 	/**
-	 * Return the {@link VersioningScheme} this version belongs to.
-	 *
-	 * <p>The scheme is intrinsic to the version: it classifies the version's shape,
-	 * independent of any other version. Wrapped versions report the scheme of the
-	 * wrapped version.
-	 *
-	 * @return the versioning scheme.
+	 * Return the versioning scheme. Wrappers report their delegate's scheme.
 	 */
 	VersioningScheme scheme();
 
 	/**
-	 * Return whether the given version can be compared with this one.
-	 *
-	 * <p>Two versions are comparable only when they share the same
-	 * {@link VersioningScheme} and the scheme is not
-	 * {@link VersioningScheme#OPAQUE}.
-	 *
-	 * @param other the version to test.
-	 * @return {@code true} if semantic ordering is defined between the versions.
+	 * Return whether semantic ordering is defined between these versions.
+	 * <p>The versions must share a non-opaque scheme.
 	 */
 	default boolean canCompare(ArtifactVersion other) {
 		return scheme() != VersioningScheme.OPAQUE && scheme() == other.scheme();
 	}
 
 	/**
-	 * Return whether this version and the given version compare as the same
-	 * version.
-	 *
-	 * <p>This is comparison equivalence, not necessarily
-	 * {@link Object#equals(Object) value identity}.
-	 *
-	 * @param other the version to match, or {@literal null}.
-	 * @return {@code true} if the versions compare as equal.
+	 * Return whether the versions compare as equal.
+	 * <p>Comparison equivalence may differ from {@link Object#equals(Object) value
+	 * identity}.
 	 */
 	@Contract("null -> false")
 	default boolean matches(@Nullable ArtifactVersion other) {
@@ -244,20 +179,12 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion> {
 	}
 
 	/**
-	 * Return a human-readable rendering of this version for documentation and popup
-	 * display.
-	 *
-	 * @return the documentation display string.
+	 * Return a version string for documentation and popups.
 	 */
 	default String toDocumentationString() {
 		return toString();
 	}
 
-	/**
-	 * Return whether this version is wrapped.
-	 * @return {@literal true} if this version carries a prefix; {@literal false}
-	 * otherwise.
-	 */
 	default boolean isWrapped() {
 		return false;
 	}
@@ -267,12 +194,7 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion> {
 	}
 
 	/**
-	 * Traverse the wrapper chain and return the innermost version.
-	 *
-	 * <p>Follows {@link #getVersion()} while {@link #isWrapped()} returns
-	 * {@literal true}. Unwrapped versions return themselves.
-	 *
-	 * @return the innermost artifact version.
+	 * Return the innermost version, or this version if unwrapped.
 	 */
 	default ArtifactVersion unwrap() {
 

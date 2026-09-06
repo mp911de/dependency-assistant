@@ -60,16 +60,10 @@ interface MavenProjectContext extends ProjectBuildContext {
 	Key<MavenProjectContext> KEY = Key.create("MavenProjectContext");
 
 	/**
-	 * Look up the Maven context for the given PSI file.
-	 *
-	 * <p>The context is cached on the file and rebuilt after any project PSI edit,
-	 * project-root change, or Maven model change. A context injected through
-	 * {@link #KEY} takes precedence over the cache.
-	 *
-	 * @param project the IntelliJ project owning the file.
-	 * @param file the candidate Maven POM, or {@literal null}.
-	 * @return the imported Maven context, or an unavailable context when none
-	 * applies.
+	 * Look up the file's Maven context.
+	 * <p>Injected contexts take precedence. Cached contexts follow PSI,
+	 * project-root, and Maven model changes.
+	 * @return the context, or an unavailable context if none applies.
 	 */
 	static MavenProjectContext of(Project project, @Nullable PsiFile file) {
 
@@ -91,12 +85,8 @@ interface MavenProjectContext extends ProjectBuildContext {
 	}
 
 	/**
-	 * Look up the Maven context for the given virtual file.
-	 *
-	 * @param project the IntelliJ project owning the file.
-	 * @param file the candidate Maven POM, or {@literal null}.
-	 * @return the imported Maven context, or an unavailable context when none
-	 * applies.
+	 * Look up the context using the project's Maven model manager.
+	 * @see #of(Project, MavenProjectsManager, VirtualFile)
 	 */
 	static MavenProjectContext of(Project project, @Nullable VirtualFile file) {
 		MavenProjectsManager projectsManager = MavenProjectsManager.getInstance(project);
@@ -104,13 +94,9 @@ interface MavenProjectContext extends ProjectBuildContext {
 	}
 
 	/**
-	 * Look up the Maven context using the given project model manager.
-	 *
-	 * @param project the IntelliJ project owning the file.
-	 * @param projectsManager the imported Maven project model manager.
-	 * @param file the candidate Maven POM, or {@literal null}.
-	 * @return the imported Maven context, or an unavailable context when none
-	 * applies.
+	 * Look up the imported Maven context.
+	 * @return an unavailable context if the file or a valid imported model is
+	 * absent.
 	 */
 	static MavenProjectContext of(Project project, MavenProjectsManager projectsManager, @Nullable VirtualFile file) {
 
@@ -130,9 +116,7 @@ interface MavenProjectContext extends ProjectBuildContext {
 	}
 
 	/**
-	 * Create the project identity for a Maven project: its coordinates plus the POM
-	 * path, so the entry is file-keyed like every other ecosystem and can be
-	 * evicted when the POM is removed.
+	 * Include the POM path in project identity so removal can evict its state.
 	 */
 	static ProjectId createProjectId(MavenId mavenId, VirtualFile pom) {
 		Assert.hasText(mavenId.getGroupId(), "groupId must not be null or empty");
@@ -141,11 +125,8 @@ interface MavenProjectContext extends ProjectBuildContext {
 	}
 
 	/**
-	 * Return the Maven property view for this project.
-	 *
-	 * @return child-first POM properties with imported model properties as a
-	 * fallback.
-	 * @throws IllegalStateException if this context is unavailable.
+	 * Return child-first POM properties with imported-model fallback.
+	 * @throws IllegalStateException if the context is unavailable.
 	 */
 	MavenPomProperties getPomProperties();
 
@@ -168,14 +149,6 @@ interface MavenProjectContext extends ProjectBuildContext {
 
 		private final Versioned projectVersion;
 
-		/**
-		 * Create a context for the given Maven project.
-		 *
-		 * @param project the IntelliJ project.
-		 * @param projectsManager the Maven project model manager.
-		 * @param psiManager the PSI manager used to read POMs.
-		 * @param mavenProject the imported Maven project represented by this context.
-		 */
 		public MavenContextImpl(Project project, MavenProjectsManager projectsManager, BetterPsiManager psiManager,
 				MavenProject mavenProject) {
 			this.project = project;

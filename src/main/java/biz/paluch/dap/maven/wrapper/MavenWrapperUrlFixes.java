@@ -29,12 +29,8 @@ import com.intellij.modcommand.Presentation;
 import com.intellij.modcommand.PsiUpdateModCommandAction;
 
 /**
- * Quick-fix actions for {@link MavenWrapperUrlProblem} variants.
- *
- * <p>Each factory returns a fresh {@link PsiUpdateModCommandAction} bound to
- * {@link Property} via the {@code Class}-based super constructor. The action
- * resolves its target property from the caret offset at execution time and
- * therefore holds no PSI reference of its own.
+ * Caret-bound fixes for Maven Wrapper URL problems.
+ * <p>Actions resolve their target when invoked and retain no PSI references.
  *
  * @author Mark Paluch
  */
@@ -43,22 +39,12 @@ class MavenWrapperUrlFixes {
 	private MavenWrapperUrlFixes() {
 	}
 
-	/**
-	 * Create a fix that strips embedded credentials from the wrapper URL.
-	 * @return a fresh fix instance.
-	 */
 	static PsiUpdateModCommandAction<Property> stripCredentials() {
 		return new WrapperUrlFix(
 				MavenWrapperUrlRewriter::stripCredentials,
 				"inspection.maven-wrapper.credentials-in-url.fix");
 	}
 
-	/**
-	 * Create a fix that rewrites both version segments of the wrapper URL to the
-	 * given version.
-	 * @param version the canonical version to apply.
-	 * @return a fresh fix instance.
-	 */
 	static PsiUpdateModCommandAction<Property> replaceVersion(String version) {
 		return new WrapperUrlFix(
 				url -> MavenWrapperUrlRewriter.replaceVersion(url, version),
@@ -66,12 +52,6 @@ class MavenWrapperUrlFixes {
 				version);
 	}
 
-	/**
-	 * Create a fix that rewrites both artifact-id segments of the wrapper URL to
-	 * the canonical artifact for the given property.
-	 * @param property the wrapper property.
-	 * @return a fresh fix instance.
-	 */
 	static PsiUpdateModCommandAction<Property> replaceArtifact(WrapperProperty property) {
 
 		String canonicalArtifactId = property.canonicalArtifactId();
@@ -81,13 +61,6 @@ class MavenWrapperUrlFixes {
 				canonicalArtifactId);
 	}
 
-	/**
-	 * Create a fix that rewrites the trailing segments of the captured group path
-	 * to the canonical group-path tail for the given property, preserving any
-	 * mirror prefix.
-	 * @param property the wrapper property.
-	 * @return a fresh fix instance.
-	 */
 	static PsiUpdateModCommandAction<Property> replaceGroupPath(WrapperProperty property) {
 
 		String canonicalGroupPath = property.canonicalGroupPath();
@@ -97,13 +70,6 @@ class MavenWrapperUrlFixes {
 				canonicalGroupPath);
 	}
 
-	/**
-	 * Create a fix that rewrites the file-name segment of the wrapper URL to the
-	 * canonical name for the given property and version.
-	 * @param property the wrapper property.
-	 * @param version the canonical version.
-	 * @return a fresh fix instance.
-	 */
 	static PsiUpdateModCommandAction<Property> replaceFileName(WrapperProperty property, String version) {
 		return new WrapperUrlFix(
 				url -> MavenWrapperUrlRewriter.replaceFileName(url, property, version),
@@ -111,13 +77,6 @@ class MavenWrapperUrlFixes {
 				url -> new Object[] {MavenWrapperUrlRewriter.replaceFileNameSuggestion(url, property, version)});
 	}
 
-	/**
-	 * Create a fix that replaces the wrapper URL with the canonical Maven Central
-	 * URL for the given property and version.
-	 * @param property the wrapper property.
-	 * @param version the canonical version.
-	 * @return a fresh fix instance.
-	 */
 	static PsiUpdateModCommandAction<Property> useDefaultUrl(WrapperProperty property, String version) {
 		return new WrapperUrlFix(
 				url -> MavenWrapperUrlRewriter.canonicalUrl(property, version),

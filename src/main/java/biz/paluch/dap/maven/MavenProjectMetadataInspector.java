@@ -25,10 +25,7 @@ import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 
 /**
- * {@link ProjectMetadataInspector} for Maven artifacts.
- *
- * <p>Inspection delegates to {@link MavenPomMetadataIntrospector}, which walks
- * the artifact's locally available POM parent chain.
+ * Maven metadata inspection through {@link MavenPomMetadataIntrospector}.
  *
  * @author Mark Paluch
  */

@@ -29,12 +29,7 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 
 /**
- * Provides Quick Documentation targets for NPM dependency declarations in
- * {@code package.json} files.
- *
- * <p>Resolves the {@link JsonStringLiteral} at the requested offset and
- * delegates to {@link DependencyDocumentationProvider} to render dependency
- * documentation.
+ * Documentation targets for NPM dependency literals.
  *
  * @author Mark Paluch
  */

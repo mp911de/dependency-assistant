@@ -25,16 +25,10 @@ import org.jetbrains.annotations.Nullable;
 import org.springframework.util.ObjectUtils;
 
 /**
- * Immutable value object describing a target {@link ArtifactVersion} for an
- * {@link ArtifactId}.
- *
- * <p>An {@code ArtifactVersionChange} carries the artifact being changed, the
- * selected target version, and the version currently in use. It does not
- * describe where the version is declared in a build file or how it should be
- * written back, it captures the intent only.
+ * A selected version change with an optional source version.
+ * {@link DependencyUpdate} adds the source locations needed to apply it.
  *
  * @author Mark Paluch
- * @see DependencyUpdate
  */
 public class ArtifactVersionChange {
 
@@ -54,75 +48,39 @@ public class ArtifactVersionChange {
 		this.to = to;
 	}
 
-	/**
-	 * Create a version change with a known source version.
-	 *
-	 * @param artifactId the artifact whose version is changing.
-	 * @param from the version currently in use.
-	 * @param to the selected target version.
-	 * @return the version change.
-	 */
 	public static ArtifactVersionChange of(ArtifactId artifactId, ArtifactVersion from, ArtifactVersion to) {
 		return new ArtifactVersionChange(artifactId, Versioned.of(from), to);
 	}
 
 	/**
-	 * Create a version change without a known source version.
-	 *
-	 * @param artifactId the artifact whose version is changing.
-	 * @param to the selected target version.
-	 * @return the version change.
+	 * Create a change with an unknown source version.
 	 */
 	public static ArtifactVersionChange of(ArtifactId artifactId, ArtifactVersion to) {
 		return new ArtifactVersionChange(artifactId, Versioned.unversioned(), to);
 	}
 
-	/**
-	 * Return the artifact whose version is changing.
-	 *
-	 * @return the artifact id.
-	 */
 	public ArtifactId artifactId() {
 		return artifactId;
 	}
 
-	/**
-	 * Return the selected target version.
-	 *
-	 * @return the target version.
-	 */
 	public ArtifactVersion to() {
 		return to;
 	}
 
-	/**
-	 * Return the {@link #to()} as String.
-	 *
-	 * @return the string representation of the target version.
-	 * @see #to()
-	 */
 	public String versionAsString() {
 		return to.toString();
 	}
 
 	/**
-	 * Return the source version, if known.
-	 *
-	 * @return the source version, or an unversioned value when no source version is
-	 * known.
+	 * Return the source version, or an unversioned value if unknown.
 	 */
 	public Versioned from() {
 		return from;
 	}
 
 	/**
-	 * Return whether this change crosses a major version line.
-	 *
-	 * <p>A change of {@link ArtifactVersion#scheme() versioning scheme} counts as a
-	 * major switch. When the source version is unknown no crossing is reported.
-	 *
-	 * @return {@literal true} if the source version is known and the target either
-	 * changes scheme or leaves the source major line; {@literal false} otherwise.
+	 * Return whether the change leaves the source major line. A different version
+	 * scheme counts as a major switch. An unknown source version does not.
 	 */
 	public boolean crossesMajor() {
 		if (!from.isVersioned()) {
@@ -134,14 +92,10 @@ public class ArtifactVersionChange {
 	}
 
 	/**
-	 * Classify this change by its selected upgrade tier.
+	 * Classify the upgrade, giving preview targets precedence over numeric
+	 * boundaries.
 	 *
-	 * <p>Preview targets take precedence over their numeric version boundary. An
-	 * unknown source version, an equal target, or an older target has no upgrade
-	 * strategy.
-	 *
-	 * @return the patch, minor, major, or preview strategy, or {@literal null} when
-	 * the change cannot be classified as an upgrade.
+	 * @return {@code null} for an unknown source, equal version, or older target.
 	 */
 	public @Nullable UpgradeStrategy getUpgradeStrategy() {
 

@@ -21,40 +21,23 @@ import com.intellij.openapi.project.Project;
 import org.jspecify.annotations.Nullable;
 
 /**
- * SPI for binding IntelliJ projects to external ticket systems.
- *
- * <p>Providers are stateless: the platform may share a single instance across
- * projects and threads.
- *
- * <p>Each created {@code TicketSystem} forms a separate object boundary. Ticket
- * objects and repository-owned values obtained through one system are not valid
- * inputs to another system or repository.
+ * Bind IDE projects to ticket systems. Providers must be stateless because the
+ * platform may share them across projects and threads.
  *
  * @author Mark Paluch
  * @see TicketSystem
  */
 public interface TicketSystemProvider {
 
-	/**
-	 * Extension point through which ticket system providers are contributed.
-	 */
 	ExtensionPointName<TicketSystemProvider> EP_NAME = ExtensionPointName.create("biz.paluch.dap.ticketSystem");
 
 	/**
-	 * Find the ticket system bound to the given project by consulting the
-	 * registered providers in order and creating the first that supports the
-	 * project.
+	 * Bind through the first supporting provider, or return {@code null} if none
+	 * supports the project. Creation failures propagate without trying later
+	 * providers. Resolution may access credentials and block.
 	 *
-	 * <p>Provider resolution may access credentials and block. A selected
-	 * provider's creation failure is propagated; later providers are not consulted.
-	 * The returned system's repository operations may also block and belong on
-	 * background work.
-	 *
-	 * @param project the project to resolve against.
-	 * @return the bound ticket system, or {@literal null} when no provider supports
-	 * the project.
 	 * @throws IllegalStateException if the selected provider cannot create its
-	 * ticket-system binding.
+	 * binding.
 	 */
 	static @Nullable TicketSystem find(Project project) {
 
@@ -68,29 +51,17 @@ public interface TicketSystemProvider {
 	}
 
 	/**
-	 * Determine whether this provider can create a usable ticket system for the
-	 * given project.
-	 *
-	 * <p>Returning {@literal true} selects this provider without consulting later
-	 * providers. This method may access credentials and block.
-	 *
-	 * @param project the project to probe.
-	 * @return {@literal true} if {@link #create(Project)} may be called;
-	 * {@literal false} otherwise.
+	 * Whether this provider can bind the project. Returning {@code true} selects
+	 * this provider without considering later providers. May access credentials and
+	 * block.
 	 */
 	boolean supports(Project project);
 
 	/**
-	 * Create the ticket system bound to the given project's resolved target.
+	 * Bind the project after {@link #supports(Project)} returned {@code true}. May
+	 * access credentials and block.
 	 *
-	 * <p>Callers must invoke this method only after {@link #supports(Project)}
-	 * returned {@literal true}. This method may access credentials and block.
-	 *
-	 * @param project the project to bind against.
-	 * @return the project-scoped ticket system.
-	 * @throws IllegalStateException if {@link #supports(Project)} would return
-	 * {@literal false} for the project.
-	 * @see #supports(Project)
+	 * @throws IllegalStateException if the project is unsupported.
 	 */
 	TicketSystem create(Project project);
 

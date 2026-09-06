@@ -84,12 +84,9 @@ import com.intellij.util.ui.UIUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Modeless dialog for reviewing a {@link DependencyCheckResult} and choosing
- * dependency upgrades.
- *
- * <p>The dialog keeps its mutable selection state in {@link UpgradeReview}.
- * Confirming applies the armed rows to the checked file scope; transferring
- * sends them to the Upgrade Plan without changing build files.
+ * Modeless dependency upgrade review backed by {@link UpgradeReview}.
+ * <p>Confirmation applies selected upgrades. Transfer opens them in the Upgrade
+ * Plan without changing build files.
  *
  * @author Mark Paluch
  */
@@ -131,10 +128,6 @@ public class DependencyCheckDialog extends DialogWrapper {
 		updateActions();
 	}
 
-	/**
-	 * Reflect the armed-row count in the OK button text and enable the transfer
-	 * action, in one pass over the visible candidates.
-	 */
 	private void updateActions() {
 
 		List<TableRow> visible = review.getCandidates();
@@ -149,10 +142,6 @@ public class DependencyCheckDialog extends DialogWrapper {
 		updateOkButtonText(visible.size(), selected);
 	}
 
-	/**
-	 * Reflect the selected-row count in the OK button; collapses to "All", or "All
-	 * Shown" when a filter hides rows.
-	 */
 	private void updateOkButtonText(int visible, int selected) {
 
 		if (selected == 0) {
@@ -170,19 +159,11 @@ public class DependencyCheckDialog extends DialogWrapper {
 		setOKButtonText(MessageBundle.message("dialog.ok.update", selected));
 	}
 
-	/**
-	 * OK and Cancel stay on the right.
-	 */
 	@Override
 	protected Action[] createActions() {
 		return new Action[] {getOKAction(), getCancelAction()};
 	}
 
-	/**
-	 * Left-align the transfer button with a muted shortcut hint beside it, like the
-	 * "Open in Find Window" button of the Find in Files dialog. OK and Cancel stay on
-	 * the right.
-	 */
 	@Override
 	protected JPanel createSouthAdditionalPanel() {
 
@@ -211,11 +192,6 @@ public class DependencyCheckDialog extends DialogWrapper {
 		return action;
 	}
 
-	/**
-	 * Bind the transfer shortcut (Cmd+Enter on macOS, Ctrl+Enter elsewhere), matching
-	 * the Find in Files dialog's "Open in Find Window"; the disabled action stays
-	 * inert until a row is armed.
-	 */
 	private void installTransferShortcut() {
 
 		getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
@@ -223,10 +199,6 @@ public class DependencyCheckDialog extends DialogWrapper {
 		getRootPane().getActionMap().put("openInUpgradePlan", openInPlanAction);
 	}
 
-	/**
-	 * Transfer the armed rows into the Upgrade Plan tool window and close the dialog
-	 * without touching build files; OK remains the direct-apply path.
-	 */
 	private void openInUpgradePlan() {
 
 		if (applyingUpdates) {
@@ -246,12 +218,8 @@ public class DependencyCheckDialog extends DialogWrapper {
 	}
 
 	/**
-	 * Select and reveal the table row for the given artifact, e.g. when the dialog
-	 * was opened from a gutter icon or a documentation link. When the visibility
-	 * filter hides the row, the filter is cleared first so the row can show.
-	 *
-	 * @param pkg the artifact whose row to select; group rows match through their
-	 * members.
+	 * Select and reveal the row representing the package, clearing the visibility
+	 * filter if necessary. Group rows match any member.
 	 */
 	public void selectCandidate(PackageIdentity pkg) {
 
@@ -283,9 +251,6 @@ public class DependencyCheckDialog extends DialogWrapper {
 	}
 
 	private void showContextMenu(TableRow candidate, RelativePoint where) {
-
-		// PSI-backed availability is computed once per popup so update() stays a
-		// plain field read off the highlighting-critical action-update path
 
 		DefaultActionGroup group = new DefaultActionGroup();
 		group.add(new AnAction(MessageBundle.message("dialog.action.addToDependencyfile"),
@@ -329,10 +294,6 @@ public class DependencyCheckDialog extends DialogWrapper {
 				.show(where);
 	}
 
-	/**
-	 * Components panel for the dependency check dialog, containing the table and
-	 * related controls.
-	 */
 	static class DependencyCheckComponents extends JPanel {
 
 		private final UpgradeReview review;
@@ -512,17 +473,11 @@ public class DependencyCheckDialog extends DialogWrapper {
 			TableUtil.stopEditing(table);
 		}
 
-		/**
-		 * Clear the version-suggestion filter through the checkbox so the control state
-		 * and the review stay in sync.
-		 */
 		void clearVersionFilter() {
+			// Update through the control so its state and the review stay in sync.
 			filterVersionsCheckBox.setSelected(false);
 		}
 
-		/**
-		 * Select and reveal the row of the given candidate.
-		 */
 		void select(TableRow candidate) {
 
 			int modelRow = tableModel.indexOf(candidate);
@@ -542,10 +497,6 @@ public class DependencyCheckDialog extends DialogWrapper {
 			UIUtil.setEnabled(this.toolbar.getComponent(), enabled, true);
 		}
 
-		/**
-		 * Return the upgrade-strategy entries to offer: the {@code Safe} entry is added
-		 * only when at least one unfiltered candidate is vulnerable.
-		 */
 		static UpgradeReview.StrategySelection[] strategyOptions(UpgradeReview review) {
 
 			List<UpgradeReview.StrategySelection> options = new ArrayList<>();

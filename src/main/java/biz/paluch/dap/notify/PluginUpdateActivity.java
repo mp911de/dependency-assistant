@@ -42,13 +42,8 @@ import org.jdom.JDOMException;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Project startup activity that records the current plugin version and shows
- * release notes after a version change.
- *
- * <p>The activity reads version and change-note metadata from the bundled
- * {@code META-INF/plugin.xml}. It shows at most five change-note sections newer
- * than the version stored in {@link ApplicationSettings}. Missing or unreadable
- * metadata and blank change notes are ignored.
+ * Show release notes after the stored plugin version changes. Missing or
+ * unreadable bundled metadata does not prevent project startup.
  *
  * @author Mark Paluch
  */
@@ -80,7 +75,7 @@ public class PluginUpdateActivity implements ProjectActivity, DumbAware, LightEd
 			Element element = JDOMUtil.load(is);
 			return new PluginMetadata(element.getChildTextTrim("version"), element.getChildTextTrim("change-notes"));
 		} catch (JDOMException | IOException e) {
-			// handle exception
+			// Release notes are optional.
 		}
 
 		return null;
@@ -96,7 +91,6 @@ public class PluginUpdateActivity implements ProjectActivity, DumbAware, LightEd
 		}
 		settings.setVersion(metadata.version());
 
-		// collect the recent changes the user hasn't seen yet
 		String changes = createChanges(metadata, oldVersion);
 		if (StringUtils.isEmpty(changes)) {
 			return;

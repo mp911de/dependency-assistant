@@ -50,12 +50,6 @@ import com.intellij.psi.SyntaxTraverser;
  */
 class UpdateMavenWrapperProperties {
 
-	/**
-	 * Apply a single update at the given wrapper version literal.
-	 *
-	 * @param versionLiteral the PSI element that owns the URL value.
-	 * @param update the update to apply.
-	 */
 	public static void applyUpdate(PsiElement versionLiteral, DependencyUpdate update) {
 
 		Property property = PropertyUtils.findProperty(versionLiteral);
@@ -72,12 +66,6 @@ class UpdateMavenWrapperProperties {
 		postProcess(property.getContainingFile(), toCommentOut);
 	}
 
-	/**
-	 * Apply updates to the given wrapper PSI file.
-	 *
-	 * @param psiFile the wrapper PSI file.
-	 * @param updates the updates to apply.
-	 */
 	public static void applyUpdates(PsiFile psiFile, DependencyUpdates updates) {
 
 		if (!(psiFile instanceof PropertiesFile properties)) {

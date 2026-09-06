@@ -24,11 +24,6 @@ package biz.paluch.dap.artifact;
  */
 public interface HasPackageIdentity {
 
-	/**
-	 * Return the package identity.
-	 *
-	 * @return the package identity.
-	 */
 	PackageIdentity getPackageIdentity();
 
 }

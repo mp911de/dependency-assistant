@@ -31,13 +31,8 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 
 /**
- * Absent {@link ProjectDependencyContext} implementation used when no
- * dependency context is available.
- *
- * <p>Reports its unavailable state without failing: {@link #isAvailable()} and
- * {@link #isVersionElement(PsiElement)} return {@literal false} and
- * {@link #getReleaseSources()} returns an empty list. Operations that require a
- * context metadata or behavior throw {@link IllegalStateException}.
+ * Unavailable context object. Context-dependent operations fail with
+ * {@link IllegalStateException}.
  *
  * @author Mark Paluch
  */

@@ -39,13 +39,6 @@ public class PropertyValue implements Property {
 
 	private final PsiElement originalElement;
 
-	/**
-	 * Create a property binding for the given declaration element.
-	 *
-	 * @param key the property lookup key.
-	 * @param value the logical property value.
-	 * @param element the PSI element that holds the declared value.
-	 */
 	public PropertyValue(String key, String value, PsiElement element) {
 		this.key = key;
 		this.value = value;

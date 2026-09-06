@@ -38,11 +38,7 @@ public class CheckRequestAssert extends AbstractAssert<CheckRequestAssert, Check
 	}
 
 	/**
-	 * Verifies that the request contains exactly one package entry for {@code pkg}
-	 * requesting exactly the given versions in order.
-	 * @param pkg the package expected to be requested.
-	 * @param versions the exact versions expected to be requested, in order.
-	 * @return this assertion object.
+	 * Require a single package entry with exactly the given versions, in order.
 	 */
 	public CheckRequestAssert requestsExactly(PackageIdentity pkg, String... versions) {
 		isNotNull();

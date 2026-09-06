@@ -28,12 +28,8 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * A potentially absent upgrade target selected by an {@link UpgradeStrategy}.
- *
- * <p>A present suggestion carries its strategy and target {@link Release}. The
- * shared {@linkplain #none() absent suggestion} carries neither. Call
- * {@link #isPresent()} before accessing its strategy, release, version, or
- * localized messages.
+ * Optional target selected by an {@link UpgradeStrategy}.
+ * <p>Check {@link #isPresent()} before accessing target facts or messages.
  *
  * @author Mark Paluch
  */
@@ -50,31 +46,16 @@ public class UpgradeSuggestion implements VersionAware {
 		this.release = release;
 	}
 
-	/**
-	 * Return an empty (absent) {@code UpgradeSuggestion}.
-	 *
-	 * @return the shared absent suggestion.
-	 */
 	public static UpgradeSuggestion none() {
 		return NONE;
 	}
 
-	/**
-	 * Create a new {@code UpgradeSuggestion} for the given {@link UpgradeStrategy}
-	 * and target {@link Release}.
-	 *
-	 * @param strategy the strategy that selected the target.
-	 * @param release the target release.
-	 * @return the present upgrade suggestion.
-	 */
 	public static UpgradeSuggestion of(UpgradeStrategy strategy, Release release) {
 		return new UpgradeSuggestion(strategy, release);
 	}
 
 	/**
-	 * Return the localized newer-version gutter tooltip for this suggestion.
-	 *
-	 * @return the localized newer-version message.
+	 * Return the localized upgrade-available tooltip.
 	 */
 	public String getMessage() {
 		return MessageBundle.message("gutter.newer.tooltip", strategy.getDisplayName(),
@@ -82,30 +63,19 @@ public class UpgradeSuggestion implements VersionAware {
 	}
 
 	/**
-	 * Return the localized suggestion gutter tooltip for this suggestion.
-	 *
-	 * @return the localized rule-driven suggestion message.
+	 * Return the localized rule-suggestion tooltip.
 	 */
 	public String getSuggestionMessage() {
 		return MessageBundle.message("gutter.suggestion.tooltip", strategy.getDisplayName(),
 				getRelease().version().toString());
 	}
 
-	/**
-	 * Return whether a suggestion is present.
-	 *
-	 * @return {@literal true} if this suggestion carries a target; {@literal false}
-	 * for {@link #none()}.
-	 */
 	public boolean isPresent() {
 		return strategy != null;
 	}
 
 	/**
-	 * Return the {@link UpgradeStrategy} for this suggestion or throw
-	 * {@link IllegalStateException} if no suggestion is present.
-	 *
-	 * @return the strategy that selected the target.
+	 * Return the selecting strategy.
 	 * @throws IllegalStateException if this suggestion is absent.
 	 */
 	public UpgradeStrategy getStrategy() {
@@ -114,10 +84,7 @@ public class UpgradeSuggestion implements VersionAware {
 	}
 
 	/**
-	 * Return the {@link Release} for this suggestion or throw
-	 * {@link IllegalStateException} if no suggestion is present.
-	 *
-	 * @return the target release.
+	 * Return the target release.
 	 * @throws IllegalStateException if this suggestion is absent.
 	 */
 	public Release getRelease() {
@@ -126,10 +93,7 @@ public class UpgradeSuggestion implements VersionAware {
 	}
 
 	/**
-	 * Return the {@link ArtifactVersion} for this suggestion or throw
-	 * {@link IllegalStateException} if no suggestion is present.
-	 *
-	 * @return the target release version.
+	 * Return the target version.
 	 * @throws IllegalStateException if this suggestion is absent.
 	 */
 	@Override
@@ -138,10 +102,7 @@ public class UpgradeSuggestion implements VersionAware {
 	}
 
 	/**
-	 * If a suggestion is present, invoke the given {@link Consumer} with the
-	 * release.
-	 *
-	 * @param releaseConsumer the action to invoke with the target release.
+	 * Invoke the consumer with the target release if present.
 	 */
 	public void ifPresent(Consumer<Release> releaseConsumer) {
 		if (isPresent()) {

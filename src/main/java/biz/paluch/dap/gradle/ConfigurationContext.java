@@ -19,48 +19,20 @@ package biz.paluch.dap.gradle;
 import biz.paluch.dap.artifact.DeclarationSource;
 
 /**
- * Context for a Gradle dependency-configuration call, exposing its
- * {@link DeclarationSource} and configuration name.
+ * The configuration and declaration source of a Gradle dependency call.
  *
  * @author Mark Paluch
- * @see KotlinDslParser.KotlinDeclarationCall
- * @see GroovyDslParser.GroovyDeclarationCall
- * @see DeclarationSource
  */
 interface ConfigurationContext {
 
-	/**
-	 * Return the {@link DeclarationSource} determining how and where the call
-	 * declares its artifact (direct dependency, managed platform, plugin, or plugin
-	 * management).
-	 *
-	 * @return the declaration source.
-	 */
 	DeclarationSource getDeclarationSource();
 
-	/**
-	 * Return the name of the Gradle configuration represented by this context.
-	 *
-	 * @return the configuration name.
-	 */
 	String getConfigurationName();
 
-	/**
-	 * Return whether this context represents a plugin declaration.
-	 *
-	 * @return {@literal true} if the declaration source is a direct or managed
-	 * plugin declaration; {@literal false} otherwise.
-	 */
 	default boolean isPlugin() {
 		return getDeclarationSource() instanceof DeclarationSource.Plugin;
 	}
 
-	/**
-	 * Return whether this context represents a library dependency declaration.
-	 *
-	 * @return {@literal true} if the declaration source is a direct dependency or
-	 * managed platform; {@literal false} otherwise.
-	 */
 	default boolean isDependency() {
 		return getDeclarationSource() instanceof DeclarationSource.Dependency;
 	}

@@ -30,48 +30,30 @@ import org.jspecify.annotations.Nullable;
 class MavenUtils {
 
 	/**
-	 * Return whether the given file is a Maven POM by filename and type.
-	 * <p>This is a lightweight check suitable for action-visibility guards. It does
-	 * not inspect file content or PSI structure.
-	 *
-	 * @param file the file to test, or {@literal null}.
-	 * @return {@code true} if the file is an XML file named {@code pom.xml}.
+	 * Recognize an XML file named {@code pom.xml} without inspecting its contents.
 	 */
 	public static boolean isMavenPomFile(@Nullable PsiFile file) {
 		return file instanceof XmlFile && "pom.xml".equals(file.getName());
 	}
 
 	/**
-	 * Return whether the given file is a Maven extensions.xml by filename.
-	 * <p>This is a lightweight check suitable for action-visibility guards. It only
-	 * inspects the filename and does not check the file type, content, or PSI
-	 * structure.
-	 *
-	 * @param file the file to test, or {@literal null}.
-	 * @return {@code true} if the file is named {@code extensions.xml}.
+	 * Recognize {@code extensions.xml} by name alone.
 	 */
 	public static boolean isMavenExtensionsFile(@Nullable VirtualFile file) {
 		return file != null && "extensions.xml".equals(file.getName());
 	}
 
 	/**
-	 * Return whether the given file is a Maven extensions.xml by filename and type.
-	 * <p>This is a lightweight check suitable for action-visibility guards. It does
-	 * not inspect file content or PSI structure.
-	 *
-	 * @param file the file to test, or {@literal null}.
-	 * @return {@code true} if the file is an XML file named {@code extensions.xml}.
+	 * Recognize an XML file named {@code extensions.xml} without inspecting its
+	 * contents.
 	 */
 	public static boolean isMavenExtensionsFile(@Nullable PsiFile file) {
 		return file instanceof XmlFile && "extensions.xml".equals(file.getName());
 	}
 
 	/**
-	 * Return whether the given XML file is a Maven POM by root element structure.
-	 *
-	 * @param xmlFile the XML file to inspect.
-	 * @return {@code true} if the root element is {@code project} with no namespace
-	 * or the Maven POM 4.0.0 namespace.
+	 * Recognize a {@code project} root with no namespace or the Maven POM 4.0.0
+	 * namespace.
 	 */
 	public static boolean isMavenPomFile(XmlFile xmlFile) {
 

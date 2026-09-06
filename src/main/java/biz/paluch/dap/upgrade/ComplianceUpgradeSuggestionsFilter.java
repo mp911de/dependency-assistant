@@ -27,13 +27,9 @@ import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.support.UpgradeStrategy;
 
 /**
- * Applies {@link DependencyRule} governance to computed upgrade suggestions.
- *
- * <p>Suggestions for disabled non-remediation strategies are removed. Existing
- * remediation suggestions are retained. When the current version violates the
- * rule, the first compliant {@link Release} in artifact-level release order is
- * prepended as the {@link UpgradeStrategy#RULE} target. If no compliant release
- * exists, only strategy filtering is applied.
+ * Apply dependency rules while retaining remediation targets.
+ * <p>A noncompliant current version receives the first compliant release as its
+ * rule target, if available. Disabled ordinary strategies are removed.
  *
  * @author Mark Paluch
  */

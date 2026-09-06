@@ -46,15 +46,7 @@ import org.jetbrains.annotations.Nullable;
 import org.springframework.util.ObjectUtils;
 
 /**
- * Application-level persistent settings for Dependency Assistant.
- *
- * <p>The service retains the plugin version used for update notifications,
- * rename-dialog preferences, and remembered display names for package
- * constellations. These settings are shared by all projects and persisted in
- * {@code dependency-assistant.xml}.
- *
- * <p>Name hints are matched by {@link PackageIdentity} and favor the most
- * recently stored matching hint.
+ * Persistent settings shared by all projects.
  *
  * @author Mark Paluch
  */
@@ -65,34 +57,19 @@ public class ApplicationSettings implements PersistentStateComponent<Application
 
 	private final SimpleModificationTracker modificationTracker = new SimpleModificationTracker();
 
-	/**
-	 * Return the application-level settings service.
-	 *
-	 * @return the shared settings service.
-	 */
 	@NotNull
 	public static ApplicationSettings getInstance() {
 		return ApplicationManager.getApplication().getService(ApplicationSettings.class);
 	}
 
 	/**
-	 * Return a snapshot of the state managed by IntelliJ persistence.
-	 *
-	 * <p>The snapshot decouples platform serialization from concurrent name-hint
-	 * updates.
-	 *
-	 * @return the persistent settings snapshot.
+	 * Return a snapshot so persistence does not serialize live name-hint updates.
 	 */
 	@Override
 	public State getState() {
 		return doWithState(State::snapshot);
 	}
 
-	/**
-	 * Copy settings loaded by IntelliJ persistence into this service.
-	 *
-	 * @param state the persisted settings to load.
-	 */
 	@Override
 	public void loadState(State state) {
 		doWithState(it -> {
@@ -106,76 +83,46 @@ public class ApplicationSettings implements PersistentStateComponent<Application
 	}
 
 	/**
-	 * Return the plugin version for which the update notification was last
-	 * evaluated.
-	 *
-	 * @return the recorded plugin version, or {@literal null} before a version has
-	 * been recorded.
+	 * Return the plugin version last considered for update notifications, or
+	 * {@code null} before the first notification check.
 	 */
 	public @Nullable String getVersion() {
 		return state.getPluginVersion();
 	}
 
-	/**
-	 * Record the plugin version used to evaluate update notifications.
-	 *
-	 * @param version the current plugin version.
-	 */
 	public void setVersion(String version) {
 		modificationTracker.incModificationCount();
 		state.setPluginVersion(version);
 	}
 
 	/**
-	 * Determine whether the rename dialog preselects "remember name".
-	 *
-	 * <p>The setting records the most recent accepted choice and defaults to
-	 * {@code true}.
-	 *
-	 * @return {@code true} if the choice is preselected.
+	 * Whether the rename dialog remembers names by default. Initially {@code true}.
 	 */
 	public boolean isRememberRenamedNames() {
 		return state.isRememberRenamedNames();
 	}
 
-	/**
-	 * Set whether subsequent rename dialogs preselect "remember name".
-	 *
-	 * @param rememberRenamedNames whether the choice is preselected.
-	 */
 	public void setRememberRenamedNames(boolean rememberRenamedNames) {
 		modificationTracker.incModificationCount();
 		state.setRememberRenamedNames(rememberRenamedNames);
 	}
 
 	/**
-	 * Determine whether the rename dialog preselects "update dependencyfile.json".
-	 *
-	 * <p>The setting records the most recent accepted choice made while a
-	 * descriptor was available and defaults to {@code false}.
-	 *
-	 * @return {@code true} if the choice is preselected.
+	 * Whether the rename dialog updates the dependency file by default. Initially
+	 * {@code false}.
 	 */
 	public boolean isUpdateDependencyfileOnRename() {
 		return state.isUpdateDependencyfileOnRename();
 	}
 
-	/**
-	 * Set whether subsequent rename dialogs preselect "update dependencyfile.json".
-	 *
-	 * @param updateDependencyfileOnRename whether the choice is preselected.
-	 */
 	public void setUpdateDependencyfileOnRename(boolean updateDependencyfileOnRename) {
 		modificationTracker.incModificationCount();
 		state.setUpdateDependencyfileOnRename(updateDependencyfileOnRename);
 	}
 
 	/**
-	 * Find the most recently stored name for the single-package constellation
-	 * containing the given package.
+	 * Find the most recently remembered name, or {@code null} if none matches.
 	 *
-	 * @param pkg the package identity whose name to find.
-	 * @return the remembered name, or {@literal null} if no hint matches.
 	 * @see #findNameHint(List)
 	 */
 	public @Nullable String findNameHint(PackageIdentity pkg) {
@@ -184,13 +131,8 @@ public class ApplicationSettings implements PersistentStateComponent<Application
 	}
 
 	/**
-	 * Find the most recently stored name for the given package constellation.
-	 *
-	 * <p>Package order does not affect matching. A hint matches only the complete
-	 * constellation for which it was stored.
-	 *
-	 * @param packages the package identities whose remembered name to find.
-	 * @return the remembered name, or {@literal null} if no hint matches.
+	 * Find the most recently remembered name for the complete constellation.
+	 * Package order does not affect matching. Return {@code null} if none matches.
 	 */
 	public @Nullable String findNameHint(List<PackageIdentity> packages) {
 		List<String> nameHints = getNameHints(packages);
@@ -211,27 +153,14 @@ public class ApplicationSettings implements PersistentStateComponent<Application
 		});
 	}
 
-	/**
-	 * Remember a name for a single-package constellation.
-	 *
-	 * @param name the name to remember.
-	 * @param packages the package identity that forms the constellation.
-	 * @see #addNameHint(String, List)
-	 */
 	public void addNameHint(String name, PackageIdentity packages) {
 		addNameHint(name, List.of(packages));
 	}
 
 	/**
-	 * Remember a name for the given package constellation.
+	 * Remember a name in preference to older matching entries.
 	 *
-	 * <p>The package identities are copied into persistent state. This entry takes
-	 * precedence over older matching entries.
-	 *
-	 * @param name the name to remember.
-	 * @param packages the package identities that form the constellation.
-	 * @return whether the hint was added. Returns {@code false} if the hint already
-	 * exists with the name.
+	 * @return whether the preferred name changed.
 	 */
 	public boolean addNameHint(String name, List<PackageIdentity> packages) {
 
@@ -249,13 +178,7 @@ public class ApplicationSettings implements PersistentStateComponent<Application
 	}
 
 	/**
-	 * Remove all occurrences of a remembered name for the given package
-	 * constellation.
-	 *
-	 * <p>The operation has no effect when no stored hint matches both arguments.
-	 *
-	 * @param name the remembered name to remove.
-	 * @param packages the package identities that form the constellation.
+	 * Remove all occurrences of this name for the given constellation.
 	 */
 	public void removeNameHint(String name, List<PackageIdentity> packages) {
 		doWithState(state -> {
@@ -266,14 +189,8 @@ public class ApplicationSettings implements PersistentStateComponent<Application
 	}
 
 	/**
-	 * Invoke the given action with the live settings state while holding its
-	 * synchronization lock.
-	 *
-	 * <p>The callback must not retain the state for use after it returns. Direct
-	 * mutation bypasses service-level modification tracking. Use the settings
-	 * operations for live updates.
-	 *
-	 * @param action the action to invoke with the live state.
+	 * Access live state under its lock. Do not retain the state after the callback
+	 * returns. Direct changes bypass modification tracking.
 	 */
 	public void doWithState(Consumer<? super State> action) {
 		State state = this.state;
@@ -283,16 +200,8 @@ public class ApplicationSettings implements PersistentStateComponent<Application
 	}
 
 	/**
-	 * Invoke the given function with the live settings state while holding its
-	 * synchronization lock.
-	 *
-	 * <p>The callback must not retain the state for use after it returns. Direct
-	 * mutation bypasses service-level modification tracking. Use the settings
-	 * operations for live updates.
-	 *
-	 * @param <T> the result type.
-	 * @param action the function to invoke with the live state.
-	 * @return the callback result.
+	 * Access live state under its lock. Do not retain the state after the callback
+	 * returns. Direct changes bypass modification tracking.
 	 */
 	public <T> T doWithState(Function<? super State, ? extends T> action) {
 		State state = this.state;
@@ -349,12 +258,8 @@ public class ApplicationSettings implements PersistentStateComponent<Application
 		}
 
 		/**
-		 * Create a detached copy for persistence.
-		 *
-		 * <p>When several entries describe the same package constellation, only the
-		 * most recently added entry is retained in the snapshot.
-		 *
-		 * @return a snapshot of this state.
+		 * Create a detached persistence snapshot, retaining the newest name for each
+		 * constellation.
 		 */
 		public State snapshot() {
 

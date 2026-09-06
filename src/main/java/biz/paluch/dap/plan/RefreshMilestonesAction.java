@@ -38,8 +38,7 @@ import com.intellij.openapi.project.Project;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Refreshes the milestone and label lists; muted while the background load
- * runs, like the selectors it feeds.
+ * Refresh ticket milestones and labels in the background.
  */
 class RefreshMilestonesAction extends UpgradePlanAction {
 

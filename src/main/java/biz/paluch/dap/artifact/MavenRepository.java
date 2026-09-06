@@ -65,9 +65,6 @@ import org.jspecify.annotations.Nullable;
  */
 public class MavenRepository implements ReleaseSource {
 
-	/**
-	 * Release source for Maven Central.
-	 */
 	public static final MavenRepository MAVEN_CENTRAL = new MavenRepository(
 			RemoteRepository.mavenCentral());
 
@@ -92,10 +89,6 @@ public class MavenRepository implements ReleaseSource {
 
 	private final RemoteRepository repository;
 
-	/**
-	 * Create a release source backed by the given repository.
-	 * @param repository the remote Maven repository.
-	 */
 	public MavenRepository(RemoteRepository repository) {
 		this.repository = repository;
 	}
@@ -252,12 +245,6 @@ public class MavenRepository implements ReleaseSource {
 		return result;
 	}
 
-	/**
-	 * Record the release date of the listing entry in {@code line} when the line
-	 * follows the given listing format.
-	 *
-	 * @return {@literal true} if the line is an entry of the given format.
-	 */
 	private static boolean collectReleaseDate(String line, Pattern format, DateTimeFormatter dateFormatter,
 			ZoneOffset serverOffset, Map<String, LocalDateTime> target) {
 

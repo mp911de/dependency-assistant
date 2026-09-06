@@ -10,12 +10,7 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 
 /**
- * Per-file context for inspecting the dependencies declared in a single build
- * file.
- *
- * <p>The delegate holds no mutable state; the bound file may become invalid
- * over the delegate's lifetime, in which case {@link #collectDependencies}
- * yields an empty result.
+ * Dependency collection bound to one build file.
  *
  * @author Mark Paluch
  */
@@ -30,13 +25,6 @@ public class DependencyFileDelegate {
 		this.file = file;
 	}
 
-	/**
-	 * Create a delegate bound to the given project and build file.
-	 *
-	 * @param project the owning project.
-	 * @param file the build file to inspect.
-	 * @return a new delegate bound to the file.
-	 */
 	public static DependencyFileDelegate of(Project project, VirtualFile file) {
 		return new DependencyFileDelegate(project, file);
 	}
@@ -50,19 +38,11 @@ public class DependencyFileDelegate {
 	}
 
 	/**
-	 * Collect the dependencies declared in the bound file.
+	 * Collect dependencies. Callers must hold a read action. An invalid file or
+	 * missing PSI returns an empty collector without invoking the supplied
+	 * function.
 	 *
-	 * <p>Resolves the {@link PsiFile} for the bound file and applies
-	 * {@code collectorFunction} to it. When the file is invalid or has no PSI, an
-	 * empty {@link DependencyCollector} is returned and the function is not
-	 * invoked. Must be called inside a read action.
-	 *
-	 * @param packageSystem the package system for an empty collector when the file
-	 * cannot be resolved.
-	 * @param collectorFunction the format-specific collector applied to the
-	 * resolved {@link PsiFile}.
-	 * @return the collected dependencies, or an empty {@link DependencyCollector}
-	 * when the file cannot be resolved.
+	 * @param packageSystem the package system for the empty collector.
 	 */
 	public DependencyCollector collectDependencies(PackageSystem packageSystem,
 			Function<PsiFile, DependencyCollector> collectorFunction) {

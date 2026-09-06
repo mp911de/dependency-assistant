@@ -47,24 +47,11 @@ import org.jetbrains.plugins.github.exceptions.GithubStatusCodeException;
 import org.jspecify.annotations.Nullable;
 
 /**
- * {@link ReleaseSource} that fetches repository releases and tags from the
- * GitHub REST API via the bundled GitHub plugin's
- * {@link GithubApiRequestExecutor}.
- *
- * <p>The result is the union of two sources:
- * <ul>
- * <li>All GitHub Releases provide the publication date used for ordering and
- * display, and</li>
- * <li>the latest repository tags, up to the configured page size, provide
- * commit hashes for matching release entries and version candidates for
- * repositories that do not publish GitHub Releases.</li>
- * </ul>
- *
- * <p>Many projects do not publish GitHub Releases. The tag fallback ensures
- * those still expose update candidates. Tag entries without a release
- * contribute a version with {@literal null} date and the tag's commit SHA.
- * Release entries without a matching fetched tag contribute a version with
- * {@literal null} SHA.
+ * GitHub release source with repository tags as additional version candidates.
+ * <p>Tags support projects that do not publish GitHub Releases. Tag-only
+ * candidates have no publication date. Releases without a fetched tag have no
+ * SHA.
+ * <p>All release pages are loaded. Tag lookup is limited to the latest page.
  *
  * @author Mark Paluch
  */
@@ -80,13 +67,6 @@ public class GitHubReleases implements ReleaseSource, TagSource {
 
 	private final int pageSize;
 
-	/**
-	 * Create a release source backed by the given executor.
-	 *
-	 * @param server the GitHub server (e.g.
-	 * {@link GithubServerPath#DEFAULT_SERVER}).
-	 * @param executor the API request executor.
-	 */
 	GitHubReleases(GithubServerPath server, GithubApiRequestExecutor executor) {
 		this(server, executor, DEFAULT_TAGS_PAGE_SIZE);
 	}
@@ -108,20 +88,11 @@ public class GitHubReleases implements ReleaseSource, TagSource {
 	}
 
 	/**
-	 * Fetch the union of GitHub Releases and the latest repository tags, then
-	 * combine them into a deduplicated, version-keyed list of {@link Release}
-	 * entries.
-	 *
-	 * <p>If one endpoint fails but the other returns releases or tags, the partial
-	 * result is retained. If both result sets are empty and either request failed,
-	 * the first failure is propagated.
-	 *
-	 * @param artifactId the repository coordinates to query.
-	 * @param indicator progress indicator used for cancellation.
-	 * @return the combined releases and tag-only candidates.
-	 * @throws ArtifactNotFoundException if the repository does not exist.
-	 * @throws IOException if no release or tag result is available after a request
-	 * failure.
+	 * Fetch release and tag candidates.
+	 * <p>If an endpoint fails, results from the other endpoint are retained.
+	 * @throws ArtifactNotFoundException if an endpoint reports a missing
+	 * repository.
+	 * @throws IOException if neither endpoint returns data after a request failure.
 	 */
 	public List<Release> fetchAllReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException {
 
@@ -280,24 +251,15 @@ public class GitHubReleases implements ReleaseSource, TagSource {
 		return id;
 	}
 
-	/**
-	 * DTO for the GitHub {@code /repos/{owner}/{repo}/tags} response items.
-	 */
 	record GitHubTagDto(@JsonProperty("name") @Nullable String name,
 			@JsonProperty("commit") @Nullable GitHubCommitRefDto commit) {
 
 	}
 
-	/**
-	 * DTO for the {@code commit} sub-object of a GitHub tag entry.
-	 */
 	record GitHubCommitRefDto(@JsonProperty("sha") String sha) {
 
 	}
 
-	/**
-	 * DTO for the GitHub {@code /repos/{owner}/{repo}/releases} response items.
-	 */
 	record GitHubReleaseDto(@JsonProperty("tag_name") String tagName,
 			@JsonProperty("published_at") String publishedAt,
 			@JsonProperty("draft") boolean draft) {

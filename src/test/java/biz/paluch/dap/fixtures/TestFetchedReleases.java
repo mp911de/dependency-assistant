@@ -26,8 +26,8 @@ import biz.paluch.dap.state.FetchedReleases;
 import biz.paluch.dap.util.Sequence;
 
 /**
- * Test factory for {@link FetchedReleases} without a preferred source and
- * without captured project metadata.
+ * Fetched release fixtures with no preferred source or captured project
+ * metadata.
  *
  * @author Mark Paluch
  */
@@ -36,19 +36,11 @@ public class TestFetchedReleases {
 	private TestFetchedReleases() {
 	}
 
-	/**
-	 * Create {@link FetchedReleases} carrying no preferred source and no captured
-	 * project metadata.
-	 */
 	public static FetchedReleases of(ArtifactId artifactId, Collection<CachedRelease> releases, FetchPlan plan,
 			Collection<String> emptySources) {
 		return new FetchedReleases(artifactId, releases, plan, null, emptySources, null);
 	}
 
-	/**
-	 * Create {@link FetchedReleases} for the given version strings, carrying no
-	 * preferred source and no captured project metadata.
-	 */
 	public static FetchedReleases of(ArtifactId artifactId, FetchPlan plan, Collection<String> emptySources,
 			String... versions) {
 		return of(artifactId, Sequence.of(versions).map(Release::of).map(CachedRelease::from).toList(), plan,

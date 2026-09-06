@@ -44,11 +44,7 @@ class MavenWrapperUrlRewriter {
 	}
 
 	/**
-	 * Remove the {@code user[:password]@} segment from the authority of the given
-	 * URL.
-	 * @param url the URL to rewrite.
-	 * @return the URL without credentials, or the input when no credentials are
-	 * present.
+	 * Remove credentials from the URL authority, leaving other components intact.
 	 */
 	static String stripCredentials(String url) {
 
@@ -69,12 +65,7 @@ class MavenWrapperUrlRewriter {
 	}
 
 	/**
-	 * Rewrite both the path-version and the file-version segments of the URL to the
-	 * given version.
-	 * @param url the URL to rewrite.
-	 * @param version the canonical version.
-	 * @return the rewritten URL, or the input when the URL does not match the Maven
-	 * artifact pattern.
+	 * Replace both version occurrences in a Maven artifact URL.
 	 */
 	static String replaceVersion(String url, String version) {
 
@@ -91,12 +82,7 @@ class MavenWrapperUrlRewriter {
 	}
 
 	/**
-	 * Rewrite both the path-artifact and the file-artifact segments of the URL to
-	 * the given canonical artifact id.
-	 * @param url the URL to rewrite.
-	 * @param canonicalArtifactId the canonical artifact id.
-	 * @return the rewritten URL, or the input when the URL does not match the Maven
-	 * artifact pattern.
+	 * Replace both artifact ID occurrences in a Maven artifact URL.
 	 */
 	static String replaceArtifact(String url, String canonicalArtifactId) {
 
@@ -113,14 +99,7 @@ class MavenWrapperUrlRewriter {
 	}
 
 	/**
-	 * Replace the last segments of the captured group path with the canonical tail.
-	 *
-	 * <p>The number of replaced segments equals the segment count of the canonical
-	 * group path, so any mirror prefix in the URL is preserved.
-	 * @param url the URL to rewrite.
-	 * @param canonicalGroupPathTail the canonical slash-separated group path.
-	 * @return the rewritten URL, or the input when the URL does not match the Maven
-	 * artifact pattern.
+	 * Replace the group-path tail while preserving the mirror prefix.
 	 */
 	static String replaceGroupPath(String url, String canonicalGroupPathTail) {
 
@@ -153,18 +132,8 @@ class MavenWrapperUrlRewriter {
 	}
 
 	/**
-	 * Replace the file-name segment of the URL with the canonical file name for the
-	 * given wrapper property and version.
-	 *
-	 * <p>For {@link WrapperProperty#DISTRIBUTION} the existing {@code .zip} or
-	 * {@code .tar.gz} extension is preserved; any other extension falls back to
-	 * {@code .zip}. For {@link WrapperProperty#WRAPPER} the file name always ends
-	 * in {@code .jar}.
-	 *
-	 * @param url the URL to rewrite.
-	 * @param property the wrapper property.
-	 * @param version the canonical version.
-	 * @return the rewritten URL, or the input when it has no path separator.
+	 * Replace the filename, preserving a supported archive extension.
+	 * <p>Unsupported extensions use the wrapper property's default.
 	 */
 	static String replaceFileName(String url, WrapperProperty property, String version) {
 
@@ -181,26 +150,14 @@ class MavenWrapperUrlRewriter {
 	}
 
 	/**
-	 * Return the canonical file-name that would be produced by
-	 * {@link #replaceFileName(String, WrapperProperty, String)} applied to the
-	 * given URL, without touching the URL.
-	 *
-	 * @param url the URL whose extension informs the suggestion.
-	 * @param property the wrapper property.
-	 * @param version the canonical version.
-	 * @return the suggested file name.
+	 * Return the filename suggested by {@link #replaceFileName}.
 	 */
 	static String replaceFileNameSuggestion(String url, WrapperProperty property, String version) {
 		return property.canonicalFileName(version, property.getSupportedExtension(lastUrlSegment(url)));
 	}
 
 	/**
-	 * Build the canonical Maven Central URL for the given wrapper property and
-	 * version.
-	 *
-	 * @param property the wrapper property.
-	 * @param version the version carrier supplying the canonical version.
-	 * @return the canonical URL.
+	 * Return the Maven Central URL with the default extension.
 	 */
 	static String canonicalUrl(WrapperProperty property, VersionAware version) {
 		return canonicalUrl(property, version.getVersion()
@@ -208,26 +165,16 @@ class MavenWrapperUrlRewriter {
 	}
 
 	/**
-	 * Build the canonical Maven Central URL for the given wrapper property and
-	 * version.
-	 *
-	 * @param property the wrapper property.
-	 * @param version the canonical version.
-	 * @return the canonical URL.
+	 * Return the Maven Central URL with the default extension.
 	 */
 	static String canonicalUrl(WrapperProperty property, String version) {
 		return canonicalUrl(property, version, null);
 	}
 
 	/**
-	 * Build the canonical Maven Central URL for the given wrapper property and
-	 * version.
-	 *
-	 * @param property the wrapper property.
-	 * @param version the canonical version.
-	 * @param preservedExtension the distribution archive extension to use. A
-	 * {@literal null} or unsupported extension selects the property's default.
-	 * @return the canonical URL.
+	 * Return the canonical Maven Central URL.
+	 * @param preservedExtension a supported extension to retain, or {@literal null}
+	 * for the default.
 	 */
 	static String canonicalUrl(WrapperProperty property, String version, @Nullable String preservedExtension) {
 
@@ -236,11 +183,7 @@ class MavenWrapperUrlRewriter {
 	}
 
 	/**
-	 * Return the start offset of the authority segment (the index just after
-	 * {@code ://}), or {@literal -1} when the input does not contain a scheme
-	 * separator.
-	 * @param url the URL to inspect.
-	 * @return the authority start offset, or {@literal -1}.
+	 * Return the offset after {@code ://}, or {@code -1} if absent.
 	 */
 	static int authorityStart(String url) {
 
@@ -252,13 +195,8 @@ class MavenWrapperUrlRewriter {
 	}
 
 	/**
-	 * Return the end offset of the authority segment (the index of the first
-	 * {@code /}, {@code ?}, or {@code #} at or after {@code authorityStart}, or the
-	 * string length when neither follows).
-	 * @param url the URL to inspect.
-	 * @param authorityStart the non-negative offset returned by
-	 * {@link #authorityStart(String)}.
-	 * @return the authority end offset.
+	 * Return the exclusive authority end offset.
+	 * @param authorityStart the non-negative offset from {@link #authorityStart}.
 	 */
 	static int authorityEnd(String url, int authorityStart) {
 
@@ -295,11 +233,7 @@ class MavenWrapperUrlRewriter {
 	}
 
 	/**
-	 * Return the file-name segment of the URL, excluding any query or fragment
-	 * tail.
-	 * @param url the URL to inspect.
-	 * @return the last path segment, or the whole tail-less input without a path
-	 * separator.
+	 * Return the final path segment without query or fragment text.
 	 */
 	static String lastUrlSegment(String url) {
 

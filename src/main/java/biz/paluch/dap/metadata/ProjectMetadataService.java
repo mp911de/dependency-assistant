@@ -35,17 +35,12 @@ import com.intellij.psi.util.CachedValueProvider;
 import com.intellij.psi.util.CachedValuesManager;
 
 /**
- * Project-scoped, cache-only facade for captured upstream project metadata.
- *
- * <p>The service resolves captured repository and issue-tracker URLs through
- * registered {@link Platform} extensions and combines them with cached
- * repository tags. It performs no metadata inspection or network access. Its
- * modification count follows the project cache so PSI-bound metadata values can
- * be invalidated after cache updates.
+ * Cache-only access to upstream metadata and platform links.
+ * <p>This service performs no inspection or network access. Its modification
+ * count follows the project cache so consumers can invalidate derived metadata.
  *
  * @author Mark Paluch
  * @see ProjectMetadata
- * @see Platform
  */
 @Service(Service.Level.PROJECT)
 public final class ProjectMetadataService implements ModificationTracker {
@@ -69,14 +64,8 @@ public final class ProjectMetadataService implements ModificationTracker {
 	}
 
 	/**
-	 * Return the metadata facade for the given declaration.
-	 *
-	 * <p>The result is cached on the declaration element and recomputed when the
-	 * declaring file changes or the project cache modification count advances.
-	 *
-	 * @param declaration the artifact declaration whose metadata should be looked
-	 * up.
-	 * @return the resolved metadata or {@link ProjectMetadata#absent()}.
+	 * Return metadata cached on the declaration.
+	 * <p>File and project-cache changes invalidate the result.
 	 */
 	public static ProjectMetadata getMetadata(ArtifactDeclaration declaration) {
 
@@ -93,27 +82,18 @@ public final class ProjectMetadataService implements ModificationTracker {
 	}
 
 	/**
-	 * Return the metadata facade for the coordinates of the given package.
-	 *
-	 * <p>The package system is not considered by this lookup.
-	 *
-	 * @param identity the package whose metadata should be looked up.
-	 * @return the resolved metadata or {@link ProjectMetadata#absent()} if the
-	 * artifact has not been inspected or inspection found no metadata.
+	 * Look up metadata by artifact coordinates, ignoring the package system.
+	 * @see #getMetadata(ArtifactId)
 	 */
 	public ProjectMetadata getMetadata(PackageIdentity identity) {
 		return getMetadata(identity.getArtifactId());
 	}
 
 	/**
-	 * Return the metadata facade for the given artifact.
-	 *
-	 * <p>When the captured project name merely repeats the artifact identifier, the
-	 * captured project description is used as the name instead.
-	 *
-	 * @param artifactId the artifact whose metadata should be looked up.
-	 * @return the resolved metadata or {@link ProjectMetadata#absent()} if the
-	 * artifact has not been inspected or inspection found no metadata.
+	 * Resolve captured metadata and platform links.
+	 * <p>A name repeating the artifact ID is replaced by the captured description.
+	 * @return the snapshot, or {@link ProjectMetadata#absent()} if no metadata is
+	 * captured.
 	 */
 	public ProjectMetadata getMetadata(ArtifactId artifactId) {
 
@@ -162,11 +142,7 @@ public final class ProjectMetadataService implements ModificationTracker {
 	}
 
 	/**
-	 * Return the project name for the given artifact.
-	 *
-	 * @param artifactId the artifact whose metadata should be looked up.
-	 * @return the captured project name policy, or
-	 * {@link ProjectName#empty(ArtifactId)} if no name was captured.
+	 * Return the captured name, or an empty {@link ProjectName} if absent.
 	 */
 	public ProjectName getProjectName(ArtifactId artifactId) {
 

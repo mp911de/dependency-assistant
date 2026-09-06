@@ -43,18 +43,9 @@ import org.jetbrains.yaml.psi.YAMLKeyValue;
 import org.jetbrains.yaml.psi.YAMLScalar;
 
 /**
- * Completion contributor for GitHub Actions {@code uses:} refs.
- *
- * <p>Suggests cached release options with SHA-awareness: when the current ref
- * uses SHA style and the release has SHA metadata, the inserted text is the
- * release commit SHA, shortened to the current SHA prefix length if the
- * workflow already uses an abbreviated SHA. Otherwise, the release version
- * string is inserted.
- *
- * <p>Completion applies only after the {@code @} separator of a
- * repository-backed {@code uses:} scalar. Insertion delegates to
- * {@link UpdateGitHubWorkflowFile} so the existing quote and ref styles are
- * preserved.
+ * Release completion after {@code @} in repository-backed {@code uses:} values.
+ * <p>Insertion preserves quotes and the declared ref style through
+ * {@link UpdateGitHubWorkflowFile}.
  *
  * @author Mark Paluch
  */

@@ -126,7 +126,7 @@ class GroovyArtifactReferenceLocator implements ArtifactReferenceLocator<GroovyP
 	}
 
 	/**
-	 * Resolve an element that occupies a recognized version position by delegating
+	 * Resolve an element that occupies a supported version position by delegating
 	 * to the forward parser for the construct that owns it, so reverse lookup and
 	 * dependency collection share one declaration model.
 	 */

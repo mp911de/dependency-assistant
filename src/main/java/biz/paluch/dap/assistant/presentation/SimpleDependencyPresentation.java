@@ -23,8 +23,7 @@ import biz.paluch.dap.metadata.ProjectName;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Package-local immutable {@link DependencyPresentation} that snapshots
- * package-system coordinate labels at construction time.
+ * Immutable dependency names and package-system coordinates.
  *
  * @author Mark Paluch
  */

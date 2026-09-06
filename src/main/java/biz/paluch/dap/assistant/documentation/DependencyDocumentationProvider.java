@@ -39,11 +39,9 @@ import com.intellij.psi.SmartPsiElementPointer;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Provides Quick Documentation for supported dependency build files.
- *
- * <p>This provider resolves dependency declarations and version properties into
- * pointer-backed targets that can survive an in-place version update. HTML
- * rendering is owned by {@link DependencyDocumentationRenderer}.
+ * Quick Documentation targets for dependency declarations and version
+ * properties.
+ * <p>Targets can be resolved again after a version update.
  *
  * @author Mark Paluch
  */
@@ -56,17 +54,9 @@ public class DependencyDocumentationProvider
 	}
 
 	/**
-	 * Resolve the given element into a documentation target, or {@literal null}
-	 * when the element does not resolve to a dependency declaration or a
-	 * property-backed declaration has no indexed artifacts.
-	 *
-	 * <p>Used both for the initial documentation request and for re-resolving the
-	 * target after an upgrade has rewritten the version literal, so the re-rendered
-	 * popup reflects the live declaration state.
-	 *
-	 * @param target the PSI element at the documentation position.
-	 * @return the resolved documentation target, or {@literal null} if no
-	 * documentation is available.
+	 * Resolve a documentation target from the live declaration.
+	 * @return {@literal null} if no declaration or indexed property artifacts are
+	 * available.
 	 */
 	static @Nullable DocumentationTarget createTarget(PsiElement target) {
 
@@ -134,10 +124,6 @@ public class DependencyDocumentationProvider
 			};
 		}
 
-		/**
-		 * Re-resolve the live declaration and rewrite its version literal through the
-		 * shared update path. Runs inside the write action opened by the link handler.
-		 */
 		@Override
 		public void applyVersion(String version) {
 
@@ -167,11 +153,6 @@ public class DependencyDocumentationProvider
 			context.getDependencyContext().applyUpdate(versionLiteral, update);
 		}
 
-		/**
-		 * Full documentation shown in the Quick Documentation popup ({@code Ctrl+Q}).
-		 * Version rows include status and release-note icons. Upgradeable rows and
-		 * truncation notes include action links.
-		 */
 		@Override
 		public @Nullable DocumentationResult computeDocumentation() {
 
@@ -182,22 +163,13 @@ public class DependencyDocumentationProvider
 			return DocumentationResult.documentation(html);
 		}
 
-		/**
-		 * Compact content shown in the hover tooltip. Icon columns are omitted, while
-		 * applicable upgrade and truncation action links remain available.
-		 */
 		@Override
 		public @Nullable String computeDocumentationHint() {
 			return buildHtmlBody(false);
 		}
 
 		/**
-		 * Builds the documentation HTML body, or {@literal null} when nothing can be
-		 * rendered.
-		 *
-		 * @param withIcons {@literal true} to render status, advisory-severity, and
-		 * release-note icons. {@literal false} omits all icons.
-		 * @return the HTML body, or {@literal null} if no documentation is available.
+		 * Build the HTML body, or return {@literal null} if unavailable.
 		 */
 		protected abstract @Nullable String buildHtmlBody(boolean withIcons);
 
@@ -230,9 +202,6 @@ public class DependencyDocumentationProvider
 
 	}
 
-	/**
-	 * Documentation target for a concrete dependency version.
-	 */
 	protected static class DependencyVersionTarget extends DocumentationTargetSupport {
 
 		private final PackageIdentity pkg;

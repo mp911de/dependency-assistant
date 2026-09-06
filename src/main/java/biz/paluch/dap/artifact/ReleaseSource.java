@@ -40,41 +40,28 @@ import com.intellij.openapi.progress.ProgressIndicator;
 public interface ReleaseSource {
 
 	/**
-	 * Return the unique identifier of this source.
-	 * @return the source identifier.
+	 * Return the source identifier.
 	 */
 	default String getId() {
 		return getClass().getSimpleName();
 	}
 
 	/**
-	 * Return all known releases for the given artifact at this source.
-	 * <p>The returned sequence may be unsorted and may contain release, preview,
-	 * and snapshot versions. Implementations may return a richer sequence type that
-	 * carries additional facts captured during the fetch. Implementations should
-	 * periodically call {@link ProgressIndicator#checkCanceled()} during
-	 * long-running fetches to honor user cancellation.
-	 * @param artifactId the artifact whose releases to retrieve.
-	 * @param indicator the progress indicator used to honor cancellation.
-	 * @return the releases known to this source.
+	 * Fetch known releases, which may be unsorted and include previews or
+	 * snapshots.
+	 * <p>Implementations should check the indicator during long-running fetches.
 	 * @throws ArtifactNotFoundException if the artifact is definitively absent.
 	 * @throws IOException if release data cannot be read from the source.
 	 */
 	Sequence<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException;
 
 	/**
-	 * Render the artifact coordinates as a human-readable string.
-	 * @param artifactId the artifact coordinates.
-	 * @return the source-specific coordinate rendering.
+	 * Render coordinates for this source.
 	 */
 	default String toString(ArtifactId artifactId) {
 		return artifactId.toString();
 	}
 
-	/**
-	 * Return the built-in {@link ReleaseSource} backed by Maven Central.
-	 * @return the Maven Central release source.
-	 */
 	static ReleaseSource mavenCentral() {
 		return MavenRepository.MAVEN_CENTRAL;
 	}

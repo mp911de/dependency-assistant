@@ -38,16 +38,12 @@ import org.jspecify.annotations.Nullable;
  */
 class GradlePropertiesParser {
 
-	/**
-	 * Return whether {@code element} is inside the editable value of a
-	 * {@code gradle.properties} property.
-	 */
 	static boolean isPropertyValueElement(PsiElement element) {
 		return getPropertyValueElement(element) != null;
 	}
 
 	/**
-	 * Return the enclosing property value PSI element, if any.
+	 * Return the containing property value, or {@literal null} if absent.
 	 */
 	static @Nullable PropertyValueImpl getPropertyValueElement(PsiElement element) {
 
@@ -59,8 +55,7 @@ class GradlePropertiesParser {
 	}
 
 	/**
-	 * Return the property owning {@code element} when the element belongs to a
-	 * property value.
+	 * Return the property owning a value element, or {@literal null} if absent.
 	 */
 	static @Nullable Property getProperty(PsiElement element) {
 
@@ -73,11 +68,8 @@ class GradlePropertiesParser {
 	}
 
 	/**
-	 * Parse a {@code gradle.properties} PSI file into properties retaining each
-	 * value PSI element.
-	 * @param file the file to parse.
-	 * @return the properties in declaration order, or an empty map when
-	 * {@code file} is not a properties file.
+	 * Parse properties with their editable PSI values in declaration order.
+	 * @return an empty map if the file is not a properties file.
 	 */
 	public static Map<String, biz.paluch.dap.support.Property> parseGradleProperties(PsiFile file) {
 
@@ -91,16 +83,10 @@ class GradlePropertiesParser {
 	}
 
 	/**
-	 * Collect {@code gradle.properties} project properties into {@code collector}.
-	 *
-	 * <p>Every declared property name is registered together with its resolved
-	 * value. Linking a property to the artifacts it versions is deferred to
-	 * {@link biz.paluch.dap.VersionPropertyIntrospectedDependencies scan-wide
-	 * completion}, because the declarations a property backs usually live in a
-	 * different build file than the property itself.
-	 *
-	 * @param file the {@code gradle.properties} PSI file.
-	 * @param collector the collector to populate in place.
+	 * Collect property names and values.
+	 * <p>Artifact bindings are completed across files by
+	 * {@link biz.paluch.dap.VersionPropertyIntrospectedDependencies}, since usages
+	 * usually live in a different file.
 	 */
 	public static void collectGradleProperties(PsiFile file, DependencyCollector collector) {
 
@@ -110,10 +96,8 @@ class GradlePropertiesParser {
 	}
 
 	/**
-	 * Parse property names and values from a {@code gradle.properties} PSI file.
-	 * @param file the file to parse.
-	 * @return the properties in declaration order, or an empty map when
-	 * {@code file} is not a properties file.
+	 * Parse property names and values in declaration order.
+	 * @return an empty map if the file is not a properties file.
 	 */
 	public static Map<String, String> getGradleProperties(PsiFile file) {
 

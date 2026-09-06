@@ -35,8 +35,7 @@ import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Resolver for a Git ref (tag, SHA, branch) into an {@link ArtifactVersion}
- * using the canonical resolution order.
+ * Resolve Git refs against cached releases.
  *
  * @author Mark Paluch
  */
@@ -48,27 +47,15 @@ public class GitVersionResolver {
 
 	private final Cache cache;
 
-	/**
-	 * Create a resolver using the {@link Cache}.
-	 *
-	 * @param cache the shared release cache.
-	 */
 	public GitVersionResolver(Cache cache) {
 		this.cache = cache;
 	}
 
 	/**
-	 * Resolve the given ref strictly against cached releases for the given
-	 * artifact.
-	 * <p>This is the cache-only path used by dependency collectors that need to
-	 * pair a declared SHA or tag with a known release. The Project-State branch is
-	 * intentionally not consulted here.
+	 * Resolve using cached releases only.
 	 *
-	 * @param artifactId the artifact whose cached releases to inspect.
-	 * @param lookupString the raw commit SHA (full or abbreviated) or version
-	 * string.
-	 * @return the resolved version, or {@link Versioned#unversioned()} if
-	 * unresolvable.
+	 * @return the matched version, or {@link Versioned#unversioned()} if
+	 * unresolved.
 	 */
 	public Versioned resolveStrict(ArtifactId artifactId, String lookupString) {
 
@@ -82,13 +69,8 @@ public class GitVersionResolver {
 	}
 
 	/**
-	 * Resolve the effective {@link ArtifactVersion} for the given artifact and raw
-	 * ref, reading the cached releases for {@code artifactId}.
+	 * Resolve a ref using cached releases, retaining unmatched refs.
 	 *
-	 * @param artifactId the artifact whose cached releases to inspect.
-	 * @param rawRef the raw Git ref (tag, SHA, branch).
-	 * @return the resolved current version, or {@link Versioned#unversioned()} when
-	 * the ref cannot be resolved.
 	 * @see #resolveLenient(Releases, String)
 	 */
 	public Versioned resolveLenient(ArtifactId artifactId, String rawRef) {
@@ -96,18 +78,8 @@ public class GitVersionResolver {
 	}
 
 	/**
-	 * Resolve the effective {@link ArtifactVersion} for an already-parsed version
-	 * or {@link GitRef} against the given releases.
-	 * <p>A {@link GitRef} is resolved through
-	 * {@link #resolveVersion(String, Iterable)}, falling back to the ref itself. A
-	 * SHA-style version is wrapped as a {@link GitRef}. Any other version is
-	 * returned unchanged.
-	 *
-	 * @param version the current version or {@link GitRef} to resolve.
-	 * @param releases the cached releases to match against.
-	 * @return the resolved version, wrapping the matched release, the original
-	 * {@link GitRef}, or the given version.
-	 * @see #resolveLenient(Releases, String)
+	 * Resolve Git refs where possible, retaining unmatched refs and ordinary
+	 * versions. SHA-style versions remain opaque Git refs.
 	 */
 	public Versioned resolveLenient(ArtifactVersion version, Releases releases) {
 
@@ -127,21 +99,8 @@ public class GitVersionResolver {
 	}
 
 	/**
-	 * Resolve the effective {@link ArtifactVersion} for the given raw ref against
-	 * the supplied releases using the canonical chain.
-	 * <p>Resolution order:
-	 * <ol>
-	 * <li>An empty ref yields {@link Versioned#unversioned()}.</li>
-	 * <li>Cached releases through {@link #resolveVersion(String, Iterable)}.</li>
-	 * <li>A SHA-style ref is wrapped as a {@link GitRef}.</li>
-	 * <li>Otherwise {@link ArtifactVersion#from(String)} of the raw ref, or a
-	 * {@link GitRef} when the ref is opaque.</li>
-	 * </ol>
-	 *
-	 * @param releases the cached releases to match against.
-	 * @param rawRef the raw Git ref (tag, SHA, branch).
-	 * @return the resolved current version, or {@link Versioned#unversioned()} when
-	 * the ref is empty.
+	 * Resolve against cached releases. Unmatched version text is parsed, while SHA
+	 * and opaque refs remain Git refs. Empty input is unversioned.
 	 */
 	public Versioned resolveLenient(Releases releases, String rawRef) {
 
@@ -164,13 +123,8 @@ public class GitVersionResolver {
 	}
 
 	/**
-	 * Resolve a {@link DeclaredDependency} to a {@link Dependency} using the
-	 * cache-only matching on the supplied release list.
-	 *
-	 * @param declaredDependency the declared dependency to resolve.
-	 * @param releases the releases to inspect.
-	 * @return the resolved dependency, or {@literal null} when the first version
-	 * source is empty or the cache yields no unique match.
+	 * Resolve the first declared version source against cached releases. Return
+	 * {@code null} if absent or unresolved.
 	 */
 	public static @Nullable Dependency resolveDependency(DeclaredDependency declaredDependency,
 			Iterable<Release> releases) {
@@ -204,7 +158,6 @@ public class GitVersionResolver {
 	 * contract.
 	 *
 	 * @param versionRef the raw Git ref (tag, SHA, or version string) to match.
-	 * @param releases the releases to inspect.
 	 * @return the matching version, or {@literal null} if no unique match exists.
 	 */
 	public static @Nullable GitVersion resolveVersion(String versionRef, Iterable<Release> releases) {

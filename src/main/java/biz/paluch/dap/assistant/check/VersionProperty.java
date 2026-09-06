@@ -17,15 +17,11 @@
 package biz.paluch.dap.assistant.check;
 
 /**
- * Identity of a version property shared by dependencies handled through one
- * dependency assistant.
- *
- * <p>Profile and module scope are deliberately absent: coupling uses the stable
- * assistant id and bare property name only.
+ * Version-property identity used to couple dependencies.
+ * <p>Identity uses the assistant id and bare property name, excluding profile
+ * and module scope.
  *
  * @author Mark Paluch
- * @param assistantId the stable dependency-assistant id.
- * @param property the bare version-property name.
  */
 public record VersionProperty(String assistantId, String property) {
 

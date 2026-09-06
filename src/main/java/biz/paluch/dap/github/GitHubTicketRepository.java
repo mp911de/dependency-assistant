@@ -49,23 +49,10 @@ import org.jetbrains.plugins.github.api.data.request.GithubRequestPagination;
 import org.jspecify.annotations.Nullable;
 
 /**
- * {@link TicketRepository} backed by the GitHub issues REST API.
- *
- * <p>Searches use the GitHub search API through the IntelliJ Platform search
- * page request shape. Repository, issue type, state, and grouped label or
- * milestone criteria narrow the request. Everything else is matched
- * client-side, including exact titles. Pull requests are filtered out.
- *
- * <p>Label and milestone listings refresh the {@link GitHubTicketCache} on
- * success and fall back to its stored entries when GitHub cannot be reached.
- * Without stored entries, the failure propagates.
- *
- * <p>The account-bound request executor is supplied by the caller so account
- * resolution and request execution share the same lifecycle.
- *
- * <p>The {@link #cached()} view exposes stored labels and open milestones plus
- * the static ticket states. It does not search tickets and does not support
- * ticket creation.
+ * GitHub issues repository using the caller's account-bound executor.
+ * <p>Search results follow {@link GitHubTicketQuery} matching rules. Label and
+ * open-milestone listings refresh the cache on success. Failed requests use
+ * stored listings when available and otherwise propagate the failure.
  *
  * @author Mark Paluch
  */
@@ -215,13 +202,9 @@ class GitHubTicketRepository implements TicketRepository {
 	}
 
 	/**
-	 * Return the offline metadata view of this repository.
-	 *
-	 * <p>Ticket search returns an empty list. Ticket creation throws
-	 * {@link UnsupportedOperationException}. Labels and milestones come only from
-	 * {@link GitHubTicketCache}.
-	 *
-	 * @return the reusable cached repository view.
+	 * Return an offline view of labels, open milestones, and ticket states.
+	 * <p>Search returns no tickets. Creation throws
+	 * {@link UnsupportedOperationException}.
 	 */
 	@Override
 	public TicketRepository cached() {
@@ -338,9 +321,6 @@ class GitHubTicketRepository implements TicketRepository {
 				repositoryPath.getRepository());
 	}
 
-	/**
-	 * DTO for the GitHub {@code /repos/{owner}/{repo}/issues} response items.
-	 */
 	record GitHubIssueDto(@JsonProperty("number") long number,
 			@JsonProperty("title") String title,
 			@JsonProperty("state") GitHubTicketState state,
@@ -365,9 +345,6 @@ class GitHubTicketRepository implements TicketRepository {
 
 	}
 
-	/**
-	 * DTO for the GitHub {@code /repos/{owner}/{repo}/milestones} response items.
-	 */
 	record GitHubMilestoneDto(@JsonProperty("number") long number,
 			@JsonProperty("title") String title,
 			@JsonProperty("state") GitHubTicketState state,

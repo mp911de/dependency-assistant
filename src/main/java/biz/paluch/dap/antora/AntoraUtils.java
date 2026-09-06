@@ -39,10 +39,7 @@ public class AntoraUtils {
 	}
 
 	/**
-	 * Return whether the given PSI file has the Antora playbook file shape.
-	 * @param file the PSI file to test. May be {@literal null}.
-	 * @return {@literal true} if the file is an Antora playbook; {@literal false}
-	 * otherwise.
+	 * Return whether the file is named {@code antora-playbook.yml}.
 	 */
 	public static boolean isPlaybookFile(@Nullable PsiFile file) {
 
@@ -52,25 +49,14 @@ public class AntoraUtils {
 		return PLAYBOOK_FILE_NAME.equals(file.getName());
 	}
 
-	/**
-	 * Return whether the given virtual file has the Antora playbook file shape.
-	 * @param file the file to test.
-	 * @return {@literal true} if this file is supported.
-	 */
 	public static boolean isPlaybookFile(VirtualFile file) {
 		return PLAYBOOK_FILE_NAME.equals(file.getName());
 	}
 
 	/**
-	 * Compute the {@link TextRange} that covers only the version segment of the
-	 * {@code ui.bundle.url} scalar that owns the given element.
-	 *
-	 * <p>The returned range uses absolute file offsets.
-	 *
-	 * @param element the PSI element that lives inside (or is) the
-	 * {@code ui.bundle.url} value scalar.
-	 * @return the version-only text range, or the element's own text range if no
-	 * bundle URL scalar can be located from the element.
+	 * Locate the bundle version using absolute file offsets.
+	 * @return the version range, the scalar range if no version segment is found,
+	 * or the element range if no bundle scalar is found.
 	 */
 	public static TextRange getVersionRange(PsiElement element) {
 

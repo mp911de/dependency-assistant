@@ -63,27 +63,17 @@ interface GradleProjectContext extends ProjectBuildContext {
 	Key<GradleProjectContext> KEY = Key.create("GradleProjectContext");
 
 	/**
-	 * Looks up the {@link GradleProjectContext} for the given PSI file, or returns
-	 * {@link EmptyGradleBuildContext#INSTANCE} when the file is not part of a
-	 * linked Gradle project.
-	 * @param file the Gradle-related PSI file.
-	 * @return the available project context or the absent context.
+	 * Find the context for this file in its own project.
+	 * @see #of(Project, PsiFile)
 	 */
 	static GradleProjectContext of(PsiFile file) {
 		return of(file.getProject(), file);
 	}
 
 	/**
-	 * Looks up the {@link GradleProjectContext} for the given PSI file, or returns
-	 * {@link EmptyGradleBuildContext#INSTANCE} when the file is not part of a
-	 * linked Gradle project.
-	 *
-	 * <p>The context is cached on the file and rebuilt after any project PSI edit,
-	 * project-root change, or Gradle model import. A context injected through
-	 * {@link #KEY} takes precedence over the cache.
-	 * @param project the IntelliJ project.
-	 * @param file the Gradle-related PSI file, or {@literal null}.
-	 * @return the available project context or the absent context.
+	 * Find the linked Gradle context, or an absent context for an unsupported file.
+	 * <p>Contexts follow project PSI, root and imported-model changes. An injected
+	 * {@link #KEY} value takes precedence.
 	 */
 	static GradleProjectContext of(Project project, @Nullable PsiFile file) {
 
@@ -157,12 +147,8 @@ interface GradleProjectContext extends ProjectBuildContext {
 	}
 
 	/**
-	 * Looks up the {@link GradleProjectContext} for the given virtual file, or
-	 * returns {@link EmptyGradleBuildContext#INSTANCE} when no linked Gradle
-	 * project contains it.
-	 * @param project the IntelliJ project.
-	 * @param file the Gradle-related virtual file, or {@literal null}.
-	 * @return the available project context or the absent context.
+	 * Find the linked Gradle context under a read action.
+	 * @return an absent context if no supported PSI file is available.
 	 */
 	static GradleProjectContext of(Project project, @Nullable VirtualFile file) {
 
@@ -251,9 +237,6 @@ interface GradleProjectContext extends ProjectBuildContext {
 
 	}
 
-	/**
-	 * Absent Gradle project context.
-	 */
 	enum EmptyGradleBuildContext implements GradleProjectContext {
 
 		INSTANCE;

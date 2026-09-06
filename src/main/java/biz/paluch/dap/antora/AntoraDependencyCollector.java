@@ -26,13 +26,7 @@ import biz.paluch.dap.artifact.VersionSource;
 import com.intellij.psi.PsiFile;
 
 /**
- * Registers the {@code ui.bundle.url} references from one Antora playbook with
- * a {@link DependencyCollector}.
- *
- * <p>This collector records the Git-backed repository identity and the version
- * source derived from the URL segment. It does not read the release cache or
- * contact a remote API. The assistant's scan-completion phase and per-file
- * lookup resolve Git refs later.
+ * Collect declared Antora bundle refs without resolving them against releases.
  *
  * @author Mark Paluch
  */
@@ -46,11 +40,6 @@ class AntoraDependencyCollector {
 		this.packageSystem = packageSystem;
 	}
 
-	/**
-	 * Collect Antora bundle URL references from the given playbook file.
-	 * @param file the Antora playbook PSI file to scan.
-	 * @return the populated dependency collector.
-	 */
 	DependencyCollector collect(PsiFile file) {
 
 		DependencyCollector collector = new DependencyCollector(packageSystem);
@@ -59,12 +48,6 @@ class AntoraDependencyCollector {
 		return collector;
 	}
 
-	/**
-	 * Collect Antora bundle URL references from the given playbook file and
-	 * register them as declarations on the given collector.
-	 * @param file the Antora playbook PSI file to scan.
-	 * @param collector the collector to populate with the discovered dependencies.
-	 */
 	void doCollect(PsiFile file, DependencyCollector collector) {
 
 		List<AntoraBundleUrl> refs = parser.parse(file);

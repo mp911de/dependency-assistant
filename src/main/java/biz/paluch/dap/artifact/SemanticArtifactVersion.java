@@ -59,34 +59,14 @@ class SemanticArtifactVersion implements NumericVersion {
 
 	private final String canonicalSuffix;
 
-	/**
-	 * Creates a new {@link SemanticArtifactVersion} from the given logical
-	 * {@link NumericVersionComponents}.
-	 *
-	 * @param components must not be {@literal null}.
-	 */
 	public SemanticArtifactVersion(NumericVersionComponents components) {
 		this(components, false);
 	}
 
-	/**
-	 * Creates a new {@link SemanticArtifactVersion} from the given logical
-	 * {@link NumericVersionComponents}.
-	 *
-	 * @param components must not be {@literal null}.
-	 * @param modifierFormat whether the suffix is rendered with modifier notation.
-	 */
 	public SemanticArtifactVersion(NumericVersionComponents components, boolean modifierFormat) {
 		this(components.toString(), components, modifierFormat, modifierFormat ? Release.INSTANCE : Release.RELEASE);
 	}
 
-	/**
-	 * Creates a new {@link SemanticArtifactVersion} from the given logical
-	 * {@link NumericVersionComponents}.
-	 *
-	 * @param rawVersion must not be {@literal null}.
-	 * @param modifierFormat whether the suffix is rendered with modifier notation.
-	 */
 	public SemanticArtifactVersion(String rawVersion, NumericVersionComponents components, boolean modifierFormat,
 			Suffix suffix) {
 		this.version = rawVersion;
@@ -97,10 +77,8 @@ class SemanticArtifactVersion implements NumericVersion {
 	}
 
 	/**
-	 * Parses the given {@link String} into an {@link SemanticArtifactVersion}.
-	 *
-	 * @param source must not be {@literal null} or empty.
-	 * @return the parsed semantic artifact version.
+	 * Parse a numeric version with an optional qualifier.
+	 * @throws IllegalArgumentException if the source is blank or unrecognized.
 	 */
 	public static SemanticArtifactVersion of(String source) {
 
@@ -196,8 +174,7 @@ class SemanticArtifactVersion implements NumericVersion {
 	}
 
 	/**
-	 * Return whether the given source represents a valid semantic version.
-	 * @param source the source to inspect.
+	 * Return whether the source is recognized as a numeric version.
 	 */
 	public static boolean isVersion(String source) {
 		try {
@@ -252,11 +229,6 @@ class SemanticArtifactVersion implements NumericVersion {
 				&& components.compareTo(sav.components) == 0;
 	}
 
-	/**
-	 * Return whether the version is a release version.
-	 *
-	 * @return {@literal true} if this version is a release version.
-	 */
 	@Override
 	public boolean isReleaseVersion() {
 
@@ -271,11 +243,6 @@ class SemanticArtifactVersion implements NumericVersion {
 		return !isSnapshotVersion();
 	}
 
-	/**
-	 * Return whether the version is a milestone version.
-	 *
-	 * @return {@literal true} if this version is a milestone version.
-	 */
 	@Override
 	public boolean isMilestoneVersion() {
 
@@ -287,11 +254,6 @@ class SemanticArtifactVersion implements NumericVersion {
 		return canonical.contains("alpha") || canonical.contains("beta");
 	}
 
-	/**
-	 * Return whether the version is a RC version.
-	 *
-	 * @return {@literal true} if this version is a release candidate version.
-	 */
 	@Override
 	public boolean isReleaseCandidateVersion() {
 
@@ -302,9 +264,6 @@ class SemanticArtifactVersion implements NumericVersion {
 		return suffix.canonical().toLowerCase(Locale.ROOT).contains("rc");
 	}
 
-	/**
-	 * Return the canonical suffix string.
-	 */
 	public String getSuffix() {
 		return suffix.canonical();
 	}
@@ -314,19 +273,14 @@ class SemanticArtifactVersion implements NumericVersion {
 		return suffix instanceof Suffix.Snapshot;
 	}
 
-	/**
-	 * Return whether this version is a bugfix release.
-	 */
 	public boolean isBugFixVersion() {
 		return isReleaseVersion() && components.getBugfix() != 0;
 	}
 
 	/**
-	 * Return the next development version to be used for the current release
-	 * version, which means next minor for GA versions and next bug fix for service
-	 * releases. Will return the current version as snapshot otherwise.
-	 *
-	 * @return the next development version.
+	 * Return the next development snapshot.
+	 * <p>Releases with a zero bugfix component advance the minor version. Other
+	 * releases advance the bugfix version. Previews retain their numeric version.
 	 */
 	public ArtifactVersion getNextDevelopmentVersion() {
 
@@ -342,10 +296,8 @@ class SemanticArtifactVersion implements NumericVersion {
 	}
 
 	/**
-	 * Return the next bug fix version for the current version if it's a release
-	 * version or the snapshot version of the current one otherwise.
-	 *
-	 * @return the next bugfix version.
+	 * Return a snapshot of the next bugfix for a release, or of the current version
+	 * otherwise.
 	 */
 	public ArtifactVersion getNextBugfixVersion() {
 
@@ -357,9 +309,7 @@ class SemanticArtifactVersion implements NumericVersion {
 	}
 
 	/**
-	 * Return the next minor version, retaining this version's current suffix and
-	 * suffix notation.
-	 * @return the next minor version.
+	 * Return the next minor version, retaining the suffix and its notation.
 	 */
 	public ArtifactVersion getNextMinorVersion() {
 		return versionOf(components.nextMinor());
@@ -378,9 +328,6 @@ class SemanticArtifactVersion implements NumericVersion {
 		return era != 0 ? era : toString().compareToIgnoreCase(that.toString());
 	}
 
-	/**
-	 * Compare this semantic version with another semantic version.
-	 */
 	public int compareTo(SemanticArtifactVersion that) {
 
 		int versionsEqual = this.components.compareTo(that.components);

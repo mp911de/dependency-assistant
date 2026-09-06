@@ -32,30 +32,12 @@ import biz.paluch.dap.util.Sequence;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Curated release proposals over the {@link DevelopmentLines} of a release
- * history: the rows a first completion invocation shows.
- *
- * <p>Selection composes three policies: the <em>corridor</em> anchored on a
- * current version drops lines older than the current line, keeps the current
- * line, and includes the current release when it exists in the history; a
- * {@link VersionStem} adds the newest matching version per steered line, the
- * matching members when the stem pins a single line, or the matching
- * pre-releases under {@linkplain VersionStem#isSuffixIntent() suffix intent};
- * without either, a window over the newest lines applies. Stable lines surface
- * their newest stable version up to a line budget that also caps lines per
- * major version, so histories with many minors in one major still surface the
- * recent majors. Pre-release-only lines surface their newest pre-release up to
- * a smaller cap.
- *
- * <p>Selections degrade rather than vanish: an opaque current version (branch,
- * bare SHA) and a current version ahead of the cached history both fall back to
- * the window, and a single-line history lists a bounded set of its members.
- * Proposals keep the history's canonical order so the curated invocation and
- * the full-history invocation list rows consistently.
+ * Curated releases shown on the first completion invocation.
+ * <p>Selection favors the current development line and recent stable lines. A
+ * typed {@link VersionStem} adds matching releases. Unusable current versions
+ * fall back to recent lines. Results retain history order.
  *
  * @author Mark Paluch
- * @see DevelopmentLines
- * @see VersionStem
  */
 class ReleaseProposals implements Sequence<Release> {
 
@@ -75,14 +57,9 @@ class ReleaseProposals implements Sequence<Release> {
 	}
 
 	/**
-	 * Select the proposals for the given release history.
-	 *
-	 * @param history the release history in canonical newest-first order.
-	 * @param currentVersion the currently declared version anchoring the corridor,
-	 * or {@literal null} when no current version is available.
-	 * @param stem the typed-prefix stem steering line selection, or {@literal null}
-	 * without a usable prefix.
-	 * @return the proposals in the history's canonical order.
+	 * Select completion proposals from newest-first history.
+	 * @param currentVersion the current version, or {@literal null} if unknown.
+	 * @param stem the typed prefix, or {@literal null} if none.
 	 */
 	public static ReleaseProposals select(Releases history, @Nullable ArtifactVersion currentVersion,
 			@Nullable VersionStem stem) {
@@ -92,14 +69,8 @@ class ReleaseProposals implements Sequence<Release> {
 	}
 
 	/**
-	 * Return proposals that additionally include the given release.
-	 *
-	 * <p>The result keeps the history's canonical order. A release outside the
-	 * underlying history is ignored: proposals only contain history releases.
-	 *
-	 * @param release the release to include.
-	 * @return these proposals when the release is already included, extended
-	 * proposals otherwise.
+	 * Include the release if it belongs to the underlying history.
+	 * <p>Preserves history order and returns this instance if already included.
 	 */
 	public ReleaseProposals with(Release release) {
 
@@ -113,29 +84,16 @@ class ReleaseProposals implements Sequence<Release> {
 	}
 
 	/**
-	 * Return the proposed releases as a list, in the history's canonical order.
-	 *
-	 * @return the unmodifiable proposed releases.
+	 * Return the unmodifiable proposals in history order.
 	 */
 	public List<Release> getReleases() {
 		return releases;
 	}
 
-	/**
-	 * Return the number of proposed releases.
-	 *
-	 * @return the number of proposals.
-	 */
 	public int size() {
 		return releases.size();
 	}
 
-	/**
-	 * Return whether no releases are proposed.
-	 *
-	 * @return {@literal true} if there are no proposals; {@literal false}
-	 * otherwise.
-	 */
 	@Override
 	public boolean isEmpty() {
 		return releases.isEmpty();
@@ -146,11 +104,6 @@ class ReleaseProposals implements Sequence<Release> {
 		return releases.iterator();
 	}
 
-	/**
-	 * Return the proposed releases as a stream, in the history's canonical order.
-	 *
-	 * @return a new stream over the proposed releases.
-	 */
 	@Override
 	public Stream<Release> stream() {
 		return releases.stream();
@@ -161,11 +114,6 @@ class ReleaseProposals implements Sequence<Release> {
 		return "ReleaseProposals" + releases;
 	}
 
-	/**
-	 * Return the corridor anchor for the given current version: the unwrapped form,
-	 * or {@literal null} for opaque refs (branches, bare SHAs) that cannot anchor a
-	 * corridor.
-	 */
 	private static @Nullable ArtifactVersion corridorAnchor(@Nullable ArtifactVersion currentVersion) {
 
 		if (currentVersion == null) {
@@ -176,11 +124,6 @@ class ReleaseProposals implements Sequence<Release> {
 		return unwrapped.scheme() == VersioningScheme.OPAQUE ? null : unwrapped;
 	}
 
-	/**
-	 * Map the selected versions onto their releases, preserving the canonical
-	 * history order so the curated invocation and the full-history invocation list
-	 * rows consistently.
-	 */
 	private static List<Release> inHistoryOrder(Releases history, Set<ArtifactVersion> rows) {
 
 		Set<Release> chosen = new HashSet<>();
@@ -195,10 +138,6 @@ class ReleaseProposals implements Sequence<Release> {
 		return history.stream().filter(chosen::contains).toList();
 	}
 
-	/**
-	 * One selection pass over the development lines of a history, anchored on the
-	 * current version when one exists.
-	 */
 	private static class Selection {
 
 		private final DevelopmentLines lines;
@@ -210,9 +149,6 @@ class ReleaseProposals implements Sequence<Release> {
 			this.anchor = anchor;
 		}
 
-		/**
-		 * Return the selected versions, steered by the given stem when one exists.
-		 */
 		Set<ArtifactVersion> rows(@Nullable VersionStem stem) {
 
 			Set<ArtifactVersion> rows = new LinkedHashSet<>();
@@ -220,15 +156,14 @@ class ReleaseProposals implements Sequence<Release> {
 				rows.addAll(steeredRows(stem));
 			}
 
-			// A single-line history has nothing to curate; list its members.
+			// A single-line history needs no selection across lines.
 			if (lines.size() == 1) {
 				rows.addAll(lines.getLines().getFirst().stream().limit(MAX_LINES).toList());
 			}
 
 			List<ArtifactVersion> anchored = lineRows(anchor);
 			if (anchored.isEmpty() && anchor != null) {
-				// The current version is ahead of the cached history; fall back to
-				// the window rather than an empty selection.
+				// Keep recent releases visible when the current version is ahead of history.
 				anchored = lineRows(null);
 			}
 			rows.addAll(anchored);
@@ -236,11 +171,6 @@ class ReleaseProposals implements Sequence<Release> {
 			return rows;
 		}
 
-		/**
-		 * Return the corridor rows when {@code anchor} is present, the window rows
-		 * otherwise. Both spend the same {@link LineBudget}; the current line bypasses
-		 * it.
-		 */
 		private List<ArtifactVersion> lineRows(@Nullable ArtifactVersion anchor) {
 
 			List<ArtifactVersion> rows = new ArrayList<>();
@@ -273,11 +203,6 @@ class ReleaseProposals implements Sequence<Release> {
 			return rows;
 		}
 
-		/**
-		 * Return the rows the stem steers to: the matching pre-releases under suffix
-		 * intent, the matching members when the stem pins a single line (the user is
-		 * drilling into that line), and the newest matching version per line otherwise.
-		 */
 		private List<ArtifactVersion> steeredRows(VersionStem stem) {
 
 			List<List<ArtifactVersion>> matches = new ArrayList<>();
@@ -310,10 +235,7 @@ class ReleaseProposals implements Sequence<Release> {
 	}
 
 	/**
-	 * Admission budget for one pass over the development lines: at most
-	 * {@link #MAX_LINES} stable lines overall, at most {@link #MAX_LINES_PER_MAJOR}
-	 * stable lines per major version so long histories still surface the recent
-	 * majors, and at most {@link #MAX_PREVIEWS} pre-release-only lines.
+	 * Limits lines per major so older majors remain visible in long histories.
 	 */
 	private static class LineBudget {
 

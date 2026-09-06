@@ -41,12 +41,9 @@ import org.jetbrains.kotlin.psi.ValueArgument;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Parser for individual dependency declarations in a Kotlin DSL Gradle file.
- * Resolution collaborators and declaration-form strategies share the lifecycle
- * of one {@link KotlinDslFileParser}.
+ * Parse Kotlin dependency declarations within a {@link KotlinDslFileParser}.
  *
  * @author Mark Paluch
- * @see ArtifactDeclaration
  */
 class KotlinDslParser {
 
@@ -65,17 +62,7 @@ class KotlinDslParser {
 	}
 
 	/**
-	 * Parse a Kotlin DSL declaration from the given call.
-	 * <p>Supports declarations such as: <pre class="code">
-	 * implementation("org.junit.jupiter:junit-jupiter:5.11.0")
-	 * implementation(group = "org.junit.jupiter", name = "junit-jupiter", version = "5.11.0")
-	 * implementation("org.junit.jupiter:junit-jupiter") { version { prefer("5.11.0") } }
-	 * id("org.springframework.boot") version "3.3.2"
-	 * implementation(libs.spring.core)
-	 * </pre>
-	 * @param call the configuration call to parse.
-	 * @return the parsed declaration, or {@literal null} when the call is not
-	 * supported.
+	 * Parse a dependency or plugin call, or return {@literal null} if unsupported.
 	 */
 	@Nullable
 	public ArtifactDeclaration parse(KtCallElement call) {
@@ -215,9 +202,6 @@ class KotlinDslParser {
 
 	}
 
-	/**
-	 * TOML/version catalog reference.
-	 */
 	class VersionCatalogStrategy implements ParsingStrategy<KotlinDeclarationCall, KtCallElement> {
 
 		@Override
@@ -250,9 +234,6 @@ class KotlinDslParser {
 
 	}
 
-	/**
-	 * Named-argument declaration strategy (map-style).
-	 */
 	class NamedArgumentsStrategy implements ParsingStrategy<KotlinDeclarationCall, KtCallElement> {
 
 		@Override
@@ -306,13 +287,6 @@ class KotlinDslParser {
 
 	}
 
-	/**
-	 * <p>Supports the conventional infix shape:
-	 *
-	 * <pre class="code">
-	 * id("org.springframework.boot") version "3.3.2"
-	 * </pre>
-	 */
 	class PluginStrategy implements ParsingStrategy<KotlinDeclarationCall, KtCallElement> {
 
 		@Override
@@ -328,16 +302,6 @@ class KotlinDslParser {
 			return site != null ? dependency(site) : null;
 		}
 
-		/**
-		 * Parse a Kotlin plugin declaration anchored at {@code call} and surrounded by
-		 * {@code be}.
-		 * @param call the inner {@code id(...)} call element.
-		 * @param be the enclosing binary expression carrying the {@code version}
-		 * keyword and version literal.
-		 * @param scriptProperties property resolver used to resolve interpolated id
-		 * placeholders.
-		 * @return the parsed plugin declaration, or {@literal null}.
-		 */
 		private @Nullable DependencySite fromBinary(KtCallElement call, @Nullable KtBinaryExpression be,
 				PropertyResolver scriptProperties) {
 
@@ -374,15 +338,6 @@ class KotlinDslParser {
 
 	}
 
-	/**
-	 * Parse Kotlin DSL dependency declarations from compact notation, with the
-	 * version either inline or in a {@code version { ... }} block.
-	 * <p>Supports declarations such as: <pre class="code">
-	 * implementation("org.junit.jupiter:junit-jupiter:5.11.0")
-	 * implementation("org.junit.jupiter:junit-jupiter") { version { prefer("5.11.0") } }
-	 * </pre> Named-argument and plugin forms are handled by
-	 * {@link NamedArgumentsStrategy} and {@link PluginStrategy}.
-	 */
 	class InlineNotationStrategy implements ParsingStrategy<KotlinDeclarationCall, KtCallElement> {
 
 		@Override

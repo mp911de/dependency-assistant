@@ -37,7 +37,7 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>Upgradeable release rows rendered by
  * {@link DependencyDocumentationProvider} carry a {@link #SCHEME}-prefixed link
- * whose remainder is the target version. This handler recognizes the scheme,
+ * whose remainder is the target version. This handler supports the scheme,
  * applies the linked version through the shared dependency-update path, and
  * re-renders the popup against the updated declaration.
  *

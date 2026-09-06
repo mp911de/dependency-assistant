@@ -31,25 +31,10 @@ import com.intellij.psi.impl.source.tree.LeafPsiElement;
 import org.assertj.core.api.AbstractAssert;
 
 /**
- * AssertJ assertions for a single {@link GutterMark}.
- *
- * <p>Tooltip assertions apply to every gutter mark. PSI text, highlight, and
- * navigation assertions require the mark to be backed by a
- * {@link LineMarkerInfo.LineMarkerGutterIconRenderer}, since only that renderer
- * exposes the underlying {@link LineMarkerInfo} and its associated
- * {@link PsiElement}.
- *
- * <p>Example: <pre class="code">
- * assertThat(fixture)
- *     .hasSingleGutter()
- *     .tooltipContains("Patch", "6.0.3")
- *     .highlights("6.0.0");
- *
- * assertThat(buildFile)
- *     .hasSingleGutter()
- *     .hasPsiElementTextContaining("${junit}")
- *     .hasNavigation();
- * </pre>
+ * Assertions for a single gutter mark.
+ * <p>PSI, highlight, and navigation checks require a
+ * {@link LineMarkerInfo.LineMarkerGutterIconRenderer}. Action-backed update
+ * gutters count as non-navigable.
  *
  * @author Mark Paluch
  */
@@ -61,9 +46,7 @@ public class GutterMarkAssert
 	}
 
 	/**
-	 * Verifies that the actual gutter mark renders the given icon.
-	 * @param expected the icon expected to be rendered by this gutter mark.
-	 * @return this assertion object.
+	 * Require the same icon instance.
 	 */
 	public GutterMarkAssert hasIcon(Icon expected) {
 		isNotNull();
@@ -75,10 +58,8 @@ public class GutterMarkAssert
 	}
 
 	/**
-	 * Verifies that the actual gutter mark tooltip does not contain any of the
-	 * given fragments.
-	 * @param unexpected the fragments expected to be absent from the tooltip text.
-	 * @return this assertion object.
+	 * Require no matching tooltip fragments. An absent tooltip satisfies this
+	 * check.
 	 */
 	public GutterMarkAssert tooltipDoesNotContain(String... unexpected) {
 		isNotNull();
@@ -94,12 +75,6 @@ public class GutterMarkAssert
 		return this;
 	}
 
-	/**
-	 * Verifies that the actual gutter mark tooltip contains all of the given
-	 * fragments.
-	 * @param expected the fragments expected in the tooltip text.
-	 * @return this assertion object.
-	 */
 	public GutterMarkAssert tooltipContains(String... expected) {
 		isNotNull();
 		String tooltip = this.actual.getTooltipText();
@@ -117,14 +92,6 @@ public class GutterMarkAssert
 		return this;
 	}
 
-	/**
-	 * Verifies that the PSI element text associated with this gutter mark is
-	 * exactly equal to the given string.
-	 * <p>Requires the gutter mark to be a
-	 * {@link LineMarkerInfo.LineMarkerGutterIconRenderer}.
-	 * @param expected the exact expected PSI element text.
-	 * @return this assertion object.
-	 */
 	public GutterMarkAssert hasPsiElementText(String expected) {
 		String text = resolvePsiElementText();
 		if (!text.equals(expected)) {
@@ -135,14 +102,6 @@ public class GutterMarkAssert
 		return this;
 	}
 
-	/**
-	 * Verifies that the PSI element text associated with this gutter mark contains
-	 * the given substring.
-	 * <p>Requires the gutter mark to be a
-	 * {@link LineMarkerInfo.LineMarkerGutterIconRenderer}.
-	 * @param expected the substring expected to be present in the PSI element text.
-	 * @return this assertion object.
-	 */
 	public GutterMarkAssert hasPsiElementTextContaining(String expected) {
 		String text = resolvePsiElementText();
 		if (!text.contains(expected)) {
@@ -185,15 +144,7 @@ public class GutterMarkAssert
 	}
 
 	/**
-	 * Verifies that the document substring covered by this gutter's
-	 * {@link LineMarkerInfo} range is exactly equal to {@code expected}.
-	 *
-	 * <p>The range is the visible highlight produced by the line marker provider
-	 * (typically the variant's {@code replaceableRange} for build-file dependency
-	 * entries), so this assertion confirms which substring of the editor is
-	 * visually marked as upgradable.
-	 * @param expected the exact expected highlighted text.
-	 * @return this assertion object.
+	 * Require the marker range to cover exactly this document text.
 	 */
 	public GutterMarkAssert highlights(String expected) {
 		isNotNull();
@@ -236,10 +187,7 @@ public class GutterMarkAssert
 	}
 
 	/**
-	 * Verifies that the document substring covered by this gutter's
-	 * {@link LineMarkerInfo} range contains the given fragment.
-	 * @param expected the substring expected to appear in the highlighted text.
-	 * @return this assertion object.
+	 * Require the marker range to contain this document text.
 	 */
 	public GutterMarkAssert highlightsContaining(String expected) {
 		isNotNull();
@@ -268,11 +216,6 @@ public class GutterMarkAssert
 		return this;
 	}
 
-	/**
-	 * Verifies that the actual gutter mark is navigable.
-	 * <p>Action-backed update gutters are intentionally treated as non-navigable,
-	 * even when IntelliJ exposes an action handler.
-	 */
 	public void hasNavigation() {
 		isNotNull();
 		if (this.actual instanceof LineMarkerInfo.LineMarkerGutterIconRenderer<?> renderer) {
@@ -287,11 +230,6 @@ public class GutterMarkAssert
 		}
 	}
 
-	/**
-	 * Verifies that the actual gutter mark is not navigable.
-	 * <p>Action-backed update gutters satisfy this assertion because they perform
-	 * an action instead of navigating to another PSI location.
-	 */
 	public void hasNoNavigation() {
 		isNotNull();
 		if (this.actual instanceof LineMarkerInfo.LineMarkerGutterIconRenderer<?> renderer) {

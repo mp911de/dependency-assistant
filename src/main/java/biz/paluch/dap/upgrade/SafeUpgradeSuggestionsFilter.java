@@ -29,13 +29,10 @@ import biz.paluch.dap.support.UpgradeStrategy;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Adds the Safe Version remediation target to computed upgrade suggestions.
- *
- * <p>The target is the lowest release that is newer than a vulnerable current
- * version, belongs to the same versioning scheme, and is explicitly known to be
- * clean. Selection can cross major or minor version lines. An absent
- * vulnerability result is not treated as clean. Suggestions remain unchanged
- * when no Safe Version can be established.
+ * Add the lowest newer release explicitly known to be clean for a vulnerable
+ * dependency.
+ * <p>Selection stays in the current versioning scheme but may cross major or
+ * minor lines. Missing vulnerability results do not establish safety.
  *
  * @author Mark Paluch
  */

@@ -95,10 +95,7 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 	}
 
 	/**
-	 * Return the shared sentinel for an unavailable or ungoverned evaluation.
-	 *
-	 * @return a sentinel that reports {@link #isPresent() not present} with a
-	 * neutral icon and an explanatory tooltip.
+	 * Return an unavailable or ungoverned evaluation.
 	 */
 	public static DependencyRuleEvaluator absent() {
 		return ABSENT;

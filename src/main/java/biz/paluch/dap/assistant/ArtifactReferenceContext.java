@@ -55,10 +55,7 @@ import org.springframework.util.Assert;
  * Element-anchored resolution of an {@link ArtifactReference} and the facts
  * required by editor dependency operations.
  *
- * <p>Resolution always returns a context. The absent sentinel represents an
- * element that cannot participate in dependency operations. The regular element
- * lookup requires a version-defined declaration. The copied-PSI lookup can
- * retain a resolved declaration without a current version for completion.
+ * <p>Resolution always returns a context.
  *
  * <p>Declaration, rule, presentation, and project metadata are captured during
  * resolution. Releases and upgrade suggestions are loaded lazily and retained

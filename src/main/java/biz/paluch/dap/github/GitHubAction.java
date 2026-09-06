@@ -27,17 +27,9 @@ import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
 /**
- * GitHub repository action referenced from a workflow {@code uses:}
- * declaration.
- *
- * <p>The dependency identity of a GitHub action is the repository that
- * publishes it: {@code owner/repository}. Any workflow-local action path is
- * deliberately ignored for identity and release lookup, since tags and SHAs
- * belong to the Git repository rather than to a subdirectory inside it.
- *
- * <p>The {@linkplain #version() version} is the raw ref after {@code @}. It is
- * retained as workflow metadata so callers can resolve, compare, and rewrite
- * the declaration without conflating repository identity with the selected ref.
+ * Repository action referenced by a workflow {@code uses:} declaration.
+ * <p>Identity is {@code owner/repository}. Action subdirectories do not affect
+ * identity because tags and commits belong to the repository.
  *
  * @author Mark Paluch
  * @see UsesRepositoryAction
@@ -45,12 +37,8 @@ import org.springframework.util.StringUtils;
 interface GitHubAction extends HasArtifactId {
 
 	/**
-	 * Pattern for repository-backed GitHub Action {@code uses:} values.
-	 * <p>Local actions and Docker image references are intentionally excluded from
-	 * this contract because they are not resolved through GitHub repository release
-	 * metadata. Owner and repository follow GitHub naming rules: owners are
-	 * alphanumerics with single inner hyphens up to 39 characters, repository names
-	 * exclude the reserved {@code .} and {@code ..}.
+	 * Recognizes repository actions. Local actions and Docker references do not use
+	 * GitHub release metadata.
 	 */
 	Pattern USES = Pattern.compile(
 			"^(?<owner>[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38})\\/" +
@@ -58,66 +46,35 @@ interface GitHubAction extends HasArtifactId {
 					"(?<paths>[/A-Za-z0-9._-]*)@" +
 					"(?<version>\\S*)\\s*(#(?<comment>[\\sA-Za-z0-9._-]+))?$");
 
-	/**
-	 * Return the repository owner.
-	 *
-	 * @return the repository owner.
-	 */
 	String owner();
 
-	/**
-	 * Return the repository name.
-	 *
-	 * @return the repository name.
-	 */
 	String repository();
 
 	/**
-	 * Return the raw workflow ref for this action.
-	 *
-	 * <p>The ref may represent a tag, branch, semantic version, or commit SHA and
-	 * is not normalized by this abstraction.
-	 *
-	 * @return the ref text after {@code @}.
+	 * Return the raw ref after {@code @}, without normalization.
 	 */
 	String version();
 
 	/**
-	 * Determine whether the given value is a repository-backed GitHub Action
-	 * {@code uses:} declaration.
-	 * <p>A {@literal false} result does not mean the workflow entry is invalid
-	 * YAML; it means the entry is outside the dependency model handled here.
-	 *
-	 * @param uses the workflow value to inspect.
-	 * @return {@literal true} if the value can be represented as a
-	 * {@code GitHubAction}.
+	 * Return whether the value is a supported repository action.
+	 * <p>Unsupported values may still be valid workflow entries.
 	 */
 	static boolean isValidUsage(@Nullable String uses) {
 		return StringUtils.hasText(uses) && USES.matcher(uses).matches();
 	}
 
 	/**
-	 * Return a repository action identity without a selected ref.
-	 *
-	 * @param owner the GitHub repository owner.
-	 * @param repository the GitHub repository name.
-	 * @return the repository action identity.
+	 * Create a repository action without a selected ref.
 	 */
 	static UsesRepositoryAction of(String owner, String repository) {
 		return new UsesRepositoryAction(ArtifactId.of(owner, repository), "");
 	}
 
 	/**
-	 * Parse a repository-backed GitHub Action from a workflow {@code uses:} value.
-	 *
-	 * <p>The returned action keeps the repository owner, repository name, and raw
-	 * ref. Path segments after the repository name and trailing workflow comments
-	 * are accepted by the parser but are not part of the dependency identity.
-	 *
-	 * @param uses the workflow {@code uses:} value.
-	 * @return the parsed action.
-	 * @throws IllegalArgumentException if the value is not a valid {@code uses:}
-	 * reference for this dependency model.
+	 * Parse a repository action, ignoring action subdirectories and trailing
+	 * comments.
+	 * @throws IllegalArgumentException if the value is not a supported repository
+	 * action.
 	 */
 	public static UsesRepositoryAction from(String uses) {
 

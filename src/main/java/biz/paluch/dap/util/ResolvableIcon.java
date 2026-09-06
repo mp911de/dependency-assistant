@@ -20,21 +20,11 @@ import java.util.Objects;
 
 import javax.swing.Icon;
 
-import com.intellij.openapi.util.ScalableIcon;
 import com.intellij.openapi.util.text.HtmlChunk;
 
 /**
- * Presentation value that carries both a Swing icon and the reflective path the
- * platform re-resolves for documentation HTML.
- *
- * <p>The two halves cannot be derived from each other: a loaded {@link Icon}
- * does not expose the {@code AllIcons.Nodes.Library} style field path that the
- * quick documentation {@code <icon src>} resolver needs. Binding them in one
- * value keeps the registry that declares an icon the single place that also
- * declares its reflective path, so the two cannot drift apart.
- *
- * <p>Use {@link #getIcon()} for Swing presentation, including operations that
- * require {@link ScalableIcon}, and {@link #asHtml()} for quick documentation.
+ * An icon and its reflective field path for Swing and documentation HTML. The
+ * loaded icon cannot supply that path, so both are declared together.
  *
  * @author Mark Paluch
  */
@@ -45,13 +35,10 @@ public class ResolvableIcon {
 	private final String reference;
 
 	/**
-	 * Create an icon binding for Swing and quick documentation presentation.
+	 * Bind an icon to its documentation reference.
 	 *
-	 * @param icon the Swing icon for components (gutter, combo, lookup, table).
-	 * @param reference the reflective field path (for example,
-	 * {@code AllIcons.Nodes.Library} or
-	 * {@code biz.paluch.dap.checker.CheckerIcons.HIGH}) resolved by the
-	 * documentation icon renderer.
+	 * @param reference the reflective field path, such as
+	 * {@code AllIcons.Nodes.Library}.
 	 */
 	public ResolvableIcon(Icon icon, String reference) {
 		this.icon = icon;
@@ -59,10 +46,7 @@ public class ResolvableIcon {
 	}
 
 	/**
-	 * Render this icon as a documentation {@link HtmlChunk}, passing the reflective
-	 * path with the Swing icon as the resolver fallback.
-	 *
-	 * @return the icon chunk for embedding in quick documentation HTML.
+	 * Render a documentation icon with the Swing icon as fallback.
 	 */
 	public HtmlChunk asHtml() {
 		return HtmlChunk.icon(reference, icon);

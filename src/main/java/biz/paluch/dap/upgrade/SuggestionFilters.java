@@ -24,8 +24,7 @@ import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.rule.DependencyRule;
 
 /**
- * Composite {@link UpgradeSuggestionsFilter} that applies its delegates in
- * declaration order, threading the result of each into the next.
+ * Apply suggestion filters in order, passing each result to the next.
  *
  * @author Mark Paluch
  */

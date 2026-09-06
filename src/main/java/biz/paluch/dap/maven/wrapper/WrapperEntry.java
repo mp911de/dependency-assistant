@@ -60,7 +60,7 @@ record WrapperEntry(WrapperProperty property, Property propertyLiteral, PsiEleme
 	 * Return the parsed artifact version, or {@literal null} when
 	 * {@link #pathVersion} cannot be parsed as an {@link ArtifactVersion}.
 	 *
-	 * @return the parsed path version, or {@literal null} if it is not recognized.
+	 * @return the parsed path version, or {@literal null} if it is not supported.
 	 */
 	@Nullable
 	public ArtifactVersion version() {

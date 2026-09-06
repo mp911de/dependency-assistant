@@ -44,16 +44,10 @@ import com.intellij.mock.MockVirtualFile;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Factory for {@link DependencyUpgradeCandidate} fixtures. The one-liner form
- * creates a candidate whose release universe is just the current version, with
- * an absent rule, no vulnerabilities, empty declared versions, and absent
- * project metadata; the configurer form overrides only what a test cares about:
- *
- * <pre class="code">
- * candidate("com.example:demo:1.0.0");
- * candidate("com.example:demo:1.0.0", it -> it.releases("1.0.1", "1.1.0"));
- * candidate("com.example:demo:1.0.0", it -> it.releases("1.0.1").vulnerable("1.0.0", TestVulnerabilities.HIGH));
- * </pre>
+ * Configurable upgrade candidates for tests.
+ * <p>String coordinates use {@code group:artifact:version}. The default
+ * candidate contains only its current release and has no recorded vulnerability
+ * results.
  *
  * @author Mark Paluch
  */
@@ -62,37 +56,21 @@ public class TestCandidates {
 	private TestCandidates() {
 	}
 
-	/**
-	 * Create a candidate from {@code group:artifact:version} coordinates with all
-	 * defaults.
-	 */
 	public static DependencyUpgradeCandidate candidate(String coordinates) {
 		return candidate(coordinates, it -> {
 		});
 	}
 
-	/**
-	 * Create a candidate from {@code group:artifact:version} coordinates,
-	 * customized by the given configurer.
-	 */
 	public static DependencyUpgradeCandidate candidate(String coordinates, Consumer<CandidateSpec> configurer) {
 		Coordinates parsed = Coordinates.of(coordinates);
 		return candidate(parsed.getArtifactId(), parsed.getVersion(), configurer);
 	}
 
-	/**
-	 * Create a candidate for the given artifact at the given current version,
-	 * customized by the given configurer.
-	 */
 	public static DependencyUpgradeCandidate candidate(ArtifactId artifactId, String currentVersion,
 			Consumer<CandidateSpec> configurer) {
 		return candidate(artifactId, ArtifactVersion.of(currentVersion), configurer);
 	}
 
-	/**
-	 * Create a candidate for the given artifact at the given current version,
-	 * customized by the given configurer.
-	 */
 	public static DependencyUpgradeCandidate candidate(ArtifactId artifactId, ArtifactVersion currentVersion,
 			Consumer<CandidateSpec> configurer) {
 
@@ -102,8 +80,8 @@ public class TestCandidates {
 	}
 
 	/**
-	 * Customization of one candidate: release universe, vulnerabilities, rule,
-	 * version source, and declaration sites.
+	 * Candidate customization. The current version remains in the release set even
+	 * when other releases are supplied.
 	 */
 	public static class CandidateSpec {
 
@@ -132,37 +110,24 @@ public class TestCandidates {
 			this.versionSources.add(VersionSource.declared(currentVersion.toString()));
 		}
 
-		/**
-		 * Replace the release universe with the given versions.
-		 * {@link DependencyUpgradeCandidate#create} retains the current version in the
-		 * universe regardless of this selection.
-		 */
 		public CandidateSpec releases(String... versions) {
 			this.releases = TestReleases.from(versions);
 			return this;
 		}
 
-		/**
-		 * Replace the release universe with the given versions.
-		 * {@link DependencyUpgradeCandidate#create} retains the current version in the
-		 * universe regardless of this selection.
-		 */
 		public CandidateSpec releases(ArtifactVersion... versions) {
 			this.releases = TestReleases.from(versions);
 			return this;
 		}
 
-		/**
-		 * Replace the release universe with the given releases.
-		 */
 		public CandidateSpec releases(Releases releases) {
 			this.releases = releases;
 			return this;
 		}
 
 		/**
-		 * Register vulnerabilities for the given version. Versions without an entry
-		 * (the current version and every release) are reported clean.
+		 * Register vulnerabilities for a version. Unlisted current and release versions
+		 * are then treated as clean.
 		 */
 		public CandidateSpec vulnerable(String version, Vulnerabilities vulnerabilities) {
 			this.vulnerableVersions.put(ArtifactVersion.of(version), vulnerabilities);
@@ -170,7 +135,8 @@ public class TestCandidates {
 		}
 
 		/**
-		 * Use the given repository verbatim instead of {@link #vulnerable} entries.
+		 * Use an explicit repository. It cannot be combined with {@link #vulnerable}
+		 * entries.
 		 */
 		public CandidateSpec vulnerabilities(VulnerabilityRepository vulnerabilityRepository) {
 			this.vulnerabilityRepository = vulnerabilityRepository;
@@ -178,33 +144,22 @@ public class TestCandidates {
 		}
 
 		/**
-		 * Govern the candidate by a present {@link TestDependencyRule} carrying the
-		 * given dependency name.
+		 * Use a present rule with the given dependency name.
 		 */
 		public CandidateSpec rule(String dependencyName) {
 			return rule(new TestDependencyRule(dependencyName));
 		}
 
-		/**
-		 * Govern the candidate by the given rule.
-		 */
 		public CandidateSpec rule(DependencyRule rule) {
 			this.rule = rule;
 			return this;
 		}
 
-		/**
-		 * Use the given dependency assistant as the candidate's integration identity.
-		 */
 		public CandidateSpec assistant(DependencyAssistant assistant) {
 			this.assistant = assistant;
 			return this;
 		}
 
-		/**
-		 * Declare the version through a property of the given name instead of a literal
-		 * declaration.
-		 */
 		public CandidateSpec versionProperty(String propertyName) {
 			return versionSource(VersionSource.property(propertyName));
 		}
@@ -217,8 +172,7 @@ public class TestCandidates {
 		}
 
 		/**
-		 * Replace the version sources with the given sources, e.g. a version property
-		 * alongside an inline declaration.
+		 * Replace all version sources.
 		 */
 		public CandidateSpec versionSources(VersionSource... versionSources) {
 			this.versionSources.clear();
@@ -227,10 +181,8 @@ public class TestCandidates {
 		}
 
 		/**
-		 * Record the versions the dependency is declared at, one declaration site per
-		 * version, each in its own file. Sites carry plainly declared versions; a
-		 * configured {@link #versionSource(VersionSource)} applies to the dependency
-		 * only, not to these sites.
+		 * Add declaration sites in separate files. These sites use plain declared
+		 * versions, independently of the candidate version sources.
 		 */
 		public CandidateSpec declaredVersions(String... versions) {
 			this.declaredVersions.addAll(List.of(versions));

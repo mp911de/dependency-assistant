@@ -21,38 +21,25 @@ import java.util.Locale;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Version-control system behind a declared repository URL.
- *
- * <p>Parsed from the provider segment of a Maven {@code scm:<provider>:} URL or
- * from the npm {@code repository.type} field. Providers without dedicated link
- * handling (Mercurial, CVS, and other exotic systems) map to {@link #UNKNOWN}.
+ * Version-control system identified by repository metadata.
  *
  * @author Mark Paluch
  * @see RepositoryUrl
  */
 public enum RepositoryType {
 
-	/**
-	 * Git repository.
-	 */
 	GIT,
 
-	/**
-	 * Subversion repository.
-	 */
 	SVN,
 
 	/**
-	 * Unrecognized or undeclared version-control system.
+	 * Unsupported or undeclared version-control system.
 	 */
 	UNKNOWN;
 
 	/**
-	 * Resolve the repository type from a declared provider name.
-	 * @param provider the provider name from a Maven {@code scm:<provider>:} prefix
-	 * or an npm {@code repository.type} field, or {@literal null} if undeclared.
-	 * @return the matching repository type. Returns {@link #UNKNOWN} if the
-	 * provider is {@literal null}, blank, or not recognized.
+	 * Resolve a provider name without regard to case or surrounding whitespace.
+	 * @return {@link #UNKNOWN} if the provider is absent or unsupported.
 	 */
 	public static RepositoryType of(@Nullable String provider) {
 

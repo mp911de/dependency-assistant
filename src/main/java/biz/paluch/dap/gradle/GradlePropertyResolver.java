@@ -68,13 +68,9 @@ class GradlePropertyResolver implements PropertyResolver {
 	}
 
 	/**
-	 * Return a resolver assembled from the physical file tree of {@code file}.
-	 *
-	 * <p>The result is cached on the anchor and invalidated by any project PSI
-	 * modification. Injected fragments and non-physical copies resolve through
-	 * their physical source file.
-	 * @param file the file that anchors property discovery.
-	 * @return the resolver for the anchor's Gradle project tree.
+	 * Resolve properties against the physical file tree.
+	 * <p>Injected fragments and preview copies use their source file. Any project
+	 * PSI change invalidates the cached resolver.
 	 */
 	public static GradlePropertyResolver create(PsiFile file) {
 
@@ -84,9 +80,7 @@ class GradlePropertyResolver implements PropertyResolver {
 	}
 
 	/**
-	 * Return a resolver containing only properties from the given file.
-	 * @param file the file to parse.
-	 * @return the file-local property resolver.
+	 * Return a resolver limited to properties declared in this file.
 	 */
 	public static GradlePropertyResolver forFile(PsiFile file) {
 		return PsiFileCache.get(file, GradlePropertyResolver::parseFile);
@@ -171,10 +165,6 @@ class GradlePropertyResolver implements PropertyResolver {
 		return new GradlePropertyResolver(properties);
 	}
 
-	/**
-	 * Anchors the resolver at the physical file behind the given PSI so injected
-	 * fragments and preview copies resolve against the real file tree.
-	 */
 	static class TreeProvider implements CachedValueProvider<GradlePropertyResolver> {
 
 		private final Project project;
@@ -235,10 +225,8 @@ class GradlePropertyResolver implements PropertyResolver {
 	}
 
 	/**
-	 * Finds a cached property binding whose value PSI matches or encloses
-	 * {@code literal}.
-	 * @param literal the value PSI to match.
-	 * @return the matching property binding, or {@literal null} if none matches.
+	 * Find the property whose value contains the literal, or {@literal null} if
+	 * absent.
 	 */
 	public @Nullable Property findBindingForValueLiteral(PsiElement literal) {
 

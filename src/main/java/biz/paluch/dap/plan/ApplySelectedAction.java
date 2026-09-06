@@ -20,19 +20,13 @@ import com.intellij.openapi.actionSystem.AnActionEvent;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Apply the selected planned upgrades to the build files, sharing the
- * confirmation, shelving, and notification behavior of {@link ApplyAllAction}.
- * Unlike its parent this action never expands to the whole plan: it stays
- * disabled without a plan-item selection and does nothing when invoked without
- * one.
+ * Apply selected items through {@link ApplyAllAction}. An empty selection does
+ * not expand to the whole plan.
  *
  * @author Mark Paluch
  */
 public class ApplySelectedAction extends ApplyAllAction {
 
-	/**
-	 * Disabled without a plan-item selection to apply.
-	 */
 	@Override
 	public void update(AnActionEvent e, @Nullable UpgradePlanService service) {
 

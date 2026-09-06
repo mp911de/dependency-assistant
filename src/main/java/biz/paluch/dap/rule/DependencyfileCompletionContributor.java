@@ -51,17 +51,8 @@ import com.intellij.util.ProcessingContext;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Completion contributor for artifact pattern keys inside
- * {@code dependencyfile.json} {@code artifacts} sections.
- *
- * <p>Suggests artifact patterns from the {@link StateService} runtime
- * dependency state when the caret is at the key position of a property inside a
- * top-level or branch-level {@code artifacts} object. Accepting a suggestion
- * starts a live template that inserts the rule object with a {@code name} tab
- * stop (and a {@code generation} tab stop for branch rules). The template
- * reformats to the file's JSON code style. Completion also fires from a
- * whitespace position between properties; in that case the template re-quotes
- * the inserted key.
+ * Completes dependencyfile artifact patterns from known project dependencies.
+ * Accepting a suggestion opens a live template for the rule.
  *
  * @author Mark Paluch
  */
@@ -142,10 +133,7 @@ public class DependencyfileCompletionContributor extends CompletionContributor i
 				artifactsObject = ao;
 				currentKey = property;
 			} else {
-				// Caret is in whitespace or an error element between properties.
-				// The dummy identifier was inserted without surrounding quotes, so there is
-				// no JsonStringLiteral ancestor, so find the enclosing artifacts object
-				// directly.
+				// Completion between properties inserts an unquoted dummy identifier.
 				artifactsObject = PsiTreeUtil.getParentOfType(position, JsonObject.class, false);
 				if (artifactsObject == null) {
 					return;
@@ -155,8 +143,7 @@ public class DependencyfileCompletionContributor extends CompletionContributor i
 				return;
 			}
 
-			// Seed the dedup set with declared keys so already-declared patterns are not
-			// suggested.
+			// Do not suggest patterns already declared elsewhere in this section.
 			Set<String> seen = new HashSet<>();
 			for (JsonProperty sibling : artifactsObject.getPropertyList()) {
 				if (sibling != currentKey) {
@@ -193,16 +180,6 @@ public class DependencyfileCompletionContributor extends CompletionContributor i
 		return super.invokeAutoPopup(position, typeChar);
 	}
 
-	/**
-	 * Starts the template at the artifact pattern key, quoting the key when
-	 * completion was accepted from a whitespace position.
-	 *
-	 * <p>On an existing quoted key the template is appended right after it. From a
-	 * whitespace position the bare, unquoted key the platform inserted is removed
-	 * and the quoted key becomes the template's leading segment, so the whole
-	 * inserted region is reformatted as one unit and the live-template segments
-	 * stay in sync.
-	 */
 	private static void prepareKeyPrefix(InsertionContext context, LookupElement item, Template template) {
 
 		JsonProperty property = findValuelessProperty(context);
@@ -210,6 +187,8 @@ public class DependencyfileCompletionContributor extends CompletionContributor i
 		if (property != null) {
 			startOffset = property.getNameElement().getTextRange().getEndOffset();
 		} else {
+			// Include the quoted key in the template so reformatting keeps its segments
+			// aligned.
 			startOffset = context.getStartOffset();
 			context.getDocument().deleteString(startOffset, context.getTailOffset());
 			template.addTextSegment("\"" + item.getLookupString() + "\"");
@@ -218,11 +197,6 @@ public class DependencyfileCompletionContributor extends CompletionContributor i
 		context.getEditor().getCaretModel().moveToOffset(startOffset);
 	}
 
-	/**
-	 * Starts a live template inserting the rule object after the artifact pattern
-	 * key, with a {@code name} tab stop and, for branch rules, a {@code generation}
-	 * tab stop. The template reformats to the file's JSON code style.
-	 */
 	private record ArtifactRuleInsertHandler(boolean withGeneration) implements InsertHandler<LookupElement> {
 
 		@Override

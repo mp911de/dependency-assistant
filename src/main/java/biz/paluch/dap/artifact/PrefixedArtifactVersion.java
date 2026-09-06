@@ -22,21 +22,15 @@ import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
 
 /**
- * {@link ArtifactVersion} that wraps an inner version with a string prefix such
- * as {@code v} or a tag prefix such as {@code assertj-build-}.
- *
- * <p>The prefix is preserved in {@link #toString()} so that the original
- * version string round-trips correctly (e.g. {@code v1.2.3}).
+ * A version with a prefix preserved for rendering, such as {@code v1.2.3}.
+ * <p>The prefix does not affect comparison or equality.
  *
  * @author Mark Paluch
- * @see ArtifactVersion#isWrapped()
  */
 class PrefixedArtifactVersion extends ArtifactVersionWrapper implements ArtifactVersion {
 
 	/**
-	 * Splits a tag into a prefix and a version literal: a lazy prefix ending at a
-	 * hyphen or slash (so the leftmost digit-led boundary wins and the version tail
-	 * stays longest), an optional {@code v} marker, and the digit-led version.
+	 * Keep the longest version tail so qualifiers remain part of the version.
 	 */
 	private static final Pattern TAG = Pattern.compile("^(?<prefix>(?:.*?[-/])?v?)(?<version>\\d.*)$");
 
@@ -48,15 +42,8 @@ class PrefixedArtifactVersion extends ArtifactVersionWrapper implements Artifact
 	}
 
 	/**
-	 * Parse a tag name carrying an optional prefix before its version literal (e.g.
-	 * {@code assertj-build-3.27.7}, {@code release-v2.0.0}, {@code release/2.0.0},
-	 * {@code v1.2.3}, or a plain version). Qualifier suffixes stay part of the
-	 * version because the tag is cut where the version starts; the prefix keeps
-	 * everything before the cut, including path-style segments, so
-	 * {@link #toString()} round-trips the original tag.
-	 * @param tag the tag name.
-	 * @return the parsed version, or {@literal null} if the tag carries no semantic
-	 * version literal.
+	 * Parse a numeric tag while preserving its prefix.
+	 * @return {@literal null} if no numeric version is recognized.
 	 */
 	static @Nullable ArtifactVersion parseTag(String tag) {
 

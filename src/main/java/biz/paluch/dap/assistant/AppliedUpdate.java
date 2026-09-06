@@ -31,18 +31,11 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.PropertyKey;
 
 /**
- * Summary of a dependency update recorded after it changes a build file.
- *
- * <p>The summary retains the applied version change, its user-facing display
- * label, and the follow-up classification used by after-apply notifications.
- * Natural ordering uses only the display label. Sorted accumulators therefore
- * retain at most one summary for a label even though record equality includes
- * all three components.
+ * Summary of an update that changed a build file.
+ * <p>Natural ordering compares display labels only and is inconsistent with
+ * equality.
  *
  * @author Mark Paluch
- * @param update the applied version change.
- * @param displayName the user-facing dependency label.
- * @param flag the follow-up classification for the applied change.
  */
 public record AppliedUpdate(ArtifactVersionChange update,
 		String displayName, Flag flag)
@@ -52,13 +45,7 @@ public record AppliedUpdate(ArtifactVersionChange update,
 			.comparing(AppliedUpdate::displayName);
 
 	/**
-	 * Create an applied update from a {@link DependencyUpdate} and its governing
-	 * rule.
-	 *
-	 * @param update the update that changed a build file.
-	 * @param rule the rule governing the dependency.
-	 * @param presentation the source of the user-facing dependency label.
-	 * @return the classified applied-update summary.
+	 * Classify an applied update against its governing rule.
 	 */
 	public static AppliedUpdate from(DependencyUpdate update, DependencyRule rule,
 			DependencyPresentation presentation) {
@@ -78,14 +65,8 @@ public record AppliedUpdate(ArtifactVersionChange update,
 	}
 
 	/**
-	 * Create an applied update from a {@link DependencyUpdate}.
-	 *
-	 * <p>Without a governing rule, only a major version crossing receives a
-	 * follow-up flag.
-	 *
-	 * @param update the update that changed a build file.
-	 * @param displayName the user-facing dependency label.
-	 * @return the classified applied-update summary.
+	 * Classify an applied update without a governing rule.
+	 * <p>Only major version crossings receive a follow-up flag.
 	 */
 	public static AppliedUpdate from(DependencyUpdate update,
 			String displayName) {
@@ -102,9 +83,7 @@ public record AppliedUpdate(ArtifactVersionChange update,
 	}
 
 	/**
-	 * Return whether this update is called out in the after-apply balloon.
-	 *
-	 * @return {@code true} if the update carries a follow-up {@link Flag}.
+	 * Return whether the update requires a follow-up notification.
 	 */
 	public boolean isFlagged() {
 		return flag != Flag.NONE;
@@ -149,9 +128,7 @@ public record AppliedUpdate(ArtifactVersionChange update,
 	public enum Flag {
 
 		/**
-		 * No follow-up is required because the target complies with its governing rule
-		 * and any classified upgrade strategy is enabled, or because no rule applies
-		 * and the change does not cross a major version line.
+		 * No follow-up is required.
 		 */
 		NONE,
 

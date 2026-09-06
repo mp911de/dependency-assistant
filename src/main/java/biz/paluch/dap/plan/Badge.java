@@ -22,8 +22,7 @@ import com.intellij.ui.JBColor;
 import org.jspecify.annotations.Nullable;
 
 /**
- * View model for a badge shown in the Upgrade Plan tree such as the upgrade
- * strategy (patch, minor, major, CVE fix) and the ticket reference.
+ * Badge presentation in the Upgrade Plan tree.
  *
  * @author Mark Paluch
  */

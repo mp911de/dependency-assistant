@@ -20,8 +20,7 @@ import biz.paluch.dap.util.MessageBundle;
 import com.intellij.lang.annotation.ProblemGroup;
 
 /**
- * {@link ProblemGroup} that groups annotations reporting a newer release is
- * available for a dependency that is not governed by a {@code DependencyRule}.
+ * Annotation group for upgrades on dependencies without a governing rule.
  *
  * @author Mark Paluch
  */

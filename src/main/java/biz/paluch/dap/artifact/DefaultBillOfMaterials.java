@@ -24,9 +24,7 @@ import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Default {@link BillOfMaterials} implementation. Equality follows the
- * {@link BillOfMaterials} contract: package identity plus version, excluding
- * the member map.
+ * Default {@link BillOfMaterials} value.
  *
  * @author Mark Paluch
  */

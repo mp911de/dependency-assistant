@@ -22,14 +22,9 @@ import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Classification of a Git ref string by rendering style.
- *
- * <p>
- * The ref text after {@code @} in a {@code uses:} declaration, or after
- * {@code #} in an NPM Git URL, is classified by the rendering model rather than
- * by Git semantics. Hex SHA prefixes are treated as SHA-pinned refs. All other
- * non-empty refs, including tags, branches, and semantic versions with or
- * without a {@code v} prefix, are rendered as version-style refs.
+ * Rendering style of a declared Git ref.
+ * <p>This is a textual classification, not Git ref resolution. Branches and
+ * tags can both use version-style rendering.
  *
  * @author Mark Paluch
  */
@@ -49,13 +44,7 @@ public enum RefStyle {
 	private static final Pattern FULL_SHA = Pattern.compile("^[0-9a-f]{4,40}$");
 
 	/**
-	 * Determine a {@link RefStyle} from the given ref string.
-	 * <p>An empty or {@literal null} ref defaults to {@link #SHA}, matching the
-	 * conservative behavior for declarations that cannot reveal their original
-	 * style. Whitespace-only input also classifies as {@link #SHA} because
-	 * {@link StringUtils#isEmpty(String)} treats blank input as empty.
-	 * @param ref the raw ref as written in the build file; can be {@literal null}.
-	 * @return the resulting {@code RefStyle}.
+	 * Classify the raw ref text. Absent or blank refs default to {@link #SHA}.
 	 */
 	public static RefStyle from(@Nullable String ref) {
 		return StringUtils.isEmpty(ref) || FULL_SHA.matcher(ref).matches() ? SHA : VERSION;

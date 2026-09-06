@@ -67,16 +67,9 @@ import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Renders Quick Documentation HTML for dependency declarations, version
- * properties, and release lookup items. Declaration views can include the
- * accepted project name, current value, a bounded {@link ReleaseDigest},
- * release-note links, and known security advisories. Release lookup views can
- * additionally describe the release's relation to the current version,
- * dependency-rule violations, and advisory differences.
- *
- * <p>The project-name section is omitted when the presentation policy rejects
- * the captured name or the name merely repeats the coordinates. Resolution and
- * target lifecycle are owned by {@link DependencyDocumentationProvider}.
+ * Quick Documentation HTML for declarations, version properties, and releases.
+ * <p>{@link DependencyDocumentationProvider} owns resolution and target
+ * lifecycle.
  *
  * @author Mark Paluch
  */
@@ -129,40 +122,17 @@ class DependencyDocumentationRenderer {
 	}
 
 	/**
-	 * Create a renderer from a resolved {@link ArtifactReferenceContext}, wiring
-	 * release-notes links and captured project names through the cache-only
-	 * {@link ProjectMetadataService} facade.
-	 *
-	 * @param context a {@link ArtifactReferenceContext#isPresent() present}
-	 * reference context.
-	 * @param linkable {@literal true} to wrap non-current version rows in upgrade
-	 * links.
-	 * @return the renderer.
+	 * @param context a present reference context.
+	 * @param linkable whether non-current version rows can apply upgrades.
 	 */
 	static DependencyDocumentationRenderer from(ArtifactReferenceContext context, boolean linkable) {
 		return new DependencyDocumentationRenderer(context, linkable);
 	}
 
-	/**
-	 * Render the documentation body for a single concrete artifact.
-	 *
-	 * @param pkg the artifact to document.
-	 * @param withIcons {@literal true} to render status, advisory-severity, and
-	 * release-note icons. {@literal false} omits all icons.
-	 * @return the HTML body.
-	 */
 	String render(PackageIdentity pkg, boolean withIcons) {
 		return render(pkg.getArtifactId(), withIcons);
 	}
 
-	/**
-	 * Render the documentation body for a single concrete artifact.
-	 *
-	 * @param artifactId the artifact to document.
-	 * @param withIcons {@literal true} to render status, advisory-severity, and
-	 * release-note icons. {@literal false} omits all icons.
-	 * @return the HTML body.
-	 */
 	String render(ArtifactId artifactId, boolean withIcons) {
 
 		ReleaseDateFormatter formatter = ReleaseDateFormatter.create();
@@ -193,12 +163,6 @@ class DependencyDocumentationRenderer {
 		return document(HtmlChunk.text(artifactId.toString()), content);
 	}
 
-	/**
-	 * Render the documentation body for a single release lookup item.
-	 *
-	 * @param release the release represented by the lookup item.
-	 * @return the HTML body.
-	 */
 	String render(ArtifactRelease release) {
 
 		ArtifactId artifactId = release.artifactId();
@@ -249,13 +213,6 @@ class DependencyDocumentationRenderer {
 		return document(HtmlChunk.text(artifactId + " " + version), content);
 	}
 
-	/**
-	 * Render how the release relates to the current version: the upgrade kind
-	 * (patch, minor, major, preview) or a downgrade, fused with the release-date
-	 * distance when both release dates are known. The date direction is reported
-	 * honestly, so a version-older maintenance release published after the current
-	 * version reads as released after it.
-	 */
 	private HtmlChunk releaseRelation(ArtifactRelease release) {
 
 		ArtifactVersion currentVersion = this.currentVersion;
@@ -273,7 +230,7 @@ class DependencyDocumentationRenderer {
 		}
 
 		// Relation messages carry inline <i> emphasis on the date direction, so they
-		// render raw; all interpolated values are plugin-generated.
+		// render raw. All interpolated values are plugin-generated.
 		return HtmlChunk.p().child(HtmlChunk.raw(relationMessage(release, age, currentVersion))).addText(" ")
 				.child(versionCode(currentVersion));
 	}
@@ -281,6 +238,8 @@ class DependencyDocumentationRenderer {
 	private String relationMessage(ArtifactRelease release, VersionAge age, ArtifactVersion currentVersion) {
 
 		String distance = null;
+		// Version ordering and publication ordering can differ for maintenance
+		// releases.
 		boolean releasedAfterCurrent = false;
 		LocalDateTime releaseDate = release.getReleaseDate();
 		Release currentRelease = findRelease(release.artifactId(), currentVersion);
@@ -328,10 +287,6 @@ class DependencyDocumentationRenderer {
 		return null;
 	}
 
-	/**
-	 * Return the advisories affecting the current version that no longer affect the
-	 * candidate release.
-	 */
 	private static List<Vulnerability> fixedVulnerabilities(Vulnerabilities current, Vulnerabilities candidate) {
 
 		if (!current.isVulnerable()) {
@@ -403,30 +358,18 @@ class DependencyDocumentationRenderer {
 		return rows.wrapWith(DocumentationMarkup.SECTIONS_TABLE);
 	}
 
-	/**
-	 * Render a section label as a full-width row spanning both columns of the
-	 * section table, for sections whose values follow on their own rows instead of
-	 * sharing the label row.
-	 */
 	private static HtmlChunk sectionLabelRow(String labelKey) {
 		return HtmlChunk.tag("tr").child(DocumentationMarkup.SECTION_HEADER_CELL.attr("colspan", 2)
 				.child(HtmlChunk.p().addText(MessageBundle.message(labelKey))));
 	}
 
-	/**
-	 * Render a section value as a full-width row spanning both columns, so the
-	 * value gets the entire popup width instead of the narrow content column.
-	 */
 	private static HtmlChunk spanningRow(HtmlChunk value) {
 		return HtmlChunk.tag("tr").child(DocumentationMarkup.SECTION_CONTENT_CELL.attr("colspan", 2).child(value));
 	}
 
 	/**
-	 * Wrap a section value in a non-breaking line: Swing's HTML renderer breaks
-	 * coordinate-like text at dots and colons when the content column runs out of
-	 * width, fragmenting one value across several code chips. A {@code nowrap}
-	 * block keeps the value whole and lets the section table claim the width it
-	 * needs. Wrapping happens between lines only.
+	 * Keep coordinate-like values whole because Swing breaks them at dots and
+	 * colons.
 	 */
 	private static HtmlChunk nowrapLine(HtmlChunk value) {
 		return HtmlChunk.div("white-space: nowrap").child(value);
@@ -440,11 +383,6 @@ class DependencyDocumentationRenderer {
 				.toString();
 	}
 
-	/**
-	 * Render the security-advisories section for the current version of the given
-	 * artifact. The lookup is cache-only and the result is empty for clean or
-	 * unscanned dependencies.
-	 */
 	private HtmlChunk renderSecurityAdvisories(ArtifactId artifactId, boolean withIcons) {
 
 		if (currentVersion == null) {
@@ -455,13 +393,6 @@ class DependencyDocumentationRenderer {
 		return renderSecurityAdvisories(vulnerabilities, null, withIcons);
 	}
 
-	/**
-	 * Render the security-advisories section for the given vulnerabilities, with an
-	 * optional plain-text note behind the section header. The result is empty for
-	 * clean or unscanned versions. With icons, each advisory row leads with its
-	 * severity shield instead of a list dot. The plain variant keeps the {@code ul}
-	 * list.
-	 */
 	private static HtmlChunk renderSecurityAdvisories(Vulnerabilities vulnerabilities, @Nullable String note,
 			boolean withIcons) {
 
@@ -512,13 +443,7 @@ class DependencyDocumentationRenderer {
 	}
 
 	/**
-	 * Render the documentation body for a version property, with one release table
-	 * per group of artifacts sharing the same leading cached version keys.
-	 *
-	 * @param property the version property to document.
-	 * @param withIcons {@literal true} to render status, advisory-severity, and
-	 * release-note icons. {@literal false} omits all icons.
-	 * @return the HTML body, or {@literal null} if the property drives no
+	 * Render a version property, or return {@literal null} if it drives no
 	 * artifacts.
 	 */
 	@Nullable
@@ -569,11 +494,6 @@ class DependencyDocumentationRenderer {
 		}
 	}
 
-	/**
-	 * Render the release table for the {@link ReleaseDigest} rows. Hidden rows are
-	 * summarized by notes linking to the Dependency Check dialog so truncation is
-	 * never silent.
-	 */
 	private HtmlChunk versionsTable(ArtifactId artifactId, ReleaseDigest digest, boolean withIcons,
 			ReleaseDateFormatter formatter, DependencyPresentation presentation) {
 
@@ -630,46 +550,21 @@ class DependencyDocumentationRenderer {
 		return HtmlChunk.tag("td").child(HtmlChunk.empty());
 	}
 
-	/**
-	 * Wrap the text in a link opening the Dependency Check dialog focused on the
-	 * documented declaration.
-	 */
 	private static HtmlChunk checkDialogLink(String text) {
 		return HtmlChunk.link(DependencyUpgradeLinkHandler.CHECK_SCHEME, text);
 	}
 
 	/**
-	 * Bounded selection of the release rows the popup renders for one artifact,
-	 * keeping the popup an upgrade decision aid rather than a release changelog.
-	 * Previews newer than the current version fill a top section capped at a few
-	 * rows. Every other release, stable or the current anchor, fills the release
-	 * section capped separately. Rows beyond the caps are carried as counts.
-	 *
-	 * @param previewRows the previews newer than the current version, newest first.
-	 * @param releaseRows the stable releases and the current-version anchor (which
-	 * can itself be a preview), newest first.
-	 * @param morePreviews the number of newer previews beyond {@code previewRows}.
-	 * @param moreReleases the number of releases hidden from the release section,
-	 * including previews at or below the current version.
+	 * A bounded release selection with counts for omitted rows.
+	 * <p>The current version remains visible even when the row budget is exhausted.
 	 */
 	record ReleaseDigest(List<Release> previewRows, List<Release> releaseRows, int morePreviews, int moreReleases) {
 
 		/**
-		 * Select the rows to render from the given releases. Previews count against
-		 * {@code previewLimit} only when newer than the current version. Previews at or
-		 * below the current version are folded into {@link #moreReleases()}. Stable
-		 * releases fill up to {@code releaseLimit} rows regardless of the current
-		 * version, and the release matching the current version is always kept as the
-		 * anchor row. Duplicate versions are skipped entirely, matching the release
-		 * table's previous de-duplication.
-		 *
-		 * @param releases the artifact's analyzed release history.
-		 * @param currentVersion the declared version, or {@literal null} when
-		 * unresolved.
-		 * @param previewLimit the maximum number of newer-preview rows.
-		 * @param releaseLimit the stable-row budget. The current-version anchor can
-		 * exceed this budget.
-		 * @return the digest.
+		 * Select release rows, preserving the current version as an anchor.
+		 * @param currentVersion the current version, or {@literal null} if unknown.
+		 * @param previewLimit the limit for previews newer than the current version.
+		 * @param releaseLimit the stable-row budget, which the anchor may exceed.
 		 */
 		static ReleaseDigest of(Releases releases, @Nullable ArtifactVersion currentVersion, int previewLimit,
 				int releaseLimit) {
@@ -722,10 +617,9 @@ class DependencyDocumentationRenderer {
 	}
 
 	/**
-	 * Groups property-backed artifacts that can share one release table because
-	 * their leading cached version keys match. The first artifact supplies the
-	 * representative release history, while every artifact remains visible in the
-	 * group header.
+	 * Artifacts sharing a release table because their leading cached versions
+	 * match.
+	 * <p>The first artifact supplies the representative history.
 	 */
 	static class ReleaseGroup {
 
@@ -771,11 +665,6 @@ class DependencyDocumentationRenderer {
 					.collect(Collectors.toCollection(LinkedHashSet::new));
 		}
 
-		/**
-		 * Render the group header as a full-width label row followed by one full-width
-		 * row per coordinate, keeping every coordinate a single non-breaking code unit
-		 * with the entire popup width at its disposal.
-		 */
 		HtmlChunk renderHeader() {
 
 			List<HtmlChunk> rows = new ArrayList<>();
@@ -849,10 +738,6 @@ class DependencyDocumentationRenderer {
 			}
 		}
 
-		/**
-		 * Render the release-notes icon using the browsable HTTPS URL produced by the
-		 * project-metadata facade.
-		 */
 		private HtmlChunk releaseNotesLink(URI releaseNotesUrl) {
 			return HtmlChunk.tag("a")
 					.attr("href", releaseNotesUrl.toString())

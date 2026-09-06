@@ -22,12 +22,9 @@ import biz.paluch.dap.ticket.Ticket;
 import biz.paluch.dap.ticket.TicketRepository;
 
 /**
- * Materialized link from an Upgrade Plan item to an external ticket. Carries
- * the stable ticket key, browser URL, repository implementation name, and the
- * display reference resolved for the currently bound ticket system.
- *
- * <p>Equality uses the key, URL, and repository name. The display reference is
- * presentation metadata and does not participate.
+ * External ticket link captured by a plan item.
+ * <p>Equality uses key, URL and repository name. The display reference is
+ * presentation only.
  *
  * @author Mark Paluch
  */

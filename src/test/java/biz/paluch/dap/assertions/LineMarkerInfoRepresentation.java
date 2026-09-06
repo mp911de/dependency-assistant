@@ -21,26 +21,13 @@ import com.intellij.psi.PsiElement;
 import org.assertj.core.presentation.Representation;
 
 /**
- * AssertJ {@link Representation} for Dependency Assistant line markers.
- *
- * <p>Failure messages involving gutter assertions are otherwise difficult to
- * inspect because IntelliJ renderers expose little useful state through their
- * default {@code toString()}. This representation unwraps
- * {@link LineMarkerInfo.LineMarkerGutterIconRenderer} instances and includes
- * the marker tooltip plus the associated PSI element text when available.
- *
- * <p>Unsupported values are rendered with their regular {@code toString()}
- * representation so this formatter can be registered safely with AssertJ's
- * standard representation.
+ * Includes tooltips and PSI text in line-marker assertion failures.
+ * <p>The default renderer representation provides little diagnostic context.
  *
  * @author Mark Paluch
  */
 public class LineMarkerInfoRepresentation implements Representation {
 
-	/**
-	 * Returns a string representation of the given object for assertion failure
-	 * messages.
-	 */
 	@Override
 	public String toStringOf(Object object) {
 
@@ -64,18 +51,11 @@ public class LineMarkerInfoRepresentation implements Representation {
 		return object.toString();
 	}
 
-	/**
-	 * Returns the unambiguous representation used by AssertJ failure messages.
-	 */
 	@Override
 	public String unambiguousToStringOf(Object object) {
 		return toStringOf(object);
 	}
 
-	/**
-	 * Returns a priority higher than AssertJ's default representation so gutter
-	 * marker formatting wins for the supported IntelliJ types.
-	 */
 	@Override
 	public int getPriority() {
 		return DEFAULT_PRIORITY + 1;

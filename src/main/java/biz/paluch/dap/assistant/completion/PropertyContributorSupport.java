@@ -47,53 +47,25 @@ import com.intellij.psi.PsiFileFactory;
 import com.intellij.util.ProcessingContext;
 
 /**
- * Base {@link CompletionProvider} for {@code .properties} files that offers
- * completions inside property keys, property values, and on blank lines in the
- * properties list (see {@link #PATTERNS}).
- *
- * <p>Subclasses contribute format-specific lookup elements through
- * {@link #addCompletions(CompletionResultSet, Cache, PsiFileFactory, Property)},
- * typically using {@link #addPropertyLineCompletion}. The
- * {@link #supports(Property)} hook controls automatic invocation after an
- * equals sign; it does not filter explicit completion locations.
+ * Base completion provider for wrapper properties.
+ * <p>{@link #supports(Property)} controls automatic completion after an equals
+ * sign. It does not filter explicit completion.
  *
  * @author Mark Paluch
  */
 public abstract class PropertyContributorSupport extends CompletionProvider<CompletionParameters> {
 
-	/**
-	 * Matches a caret position inside a property key. <pre class="code">
-	 * distri&lt;caret&gt;butionUrl=https://...
-	 * </pre>
-	 */
 	private static final PsiElementPattern.Capture<PsiElement> PROPERTY_KEY = PlatformPatterns.psiElement()
 			.inside(PlatformPatterns.psiElement().withElementType(PropertiesTokenTypes.KEY_CHARACTERS));
 
-	/**
-	 * Matches a caret position inside a property value. <pre class="code">
-	 * distributionUrl=https&lt;caret&gt;://...
-	 * </pre>
-	 */
 	private static final PsiElementPattern.Capture<PsiElement> PROPERTY_VALUE = PlatformPatterns.psiElement()
 			.inside(PlatformPatterns.psiElement().withElementType(PropertiesTokenTypes.VALUE_CHARACTERS));
 
-	/**
-	 * Matches a caret position inside the properties list body, including blank
-	 * lines between or before properties. <pre class="code">
-	 * &lt;caret&gt;
-	 * </pre>
-	 */
 	private static final PsiElementPattern.Capture<PsiElement> PROPERTY_LIST = PlatformPatterns.psiElement()
 			.withLanguage(com.intellij.lang.properties.PropertiesLanguage.INSTANCE);
 
 	/**
-	 * Matches any caret position handled by this contributor: inside a property
-	 * key, inside a property value, or on a blank line in the properties list.
-	 * <pre class="code">
-	 * distri&lt;caret&gt;butionUrl=https://...
-	 * distributionUrl=https&lt;caret&gt;://...
-	 * &lt;caret&gt;
-	 * </pre>
+	 * Completion positions in property keys, values, and the properties list.
 	 */
 	public static final PsiElementPattern.Capture<PsiElement> PATTERNS = PlatformPatterns.psiElement()
 			.andOr(PROPERTY_KEY, PROPERTY_VALUE, PROPERTY_LIST);
@@ -124,32 +96,17 @@ public abstract class PropertyContributorSupport extends CompletionProvider<Comp
 	}
 
 	/**
-	 * Add format-specific completions for the property at the caret.
-	 *
-	 * <p>On the first invocation, the result set matches the property text from its
-	 * start through the caret. Repeated invocation uses an empty prefix matcher.
-	 *
-	 * @param result the result set to receive lookup elements.
-	 * @param cache the project release cache.
-	 * @param factory the project PSI file factory.
-	 * @param propertyPosition the property resolved at the completion position.
+	 * Add completions for the property at the caret.
+	 * <p>The first invocation matches property text up to the caret. Repeated
+	 * invocation uses an empty prefix.
 	 */
 	protected abstract void addCompletions(CompletionResultSet result, Cache cache, PsiFileFactory factory,
 			Property propertyPosition);
 
 	/**
-	 * Add a wrapper {@code key=url} line completion item to {@code result}.
-	 *
-	 * <p>The item is never auto-inserted. Selecting it replaces the complete line
-	 * containing the completion position and moves the caret to the end of the
-	 * replacement.
-	 *
-	 * @param result the completion result set.
-	 * @param factory the file factory used to materialize the synthetic property.
-	 * @param propertyPosition the property element at the caret.
-	 * @param key the wrapper property key.
-	 * @param release the artifact release represented by {@code url}.
-	 * @param url the canonical download URL for {@code release}.
+	 * Offer a complete wrapper {@code key=url} line.
+	 * <p>Selection replaces the current line and moves the caret to its end. The
+	 * item is never inserted automatically.
 	 */
 	protected static void addPropertyLineCompletion(CompletionResultSet result, PsiFileFactory factory,
 			Property propertyPosition, String key, ArtifactRelease release, String url) {
@@ -178,18 +135,8 @@ public abstract class PropertyContributorSupport extends CompletionProvider<Comp
 	}
 
 	/**
-	 * Return whether the typed character should open completion at the given
-	 * position.
-	 *
-	 * <p>An equals sign triggers completion only for a property accepted by
-	 * {@link #supports(Property)}. Version characters trigger inside property
-	 * values, while property-key triggers are delegated to
-	 * {@link #isPropertyKeyTrigger(char)}.
-	 *
-	 * @param position the PSI position at the caret.
-	 * @param typeChar the typed character.
-	 * @return {@literal true} if completion should open automatically;
-	 * {@literal false} otherwise.
+	 * Return whether typing should open completion.
+	 * <p>Equals-sign completion is limited by {@link #supports(Property)}.
 	 */
 	public boolean invokeAutoPopup(PsiElement position, char typeChar) {
 		if (typeChar == '=') {
@@ -210,37 +157,22 @@ public abstract class PropertyContributorSupport extends CompletionProvider<Comp
 	}
 
 	/**
-	 * Return whether completion should open after an equals sign for the given
-	 * property.
-	 *
-	 * @param property the property at the caret.
-	 * @return {@literal true} if the property supports value completion;
-	 * {@literal false} otherwise.
+	 * Return whether completion should open after an equals sign for this property.
 	 */
 	protected abstract boolean supports(Property property);
 
 	/**
-	 * Return whether the typed character should open property-key completion.
-	 *
-	 * @param typeChar the typed character.
-	 * @return {@literal true} if the character begins a supported property key;
-	 * {@literal false} otherwise.
+	 * Return whether typing this character should open property-key completion.
 	 */
 	protected abstract boolean isPropertyKeyTrigger(char typeChar);
 
 	/**
-	 * Insert handler that replaces the complete document line containing the
-	 * completion start offset.
+	 * Replaces the complete line containing the completion start offset.
 	 */
 	protected static class PropertyLineInsertHandler implements InsertHandler<LookupElement> {
 
 		private final String replacement;
 
-		/**
-		 * Create an insert handler for the given complete property line.
-		 *
-		 * @param replacement the complete property line to insert.
-		 */
 		public PropertyLineInsertHandler(String replacement) {
 			this.replacement = replacement;
 		}

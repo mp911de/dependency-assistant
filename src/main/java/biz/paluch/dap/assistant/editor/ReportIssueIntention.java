@@ -37,12 +37,7 @@ import com.intellij.util.IncorrectOperationException;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Intention that opens the issue tracker of the dependency declared at the
- * caret in the browser.
- *
- * <p>The metadata lookup used for availability is cache-only. The intention is
- * available only when {@link ProjectMetadataService} resolves an issue tracker
- * from captured project metadata.
+ * Opens the dependency's issue tracker from cached project metadata.
  *
  * @author Mark Paluch
  */
@@ -106,12 +101,8 @@ public class ReportIssueIntention extends BaseIntentionAction implements Priorit
 	}
 
 	/**
-	 * Resolve the dependency declaration at the caret.
-	 *
-	 * @param editor the editor containing the caret.
-	 * @param psiFile the file containing the declaration.
-	 * @return the resolved context, or {@literal null} when the caret is not on a
-	 * resolved, version-defined dependency declaration.
+	 * Resolve the version-defined declaration at the caret, or return
+	 * {@literal null}.
 	 */
 	static @Nullable ArtifactReferenceContext resolveContext(Editor editor, PsiFile psiFile) {
 

@@ -75,10 +75,6 @@ public class ProjectFileRemovalListener implements BulkFileListener {
 		}
 	}
 
-	/**
-	 * Return whether the descriptor is the given path or lies below it. The
-	 * separator guard keeps {@code /repo} from matching {@code /repository}.
-	 */
 	private static boolean isAtOrBelow(@Nullable String descriptor, String path) {
 
 		if (descriptor == null) {
@@ -87,16 +83,10 @@ public class ProjectFileRemovalListener implements BulkFileListener {
 		if (descriptor.equals(path)) {
 			return true;
 		}
+		// A directory boundary keeps /repo from matching /repository.
 		return descriptor.startsWith(path.endsWith("/") ? path : path + "/");
 	}
 
-	/**
-	 * Return the path a file ceases to occupy through the given event.
-	 *
-	 * @param event the file system event.
-	 * @return the former path for a deletion, move, or rename; {@literal null} for
-	 * any other event.
-	 */
 	private static @Nullable String getRemovedPath(VFileEvent event) {
 
 		if (event instanceof VFileDeleteEvent) {

@@ -54,7 +54,6 @@ public abstract class DeclarationSource {
 	/**
 	 * Return the source for a direct library dependency within the named Maven
 	 * profile.
-	 * @param id the profile identifier.
 	 */
 	public static DeclarationSource profileDependency(String id) {
 		return new ProfileDependencies(id);
@@ -63,7 +62,6 @@ public abstract class DeclarationSource {
 	/**
 	 * Return the source for a managed library dependency within the named Maven
 	 * profile.
-	 * @param id the profile identifier.
 	 */
 	public static DeclarationSource profileManaged(String id) {
 		return new ProfileDependencyManagement(id);
@@ -81,7 +79,6 @@ public abstract class DeclarationSource {
 	/**
 	 * Return the source for a Bill of Materials import within the named Maven
 	 * profile.
-	 * @param id the profile identifier.
 	 */
 	public static DeclarationSource profileBom(String id) {
 		return new ProfileBomImport(id);
@@ -104,7 +101,6 @@ public abstract class DeclarationSource {
 
 	/**
 	 * Return the source for a direct plugin within the named Maven profile.
-	 * @param id the profile identifier.
 	 */
 	public static DeclarationSource profilePlugin(String id) {
 		return new ProfilePlugins(id);
@@ -112,28 +108,18 @@ public abstract class DeclarationSource {
 
 	/**
 	 * Return the source for a managed plugin within the named Maven profile.
-	 * @param id the profile identifier.
 	 */
 	public static DeclarationSource profilePluginManagement(String id) {
 		return new ProfilePluginManagement(id);
 	}
 
-	/**
-	 * Check if the current declaration source is a plugin.
-	 * @return {@literal true} if the source is a plugin; {@literal false}
-	 * otherwise.
-	 */
 	public boolean isPlugin() {
 		return this instanceof DeclarationSource.Plugin;
 	}
 
 	/**
-	 * Return whether all the given sources are plugin declarations.
-	 *
-	 * <p>An empty collection is not considered plugin-only.
-	 * @param declarationSources the declaration sources to check.
-	 * @return {@literal true} if the collection is non-empty and every source is a
-	 * plugin; {@literal false} otherwise, including for an empty collection.
+	 * Return whether every source is a plugin declaration. An empty collection is
+	 * not plugin-only.
 	 */
 	public static boolean isPlugin(Collection<DeclarationSource> declarationSources) {
 		int plugin = 0;
@@ -175,17 +161,8 @@ public abstract class DeclarationSource {
 	}
 
 	/**
-	 * Marker interface for a Bill of Materials import declaration (e.g. Maven
-	 * {@code dependencyManagement} entries with {@code scope=import} and
-	 * {@code type=pom}, or Gradle {@code platform(...)} dependencies).
-	 *
-	 * <p>A BOM source is definitionally a managed dependency source, so every
-	 * {@code instanceof Managed} check keeps matching.
-	 *
-	 * <p>The source classifies the declaration only. The managed member set of a
-	 * BOM is resolved during the scan and registered with the
-	 * {@link DependencyCollector#registerBillOfMaterials(BillOfMaterials)
-	 * collector}, keyed by BOM coordinates and version.
+	 * A Bill of Materials import.
+	 * <p>Membership is resolved separately as a {@link BillOfMaterials}.
 	 */
 	public interface Bom extends Managed {
 
@@ -203,14 +180,8 @@ public abstract class DeclarationSource {
 
 	}
 
-	/**
-	 * Dependencies under project/dependencies.
-	 */
 	private static class Dependencies extends DeclarationSource implements Dependency {
 
-		/**
-		 * Shared dependencies source.
-		 */
 		public static final Dependencies INSTANCE = new Dependencies();
 
 		private Dependencies() {
@@ -223,14 +194,8 @@ public abstract class DeclarationSource {
 
 	}
 
-	/**
-	 * Dependencies under project/dependencyManagement.
-	 */
 	private static class DependencyManagement extends DeclarationSource implements Dependency, Managed {
 
-		/**
-		 * Shared dependency management source.
-		 */
 		public static final DependencyManagement INSTANCE = new DependencyManagement();
 
 		private DependencyManagement() {
@@ -243,9 +208,6 @@ public abstract class DeclarationSource {
 
 	}
 
-	/**
-	 * Dependencies under a profile's dependencies.
-	 */
 	private static class ProfileDependencies extends DeclarationSource implements Dependency, Profile {
 
 		private final String profileId;
@@ -254,9 +216,6 @@ public abstract class DeclarationSource {
 			this.profileId = profileId;
 		}
 
-		/**
-		 * Return the Maven profile id.
-		 */
 		public String getProfileId() {
 			return profileId;
 		}
@@ -281,9 +240,6 @@ public abstract class DeclarationSource {
 
 	}
 
-	/**
-	 * Dependencies under a profile's dependencyManagement.
-	 */
 	private static class ProfileDependencyManagement extends DeclarationSource implements Dependency, Profile, Managed {
 
 		private final String profileId;
@@ -292,9 +248,6 @@ public abstract class DeclarationSource {
 			this.profileId = profileId;
 		}
 
-		/**
-		 * Return the Maven profile id.
-		 */
 		public String getProfileId() {
 			return profileId;
 		}
@@ -319,14 +272,8 @@ public abstract class DeclarationSource {
 
 	}
 
-	/**
-	 * Bill of Materials imports under project/dependencyManagement.
-	 */
 	private static class BomImport extends DeclarationSource implements Dependency, Bom {
 
-		/**
-		 * Shared BOM import source.
-		 */
 		public static final BomImport INSTANCE = new BomImport();
 
 		private BomImport() {
@@ -339,9 +286,6 @@ public abstract class DeclarationSource {
 
 	}
 
-	/**
-	 * Bill of Materials imports under a profile's dependencyManagement.
-	 */
 	private static class ProfileBomImport extends DeclarationSource implements Dependency, Profile, Bom {
 
 		private final String profileId;
@@ -350,9 +294,6 @@ public abstract class DeclarationSource {
 			this.profileId = profileId;
 		}
 
-		/**
-		 * Return the Maven profile id.
-		 */
 		public String getProfileId() {
 			return profileId;
 		}
@@ -377,14 +318,8 @@ public abstract class DeclarationSource {
 
 	}
 
-	/**
-	 * Plugins under project/build/plugins.
-	 */
 	private static class Plugins extends DeclarationSource implements Plugin {
 
-		/**
-		 * Shared plugins source.
-		 */
 		public static final Plugins INSTANCE = new Plugins();
 
 		private Plugins() {
@@ -397,14 +332,8 @@ public abstract class DeclarationSource {
 
 	}
 
-	/**
-	 * Plugins under project/build/pluginManagement.
-	 */
 	private static class PluginManagement extends DeclarationSource implements Plugin, Managed {
 
-		/**
-		 * Shared plugin management source.
-		 */
 		public static final PluginManagement INSTANCE = new PluginManagement();
 
 		private PluginManagement() {
@@ -417,9 +346,6 @@ public abstract class DeclarationSource {
 
 	}
 
-	/**
-	 * Plugins under a profile's build/plugins.
-	 */
 	private static class ProfilePlugins extends DeclarationSource implements Plugin, Profile {
 
 		private final String profileId;
@@ -428,9 +354,6 @@ public abstract class DeclarationSource {
 			this.profileId = profileId;
 		}
 
-		/**
-		 * Return the Maven profile id.
-		 */
 		public String getProfileId() {
 			return profileId;
 		}
@@ -456,9 +379,6 @@ public abstract class DeclarationSource {
 	}
 
 
-	/**
-	 * Plugins under a profile's build/pluginManagement.
-	 */
 	private static class ProfilePluginManagement extends DeclarationSource implements Plugin, Profile, Managed {
 
 		private final String profileId;
@@ -467,9 +387,6 @@ public abstract class DeclarationSource {
 			this.profileId = profileId;
 		}
 
-		/**
-		 * Return the Maven profile id.
-		 */
 		public String getProfileId() {
 			return profileId;
 		}

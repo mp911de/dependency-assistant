@@ -52,13 +52,6 @@ public class DependencySiteQuery {
 		this.versionProperties = versionProperties;
 	}
 
-	/**
-	 * Create a query from the given builder consumer. The consumer populates a
-	 * fresh {@link Builder}.
-	 *
-	 * @param builderConsumer configures the builder.
-	 * @return the configured query.
-	 */
 	public static DependencySiteQuery create(Consumer<Builder> builderConsumer) {
 		Builder builder = new Builder();
 		builderConsumer.accept(builder);
@@ -66,33 +59,21 @@ public class DependencySiteQuery {
 	}
 
 	/**
-	 * Create a query centered on a single version property.
-	 *
-	 * @param propertyName the bare version-property name.
-	 * @return a query with no artifacts and the given property.
+	 * Create a query for a bare version-property name, with no artifact criteria.
 	 */
 	public static DependencySiteQuery ofProperty(String propertyName) {
 		return create(it -> it.versionProperty(propertyName));
 	}
 
 	/**
-	 * Create a query centered on a single artifact, with no version-property
-	 * criteria.
-	 *
-	 * @param groupId the artifact group Id.
-	 * @param artifactId the artifact Id.
-	 * @return a query with the given artifact and no version property.
+	 * Create a query for an artifact, with no version-property criteria.
 	 */
 	public static DependencySiteQuery ofArtifact(String groupId, String artifactId) {
 		return create(it -> it.artifact(ArtifactId.of(groupId, artifactId)));
 	}
 
 	/**
-	 * Combine several queries into one, unioning their artifacts and version
-	 * properties in encounter order.
-	 *
-	 * @param queries the queries to combine.
-	 * @return a query covering every artifact and version property of the inputs.
+	 * Combine the artifact and property criteria in encounter order.
 	 */
 	public static DependencySiteQuery union(Iterable<DependencySiteQuery> queries) {
 		return create(builder -> {
@@ -102,29 +83,16 @@ public class DependencySiteQuery {
 		});
 	}
 
-	/**
-	 * Return the artifact coordinates of interest.
-	 *
-	 * @return the unmodifiable artifacts in encounter order, possibly empty.
-	 */
 	public Set<ArtifactId> artifacts() {
 		return artifacts;
 	}
 
-	/**
-	 * Return the bare version-property names backing the version.
-	 *
-	 * @return the unmodifiable property names in encounter order, possibly empty.
-	 */
 	public Set<String> versionProperties() {
 		return versionProperties;
 	}
 
 	/**
-	 * Return whether the given property is a version property of interest.
-	 *
-	 * @param property the property to check.
-	 * @return {@code true} if the query contains the property's bare name.
+	 * Match the property by its bare name.
 	 */
 	public boolean matches(VersionSource.VersionProperty property) {
 		return versionProperties().contains(property.getProperty());
@@ -151,10 +119,6 @@ public class DependencySiteQuery {
 	}
 
 
-	/**
-	 * Builder for {@link DependencySiteQuery} collecting artifacts and version
-	 * properties in encounter order.
-	 */
 	public static class Builder {
 
 		private final Set<ArtifactId> artifacts = new LinkedHashSet<>();
@@ -164,54 +128,28 @@ public class DependencySiteQuery {
 		private Builder() {
 		}
 
-		/**
-		 * Add an artifact of interest.
-		 *
-		 * @param artifact the artifact coordinates.
-		 * @return {@code this} builder.
-		 */
 		public Builder artifact(ArtifactId artifact) {
 			this.artifacts.add(artifact);
 			return this;
 		}
 
-		/**
-		 * Add several artifacts of interest.
-		 *
-		 * @param artifacts the artifact coordinates.
-		 * @return {@code this} builder.
-		 */
 		public Builder artifacts(Iterable<ArtifactId> artifacts) {
 			artifacts.forEach(this.artifacts::add);
 			return this;
 		}
 
-		/**
-		 * Add a bare version-property name backing the version.
-		 *
-		 * @param propertyName the property name.
-		 * @return {@code this} builder.
-		 */
 		public Builder versionProperty(String propertyName) {
 			this.versionProperties.add(propertyName);
 			return this;
 		}
 
-		/**
-		 * Add several bare version-property names backing the version.
-		 *
-		 * @param propertyNames the property names.
-		 * @return {@code this} builder.
-		 */
 		public Builder versionProperties(Iterable<String> propertyNames) {
 			propertyNames.forEach(this.versionProperties::add);
 			return this;
 		}
 
 		/**
-		 * Build a new immutable {@link DependencySiteQuery} snapshot.
-		 *
-		 * @return the configured query.
+		 * Build an immutable snapshot of the current criteria.
 		 */
 		public DependencySiteQuery build() {
 			return new DependencySiteQuery(Collections.unmodifiableSet(new LinkedHashSet<>(artifacts)),

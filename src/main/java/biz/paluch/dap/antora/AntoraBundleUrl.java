@@ -26,25 +26,14 @@ import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Parsed Antora playbook {@code ui.bundle.url} declaration.
- *
- * <p>The accepted shape is
- * {@code http[s]://host/owner/repository/releases/download/version/asset}. The
- * host may include a numeric port, the asset may span multiple path segments,
- * and the version segment may be empty so completion can populate it. Query
- * strings and fragments are not accepted.
- *
- * <p>Host, owner, and repository form a {@link GitArtifactId} that carries the
- * release-routing host. The version becomes the declared {@link VersionSource}.
- * The scheme and asset path are validated but are not retained.
+ * Parsed Antora {@code ui.bundle.url} declaration.
+ * <p>Accepts
+ * {@code http[s]://host/owner/repository/releases/download/version/asset}
+ * without query strings or fragments. The host may include a numeric port. The
+ * version may be empty so completion can populate it.
+ * <p>The host routes release lookup to the corresponding GitHub server.
  *
  * @author Mark Paluch
- * @param host the GitHub host serving the release asset, optionally including a
- * numeric port.
- * @param owner the single repository-owner path segment.
- * @param repository the repository-name path segment.
- * @param version the possibly empty version segment between
- * {@code /releases/download/} and the next path separator.
  */
 record AntoraBundleUrl(String host, String owner, String repository, String version) {
 
@@ -53,10 +42,8 @@ record AntoraBundleUrl(String host, String owner, String repository, String vers
 					+ "/releases/download/(?<version>[A-Za-z0-9._+%-]*)/(?<asset>[A-Za-z0-9._/-]+)$");
 
 	/**
-	 * Parse the given release asset URL.
-	 * @param url the URL to parse. May be {@literal null}.
-	 * @return the parsed bundle URL, or {@literal null} if the input is blank or
-	 * does not match the accepted release asset shape.
+	 * Parse a release asset URL, or return {@literal null} if absent or
+	 * unsupported.
 	 */
 	static @Nullable AntoraBundleUrl from(@Nullable String url) {
 
@@ -73,18 +60,13 @@ record AntoraBundleUrl(String host, String owner, String repository, String vers
 				matcher.group("version"));
 	}
 
-	/**
-	 * Return the dependency identity and GitHub routing metadata for this bundle.
-	 * @return the Git-backed owner and repository identity.
-	 */
 	ArtifactId toArtifactId() {
 		return GitArtifactId.of(host, owner, repository);
 	}
 
 	/**
-	 * Return the version source declared by this bundle URL.
-	 * @return the declared version source, or {@link VersionSource#none()} when the
-	 * version segment is empty.
+	 * Return the declared version source, or {@link VersionSource#none()} for an
+	 * empty version.
 	 */
 	VersionSource toVersionSource() {
 		return VersionSource.from(version());

@@ -26,21 +26,17 @@ import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 /**
- * {@link ArtifactVersion} for release-train style versions such as
- * {@code Aluminium-M1}, {@code Aluminium-RELEASE}, or {@code Bismuth-SR1},
- * where the first part is the train name and the second is a {@link Suffix}.
- * Dot-separated trains such as {@code Hoxton.SR12} (Spring Cloud style) are
- * supported for the classic train qualifiers; the original separator is
- * preserved when rendering.
+ * Named release-train version, such as {@code Aluminium-M1} or
+ * {@code Hoxton.SR12}.
+ * <p>Rendering preserves the dot or hyphen separator.
  *
  * @author Mark Paluch
  */
 class ReleaseTrainArtifactVersion implements ArtifactVersion {
 
 	/**
-	 * Qualifiers accepted behind a dot separator. Restricted to the classic train
-	 * qualifiers so arbitrary dotted words (property names, file names) do not
-	 * classify as versions; this parser also gates cache admission.
+	 * Restrict dotted suffixes so property and file names do not enter the version
+	 * cache.
 	 */
 	private static final Pattern DOT_QUALIFIER = Pattern.compile("(SR|RC|M)\\d+|RELEASE|BUILD-SNAPSHOT");
 
@@ -60,13 +56,7 @@ class ReleaseTrainArtifactVersion implements ArtifactVersion {
 	}
 
 	/**
-	 * Try to parse a release-train version without throwing. Returns
-	 * {@literal null} if the string does not match the train-name-suffix pattern.
-	 *
-	 * @param source the version string (e.g. {@code Aluminium-M1},
-	 * {@code Bismuth-SR1}, {@code Hoxton.SR12}).
-	 * @return a new {@link ArtifactVersion} or {@literal null} if not a
-	 * release-train version.
+	 * Parse a release-train version, or return {@literal null} if unrecognized.
 	 */
 	@Nullable
 	static ArtifactVersion tryParse(String source) {
@@ -112,13 +102,9 @@ class ReleaseTrainArtifactVersion implements ArtifactVersion {
 	}
 
 	/**
-	 * Parse a release-train version string. Throws if the string is not a valid
-	 * release-train version.
-	 *
-	 * @param source the version string.
-	 * @return a new {@link ArtifactVersion}.
-	 * @throws IllegalArgumentException if the string does not match the
-	 * release-train pattern.
+	 * Parse a release-train version.
+	 * @throws IllegalArgumentException if the string does not match a release-train
+	 * pattern.
 	 */
 	static ArtifactVersion of(String source) {
 		ArtifactVersion v = tryParse(source);
@@ -130,26 +116,14 @@ class ReleaseTrainArtifactVersion implements ArtifactVersion {
 				+ " (e.g. Aluminium-M1, Hoxton.SR12)");
 	}
 
-	/**
-	 * Return whether the given string looks like a release-train version.
-	 *
-	 * @param source the version string.
-	 * @return true if parsing as release-train succeeds.
-	 */
 	static boolean isReleaseTrainVersion(String source) {
 		return tryParse(source) != null;
 	}
 
-	/**
-	 * Return the release train name.
-	 */
 	public String getTrainName() {
 		return trainName;
 	}
 
-	/**
-	 * Return the train suffix.
-	 */
 	public Suffix getSuffix() {
 		return suffix;
 	}

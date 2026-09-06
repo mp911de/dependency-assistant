@@ -82,7 +82,7 @@ public class ProjectMetadata {
 	 *
 	 * @param projectName the project name, or {@literal null} if none was captured.
 	 * @param connection the detected repository connection, or {@literal null} if
-	 * no platform recognized the captured URL.
+	 * no platform supported the captured URL.
 	 * @param repository the platform repository handle, or {@literal null} if none
 	 * was created.
 	 * @param issueTracker the declared or derived issue tracker, or {@literal null}
@@ -108,7 +108,7 @@ public class ProjectMetadata {
 
 	/**
 	 * Return the detected repository connection.
-	 * @return the connection, or {@literal null} if no platform recognized the
+	 * @return the connection, or {@literal null} if no platform supported the
 	 * repository URL.
 	 */
 	public @Nullable RepositoryConnection getRepositoryConnection() {
@@ -126,7 +126,7 @@ public class ProjectMetadata {
 
 	/**
 	 * Return the browsable repository URL of the detected connection.
-	 * @return the repository URL, or {@literal null} if no platform recognized the
+	 * @return the repository URL, or {@literal null} if no platform supported the
 	 * repository.
 	 */
 	public @Nullable String getRepositoryUrl() {

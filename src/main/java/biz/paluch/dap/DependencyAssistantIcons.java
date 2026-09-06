@@ -25,11 +25,7 @@ import com.intellij.ui.LayeredIcon;
 import com.intellij.util.IconUtil;
 
 /**
- * Central registry of the {@link Icon} constants used across the plugin for
- * gutter markers, dependency tables, and severity highlighting, plus helpers
- * such as {@link #upgradeIcon(Icon, Icon)} that compose status overlays. All
- * icons are loaded through {@link IconLoader} so HiDPI scaling and theming are
- * handled by the platform.
+ * Shared icons for Dependency Assistant.
  *
  * @author Mark Paluch
  */
@@ -37,19 +33,10 @@ public class DependencyAssistantIcons {
 
 	private static final float UPGRADE_ICON_SCALE = 0.7f;
 
-	/**
-	 * Main Dependency Assistant icon.
-	 */
 	public static final Icon ICON = load("/META-INF/dependency-assistant.svg");
 
-	/**
-	 * Property navigation gutter icon.
-	 */
 	public static final Icon PROPERTY_NAVIGATE = load("/META-INF/icons/propertyNavigate.svg");
 
-	/**
-	 * Table icon marking a version property.
-	 */
 	public static final Icon PROPERTY = load("/META-INF/icons/property.svg");
 
 	/**
@@ -58,72 +45,32 @@ public class DependencyAssistantIcons {
 	 */
 	public static final Icon SHARED_PROPERTY = load("/META-INF/icons/sharedProperty.svg");
 
-	/**
-	 * Maven dependency upgrade icon.
-	 */
 	public static final Icon UPGRADE_MAVEN_ICON = load("/META-INF/icons/maven/upgrade-mavenProject.svg");
 
-	/**
-	 * TOML catalog navigation gutter icon.
-	 */
 	public static final Icon TOML_NAVIGATE = load("/META-INF/icons/gradle/tomlNavigate.svg");
 
-	/**
-	 * Gradle dependency upgrade icon.
-	 */
 	public static final Icon UPGRADE_GRADLE_ICON = load("/META-INF/icons/gradle/upgrade-gradle.svg");
 
-	/**
-	 * TOML version catalog upgrade icon.
-	 */
 	public static final Icon UPGRADE_TOML_ICON = load("/META-INF/icons/gradle/upgrade-toml.svg");
 
-	/**
-	 * Library dependency upgrade icon.
-	 */
 	public static final Icon UPGRADE_LIBRARY_ICON = load("/META-INF/icons/upgrade-library.svg");
 
-	/**
-	 * NPM dependency upgrade icon.
-	 */
 	public static final Icon UPGRADE_NPM_ICON = load("/META-INF/icons/npm/upgrade-npm.svg");
 
-	/**
-	 * NPM icon.
-	 */
 	public static final Icon NPM = load("/META-INF/icons/npm/npm.svg");
 
-	/**
-	 * GitHub dependency upgrade icon.
-	 */
 	public static final Icon UPGRADE_GITHUB_ICON = load("/META-INF/icons/github/upgrade-github.svg");
 
-	/**
-	 * Dependency has active rule.
-	 */
 	public static final Icon DEPENDENCY_RULE = load("/META-INF/icons/dependencyRule.svg");
 
 	public static final Icon RULE_COMPLIANT = ((ScalableIcon) AllIcons.Actions.InlaySecuredShield).scale(1.3f);
 
-	/**
-	 * Dependency rule violated.
-	 */
 	public static final Icon DEPENDENCY_RULE_WARN = load("/META-INF/icons/dependencyRuleWarn.svg");
 
-	/**
-	 * Dependency is locked to a version/generation.
-	 */
 	public static final Icon DEPENDENCY_LOCK = load("/META-INF/icons/dependencyLock.svg");
 
-	/**
-	 * Upgrade Plan: apply all planned upgrades (monotone variant of the platform's
-	 * run-all icon).
-	 */
 	public static final Icon PLAN_APPLY_ALL = load("/META-INF/icons/plan/applyAll.svg");
 
-	/**
-	 * Upgrade Plan: create tickets for planned upgrades (stacked all-mode variant).
-	 */
 	public static final Icon PLAN_CREATE_TICKETS = load("/META-INF/icons/plan/createTickets.svg");
 
 	/**
@@ -136,9 +83,6 @@ public class DependencyAssistantIcons {
 	 */
 	public static final Icon PLAN_LABEL = load("/META-INF/icons/plan/label.svg");
 
-	/**
-	 * Upgrade Plan tool window.
-	 */
 	public static final Icon TOOL_WINDOW_UPGRADE_PLAN = load("/META-INF/icons/plan/toolWindow.svg");
 
 	public static final Icon PLAN_MILESTONE_OPEN = load("/META-INF/icons/plan/milestone-open.svg");
@@ -152,13 +96,9 @@ public class DependencyAssistantIcons {
 
 
 	public static final Icon DEBUGGER_SYNC = load("/META-INF/icons/debuggerSync.svg");
+
 	/**
-	 * Compose a dependency upgrade icon: the assistant gutter icon scaled into the
-	 * lower-left corner with the target status overlay layered onto the lower-right
-	 * quadrant.
-	 * @param dependencyIcon the assistant gutter icon.
-	 * @param overlayIcon the target status overlay icon.
-	 * @return the layered upgrade icon.
+	 * Combine an integration icon with an upgrade status overlay.
 	 */
 	public static Icon upgradeIcon(Icon dependencyIcon, Icon overlayIcon) {
 

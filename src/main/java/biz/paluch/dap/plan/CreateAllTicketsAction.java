@@ -21,8 +21,8 @@ import java.util.List;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 
 /**
- * Extension to {@link CreateTicketsAction} that creates all tickets regardless
- * of the selection.
+ * Whole-plan target presentation for {@link CreateTicketsAction}.
+ *
  * @author Mark Paluch
  */
 public class CreateAllTicketsAction extends CreateTicketsAction {

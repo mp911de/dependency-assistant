@@ -17,23 +17,11 @@
 package biz.paluch.dap.ticket;
 
 /**
- * Project-scoped access point for an external ticket system.
+ * Access to one bound ticket target. Values obtained from its repository must
+ * not be passed to another system, even on the same external service.
  *
- * <p>A {@code TicketSystem} is bound to one resolved target, for example a
- * GitHub repository or a Jira project, so repository operations only need
- * ticket-domain arguments. Implementations are contributed through
- * {@link TicketSystemProvider}.
- *
- * <p>This bound target is also the object boundary. A {@link Ticket},
- * {@link Milestone}, {@link Label}, or {@link TicketState} obtained from this
- * system's {@link TicketRepository} is valid only with that repository and
- * system. Such instances must not be passed to another {@code TicketSystem},
- * even if that system addresses the same external service.
- *
- * <p>The system also owns ticket reference rendering. Rendering accepts a plain
- * {@link TicketKey}, not a live {@link Ticket}, so persisted plan items can
- * render IDE text and commit-message references without fetching the ticket.
- * Rendering is string formatting and must not perform network IO.
+ * <p>Reference rendering uses portable keys so persisted plan items need no
+ * ticket fetch. Rendering must not perform network access.
  *
  * @author Mark Paluch
  * @see TicketSystemProvider
@@ -41,40 +29,18 @@ package biz.paluch.dap.ticket;
  */
 public interface TicketSystem {
 
-	/**
-	 * Return the user-facing name of this ticket system.
-	 *
-	 * @return the name of the ticket system, for example "GitHub" or "Jira".
-	 */
 	String getDisplayName();
 
-	/**
-	 * Return the repository bound to this ticket system target.
-	 *
-	 * @return the repository for searching, creating, and listing tickets.
-	 */
 	TicketRepository getRepository();
 
 	/**
-	 * Return the display reference for the given ticket key.
-	 *
-	 * <p>Examples include {@code #1234} on GitHub and {@code PROJ-123} on Jira.
-	 *
-	 * @param key the persisted or live ticket key to render.
-	 * @return the user-facing ticket reference for IDE presentation.
+	 * Render a ticket key for IDE display, for example {@code #1234}.
 	 */
 	String getDisplayReference(TicketKey key);
 
 	/**
-	 * Return the commit-message reference for the given ticket key.
-	 *
-	 * <p>Systems with close keywords may return a closing phrase, for example
-	 * {@code Closes #1234}. Systems without commit-based closing can return a plain
-	 * display reference. An empty string means that no meaningful commit reference
-	 * exists for the key.
-	 *
-	 * @param key the persisted or live ticket key to render.
-	 * @return the commit-message fragment for referencing the ticket.
+	 * Render a commit reference, using a closing phrase where supported. Return an
+	 * empty string if no meaningful reference exists.
 	 */
 	String getCloseReference(TicketKey key);
 

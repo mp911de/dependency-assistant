@@ -27,37 +27,24 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Utilities for normalizing PSI elements, creating recursive visitors, and
- * walking parent chains.
+ * Utilities for PSI traversal and element normalization.
  *
  * @author Mark Paluch
  */
 public abstract class PsiElements {
 
 	/**
-	 * Return the element itself, or its parent when the element is a
-	 * {@link LeafPsiElement leaf}.
-	 * @param element the potential leaf element.
-	 * @return {@code element} if it is not a {@link LeafPsiElement leaf}, otherwise
-	 * its {@link PsiElement#getParent() parent}.
+	 * Return the parent of a {@link LeafPsiElement leaf}, or the element itself.
 	 */
 	public static PsiElement unleaf(PsiElement element) {
 		return element instanceof LeafPsiElement ? element.getParent() : element;
 	}
 
 	/**
-	 * Create a recursive visitor that applies a predicate to elements of the given
-	 * type and prunes further descent after the predicate signals completion.
-	 *
-	 * <p>Parent-controlled PSI dispatch may still pass matching sibling elements to
-	 * the predicate after it first returns {@code true}. Their descendants are not
-	 * visited.
-	 *
-	 * @param <T> the selected PSI element type.
-	 * @param psiElementType the element type passed to the predicate.
-	 * @param actionAndExitCondition the action to invoke. Returning {@code true}
-	 * requests that recursive descent stop.
-	 * @return a visitor for passing to a root {@link PsiElement}.
+	 * Create a recursive visitor that applies the predicate to elements of the
+	 * given type. Returning {@code true} stops further descent.
+	 * <p>The predicate may still receive matching siblings after returning
+	 * {@code true}. Their descendants are not visited.
 	 */
 	public static <T> PsiRecursiveElementVisitor visitTreeUntil(Class<T> psiElementType,
 			Predicate<T> actionAndExitCondition) {
@@ -66,17 +53,11 @@ public abstract class PsiElements {
 	}
 
 	/**
-	 * Find the first ancestor of {@code element} that satisfies {@link Condition
-	 * condition}.
-	 * <p>Parent traversal stops when the parent element is a
-	 * {@link PsiFileSystemItem file}.
-	 * @param element the starting element to search from.
-	 * @param strict whether to exclude {@code element} and start at its parent.
-	 * @param condition determines whether an ancestor element satisfies the search
-	 * criteria.
-	 * @return the first ancestor of {@code element} that satisfies
-	 * {@link Condition}, or {@literal null} if no such ancestor exists before a
+	 * Find the nearest matching element without crossing a
 	 * {@link PsiFileSystemItem} boundary.
+	 * @param strict whether to exclude the starting element.
+	 * @return the matching element, or {@literal null} if none is found before the
+	 * boundary. The boundary itself is excluded.
 	 */
 	@Contract("null, _, _ -> null")
 	public static @Nullable PsiElement findFirstParent(@Nullable PsiElement element,

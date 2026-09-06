@@ -24,23 +24,11 @@ import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.VersionSource;
 
 /**
- * NPM dependency declared in {@code dependencies} or {@code devDependencies}.
- *
- * <p>The {@link ArtifactId} uses the canonical NPM coordinate normalization
- * from {@link NpmUtils#toArtifactId(String)}. Alias declarations use their
- * target package identity. Git declarations retain their declared coordinates
- * while carrying repository routing metadata.
- *
- * <p>The Git case is not a sibling type; it is the
- * {@link NpmVersionExpression.Git} variant of {@link #version()}. Anything
- * Git-specific (host, owner, repository, committish, replaceable range) lives
- * on the variant rather than on this record.
+ * Dependency declared in {@code dependencies} or {@code devDependencies}.
+ * <p>Aliases use the target package identity. Git dependencies retain the
+ * declared package coordinates and carry their repository for release lookup.
  *
  * @author Mark Paluch
- * @param artifactId the normalized declared package coordinate.
- * @param version the parsed version expression.
- * @param declarationSource the {@code package.json} section that declares the
- * dependency.
  */
 record NpmDependency(ArtifactId artifactId, NpmVersionExpression version, DeclarationSource declarationSource) {
 

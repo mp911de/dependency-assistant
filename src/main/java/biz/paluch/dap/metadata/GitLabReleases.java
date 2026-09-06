@@ -50,31 +50,12 @@ import com.intellij.util.io.HttpRequests;
 import org.jspecify.annotations.Nullable;
 
 /**
- * {@link ReleaseSource} that fetches repository tags and releases from the
- * GitLab REST API v4 anonymously, for gitlab.com and self-hosted instances
- * alike.
- *
- * <p>The result is the union of two endpoints, mirroring the GitHub release
- * source:
- * <ul>
- * <li>{@code /api/v4/projects/{id}/releases} provides the publication date used
- * for ordering and display, and</li>
- * <li>{@code /api/v4/projects/{id}/repository/tags} provides commit SHAs for
- * matching release entries and version candidates for projects that do not
- * publish GitLab Releases.</li>
- * </ul>
- *
- * <p>Tag entries without a release contribute a version with {@literal null}
- * date and the tag's commit SHA. Release entries whose tag is beyond the
- * fetched tag page fall back to the release's own commit SHA. Both fetches are
- * capped at one page of {@value #PAGE_SIZE} items. When one endpoint supplies
- * data, an I/O failure from the other endpoint does not discard that data.
- *
- * <p>The project id is the URL-encoded full namespace path, preserving nested
- * group segments
- * ({@code gitlab-org%2Fsecurity-products%2Fanalyzers%2Fsemgrep}). Requests are
- * anonymous. This adapter does not depend on the
- * {@code org.jetbrains.plugins.gitlab} plugin.
+ * Anonymous GitLab release and tag access without the bundled GitLab plugin.
+ * <p>Tags provide candidates for projects without published releases. Tag-only
+ * candidates have no publication date. Releases use their own commit SHA if no
+ * fetched tag supplies one.
+ * <p>Each endpoint is limited to one page of {@value #PAGE_SIZE} items. Data
+ * from one endpoint survives an I/O failure while fetching the other.
  *
  * @author Mark Paluch
  */
@@ -92,10 +73,7 @@ public class GitLabReleases implements ReleaseSource, TagSource {
 	private final GitRepositoryMetadata repository;
 
 	/**
-	 * Create a release source for the given GitLab repository.
-	 *
-	 * @param repository the repository coordinates. The host selects the GitLab
-	 * instance, and the owner path may contain nested group segments.
+	 * @param repository host and repository coordinates, including nested groups.
 	 */
 	public GitLabReleases(GitRepositoryMetadata repository) {
 		this.repository = repository;
@@ -140,11 +118,6 @@ public class GitLabReleases implements ReleaseSource, TagSource {
 		return Sequence.of(shaByTag.keySet());
 	}
 
-	/**
-	 * Combine release entries and the tag SHA map into a deduplicated list of
-	 * {@link Release} entries: releases contribute the publication date, tags
-	 * contribute the commit SHA and fill in versions without a release.
-	 */
 	private List<Release> createReleases(List<GitLabReleaseDto> releases, Map<String, String> shaByTag) {
 
 		List<Release> result = new ArrayList<>(releases.size());
@@ -217,10 +190,6 @@ public class GitLabReleases implements ReleaseSource, TagSource {
 		}
 	}
 
-	/**
-	 * Parse the {@code /repository/tags} response into a name-to-SHA map, skipping
-	 * unnamed tags and tags without a commit.
-	 */
 	Map<String, String> parseTagShas(String body) throws IOException {
 
 		List<GitLabTagDto> tags = List.of(MAPPER.readValue(body, GitLabTagDto[].class));
@@ -244,10 +213,6 @@ public class GitLabReleases implements ReleaseSource, TagSource {
 		return List.of(MAPPER.readValue(body, GitLabReleaseDto[].class));
 	}
 
-	/**
-	 * Parse and merge the two response bodies as {@link #getReleases} does after
-	 * fetching, exposed for fixture-driven tests.
-	 */
 	List<Release> mergeReleases(String releasesBody, String tagsBody) throws IOException {
 		return createReleases(parseReleaseEntries(releasesBody), parseTagShas(tagsBody));
 	}
@@ -263,8 +228,7 @@ public class GitLabReleases implements ReleaseSource, TagSource {
 	}
 
 	/**
-	 * Return the URL-encoded full namespace path used as the REST project id, with
-	 * nested group separators encoded as {@code %2F}.
+	 * Encode the full namespace path as a single REST project ID.
 	 */
 	String encodedProjectId() {
 		return URLEncoder.encode(repository.owner() + "/" + repository.repository(), StandardCharsets.UTF_8);
@@ -300,24 +264,15 @@ public class GitLabReleases implements ReleaseSource, TagSource {
 		return "%s %s/%s".formatted(getId(), repository.owner(), repository.repository());
 	}
 
-	/**
-	 * DTO for the GitLab {@code /projects/{id}/repository/tags} response items.
-	 */
 	record GitLabTagDto(@JsonProperty("name") @Nullable String name,
 			@JsonProperty("commit") @Nullable GitLabCommitDto commit) {
 
 	}
 
-	/**
-	 * DTO for the {@code commit} sub-object of tag and release entries.
-	 */
 	record GitLabCommitDto(@JsonProperty("id") @Nullable String id) {
 
 	}
 
-	/**
-	 * DTO for the GitLab {@code /projects/{id}/releases} response items.
-	 */
 	record GitLabReleaseDto(@JsonProperty("tag_name") @Nullable String tagName,
 			@JsonProperty("released_at") @Nullable String releasedAt,
 			@JsonProperty("upcoming_release") boolean upcomingRelease,

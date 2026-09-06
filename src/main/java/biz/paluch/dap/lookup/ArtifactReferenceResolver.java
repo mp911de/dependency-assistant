@@ -25,7 +25,7 @@ import com.intellij.psi.PsiElement;
  *
  * <p>{@link VersionUpgradeLookup} supplies the shared lookup facade and
  * delegates build-tool-specific resolution and search behavior to this
- * strategy. An unrecognized element or a declaration that cannot be resolved is
+ * strategy. An unsupported element or a declaration that cannot be resolved is
  * represented by {@link ArtifactReference#unresolved()}.
  *
  * <p>Dependency Site Find support is optional. The default search returns empty
@@ -45,8 +45,8 @@ public interface ArtifactReferenceResolver {
 	 *
 	 * @param element the PSI element under inspection.
 	 * @return the resolved artifact reference, or
-	 * {@link ArtifactReference#unresolved()} if the element is not recognized or
-	 * its declaration cannot be resolved.
+	 * {@link ArtifactReference#unresolved()} if the element is not supported or its
+	 * declaration cannot be resolved.
 	 */
 	ArtifactReference resolveArtifactReference(PsiElement element);
 

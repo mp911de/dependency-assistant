@@ -31,14 +31,9 @@ import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 
 /**
- * Scans a single supported GitHub Actions YAML file and registers
- * repository-backed {@code uses:} references with a
- * {@link DependencyCollector}.
- *
- * <p>The collector always registers the repository identity and declared ref.
- * It resolves the ref through cached release metadata when possible and falls
- * back to a lenient version or Git ref representation without performing remote
- * API access.
+ * Collects repository-backed {@code uses:} declarations from a workflow.
+ * <p>Refs are resolved from cached metadata or their raw version text without
+ * network access. Declarations remain available when resolution fails.
  *
  * @author Mark Paluch
  */
@@ -55,14 +50,6 @@ class GitHubDependencyCollector {
 		this.versionResolver = new GitVersionResolver(service.getCache());
 	}
 
-	/**
-	 * Collect repository-backed {@code uses:} references from the given GitHub
-	 * Actions file.
-	 *
-	 * @param packageSystem the package system assigned to collected dependencies.
-	 * @param file the YAML PSI file to scan.
-	 * @return the populated dependency collector.
-	 */
 	DependencyCollector collect(PackageSystem packageSystem, PsiFile file) {
 
 		DependencyCollector collector = new DependencyCollector(packageSystem);
@@ -71,13 +58,6 @@ class GitHubDependencyCollector {
 		return collector;
 	}
 
-	/**
-	 * Collect repository-backed {@code uses:} references from the given GitHub
-	 * Actions file and register them as declarations.
-	 *
-	 * @param file the YAML PSI file to scan.
-	 * @param collector the collector to populate with the discovered dependencies.
-	 */
 	public void doCollect(PsiFile file, DependencyCollector collector) {
 
 		List<UsesRepositoryAction> refs = parser.parse(file);

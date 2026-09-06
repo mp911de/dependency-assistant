@@ -69,13 +69,6 @@ class GradleArtifactReferenceResolver implements ArtifactReferenceResolver {
 
 	private final @Nullable ProjectState projectState;
 
-	/**
-	 * Create a resolver for the given project state and file.
-	 *
-	 * @param projectState the project dependency state, or {@literal null} if it is
-	 * unavailable.
-	 * @param file the Gradle-related file to inspect.
-	 */
 	GradleArtifactReferenceResolver(@Nullable ProjectState projectState, PsiFile file) {
 
 		this.file = file;
@@ -213,10 +206,6 @@ class GradleArtifactReferenceResolver implements ArtifactReferenceResolver {
 		return names;
 	}
 
-	/**
-	 * Find the Gradle artifact reference represented by the given element.
-	 * @param element the PSI element under inspection.
-	 */
 	private ArtifactReference findArtifactReference(PsiElement element) {
 
 		PsiFile file = element.getContainingFile();

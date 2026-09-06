@@ -24,14 +24,9 @@ import com.intellij.util.xmlb.Converter;
 import org.jspecify.annotations.Nullable;
 
 /**
- * xmlb converter collapsing a list of artifact identifiers into a single
- * comma-separated attribute value.
- * <p>Maven artifact identifiers are restricted to {@code [A-Za-z0-9_.-]}, so
- * the comma cannot occur inside a value and needs no escaping. Identifiers
- * containing the delimiter are rejected on write rather than producing an
- * attribute that cannot be read back.
- * <p>An empty list serializes to {@literal null}, which makes the platform omit
- * the attribute entirely rather than writing an empty value.
+ * Persist artifact identifiers as a comma-separated attribute. Identifiers
+ * containing a comma are rejected because this format has no escaping. An empty
+ * list omits the attribute.
  *
  * @author Mark Paluch
  */

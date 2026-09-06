@@ -59,7 +59,6 @@ class GitHubLabel implements Label {
 
 		String description = label.getName();
 		try {
-			// 🙄
 			description = "" + FieldUtils.readDeclaredField(label, "description", true);
 		} catch (RuntimeException | ReflectiveOperationException ignore) {
 		}

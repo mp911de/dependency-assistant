@@ -32,18 +32,10 @@ import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.search.ProjectScope;
 
 /**
- * Project-level service for locating indexed files in project content.
- *
- * <p>This service centralizes the search scope used by dependency assistants:
- * files from library roots, IDE-ignored paths, and VCS-ignored paths are
- * excluded before the caller supplied filter is applied. Use this service when
- * an assistant needs project-owned files only. Use IntelliJ's index APIs
- * directly when library files or a broader search scope are intentionally part
- * of the lookup.
+ * Finds indexed project-content files, excluding library roots and IDE- or
+ * VCS-ignored paths before applying the caller's filter.
  *
  * @author Mark Paluch
- * @see FileTypeIndex
- * @see FilenameIndex
  */
 @Service(Service.Level.PROJECT)
 public final class FileIndexLookup {
@@ -66,32 +58,16 @@ public final class FileIndexLookup {
 		this.libraryScope = ProjectScope.getLibrariesScope(project);
 	}
 
-	/**
-	 * Return the {@code FileIndexLookup} service for the given project.
-	 * @param project the project whose indexed files should be queried.
-	 * @return the project-scoped lookup service.
-	 */
 	public static FileIndexLookup getInstance(Project project) {
 		return project.getService(FileIndexLookup.class);
 	}
 
-	/**
-	 * Find project files of the given file type.
-	 * @param fileType the file type to resolve through {@link FileTypeIndex}.
-	 * @param filter the additional predicate that candidate project files must
-	 * match.
-	 * @return the matching project files.
-	 */
 	public Collection<VirtualFile> find(FileType fileType, Predicate<VirtualFile> filter) {
 		return FileTypeIndex.getFiles(fileType, projectScope(filter));
 	}
 
 	/**
-	 * Find project files with the given file name.
-	 * @param fileName the exact file name to resolve through {@link FilenameIndex}.
-	 * @param filter the additional predicate that candidate project files must
-	 * match.
-	 * @return the matching project files.
+	 * Find project files by exact file name.
 	 */
 	public Collection<VirtualFile> find(String fileName, Predicate<VirtualFile> filter) {
 		return FilenameIndex.getVirtualFilesByName(fileName, projectScope(filter));

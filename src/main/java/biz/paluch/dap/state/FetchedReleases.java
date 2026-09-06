@@ -26,7 +26,6 @@ import java.util.function.BiConsumer;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.HasArtifactId;
 import biz.paluch.dap.artifact.Release;
-import biz.paluch.dap.artifact.ReleaseSource;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -55,18 +54,11 @@ public class FetchedReleases implements HasArtifactId {
 	private final @Nullable CachedMetadata projectMetadata;
 
 	/**
-	 * Create a new {@code FetchedReleases} instance.
-	 * @param artifactId the artifact identifier for which the releases were
-	 * fetched.
-	 * @param releases the fetched releases in cache representation. The collection
-	 * is retained.
-	 * @param plan the underlying fetch plan.
-	 * @param preferredSource the preferred source for the artifact, can either
-	 * contain {@link ReleaseSource#getId()} or be empty (or {@literal null}).
-	 * @param emptySources the {@link ReleaseSource#getId() release source
-	 * identifiers} that returned no releases. The collection is retained.
-	 * @param projectMetadata project metadata captured during the fetch, or
-	 * {@literal null} if the fetch produced none.
+	 * Create a fetch result. Supplied collections must not change after
+	 * construction.
+	 *
+	 * @param preferredSource the source identifier preferred for later fetches, if
+	 * any.
 	 */
 	public FetchedReleases(ArtifactId artifactId, Collection<CachedRelease> releases, FetchPlan plan,
 			@Nullable String preferredSource, Collection<String> emptySources,
@@ -90,67 +82,36 @@ public class FetchedReleases implements HasArtifactId {
 		return artifactId;
 	}
 
-	/**
-	 * Return the retained fetched-release collection.
-	 *
-	 * @return the releases supplied at construction time.
-	 */
 	public Collection<CachedRelease> getReleases() {
 		return this.releases;
 	}
 
 	/**
-	 * Perform the given action for each fetched release paired with its cached
-	 * representation, in {@link Release} order.
-	 *
-	 * @param action the action to perform.
+	 * Visit release/cache pairs in release order.
 	 */
 	public void forEach(BiConsumer<? super Release, ? super CachedRelease> action) {
 		this.releasePairs.forEach(action);
 	}
 
 	/**
-	 * Return whether every configured source was queried.
-	 *
-	 * @return {@code true} if the merge may advance the full-fetch clock.
+	 * Whether this fetch may advance the periodic source re-check clock.
 	 */
 	public boolean isFullFetch() {
 		return this.plan.isFullFetch();
 	}
 
-	/**
-	 * Return the release source preferred for later fetches.
-	 *
-	 * @return the preferred source identifier, or {@literal null} if no source was
-	 * preferred.
-	 */
 	public @Nullable String getPreferredSource() {
 		return this.preferredSource;
 	}
 
-	/**
-	 * Return the retained identifiers of sources that returned no releases.
-	 *
-	 * @return the empty-source identifiers supplied at construction time.
-	 */
 	public Collection<String> getEmptySources() {
 		return this.emptySources;
 	}
 
-	/**
-	 * Return the project metadata captured during the fetch.
-	 *
-	 * @return the captured metadata, or {@literal null} if the fetch produced none.
-	 */
 	public @Nullable CachedMetadata getProjectMetadata() {
 		return this.projectMetadata;
 	}
 
-	/**
-	 * Convert the given {@link Release}s to {@link CachedRelease}s.
-	 * @param releases iterable of releases to convert.
-	 * @return the resulting list of cached releases.
-	 */
 	public static List<CachedRelease> convert(Iterable<? extends Release> releases) {
 		List<CachedRelease> converted = new ArrayList<>();
 		for (Release release : releases) {

@@ -30,7 +30,7 @@ import org.springframework.util.Assert;
  * Parsed build-file value that is either a whole-value property reference or a
  * literal.
  *
- * <p>{@link #from(String)} recognizes only values consisting entirely of
+ * <p>{@link #from(String)} supports only values consisting entirely of
  * {@code ${name}} or {@code $name}. It does not interpolate placeholders within
  * a larger literal. Callers distinguish the two forms through
  * {@link #isProperty()}.

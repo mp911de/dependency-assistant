@@ -19,11 +19,8 @@ package biz.paluch.dap.assistant.documentation;
 import com.intellij.openapi.util.text.StringUtil;
 
 /**
- * Inline Markdown fragment for rendering text embedded in documentation HTML.
- *
- * <p>Balanced single-backtick delimiters produce {@code <code>} spans. All
- * source text is XML-escaped. An unbalanced delimiter causes every backtick to
- * render literally instead of producing partial HTML markup.
+ * Inline code spans for advisory text embedded in documentation HTML.
+ * <p>Source text is XML-escaped. Unbalanced backticks remain literal.
  *
  * @author Mark Paluch
  */
@@ -48,21 +45,12 @@ class Markdown {
 		return fences != 0 && fences % 2 == 0;
 	}
 
-	/**
-	 * Create a Markdown fragment from advisory text.
-	 *
-	 * @param text the advisory text to render.
-	 * @return a Markdown fragment for the given text.
-	 */
 	static Markdown of(String text) {
 		return new Markdown(text);
 	}
 
 	/**
-	 * Render this fragment as documentation HTML.
-	 *
-	 * @return escaped HTML with balanced single-backtick spans rendered as
-	 * {@code <code>} elements.
+	 * Render escaped HTML with balanced single-backtick spans as code.
 	 */
 	String toHtml() {
 

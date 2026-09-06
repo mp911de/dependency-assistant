@@ -45,18 +45,11 @@ import org.jetbrains.concurrency.CancellablePromise;
 import org.jetbrains.concurrency.Promises;
 
 /**
- * Cross-ecosystem coordinator that owns the collect-complete-store flow for one
- * {@link DependencyAssistant} run.
- *
- * <p>The indexer enumerates anchor files through the assistant, derives a
- * {@link ProjectDependencyContext} per anchor on demand, runs phase-one
- * collection for available anchors, then applies phase-two completion via
- * {@link IntrospectedDependencies}, and finally invalidates and stores the
- * resulting collectors per project identity in the
- * {@link biz.paluch.dap.state.ProjectState}. Read-action wrapping, progress
- * reporting, availability guards, and cancellation are handled here so
- * build-tool integrations contribute only ecosystem-specific enumeration and
- * collection behavior.
+ * Coordinates dependency collection, completion, and storage across
+ * integrations.
+ * <p>All anchors are collected before introspection completes their collectors.
+ * The indexer handles progress and cancellation so assistants can focus on
+ * ecosystem-specific work.
  *
  * @author Mark Paluch
  * @see DependencyAssistant
@@ -73,22 +66,12 @@ public class ProjectStateIndexer {
 	private final ProgressIndicator indicator;
 
 	/**
-	 * Create an indexer for the given project, using the project-scoped
-	 * {@link StateService}.
-	 * @param project the IntelliJ project.
-	 * @param indicator the progress indicator to report to.
+	 * Create an indexer backed by the project's {@link StateService}.
 	 */
 	public ProjectStateIndexer(Project project, ProgressIndicator indicator) {
 		this(project, StateService.getInstance(project), indicator);
 	}
 
-	/**
-	 * Create an indexer for the given project, state service, and progress
-	 * indicator.
-	 * @param project the IntelliJ project.
-	 * @param service the state service backing this run.
-	 * @param indicator the progress indicator to report to.
-	 */
 	public ProjectStateIndexer(Project project, StateService service, ProgressIndicator indicator) {
 		this.project = project;
 		this.service = service;
@@ -104,12 +87,7 @@ public class ProjectStateIndexer {
 	}
 
 	/**
-	 * Composed action running the collect-complete-store flow for selected
-	 * registered assistants and restarting highlighting so state derived from the
-	 * import model surfaces in the editor.
-	 * @param project the project whose state should be refreshed.
-	 * @param indicator the progress and cancellation indicator for the refresh.
-	 * @param filter the predicate selecting integrations to refresh.
+	 * Refresh selected integrations after import and restart editor highlighting.
 	 */
 	public static void refreshAfterImport(Project project, ProgressIndicator indicator,
 			Predicate<DependencyAssistant> filter) {
@@ -145,13 +123,9 @@ public class ProjectStateIndexer {
 	}
 
 	/**
-	 * Re-run the collect-complete-store flow for the given assistant after a
-	 * build-system import.
-	 * <p>The re-index runs as a non-blocking read action in smart mode, coalesced
-	 * per assistant so bursts of import events collapse into one pass.
-	 *
-	 * @param assistant the assistant whose project state is re-indexed.
-	 * @return a promise representing the refresh operation.
+	 * Refresh an integration after import.
+	 * <p>Refreshes wait for smart mode and are coalesced per project and
+	 * integration.
 	 */
 	public CancellablePromise<Void> refreshAfterImport(DependencyAssistant assistant) {
 
@@ -164,10 +138,8 @@ public class ProjectStateIndexer {
 	}
 
 	/**
-	 * Run a full population pass with only the PSI-touching collect phase wrapped
-	 * in a read action. Completion and storing run on the calling thread so a
-	 * background task never holds the read lock for phase two.
-	 * @param assistant the assistant to run.
+	 * Populate dependency state with a read action around collection.
+	 * <p>Completion and storage run on the calling thread outside that read action.
 	 */
 	public void readAndUpdateAll(DependencyAssistant assistant) {
 
@@ -184,10 +156,8 @@ public class ProjectStateIndexer {
 	}
 
 	/**
-	 * Run a full population pass: enumerate, collect, complete, invalidate, and
-	 * store. The caller is responsible for read-action wrapping of the PSI-touching
-	 * collect phase.
-	 * @param assistant the assistant to run.
+	 * Populate dependency state. The caller must provide a read action for
+	 * collection.
 	 */
 	public void updateAll(DependencyAssistant assistant) {
 
@@ -210,12 +180,8 @@ public class ProjectStateIndexer {
 	}
 
 	/**
-	 * Run a full scan: enumerate, collect, complete, and deliver one collector per
-	 * anchor file to the consumer.
-	 * <p>The aggregate result is not stored in the {@link ProjectState} and does
-	 * not invoke the cache update.
-	 * @param assistant the assistant to run.
-	 * @param consumer the per-file callback.
+	 * Scan dependencies and deliver a completed collector for each anchor.
+	 * <p>This does not store results in {@link ProjectState} or update the cache.
 	 */
 	public void forEach(DependencyAssistant assistant, BiConsumer<VirtualFile, DependencyCollector> consumer) {
 
@@ -241,10 +207,7 @@ public class ProjectStateIndexer {
 	}
 
 	/**
-	 * Run a file-scoped invalidation: re-collect the state owned by the given file
-	 * and route it through the same complete-store flow.
-	 * @param assistant the assistant that owns the file.
-	 * @param file the saved PSI file.
+	 * Refresh state owned by the file if its dependency context is available.
 	 */
 	public void invalidate(DependencyAssistant assistant, PsiFile file) {
 
@@ -281,13 +244,8 @@ public class ProjectStateIndexer {
 	}
 
 	/**
-	 * Invoke the given action for every anchor whose file-scoped context is
-	 * available.
-	 * <p>This method owns enumeration and context creation. It does not complete or
-	 * store dependency state; work performed by the callback is caller-defined.
-	 *
-	 * @param assistant the assistant whose anchors should be enumerated.
-	 * @param action the callback for each available anchor and context.
+	 * Invoke the action for each anchor with an available context.
+	 * <p>The callback owns collection, completion, and storage.
 	 */
 	public void forEachAvailableEntry(DependencyAssistant assistant,
 			BiConsumer<PsiFile, ProjectDependencyContext> action) {

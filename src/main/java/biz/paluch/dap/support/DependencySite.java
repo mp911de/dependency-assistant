@@ -40,18 +40,8 @@ import com.intellij.psi.PsiElement;
  */
 public interface DependencySite extends HasPackageIdentity {
 
-	/**
-	 * Return the artifact coordinates associated with this dependency site.
-	 *
-	 * @return the artifact coordinates.
-	 */
 	ArtifactId getArtifactId();
 
-	/**
-	 * Return the package system.
-	 *
-	 * @return the package system that interprets the artifact coordinates.
-	 */
 	PackageSystem getPackageSystem();
 
 	@Override
@@ -59,51 +49,21 @@ public interface DependencySite extends HasPackageIdentity {
 		return PackageIdentity.of(getArtifactId(), getPackageSystem());
 	}
 
-	/**
-	 * Return the source from which the dependency version is obtained.
-	 *
-	 * @return the version source.
-	 */
 	VersionSource getVersionSource();
 
-	/**
-	 * Return the source from which the dependency declaration is obtained.
-	 *
-	 * @return the declaration source.
-	 */
 	DeclarationSource getDeclarationSource();
 
-	/**
-	 * Return the PSI element that represents this dependency site.
-	 *
-	 * @return the declaration's PSI anchor.
-	 */
 	PsiElement getDeclarationElement();
 
 	/**
-	 * Add a resolved version and its PSI anchor to this dependency site.
-	 *
-	 * @param version the artifact version.
-	 * @param versionElement the PSI element representing the resolved version
-	 * literal.
-	 * @return a versioned site retaining this site's identity, provenance, and
-	 * declaration anchor.
+	 * Add a resolved version and its editable anchor, retaining this site's
+	 * provenance.
 	 */
 	default VersionedDependencySite withVersion(ArtifactVersion version, PsiElement versionElement) {
 		return new ResolvedDependencySite(getPackageIdentity(), version, getVersionSource(),
 				getDeclarationSource(), getDeclarationElement(), versionElement);
 	}
 
-	/**
-	 * Create a dependency site from separate artifact and package-system values.
-	 *
-	 * @param artifactId the artifact identifier.
-	 * @param packageSystem the package system.
-	 * @param versionSource the version source.
-	 * @param declarationSource the declaration source.
-	 * @param declarationElement element that represents this dependency site.
-	 * @return a dependency site for the given package identity and provenance.
-	 */
 	static DependencySite of(ArtifactId artifactId, PackageSystem packageSystem,
 			VersionSource versionSource, DeclarationSource declarationSource,
 			PsiElement declarationElement) {
@@ -111,30 +71,12 @@ public interface DependencySite extends HasPackageIdentity {
 				versionSource, declarationSource, declarationElement);
 	}
 
-	/**
-	 * Create a dependency site using another object's package identity.
-	 *
-	 * @param aware the object providing a {@link PackageIdentity}.
-	 * @param versionSource the version source.
-	 * @param declarationSource the declaration source.
-	 * @param declarationElement element that represents this dependency site.
-	 * @return a dependency site for the supplied package identity and provenance.
-	 */
 	static DependencySite of(HasPackageIdentity aware, VersionSource versionSource,
 			DeclarationSource declarationSource, PsiElement declarationElement) {
 		return of(aware.getPackageIdentity(), versionSource, declarationSource,
 				declarationElement);
 	}
 
-	/**
-	 * Create a dependency site from a complete package identity.
-	 *
-	 * @param pkg the package identity.
-	 * @param versionSource the version source.
-	 * @param declarationSource the declaration source.
-	 * @param declarationElement element that represents this dependency site.
-	 * @return a dependency site for the given package identity and provenance.
-	 */
 	static DependencySite of(PackageIdentity pkg, VersionSource versionSource,
 			DeclarationSource declarationSource, PsiElement declarationElement) {
 		return new SimpleDependencySite(pkg, versionSource, declarationSource,

@@ -61,14 +61,10 @@ import com.intellij.util.messages.MessageBusConnection;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Aggregate front door for the Upgrade Plan: the single domain writer of the
- * persisted plan.
- *
- * <p>Plan transitions run as guarded undoable commands. Each apply, undo, and
- * redo advances the plan revision while undo and redo restore the corresponding
- * logical plan state. Ticket creation remains outside the undo history because
- * the created ticket exists in the external system either way, while changing
- * its plan association is undoable.
+ * Owner of persisted Upgrade Plan transitions.
+ * <p>Apply, undo and redo advance revisions. Undo and redo restore the
+ * corresponding logical state. Ticket creation is external and cannot be
+ * undone, but plan links can.
  *
  * @author Mark Paluch
  */
@@ -123,12 +119,6 @@ public final class UpgradePlanService implements Disposable {
 		this.commandProcessor = CommandProcessor.getInstance();
 	}
 
-	/**
-	 * Return the project-scoped service instance.
-	 *
-	 * @param project the IntelliJ project.
-	 * @return the corresponding service instance.
-	 */
 	static UpgradePlanService getInstance(Project project) {
 		return project.getService(UpgradePlanService.class);
 	}
@@ -249,9 +239,6 @@ public final class UpgradePlanService implements Disposable {
 		});
 	}
 
-	/**
-	 * Return the build files in the plan's scope.
-	 */
 	List<String> affectedFiles() {
 		return List.copyOf(getContent().getAffectedFiles());
 	}
@@ -261,15 +248,12 @@ public final class UpgradePlanService implements Disposable {
 		this.disposed = true;
 	}
 
-	/**
-	 * Return whether the plan currently holds any item.
-	 */
 	boolean hasItems() {
 		return !getContent().isEmpty();
 	}
 
 	/**
-	 * Return whether an apply or ticket-publishing run currently holds the plan.
+	 * Return whether an apply or ticket-publishing run holds the plan.
 	 */
 	boolean isBusy() {
 		return busy;
@@ -279,10 +263,6 @@ public final class UpgradePlanService implements Disposable {
 		return !isBusy() && hasTicketSystem() && !refreshingMilestones;
 	}
 
-	/**
-	 * Mark the plan busy or idle for the duration of a long-running run so plan
-	 * actions mute while it proceeds.
-	 */
 	void setBusy(boolean busy) {
 		this.busy = busy;
 		ActivityTracker.getInstance().inc();
@@ -294,10 +274,8 @@ public final class UpgradePlanService implements Disposable {
 	}
 
 	/**
-	 * Reload the live plan from persisted state, resolving interface metadata and
-	 * the build-file scope while retaining the current {@link PlanGeneration}.
-	 *
-	 * @return the reloaded plan items in order.
+	 * Reload interface metadata and file scope from persisted facts without
+	 * changing the plan generation.
 	 */
 	UpgradePlan reloadPlan() {
 
@@ -323,16 +301,13 @@ public final class UpgradePlanService implements Disposable {
 		}
 	}
 
-	/**
-	 * Request a fresh reload of the live plan by publishing a plan-changed event.
-	 */
 	void requestReload() {
 		events.planChanged();
 	}
 
 	/**
-	 * Transfer the reviewed upgrades into a fresh plan, discarding any previous
-	 * plan. Also, re-select a milestone if milestones are available.
+	 * Replace the plan with reviewed upgrades and their captured scope. Reconsider
+	 * the milestone when its catalog is available.
 	 */
 	void planUpgrades(Map<? extends PlannedUpgrade, ArtifactVersion> upgrades, FileScope scope) {
 		execute(PlanAction.planUpgrades(upgrades, scope, getPlan()));
@@ -354,10 +329,8 @@ public final class UpgradePlanService implements Disposable {
 	}
 
 	/**
-	 * Merge a copied plan fragment into the plan as one undoable transition. Pasted
-	 * items replace current items with the same {@link ItemId}; other pasted items
-	 * are appended in fragment order. The fragment's scope files join the plan
-	 * scope. The live plan rebuilds through the published change event.
+	 * Paste a fragment as one undoable transition using
+	 * {@link PlanAction#pasteItems}.
 	 */
 	void pasteItems(Content pasted) {
 
@@ -369,16 +342,14 @@ public final class UpgradePlanService implements Disposable {
 	}
 
 	/**
-	 * Remove the given plan item, keeping the current scope, as one undoable
-	 * transition.
+	 * Remove an item through undoable state change, retaining the file scope.
 	 */
 	void removeItem(UpgradePlanItem item) {
 		execute(PlanAction.removeItems(getContent(), item));
 	}
 
 	/**
-	 * Remove the given plan items, keeping the current scope, as one undoable
-	 * transition.
+	 * Remove items through one undoable state change, retaining the file scope.
 	 */
 	void removeItems(Collection<UpgradePlanItem> items) {
 		if (!items.isEmpty()) {
@@ -387,9 +358,8 @@ public final class UpgradePlanService implements Disposable {
 	}
 
 	/**
-	 * Link a ticket to a plan item as one undoable association change. Undo removes
-	 * only the plan association; the ticket continues to exist in the external
-	 * system.
+	 * Queue an undoable ticket association change. Undo affects the link, not the
+	 * external ticket.
 	 */
 	void linkTicket(UpgradePlanItem item, TicketRepository repository, Ticket ticket) {
 		ApplicationManager.getApplication().invokeLater(() -> {
@@ -397,17 +367,12 @@ public final class UpgradePlanService implements Disposable {
 		});
 	}
 
-	/**
-	 * Rename the given plan item as one undoable transition.
-	 */
 	void renameItem(UpgradePlanItem item, String displayName, boolean rememberName) {
 		execute(PlanAction.renameItem(getContent(), item, displayName, rememberName));
 	}
 
 	/**
-	 * Remove the ticket association of the given plan items as one undoable
-	 * command. The ticket keeps existing in the external system; only the plan
-	 * links are cleared and restored.
+	 * Clear ticket links in one undoable command without deleting external tickets.
 	 */
 	void unlinkTickets(List<UpgradePlanItem> items) {
 
@@ -420,8 +385,8 @@ public final class UpgradePlanService implements Disposable {
 	}
 
 	/**
-	 * Return the rendered commit message for the given plan item, followed by the
-	 * ticket system's close reference when the item has a linked ticket.
+	 * Render the commit message and append the linked ticket's close reference when
+	 * available.
 	 */
 	String getCommitMessage(UpgradePlanItem item) {
 		String subject = textTemplates.commitMessage(item);
@@ -434,11 +399,8 @@ public final class UpgradePlanService implements Disposable {
 	}
 
 	/**
-	 * Return the ticket system's close reference for the item's linked ticket.
-	 *
-	 * @param item the plan item.
-	 * @return the close reference, or {@literal null} when the item has no linked
-	 * ticket, no ticket system is bound, or the system defines no close reference.
+	 * Return the close reference, or {@literal null} without a ticket, ticket
+	 * system or supported close-reference format.
 	 */
 	@Nullable
 	String getTicketCloseReference(UpgradePlanItem item) {
@@ -496,9 +458,7 @@ public final class UpgradePlanService implements Disposable {
 	}
 
 	/**
-	 * Run a plan action as one undoable command, capture its before and after plan
-	 * states, register the platform undo adapter, and publish the change. Must run
-	 * on the EDT.
+	 * Run one undoable plan transition. The caller must be on the EDT.
 	 */
 	private void execute(PlanAction action) {
 
@@ -562,10 +522,6 @@ public final class UpgradePlanService implements Disposable {
 		return new MilestoneSelector(branch, projectVersion);
 	}
 
-	/**
-	 * Resolve the project version from the first build file in the plan's scope
-	 * that declares one, to default the milestone from the project's version line.
-	 */
 	@RequiresReadLock
 	private Versioned resolveProjectVersion(List<String> affectedFiles) {
 

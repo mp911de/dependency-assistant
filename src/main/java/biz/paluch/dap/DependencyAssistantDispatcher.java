@@ -70,8 +70,8 @@ public class DependencyAssistantDispatcher {
 	/**
 	 * Return whether any registered integration supports the given {@code file}.
 	 * <p>Integrations are consulted in registration order and the check returns on
-	 * the first integration that recognizes the file type. This is a cheap
-	 * file-type recognition check and does not require an available project model.
+	 * the first integration that supports the file type. This is a cheap file-type
+	 * support check and does not require an available project model.
 	 * @param file the PSI file to test.
 	 * @return {@literal true} if some integration supports the file;
 	 * {@literal false} otherwise.
@@ -90,9 +90,9 @@ public class DependencyAssistantDispatcher {
 	 * {@link ProjectDependencyContext#isAvailable() available} context, meaning its
 	 * project model is imported and ready to scan or write.
 	 * <p>Stricter than {@link #supports(PsiFile)}, which only checks whether some
-	 * integration recognizes the file type. Use this method when an actual context
-	 * is required (resolving declarations, writing upgrades), and {@code supports}
-	 * when only file-type recognition matters (for example completion confidence).
+	 * integration supports the file type. Use this method when an actual context is
+	 * required (resolving declarations, writing upgrades), and {@code supports}
+	 * when only file-type support matters (for example completion confidence).
 	 * @param file the PSI file to test.
 	 * @return {@literal true} if an available context exists for the file;
 	 * {@literal false} otherwise.

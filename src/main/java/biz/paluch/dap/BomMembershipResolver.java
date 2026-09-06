@@ -35,22 +35,14 @@ import com.intellij.openapi.project.Project;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Resolves missing Bill of Materials memberships from local build-tool storage
- * through the registered {@link DependencyAssistant assistants} and stores them
- * in the {@link Cache}.
- *
- * <p>Only artifacts a scan classified as a BOM are considered, whether or not
- * they already carry a cached membership. Candidate versions are the
- * non-preview, non-snapshot releases newer than three years that lack a
- * membership. Resolved memberships do not expire by age and an already-cached
- * version is left unchanged. An empty or unresolvable result creates no
- * per-version membership, so a later invocation can retry it.
- *
- * <p>Resolution parses BOM POMs and must run on a background thread. Each
- * assistant call is wrapped in its own short read action.
+ * Resolves missing Bill of Materials memberships from local build-tool storage.
+ * <p>Existing memberships are retained. Unresolved memberships can be retried
+ * on a later invocation. Only recent stable releases of known BOMs are
+ * considered.
+ * <p>Run on a background thread. The resolver supplies the read actions needed
+ * by {@link DependencyAssistant#resolveBillOfMaterials}.
  *
  * @author Mark Paluch
- * @see DependencyAssistant#resolveBillOfMaterials
  */
 public class BomMembershipResolver {
 
@@ -62,46 +54,25 @@ public class BomMembershipResolver {
 
 	private final Cache cache;
 
-	/**
-	 * Create a resolver dispatching over the given assistants.
-	 *
-	 * @param project the project providing repository configuration.
-	 * @param assistants the assistants consulted in registration order.
-	 * @param cache the cache providing memberships and receiving resolved ones.
-	 */
 	public BomMembershipResolver(Project project, List<DependencyAssistant> assistants, Cache cache) {
 		this.project = project;
 		this.assistants = assistants;
 		this.cache = cache;
 	}
 
-	/**
-	 * Create a resolver over the assistants registered for the given project.
-	 *
-	 * @param project the project providing repository configuration.
-	 * @param cache the cache providing memberships and receiving resolved ones.
-	 * @return the resolver.
-	 */
 	public static BomMembershipResolver create(Project project, Cache cache) {
 		return new BomMembershipResolver(project, DependencyAssistantDispatcher.findAll(project), cache);
 	}
 
 	/**
-	 * Sweep the whole cache and resolve missing memberships for every BOM artifact.
-	 *
-	 * @param indicator the progress indicator to report cancellation through.
+	 * Resolve missing memberships for BOMs in the cache.
 	 */
 	public void resolveAll(ProgressIndicator indicator) {
 		resolveMissingMemberships(cache.getCachedArtifacts(), indicator);
 	}
 
 	/**
-	 * Resolve missing memberships for the given artifacts only. Artifacts without a
-	 * cache entry, package-system classification, or BOM classification are
-	 * skipped.
-	 *
-	 * @param artifactIds the artifacts of interest.
-	 * @param indicator the progress indicator to report cancellation through.
+	 * Resolve missing memberships for the given cached BOMs.
 	 */
 	public void resolve(Collection<PackageIdentity> artifactIds, ProgressIndicator indicator) {
 

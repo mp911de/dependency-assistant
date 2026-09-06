@@ -32,18 +32,9 @@ import org.springframework.util.Assert;
  */
 public abstract class StringUtils {
 
-	// ---------------------------------------------------------------------
-	// General convenience methods for working with Strings
-	// ---------------------------------------------------------------------
 
 	/**
-	 * Check whether the given {@code CharSequence} contains no actual
-	 * <em>text</em>.
-	 * <p>This is the inverse of {@link #hasText(CharSequence)}: a {@literal null},
-	 * empty, or whitespace-only value is considered empty.
-	 * @param str the candidate string, or {@literal null}.
-	 * @return {@literal true} if the value is {@literal null}, empty, or contains
-	 * only whitespace; {@literal false} otherwise.
+	 * Return whether the value is absent, empty, or whitespace-only.
 	 */
 	@Contract("null -> true")
 	public static boolean isEmpty(@Nullable CharSequence str) {
@@ -51,12 +42,7 @@ public abstract class StringUtils {
 	}
 
 	/**
-	 * Check whether the given {@code String} contains no actual <em>text</em>.
-	 * <p>This is the inverse of {@link #hasText(String)}: a {@literal null}, empty,
-	 * or whitespace-only value is considered empty.
-	 * @param str the candidate string, or {@literal null}.
-	 * @return {@literal true} if the value is {@literal null}, empty, or contains
-	 * only whitespace; {@literal false} otherwise.
+	 * Return whether the value is absent, empty, or whitespace-only.
 	 */
 	@Contract("null -> true")
 	public static boolean isEmpty(@Nullable String str) {
@@ -64,19 +50,7 @@ public abstract class StringUtils {
 	}
 
 	/**
-	 * Check whether the given {@code CharSequence} contains actual <em>text</em>.
-	 * <p>Return {@literal true} if the value is not {@literal null}, its length is
-	 * greater than 0, and it contains at least one non-whitespace character.
-	 * <pre class="code">
-	 * StringUtils.hasText(null) = false
-	 * StringUtils.hasText("") = false
-	 * StringUtils.hasText(" ") = false
-	 * StringUtils.hasText("12345") = true
-	 * StringUtils.hasText(" 12345 ") = true
-	 * </pre>
-	 * @param str the {@code CharSequence} to check, or {@literal null}.
-	 * @return {@literal true} if the {@code CharSequence} contains text.
-	 * @see Character#isWhitespace
+	 * Return whether the value contains a non-whitespace character.
 	 */
 	@Contract("null -> false")
 	public static boolean hasText(@Nullable CharSequence str) {
@@ -98,11 +72,7 @@ public abstract class StringUtils {
 	}
 
 	/**
-	 * Check whether the given {@code String} contains actual <em>text</em>.
-	 * @param str the {@code String} to check, or {@literal null}.
-	 * @return {@literal true} if the {@code String} contains text.
-	 * @see #hasText(CharSequence)
-	 * @see Character#isWhitespace
+	 * Return whether the value contains a non-whitespace character.
 	 */
 	@Contract("null -> false")
 	public static boolean hasText(@Nullable String str) {
@@ -110,23 +80,16 @@ public abstract class StringUtils {
 	}
 
 	/**
-	 * Remove quotes from a string if it is quoted with either single or double
-	 * quotes.
-	 *
-	 * @param str the string to unquote.
-	 * @return the unquoted string.
+	 * Remove surrounding single or double quotes if present.
 	 */
 	public static String unquote(String str) {
 		return StringUtil.unquoteString(str);
 	}
 
 	/**
-	 * Return the longest common prefix shared by all given values.
+	 * Return the longest shared prefix, or empty if none.
 	 *
-	 * @param values the values to compare. The collection must not be empty.
-	 * @return the longest shared leading substring, or an empty string when the
-	 * values share no common prefix.
-	 * @throws IllegalArgumentException if {@code values} is empty.
+	 * @throws IllegalArgumentException if the collection is empty.
 	 */
 	public static String longestCommonPrefix(Collection<String> values) {
 		Assert.notEmpty(values, "Values must not be empty");
@@ -142,12 +105,9 @@ public abstract class StringUtils {
 	}
 
 	/**
-	 * Return the longest common suffix shared by all the given values.
+	 * Return the longest shared suffix, or empty if none.
 	 *
-	 * @param values the values to compare. The collection must not be empty.
-	 * @return the longest shared trailing substring, or an empty string when the
-	 * values share no common suffix.
-	 * @throws IllegalArgumentException if {@code values} is empty.
+	 * @throws IllegalArgumentException if the collection is empty.
 	 */
 	public static String longestCommonSuffix(Collection<String> values) {
 		Assert.notEmpty(values, "Values must not be empty");

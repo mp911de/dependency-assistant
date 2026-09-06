@@ -46,11 +46,6 @@ class Milestones {
 		this.milestones = milestones;
 	}
 
-	/**
-	 * Return whether the list of milestones is empty.
-	 *
-	 * @return {@literal true} if the list is empty.
-	 */
 	public boolean isEmpty() {
 		return milestones.isEmpty();
 	}

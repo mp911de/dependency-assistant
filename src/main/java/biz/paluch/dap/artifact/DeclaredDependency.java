@@ -24,22 +24,12 @@ import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Aggregate of the declaration and version sources observed for one package.
- *
- * <p>The same artifact can appear in several structural locations. This type
- * merges those locations without retaining their build-file origin. Each
- * declaration location is captured as a {@link DeclarationSource}, and each
- * version origin is captured as a {@link VersionSource}.
- *
- * <p>A declared dependency has no effective version of its own:
- * {@link #isVersioned()} returns {@code false} and {@link #getVersion()}
- * throws. {@link Dependency} adds the effective current version when a usage
- * can be resolved.
+ * Declaration and version sources observed for one package.
+ * <p>Sources are merged without retaining their build-file origin. This
+ * declaration has no effective version. {@link Dependency} adds one when a
+ * usage can be resolved.
  *
  * @author Mark Paluch
- * @see Dependency
- * @see DeclarationSource
- * @see VersionSource
  * @see DependencyCollector
  */
 public class DeclaredDependency implements VersionedPackage {
@@ -50,10 +40,6 @@ public class DeclaredDependency implements VersionedPackage {
 
 	private final Set<DeclarationSource> declarationSources = new LinkedHashSet<>();
 
-	/**
-	 * Create a new {@code DeclaredDependency}.
-	 * @param pkg the declared package identity.
-	 */
 	public DeclaredDependency(PackageIdentity pkg) {
 		this.pkg = pkg;
 	}
@@ -85,9 +71,7 @@ public class DeclaredDependency implements VersionedPackage {
 	}
 
 	/**
-	 * Add a version source to this dependency.
-	 * @param versionSource the version source to add.
-	 * @return this instance for method chaining.
+	 * Add a version source and return this dependency.
 	 */
 	public DeclaredDependency addVersionSource(VersionSource versionSource) {
 		this.versionSources.add(versionSource);
@@ -99,9 +83,7 @@ public class DeclaredDependency implements VersionedPackage {
 	}
 
 	/**
-	 * Add a declaration source to this dependency.
-	 * @param declarationSource the declaration source to add.
-	 * @return this instance for method chaining.
+	 * Add a declaration source and return this dependency.
 	 */
 	public DeclaredDependency addDeclarationSource(DeclarationSource declarationSource) {
 		this.declarationSources.add(declarationSource);
@@ -146,8 +128,8 @@ public class DeclaredDependency implements VersionedPackage {
 	}
 
 	/**
-	 * Reject access to an effective version because declarations are unversioned.
-	 * @throws IllegalStateException always, because no effective version is held.
+	 * Reject access to an effective version.
+	 * @throws IllegalStateException because this declaration is unversioned.
 	 */
 	@Override
 	public ArtifactVersion getVersion() {

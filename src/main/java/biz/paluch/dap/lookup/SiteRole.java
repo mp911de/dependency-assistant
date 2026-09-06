@@ -34,17 +34,13 @@ import org.jetbrains.annotations.Nls;
 public enum SiteRole {
 
 	/**
-	 * Where the version value is written: a version-property definition (a
-	 * {@code [versions]} entry, a {@code gradle.properties} or {@code extra} entry,
-	 * or a Maven {@code <properties>} entry) or an inline version literal.
+	 * Where the version value is written, inline or in a property definition.
 	 */
 	DECLARATION(MessageBundle.lazyMessage("dialog.findSites.role.DECLARATION")),
 
 	/**
-	 * Where the version is referenced indirectly rather than written inline: a
-	 * {@code version.ref} or version-catalog accessor (for example
-	 * {@code libs.spring.core}), a Maven {@code ${prop}}, or a {@code $prop}
-	 * interpolation in a build script.
+	 * Where the version is referenced indirectly, such as a property or catalog
+	 * accessor.
 	 */
 	VERSION_USAGE(MessageBundle.lazyMessage("dialog.findSites.role.VERSION_USAGE"));
 
@@ -54,11 +50,6 @@ public enum SiteRole {
 		this.message = message;
 	}
 
-	/**
-	 * Return the localized display name of this role.
-	 *
-	 * @return the localized role name.
-	 */
 	public @Nls String getName() {
 		return message.get();
 	}

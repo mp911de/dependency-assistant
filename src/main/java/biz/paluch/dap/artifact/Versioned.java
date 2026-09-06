@@ -25,70 +25,35 @@ import java.util.function.Supplier;
 import org.springframework.util.Assert;
 
 /**
- * A representation of a versioned artifact or project using
- * {@link ArtifactVersion} where the version can be {@link #unversioned()
- * undefined} or {@link #of(ArtifactVersion) present}.
- *
- * <p>Callers need to distinguish between a versioned and an unversioned state
- * through {@link #isVersioned()} before accessing {@link #getVersion()}, or
- * they use the higher-order helpers {@link #map(Function)} and
- * {@link #orElseGet(Supplier)} to avoid conditional branching at the call site.
- *
- * <p>{@link #unwrap()} follows the wrapper chain (see
- * {@link ArtifactVersion#isWrapped()}) and returns the innermost
- * {@link ArtifactVersion}.
+ * An optional artifact version.
+ * <p>Check {@link #isVersioned()} before accessing the version, or use
+ * {@link #map(Function)} and {@link #orElseGet(Supplier)} to handle absence.
  *
  * @author Mark Paluch
- * @see ArtifactVersion
- * @see VersionAware
  */
 public interface Versioned extends VersionAware {
 
 	/**
-	 * Create a versioned container for the given {@link VersionAware}.
-	 *
-	 * @param aware the version-aware object.
-	 * @return a {@link Versioned} instance whose {@link #isVersioned()} returns
-	 * {@literal true}.
+	 * Capture the version exposed by the given object.
 	 */
 	static Versioned of(VersionAware aware) {
 		Assert.notNull(aware, "VersionAware must not be null");
 		return of(aware.getVersion());
 	}
 
-	/**
-	 * Create a versioned container for the given artifact version.
-	 *
-	 * @param artifactVersion the version to wrap.
-	 * @return a {@link Versioned} instance whose {@link #isVersioned()} returns
-	 * {@literal true}.
-	 */
 	static Versioned of(ArtifactVersion artifactVersion) {
 		Assert.notNull(artifactVersion, "ArtifactVersion must not be null");
 		return new DefaultVersioned(artifactVersion);
 	}
 
-	/**
-	 * Returns an empty (unversioned) {@link Versioned}.
-	 * @return the shared unversioned value.
-	 */
 	static Versioned unversioned() {
 		return Absent.INSTANCE;
 	}
 
-	/**
-	 * Return whether this container holds a version.
-	 *
-	 * @return {@literal true} if a version is present; {@literal false} for the
-	 * unversioned instances.
-	 */
 	boolean isVersioned();
 
 	/**
-	 * If a version is present, perform the given action with the value. Otherwise,
-	 * do nothing.
-	 *
-	 * @param action the action to be performed if a version is present.
+	 * Invoke the action only when a version is present.
 	 */
 	default void ifPresent(Consumer<? super ArtifactVersion> action) {
 		if (isVersioned()) {
@@ -97,23 +62,14 @@ public interface Versioned extends VersionAware {
 	}
 
 	/**
-	 * Return the artifact version held by this container.
-	 *
-	 * <p>Callers must check {@link #isVersioned()} before invoking this method. The
-	 * unversioned marker throws {@link IllegalStateException}.
-	 *
-	 * @return the artifact version.
+	 * Return the version.
 	 * @throws IllegalStateException if no version is present.
 	 */
 	@Override
 	ArtifactVersion getVersion();
 
 	/**
-	 * Traverse the wrapper chain and return the innermost {@link ArtifactVersion}.
-	 *
-	 * <p>Delegates to {@link ArtifactVersion#unwrap()}.
-	 *
-	 * @return the unwrapped artifact version.
+	 * Return the innermost artifact version.
 	 * @throws IllegalStateException if no version is present.
 	 */
 	default ArtifactVersion unwrap() {
@@ -121,19 +77,8 @@ public interface Versioned extends VersionAware {
 	}
 
 	/**
-	 * Apply the given mapping function to the version if present, and return the
-	 * result.
-	 *
-	 * <p>The mapper receives the version as returned by {@link #getVersion()},
-	 * <em>not</em> the unwrapped form. Call {@link #unwrap()} first if you need the
-	 * innermost version.
-	 *
-	 * @param <U> the type of the value returned from the mapping function.
-	 * @param mapper the mapping function to apply to the version, if present.
-	 * @return an {@link Optional} describing the result of applying the mapping
-	 * function to the version of this {@code Versioned} when a version is present,
-	 * or an empty {@link Optional} when this container is unversioned or the mapper
-	 * returns {@literal null}.
+	 * Apply the mapper to the version as stored, without unwrapping it.
+	 * @return an empty result if unversioned or the mapper returns {@literal null}.
 	 */
 	default <U> Optional<U> map(Function<? super ArtifactVersion, ? extends U> mapper) {
 		Assert.notNull(mapper, "Mapper must not be null");
@@ -141,27 +86,15 @@ public interface Versioned extends VersionAware {
 	}
 
 	/**
-	 * Return the version if present; otherwise invoke the given supplier and return
-	 * its result.
-	 *
-	 * @param supplier the fallback supplier invoked when no version is present;
-	 * must not be {@literal null}.
-	 * @return the version held by this container, or the value produced by the
-	 * supplier.
+	 * Return the version, invoking the supplier only if unversioned.
 	 */
 	default ArtifactVersion orElseGet(Supplier<ArtifactVersion> supplier) {
 		Assert.notNull(supplier, "Supplier must not be null");
 		return isVersioned() ? getVersion() : supplier.get();
 	}
 
-	/**
-	 * Absent (unversioned) implemented as an enum singleton.
-	 */
 	enum Absent implements Versioned {
 
-		/**
-		 * The single absent instance.
-		 */
 		INSTANCE;
 
 		@Override
@@ -186,18 +119,8 @@ public interface Versioned extends VersionAware {
 
 	}
 
-	/**
-	 * Simple versioned container backed by {@link ArtifactVersion}.
-	 *
-	 * @param version the artifact version.
-	 */
 	record DefaultVersioned(ArtifactVersion version) implements Versioned {
 
-		/**
-		 * Create a versioned container.
-		 *
-		 * @param version the artifact version to wrap.
-		 */
 		public DefaultVersioned {
 			Assert.notNull(version, "ArtifactVersion must not be null");
 		}

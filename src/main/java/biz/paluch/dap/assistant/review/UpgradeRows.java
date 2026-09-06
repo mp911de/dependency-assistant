@@ -24,17 +24,10 @@ import java.util.stream.Stream;
 import biz.paluch.dap.util.Sequence;
 
 /**
- * The dependency-check rows after collapsing groupable upgrade candidates into
- * {@link GroupRow} rows through the {@link GroupByRule governed} and
- * {@link InferredGrouping inferred} grouping policies.
- *
- * <p>Each group replaces its members, while ungrouped candidates remain
- * individual rows. The result is sorted by row name for display. Build it from
- * a complete candidate list through {@link #of(List)}.
+ * Name-sorted review rows with groupable candidates collapsed into one
+ * selection.
  *
  * @author Mark Paluch
- * @see GroupRow
- * @see GroupingPolicy
  */
 class UpgradeRows implements Sequence<TableRow> {
 
@@ -45,12 +38,8 @@ class UpgradeRows implements Sequence<TableRow> {
 	}
 
 	/**
-	 * Collapse groupable candidates into {@link GroupRow} rows, keeping all other
-	 * candidates as individual rows.
-	 *
-	 * @param candidates the complete individual candidate rows. Candidate order is
-	 * retained within each formed group.
-	 * @return the grouped and name-sorted rows.
+	 * Group the complete candidate list. Member order is retained within each
+	 * group.
 	 */
 	static UpgradeRows of(List<SingleTableRow> candidates) {
 
@@ -71,9 +60,7 @@ class UpgradeRows implements Sequence<TableRow> {
 	}
 
 	/**
-	 * Return the collapsed rows in display order.
-	 *
-	 * @return the rows.
+	 * Return the backing row list in display order.
 	 */
 	@Override
 	public List<TableRow> toList() {

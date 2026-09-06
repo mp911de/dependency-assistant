@@ -28,18 +28,10 @@ import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
 /**
- * Value object identifying a library or plugin entry referenced through a
- * Gradle version-catalog accessor.
- *
- * <p>The identity consists of the catalog alias, the target TOML table, and
- * normalized key segments. Gradle treats {@code -}, {@code _}, and {@code .} as
- * equivalent separators when generating type-safe accessors.
- *
- * <pre class="code">
- * groovy-core:          [groovy, core]
- * androidx.awesome.lib: [androidx, awesome, lib]
- * my_lib:               [my, lib]
- * </pre>
+ * Identity of a Gradle version-catalog library or plugin accessor.
+ * <p>Identity includes the catalog alias, section and normalized entry key.
+ * Hyphens, underscores and dots separate equivalent accessor segments. For
+ * example, {@code groovy-core} becomes {@code groovy.core}.
  *
  * @author Mark Paluch
  */
@@ -61,9 +53,7 @@ class TomlReference {
 
 	/**
 	 * Create a library reference in the default {@code libs} catalog.
-	 * @param library the library alias.
-	 * @return the normalized library reference.
-	 * @throws IllegalArgumentException if {@code library} is {@literal null}.
+	 * @throws IllegalArgumentException if the alias is {@literal null}.
 	 */
 	public static TomlReference libs(String library) {
 		return new TomlReference(TomlParser.LIBS, null, split(library));
@@ -71,42 +61,34 @@ class TomlReference {
 
 	/**
 	 * Create a plugin reference in the default {@code libs} catalog.
-	 * @param plugin the plugin alias.
-	 * @return the normalized plugin reference.
-	 * @throws IllegalArgumentException if {@code plugin} is {@literal null}.
+	 * @throws IllegalArgumentException if the alias is {@literal null}.
 	 */
 	public static TomlReference plugin(String plugin) {
 		return new TomlReference(TomlParser.LIBS, TomlParser.PLUGINS, split(plugin));
 	}
 
 	/**
-	 * Parse a default-catalog accessor such as {@code libs.spring.boot} or
-	 * {@code libs.plugins.spring.boot}.
-	 * @param identifier the accessor text.
-	 * @return the parsed reference, or {@literal null} for a blank, incomplete,
-	 * non-default, version, or bundle accessor.
-	 * @throws IllegalArgumentException if {@code identifier} is {@literal null}.
+	 * Parse a {@code libs} accessor, such as {@code libs.plugins.spring.boot}.
+	 * @return {@literal null} for incomplete, version, bundle or non-default
+	 * accessors.
+	 * @throws IllegalArgumentException if the identifier is {@literal null}.
 	 */
 	public static @Nullable TomlReference from(String identifier) {
 		return from(split(identifier));
 	}
 
 	/**
-	 * Create a reference from a list of segments using only the default
-	 * {@code libs} catalog alias.
-	 * @param segments the accessor segments, including the catalog alias.
-	 * @return the parsed reference, or {@literal null} for unsupported segments.
+	 * Parse accessor segments in the default {@code libs} catalog.
+	 * @see #from(List, Set)
 	 */
 	public static @Nullable TomlReference from(List<String> segments) {
 		return from(segments, Set.of(TomlParser.LIBS));
 	}
 
 	/**
-	 * Create a reference from a list of segments, accepting the given set of known
-	 * catalog aliases as the first segment.
-	 * @param segments the accessor segments, including the catalog alias.
-	 * @param knownAliases the catalog aliases accepted as the first segment.
-	 * @return the parsed reference, or {@literal null} for unsupported segments.
+	 * Parse library or plugin accessor segments beginning with a known catalog
+	 * alias.
+	 * @return {@literal null} for unsupported segments.
 	 */
 	static @Nullable TomlReference from(List<String> segments, Set<String> knownAliases) {
 
@@ -129,20 +111,13 @@ class TomlReference {
 	}
 
 	/**
-	 * Create a reference for the given alias, section, and separator-delimited key.
-	 * @param alias the catalog alias.
-	 * @param section the explicit catalog section, or {@literal null} for
-	 * {@code libraries}.
-	 * @param key the catalog entry key.
-	 * @return the normalized catalog reference.
+	 * Create a reference from a catalog entry key.
+	 * @param section {@literal null} for the library section.
 	 */
 	static TomlReference of(String alias, @Nullable String section, String key) {
 		return new TomlReference(alias, section, split(key));
 	}
 
-	/**
-	 * @return the TOML table name such as {@code libraries} or {@code plugins}.
-	 */
 	public String getTableName() {
 		if (section == null) {
 			return TomlParser.LIBRARIES;
@@ -150,9 +125,6 @@ class TomlReference {
 		return section;
 	}
 
-	/**
-	 * @return the catalog alias, such as {@code libs} or {@code tools}.
-	 */
 	String getCatalogAlias() {
 		return key;
 	}

@@ -21,27 +21,19 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Hosted Git repository coordinates: host, owner, and repository name.
+ * Hosted Git repository coordinates.
  *
  * @author Mark Paluch
- * @param host the repository host name (e.g. {@code github.com} or a
- * self-hosted instance).
- * @param owner the owner path: a user or organization, or a GitLab group path
- * whose subgroup segments are preserved (e.g.
- * {@code gitlab-org/security-products/analyzers}).
- * @param repository the repository name.
+ * @param owner a user, organization, or nested GitLab group path.
  * @see RemoteUrl
  */
 public record GitRepositoryMetadata(String host, String owner, String repository) {
 
 	/**
-	 * Create coordinates for a flat {@code owner/repo} host (GitHub, Bitbucket,
-	 * Codeberg): the first path segment is the owner, the second the repository.
-	 * Anything beyond the second segment is web-path or module-path debris and is
-	 * ignored; a trailing {@code .git} on the repository segment is stripped.
-	 * @param remoteUrl the parsed remote URL.
-	 * @return the coordinates, or {@literal null} if the URL carries fewer than two
-	 * path segments.
+	 * Extract flat owner/repository coordinates, ignoring later web or module
+	 * paths.
+	 * <p>Nested GitLab groups require platform-specific parsing.
+	 * @return {@literal null} if fewer than two path segments exist.
 	 */
 	public static @Nullable GitRepositoryMetadata flat(RemoteUrl remoteUrl) {
 
@@ -54,28 +46,24 @@ public record GitRepositoryMetadata(String host, String owner, String repository
 	}
 
 	/**
-	 * Strip a trailing {@code .git} left inside the path by scm-inheritance debris
-	 * (e.g. {@code assertj/assertj.git/assertj-parent}).
-	 * @param segment the repository path segment.
-	 * @return the segment without a trailing {@code .git} suffix.
+	 * Strip a trailing {@code .git} suffix from a repository segment.
+	 * <p>SCM inheritance can leave it inside a path, as in
+	 * {@code assertj/assertj.git/assertj-parent}.
 	 */
 	public static String stripDotGit(String segment) {
 		return segment.endsWith(".git") ? segment.substring(0, segment.length() - 4) : segment;
 	}
 
 	/**
-	 * Return the canonical cache and connection key of these coordinates.
-	 * @return the key in {@code host/owner/repository} form.
+	 * Return the cache key in {@code host/owner/repository} form.
 	 */
 	public String key() {
 		return host + "/" + owner + "/" + repository;
 	}
 
 	/**
-	 * Attach these repository coordinates as release-routing metadata to the
-	 * declared artifact identity.
-	 * @param originalArtifactId the identity declared in the build file.
-	 * @return the Git-backed artifact identity.
+	 * Attach these repository coordinates to the declared artifact identity for
+	 * release lookup.
 	 */
 	public GitArtifactId toArtifactId(ArtifactId originalArtifactId) {
 		return GitArtifactId.of(host(), owner(), repository(), originalArtifactId);

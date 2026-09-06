@@ -21,13 +21,9 @@ import biz.paluch.dap.state.ProjectId;
 import com.intellij.openapi.vfs.VirtualFile;
 
 /**
- * One build-file occurrence of a dependency found during a dependency scan.
+ * One build-file occurrence found during a dependency scan.
  *
  * @author Mark Paluch
- * @param file the build file containing the occurrence.
- * @param projectId the project identity associated with the build file.
- * @param dependency the dependency declaration or usage captured at the
- * location.
  */
 public record DeclarationSite(VirtualFile file, ProjectId projectId,
 		DeclaredDependency dependency) {

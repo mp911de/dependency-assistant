@@ -48,12 +48,10 @@ import org.jetbrains.idea.maven.dom.model.MavenDomProjectModel;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Extracts project metadata from an artifact's POM and parent POM chain.
- *
- * <p>Repository and issue-tracker metadata may be inherited from a parent POM.
- * Project name and description are taken only from the artifact POM. POMs are
- * obtained through registered {@link PomLocator} extensions without network
- * access, and traversal stops at a cycle or {@link #MAX_CHAIN_DEPTH}.
+ * Reads project metadata from locally available POMs.
+ * <p>Repository and issue-tracker metadata can be inherited from parents. Name
+ * and description come only from the artifact POM. Parent traversal is bounded
+ * and requires no network access.
  *
  * @author Mark Paluch
  * @see PomLocator
@@ -68,12 +66,6 @@ class MavenPomMetadataIntrospector extends MavenPomSupport {
 
 	private final BetterPsiManager psiManager;
 
-	/**
-	 * Create an introspector resolving POMs through the registered
-	 * {@link PomLocator} extensions.
-	 *
-	 * @param project the project used to locate and read POM files.
-	 */
 	public MavenPomMetadataIntrospector(Project project) {
 		this(project, StateService.getInstance(project).getCache());
 	}
@@ -85,14 +77,9 @@ class MavenPomMetadataIntrospector extends MavenPomSupport {
 	}
 
 	/**
-	 * Inspect the POM chain of the given artifact.
-	 *
-	 * @param artifactId the artifact to inspect.
-	 * @param inUseVersion the artifact version identifying the first POM in the
-	 * chain.
-	 * @param indicator the cancellation indicator for traversal.
-	 * @return the extracted metadata, or a nothing-found marker when no POM in
-	 * reach carries usable metadata.
+	 * Inspect metadata for the given artifact version.
+	 * @return the metadata, or a nothing-found marker if no usable metadata is
+	 * found.
 	 */
 	@RequiresBackgroundThread
 	public CachedMetadata getProjectMetadata(ArtifactId artifactId, ArtifactVersion inUseVersion,
@@ -214,12 +201,8 @@ class MavenPomMetadataIntrospector extends MavenPomSupport {
 	}
 
 	/**
-	 * Locate the POM file for the given coordinates through the registered
-	 * {@link PomLocator} extensions. Overridable in tests to serve fixture POMs
-	 * without extension-point registration.
-	 * @param artifactId the artifact coordinates.
-	 * @param version the artifact version.
-	 * @return the POM file, or {@literal null} if no locator finds it.
+	 * Locate a POM through {@link PomLocator}.
+	 * @return the POM, or {@literal null} if no locator finds it.
 	 */
 	protected @Nullable VirtualFile findPom(ArtifactId artifactId, String version) {
 		return PomLocator.findPom(project, artifactId, version);
@@ -279,12 +262,6 @@ class MavenPomMetadataIntrospector extends MavenPomSupport {
 		@Nullable
 		String issueManagementSystem;
 
-		/**
-		 * Return the declared SCM repository candidates in selection order.
-		 *
-		 * @return the available non-empty candidates ordered as {@code url},
-		 * {@code connection}, then {@code developerConnection}.
-		 */
 		List<String> getRepositoryCandidates() {
 
 			List<String> candidates = new ArrayList<>(3);

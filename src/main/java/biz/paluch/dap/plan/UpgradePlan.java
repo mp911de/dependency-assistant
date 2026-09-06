@@ -27,10 +27,9 @@ import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.Sequence;
 
 /**
- * Immutable Upgrade Plan container: materialized plan items paired with the
- * build-file scope they were captured from. The scope and item sequence are
- * fixed, while item display names and ticket associations may be updated in
- * place. Its serialized counterpart is {@link UpgradePlanState.Content}.
+ * Fixed item sequence and captured file scope for an Upgrade Plan. Item display
+ * names and ticket links remain mutable. Persisted content lives in
+ * {@link UpgradePlanState.Content}.
  *
  * @author Mark Paluch
  */
@@ -45,24 +44,12 @@ class UpgradePlan implements Sequence<UpgradePlanItem> {
 		this.items = List.copyOf(items);
 	}
 
-	/**
-	 * Create a plan from the given scope and items.
-	 *
-	 * @param scope the build-file scope the items were captured from.
-	 * @param items the reconstructed plan items in order.
-	 * @return the plan.
-	 */
 	static UpgradePlan of(FileScope scope, List<UpgradePlanItem> items) {
 		return new UpgradePlan(scope, items);
 	}
 
 	/**
-	 * Return a plan with the given items, keeping this plan's scope.
-	 * Selection-based apply, preview, and copy operations narrow the items but
-	 * retain the captured scope.
-	 *
-	 * @param items the plan items to include, in processing order.
-	 * @return the derived plan.
+	 * Return a plan with the supplied items in order, retaining the captured scope.
 	 */
 	UpgradePlan withItems(Iterable<UpgradePlanItem> items) {
 		return new UpgradePlan(scope, Sequence.of(items).toList());
@@ -86,8 +73,7 @@ class UpgradePlan implements Sequence<UpgradePlanItem> {
 	}
 
 	/**
-	 * Return a plan whose scope is re-resolved against the current file system
-	 * state, keeping the items. Apply and preview rebuild before reading files.
+	 * Resolve the scope against the current file system, retaining the items.
 	 */
 	UpgradePlan rebuild() {
 		return new UpgradePlan(scope.rebuild(), items);
@@ -108,21 +94,10 @@ class UpgradePlan implements Sequence<UpgradePlanItem> {
 		return items.iterator();
 	}
 
-	/**
-	 * Return the plan summary line for the tool window: the item count followed by
-	 * the counts of items that warrant review, per attention level.
-	 *
-	 * @return the rendered summary text.
-	 */
 	public String getSummary() {
 		return MessageBundle.message("plan.summary", size()) + getAttentionSummary();
 	}
 
-	/**
-	 * Attention counts in {@link UpgradePlanItem.AttentionLevel} declaration order,
-	 * highest attention first. Patch is the no-attention level and stays out of the
-	 * line.
-	 */
 	private String getAttentionSummary() {
 
 		Map<UpgradePlanItem.AttentionLevel, Long> counts = new EnumMap<>(UpgradePlanItem.AttentionLevel.class);

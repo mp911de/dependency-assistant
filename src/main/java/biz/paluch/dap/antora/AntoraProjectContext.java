@@ -23,19 +23,13 @@ import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.github.GitHubReleaseSourceRouter;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.AbstractProjectBuildContext;
-import biz.paluch.dap.support.ProjectBuildContext;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 
 /**
- * Available {@link ProjectBuildContext} for one Antora playbook file.
- *
- * <p>Each {@code antora-playbook.yml} file produces its own path-keyed context,
- * keeping dependency state for independent playbooks isolated without an
- * imported build model. Release lookup uses a strict
- * {@link GitHubReleaseSourceRouter}: only
- * {@link biz.paluch.dap.artifact.GitArtifactId} values participate, and their
- * host selects the GitHub server.
+ * Build context for one Antora playbook.
+ * <p>Contexts are keyed by file path to isolate independent playbooks. Release
+ * lookup accepts only Git identities and uses their host to select the server.
  *
  * @author Mark Paluch
  */
@@ -48,12 +42,6 @@ class AntoraProjectContext extends AbstractProjectBuildContext {
 		this.project = project;
 	}
 
-	/**
-	 * Create a context for the given project and anchor playbook file.
-	 * @param project the IntelliJ project.
-	 * @param anchor the Antora playbook file.
-	 * @return a context isolated to the given playbook file, keyed by its path.
-	 */
 	static AntoraProjectContext of(Project project, VirtualFile anchor) {
 
 		ProjectId projectId = ProjectId.of("antora", anchor.getNameWithoutExtension(), anchor.getPath());

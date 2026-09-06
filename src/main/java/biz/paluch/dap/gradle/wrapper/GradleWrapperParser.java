@@ -33,14 +33,10 @@ import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Parses version-bearing {@code distributionUrl} entries from Gradle Wrapper
- * properties files.
- *
- * <p>Invalid PSI, empty values, line continuations, non-ZIP distributions, and
- * file names outside the {@code gradle-<version>-(bin|all).zip} shape are
- * ignored. Collection registers the synthetic Gradle distribution dependency
- * and always contributes {@link GradleDistributionService} as its release
- * source.
+ * Parse {@code distributionUrl} values with
+ * {@code gradle-<version>-(bin|all).zip} names.
+ * <p>Line continuations and malformed values are ignored. Collection supplies
+ * {@link GradleDistributionService} for release lookup.
  *
  * @author Mark Paluch
  */

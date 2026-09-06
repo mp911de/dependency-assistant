@@ -17,21 +17,13 @@
 package biz.paluch.dap.artifact;
 
 /**
- * A registry for {@link ReleaseSource} that can return a specific
- * {@link ReleaseSource} for a given {@link ArtifactId}. This is useful to route
- * requests to a specific {@link ReleaseSource}.
+ * Selects a release source for an artifact.
  *
  * @author Mark Paluch
  */
 @FunctionalInterface
 public interface ReleaseSourceRegistry {
 
-	/**
-	 * Retrieve the {@link ReleaseSource} for the given {@link ArtifactId}.
-	 *
-	 * @param artifactId the artifact id.
-	 * @return the delegate.
-	 */
 	ReleaseSource getReleaseSource(ArtifactId artifactId);
 
 }

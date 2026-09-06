@@ -25,15 +25,9 @@ import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Shared word-boundary shape of a set of artifact-id strings.
- *
- * <p>The shape derives artifact name suggestions through
- * {@link #deriveGroupName(String)} and compact group-row member labels through
- * {@link #memberLabelParts()}.
- *
- * <p>A boundary is a {@code '-'} or {@code '.'} separator. A shared prefix,
- * suffix, or base is only meaningful when it ends or starts on such a boundary,
- * so {@code httpcore5} is never read as a base of {@code httpcore5reactive}.
+ * Shared artifact-name structure for group names and compact member labels.
+ * <p>Common parts end at {@code -} or {@code .} boundaries. For example,
+ * {@code httpcore5} is not a base of {@code httpcore5reactive}.
  *
  * @author Mark Paluch
  */
@@ -54,28 +48,18 @@ public class CoordinateShape {
 	}
 
 	/**
-	 * Create the shape of the given member artifact ids.
-	 *
-	 * <p>The list is retained and must not be modified while the shape is in use.
-	 *
-	 * @param artifactIds the artifact-id strings to analyze.
-	 * @return the computed shape.
+	 * Analyze member names. The supplied list must not change while the shape is
+	 * used.
 	 */
 	public static CoordinateShape of(List<String> artifactIds) {
 		return new CoordinateShape(artifactIds);
 	}
 
 	/**
-	 * Derive a shared name for members under one {@code groupId}.
-	 *
-	 * <p>The name is the common word-boundary prefix of the members. A bare acronym
-	 * prefix of at most three letters is expanded to the longer {@code groupId}
-	 * segment it abbreviates, so {@code org.bouncycastle:bc-*} reads as
-	 * {@code bouncycastle} rather than {@code bc}.
-	 *
-	 * @param groupId the shared group id of the members.
-	 * @return the derived name, or {@literal null} if the members share no usable
-	 * word-boundary prefix of at least two characters.
+	 * Derive a group name from the shared prefix of its members.
+	 * <p>Short acronyms may expand to a group-id segment, so
+	 * {@code org.bouncycastle:bc-*} reads as {@code bouncycastle}.
+	 * @return {@literal null} if no usable shared prefix exists.
 	 */
 	@Nullable
 	public String deriveGroupName(String groupId) {
@@ -89,12 +73,7 @@ public class CoordinateShape {
 	}
 
 	/**
-	 * Return the member-label parts for the group row: the common base followed by
-	 * each member's suffix, the suffixes after the common separator prefix, or the
-	 * prefixes before the common separator suffix, in that fallback order.
-	 *
-	 * @return the label parts, or an empty list when the members share no usable
-	 * shape.
+	 * Return compact member labels, or an empty list if no shared shape is usable.
 	 */
 	public List<String> memberLabelParts() {
 
@@ -109,10 +88,6 @@ public class CoordinateShape {
 		return parts;
 	}
 
-	/**
-	 * The common word-boundary prefix backing the derived name: the common base, or
-	 * the common separator prefix without its trailing separator.
-	 */
 	private @Nullable String boundaryPrefix() {
 
 		if (base != null) {
@@ -122,11 +97,6 @@ public class CoordinateShape {
 		return separatorPrefix != null ? separatorPrefix.substring(0, separatorPrefix.length() - 1) : null;
 	}
 
-	/**
-	 * Label the members as the common base followed by each member's suffix after
-	 * the base separator, or empty when there is no common base or a member adds no
-	 * suffix.
-	 */
 	private List<String> baseLabelParts() {
 
 		if (base == null) {
@@ -152,10 +122,6 @@ public class CoordinateShape {
 		return parts;
 	}
 
-	/**
-	 * Label the members by their suffixes after the common separator prefix, or
-	 * empty when there is no separator prefix or a member has no suffix.
-	 */
 	private List<String> separatorPrefixLabelParts() {
 
 		if (separatorPrefix == null) {
@@ -170,10 +136,6 @@ public class CoordinateShape {
 		return suffixes.size() == artifactIds.size() ? suffixes : List.of();
 	}
 
-	/**
-	 * Label the members by their prefixes before the common separator suffix, or
-	 * empty when there is no separator suffix or a member has no prefix.
-	 */
 	private List<String> separatorSuffixLabelParts() {
 
 		String suffix = commonSeparatorSuffix(artifactIds);
@@ -189,11 +151,6 @@ public class CoordinateShape {
 		return prefixes.size() == artifactIds.size() ? prefixes : List.of();
 	}
 
-	/**
-	 * Promote a bare acronym prefix (at most three alphabetic characters, no
-	 * internal separator) to the longest {@code groupId} segment it abbreviates, or
-	 * keep the prefix when nothing qualifies.
-	 */
 	private static String promoteAbbreviation(String prefix, String groupId) {
 
 		if (prefix.length() > 3 || !isAcronym(prefix)) {

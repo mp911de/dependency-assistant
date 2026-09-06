@@ -47,13 +47,8 @@ import org.jspecify.annotations.Nullable;
 class WrapperPropertyParser {
 
 	/**
-	 * Parse the given property declaration as the expected wrapper property.
-	 *
-	 * @param wrapperProperty the wrapper property whose key and coordinate shape
-	 * the declaration is expected to match.
-	 * @param property the property declaration to parse.
-	 * @return the parsed wrapper entry, or {@literal null} if the key or value is
-	 * unsupported, missing, continued, or malformed.
+	 * Parse a property of the expected kind.
+	 * @return the entry, or {@literal null} for an unsupported key or value.
 	 */
 	public static @Nullable WrapperEntry parseProperty(WrapperProperty wrapperProperty, Property property) {
 

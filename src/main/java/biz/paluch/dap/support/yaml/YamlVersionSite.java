@@ -27,41 +27,18 @@ import org.jetbrains.yaml.psi.YAMLScalar;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A version-bearing YAML scalar and its enclosing {@code key: value} pair.
- *
- * <p>The site retains the live PSI elements together with snapshots of the
- * scalar's decoded text value and quote style. Ecosystem-specific code remains
- * responsible for interpreting the text as an artifact and version.
- *
- * <p>Use {@link #locate(PsiElement, Predicate)} to find the site from any PSI
- * element produced by a caret position, completion parameter, or annotator
- * visit. The locator walks up to the nearest {@link YAMLScalar}, stops before
- * crossing an enclosing {@link YAMLMapping}, requires the scalar's direct
- * parent to be a {@link YAMLKeyValue}, and applies the caller-supplied
- * predicate to that key-value pair.
- *
- * <p>{@link #replaceRawValue(String, YAMLElementGenerator)} recreates and
- * replaces the enclosing key-value pair. The returned PSI element owns the
- * replacement scalar, and this site must not be reused after replacement.
+ * Live YAML version site with captured decoded text and quote style.
+ * <p>The integration interprets the text as an artifact and version. Do not
+ * reuse the site after replacement invalidates its PSI elements.
  *
  * @author Mark Paluch
- * @param scalar the version-bearing scalar.
- * @param keyValue the scalar's direct enclosing key-value pair.
- * @param quoteStyle the rendering style captured from the scalar.
- * @param rawValue the decoded scalar text captured when the site was created.
  */
 public record YamlVersionSite(YAMLScalar scalar, YAMLKeyValue keyValue, QuoteStyle quoteStyle, String rawValue) {
 
 	/**
-	 * Locate the nearest version-bearing scalar accepted by the key-value
-	 * predicate.
-	 * @param element the PSI element at the cursor or completion position; may be
-	 * {@literal null}.
-	 * @param keyMatcher predicate applied to the enclosing {@link YAMLKeyValue}.
-	 * @return a site containing the scalar's current decoded value and quote style,
-	 * or {@literal null} if the element is absent, no scalar is found before a
-	 * mapping boundary, the scalar is not a direct key-value value, or the
-	 * predicate rejects its key-value pair.
+	 * Locate the nearest scalar accepted by the key-value predicate.
+	 * <p>Search stops at a mapping boundary. The scalar must directly belong to a
+	 * key-value pair. Absent or rejected sites return {@literal null}.
 	 */
 	public static @Nullable YamlVersionSite locate(@Nullable PsiElement element, Predicate<YAMLKeyValue> keyMatcher) {
 
@@ -80,15 +57,10 @@ public record YamlVersionSite(YAMLScalar scalar, YAMLKeyValue keyValue, QuoteSty
 	}
 
 	/**
-	 * Replace the enclosing key-value pair with one containing the given scalar
-	 * value in the detected {@link QuoteStyle}.
-	 *
-	 * <p>This method must be invoked from a write command. The replacement
-	 * invalidates the PSI elements held by this site.
-	 * @param newRawValue the decoded scalar value to render.
-	 * @param generator the YAML element generator used to build the replacement
-	 * key/value pair.
-	 * @return the replacement {@link YAMLKeyValue}, which owns the new scalar.
+	 * Replace the key-value pair using the captured quote style.
+	 * <p>The caller must hold a write command. This site becomes invalid.
+	 * @param newRawValue decoded scalar content.
+	 * @return the new key-value pair owning the replacement scalar.
 	 */
 	public YAMLKeyValue replaceRawValue(String newRawValue, YAMLElementGenerator generator) {
 

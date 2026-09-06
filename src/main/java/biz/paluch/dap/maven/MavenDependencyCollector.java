@@ -41,32 +41,16 @@ class MavenDependencyCollector {
 
 	private final Cache cache;
 
-	/**
-	 * Create a collector using the given {@link Project}.
-	 *
-	 * @param project the associated project.
-	 */
 	public MavenDependencyCollector(Project project) {
 		this(StateService.getInstance(project).getCache());
 	}
 
-	/**
-	 * Create a collector using the given cache.
-	 *
-	 * @param cache the cache consulted to resolve Bill of Materials members.
-	 */
 	public MavenDependencyCollector(Cache cache) {
 		this.cache = cache;
 	}
 
 	/**
-	 * Collect artifact declarations from the given Maven build file into a new
-	 * collector.
-	 *
-	 * @param packageSystem the package system assigned to collected declarations.
-	 * @param buildFile the POM or {@code extensions.xml} file to inspect.
-	 * @param propertyResolver the properties used to resolve declaration versions.
-	 * @return the populated collector.
+	 * Collect declarations into a new collector.
 	 */
 	public DependencyCollector collect(PackageSystem packageSystem, PsiFile buildFile,
 			MavenPomProperties propertyResolver) {
@@ -77,12 +61,7 @@ class MavenDependencyCollector {
 	}
 
 	/**
-	 * Collect declarations from the given Maven PSI file into an existing
-	 * collector.
-	 *
-	 * @param psiFile the POM or {@code extensions.xml} file to inspect.
-	 * @param propertyResolver the properties used to resolve declaration versions.
-	 * @param collector the collector receiving declarations and usages.
+	 * Add declarations and resolved usages to the supplied collector.
 	 */
 	protected void doCollect(PsiFile psiFile, MavenPomProperties propertyResolver, DependencyCollector collector) {
 

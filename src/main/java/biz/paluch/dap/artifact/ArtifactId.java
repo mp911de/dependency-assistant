@@ -32,50 +32,26 @@ import java.util.Comparator;
 public interface ArtifactId extends Comparable<ArtifactId> {
 
 	/**
-	 * Natural ordering by {@code groupId} then {@code artifactId}. This is the
-	 * ordering used by {@link #compareTo(ArtifactId)} and therefore by
-	 * {@code TreeMap}/{@code TreeSet} keys. Both segments are compared
-	 * case-sensitively.
-	 *
-	 * <p>The comparator considers only the declared coordinates. Routing metadata
-	 * carried by specialized implementations does not participate.
+	 * Natural ordering by group id, then artifact id, both case-sensitive. Routing
+	 * metadata does not participate.
 	 */
 	Comparator<? super ArtifactId> COMPARATOR = Comparator.comparing(ArtifactId::groupId)
 			.thenComparing(ArtifactId::artifactId);
 
 	/**
-	 * Display ordering by {@code artifactId} then {@code groupId}. Unlike
-	 * {@link #COMPARATOR} this is a presentation-only comparator, never the natural
-	 * ordering or an identity key, so it orders {@code artifactId}
-	 * case-insensitively for readable, alphabetized lists.
+	 * Display ordering by case-insensitive artifact id, then group id. Use
+	 * {@link #COMPARATOR} for identity keys.
 	 */
 	Comparator<? super ArtifactId> BY_ARTIFACT_ID = Comparator
 			.comparing(ArtifactId::artifactId, String.CASE_INSENSITIVE_ORDER)
 			.thenComparing(ArtifactId::groupId);
 
-	/**
-	 * Create artifact coordinates from the given group id and artifact id.
-	 *
-	 * @param groupId the group that namespaces the artifact.
-	 * @param artifactId the artifact name within the group.
-	 * @return the artifact coordinates.
-	 */
 	static ArtifactId of(String groupId, String artifactId) {
 		return new DefaultArtifactId(groupId, artifactId);
 	}
 
-	/**
-	 * Return the group id that namespaces the artifact (e.g. the Maven
-	 * {@code groupId} or the first segment of Gradle coordinates).
-	 * @return the group id.
-	 */
 	String groupId();
 
-	/**
-	 * Return the artifact id that names the artifact within its {@link #groupId()
-	 * group}.
-	 * @return the artifact id.
-	 */
 	String artifactId();
 
 	@Override
@@ -84,13 +60,7 @@ public interface ArtifactId extends Comparable<ArtifactId> {
 	}
 
 	/**
-	 * Create a detached {@link ArtifactId} that is not coupled to its underlying
-	 * implementation.
-	 *
-	 * <p>The detached value retains only {@link #groupId()} and
-	 * {@link #artifactId()}. Implementation-specific metadata is discarded.
-	 *
-	 * @return detached artifact coordinates.
+	 * Return detached coordinates, discarding implementation-specific metadata.
 	 */
 	default ArtifactId detach() {
 		return new DefaultArtifactId(groupId(), artifactId());

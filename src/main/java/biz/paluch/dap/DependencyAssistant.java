@@ -44,7 +44,7 @@ import org.jspecify.annotations.Nullable;
  * {@link #createContext(Project, PsiFile)}.
  *
  * <p>Support checks are expected to be cheap and limited to project-model or
- * file shape recognition. They must not perform I/O or parse file contents.
+ * file shape support. They must not perform I/O or parse file contents.
  * Expensive preparation, parsing, and state access belongs in
  * {@link #prepare(Project)}, dependency collection, or a
  * {@link ProjectDependencyContext}.
@@ -96,11 +96,11 @@ public interface DependencyAssistant {
 
 	/**
 	 * Return whether this integration owns the given file.
-	 * <p>This check recognizes the file shape only. It does not guarantee that a
+	 * <p>This method checks the file shape only. It does not guarantee that a
 	 * project model is available for {@link #createContext(Project, PsiFile)}.
 	 *
 	 * @param file the file to inspect.
-	 * @return {@literal true} if this integration recognizes the file.
+	 * @return {@literal true} if this integration supports the file.
 	 */
 	boolean supports(PsiFile file);
 

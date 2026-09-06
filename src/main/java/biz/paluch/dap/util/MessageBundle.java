@@ -35,25 +35,11 @@ public class MessageBundle {
 	private MessageBundle() {
 	}
 
-	/**
-	 * Return the localized message for the given key.
-	 *
-	 * @param key the resource bundle key.
-	 * @param params the message-format arguments.
-	 * @return the localized message.
-	 */
 	@Nls
 	public static String message(@PropertyKey(resourceBundle = BUNDLE) String key, Object... params) {
 		return INSTANCE.getMessage(key, params);
 	}
 
-	/**
-	 * Return a lazy supplier for the localized message.
-	 *
-	 * @param key the resource bundle key.
-	 * @param params the message-format arguments.
-	 * @return a supplier that resolves the localized message when invoked.
-	 */
 	public static @Nls Supplier<String> lazyMessage(@PropertyKey(resourceBundle = BUNDLE) String key,
 			Object... params) {
 		return INSTANCE.getLazyMessage(key, params);

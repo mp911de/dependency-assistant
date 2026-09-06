@@ -32,7 +32,7 @@ class ExpressionUnitTests {
 	@ParameterizedTest(name = "{0} resolves property {1}")
 	@CsvSource({"${springVersion}, springVersion", "$springVersion, springVersion",
 			"${spring.version}, spring.version"})
-	void propertyExpressionIsRecognized(String value, String propertyName) {
+	void propertyExpressionIssupported(String value, String propertyName) {
 
 		Expression expression = Expression.from(value);
 

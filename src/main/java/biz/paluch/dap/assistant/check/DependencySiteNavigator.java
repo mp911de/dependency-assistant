@@ -96,15 +96,9 @@ import com.intellij.util.ui.UIUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Locates the sites participating in a dependency's version within a supplied
- * build-file scope and presents the result through direct navigation, a
- * multi-result popup, or the Find tool window. The popup shows a read-only
- * preview of the focused declaration site beside the list.
- *
- * <p>Entry points express the caller's intent: {@link #browse} always shows the
- * popup, {@link #navigate} opens a single result directly in the editor, and
- * {@link #openInFindWindow} hands the results to the Find tool window. The
- * upgrade review dialog and the Upgrade Plan tool window share this module.
+ * Dependency-site navigation for upgrade reviews and plans.
+ * <p>Searches run in the background. Requests made during indexing show a
+ * notice instead of starting a search.
  *
  * @author Mark Paluch
  */
@@ -126,13 +120,8 @@ public class DependencySiteNavigator {
 	private final Supplier<? extends Iterable<VirtualFile>> files;
 
 	/**
-	 * Create a navigator that leaves its host open when results move to the Find
-	 * tool window.
-	 *
-	 * @param project the project owning the dependency sites.
-	 * @param parentDisposable the lifecycle that expires pending searches.
-	 * @param files the build files to search, captured when the navigator is
-	 * created.
+	 * Create a navigator over a snapshot of the supplied files.
+	 * @param parentDisposable the lifecycle of pending popup searches.
 	 */
 	public DependencySiteNavigator(Project project, Disposable parentDisposable, Iterable<VirtualFile> files) {
 		this(project, parentDisposable, () -> {
@@ -140,12 +129,8 @@ public class DependencySiteNavigator {
 	}
 
 	/**
-	 * Create a navigator that resolves the build files lazily for each search, for
-	 * callers that would otherwise enumerate build files on the UI thread.
-	 *
-	 * @param project the project owning the dependency sites.
-	 * @param parentDisposable the lifecycle that expires pending searches.
-	 * @param files supplies the build files to search.
+	 * Create a navigator that supplies files afresh for each background search.
+	 * @param parentDisposable the lifecycle of pending popup searches.
 	 */
 	public DependencySiteNavigator(Project project, Disposable parentDisposable,
 			Supplier<? extends Iterable<VirtualFile>> files) {
@@ -158,16 +143,10 @@ public class DependencySiteNavigator {
 	}
 
 	/**
-	 * Create a navigator that notifies its host when results move to the Find tool
-	 * window.
-	 *
-	 * @param project the project owning the dependency sites.
-	 * @param parentDisposable the lifecycle that expires pending searches.
-	 * @param onTransferToFindWindow invoked when the user hands the results to the
-	 * Find tool window, letting the host (the dependency upgrade dialog) close
-	 * itself.
-	 * @param files the build files to search, the same set the upgrade scan
-	 * produced, captured when the navigator is created.
+	 * Create a navigator over a snapshot of the supplied files.
+	 * @param parentDisposable the lifecycle of pending popup searches.
+	 * @param onTransferToFindWindow invoked when a Find view is created so the host
+	 * can close itself.
 	 */
 	public DependencySiteNavigator(Project project, Disposable parentDisposable, Runnable onTransferToFindWindow,
 			Iterable<VirtualFile> files) {
@@ -182,18 +161,8 @@ public class DependencySiteNavigator {
 	}
 
 	/**
-	 * Find every site backing the row's version and present it for navigation. The
-	 * search runs off the UI thread through a non-blocking read action, so the UI
-	 * thread is not blocked.
-	 *
-	 * <p>The index-backed integrations query the file-type and filename indexes,
-	 * which are unavailable during indexing. Rather than wait for indexing to
-	 * finish, the find fails fast: if the project is in dumb mode it shows a
-	 * lightweight notice anchored at {@code where} and returns. The read expires
-	 * with {@code parentDisposable} so a closed dialog aborts a pending find.
-	 *
-	 * @param query the dependency-site query to run.
-	 * @param where the screen anchor for the popup or notice.
+	 * Show matching sites in a navigation popup.
+	 * @param where the anchor for the popup or indexing notice.
 	 */
 	public void browse(DependencySiteQuery query, RelativePoint where) {
 
@@ -202,12 +171,7 @@ public class DependencySiteNavigator {
 	}
 
 	/**
-	 * Find every site backing the query and open a single result directly in the
-	 * editor. Several results are presented like {@link #browse}. Runs and fails
-	 * fast like {@link #browse}.
-	 *
-	 * @param query the dependency-site query to run.
-	 * @param where the screen anchor for the popup or notice.
+	 * Open a single match directly, or show multiple matches in a popup.
 	 */
 	public void navigate(DependencySiteQuery query, RelativePoint where) {
 
@@ -223,13 +187,8 @@ public class DependencySiteNavigator {
 	}
 
 	/**
-	 * Find every site backing the query and hand the results to the Find tool
-	 * window, skipping the intermediate popup. The Find infrastructure owns the
-	 * background search, progress, cancellation, and result presentation. Runs and
-	 * fails fast during indexing like {@link #navigate}.
-	 *
-	 * @param query the dependency-site query to run.
-	 * @param where the screen anchor for the indexing notice.
+	 * Show matches directly in the Find tool window.
+	 * <p>The Find infrastructure owns search progress and cancellation.
 	 */
 	public void openInFindWindow(DependencySiteQuery query, RelativePoint where) {
 		openInFindWindow(new DependencyUsageTarget(project, query, files), where);
@@ -457,9 +416,8 @@ public class DependencySiteNavigator {
 	}
 
 	/**
-	 * EDT-safe projection of one located site. Captures display and preview data
-	 * during the search read action while retaining a smart pointer for later
-	 * navigation and Find-window transfer.
+	 * Display and preview data captured during a read action for EDT rendering.
+	 * <p>A smart pointer retains the navigation target.
 	 */
 	class SitePresentation implements Comparable<SitePresentation> {
 
@@ -675,11 +633,6 @@ public class DependencySiteNavigator {
 
 	}
 
-	/**
-	 * Popup-style row renderer: 24px rows with the rounded, inset selection of
-	 * platform popup lists ({@code PopupUtil.configListRendererFixedHeight}), as
-	 * used by Search Everywhere.
-	 */
 	private class SiteRenderer implements ListCellRenderer<SitePresentation> {
 
 		private final SimpleColoredComponent component = new SimpleColoredComponent();

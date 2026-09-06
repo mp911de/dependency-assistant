@@ -19,9 +19,8 @@ package biz.paluch.dap.plan;
 import com.intellij.openapi.project.Project;
 
 /**
- * Remove all planned upgrades from the plan. Deliberately unguarded: the plan
- * is a cheap, replaceable staging area, the transition is undoable, and the
- * last-resort confirmations sit on the apply actions instead.
+ * Clear the plan through an undoable transition. Confirmation belongs to the
+ * apply actions because discarding only changes staging.
  *
  * @author Mark Paluch
  */

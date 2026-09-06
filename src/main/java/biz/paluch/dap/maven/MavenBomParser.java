@@ -36,9 +36,7 @@ import org.jetbrains.idea.maven.dom.model.MavenDomProjectModel;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Parses a BOM POM's {@code dependencyManagement} section into the managed
- * member map by walking the
- * {@code dependencyManagement/dependencies/dependency} tags.
+ * Reads managed dependencies from a BOM POM.
  *
  * @author Mark Paluch
  */
@@ -64,13 +62,8 @@ class MavenBomParser extends MavenPomSupport {
 	}
 
 	/**
-	 * Parse the managed members of the BOM POM file.
-	 *
-	 * <p>Imported BOM entries, entries without an artifact ID, and entries without
-	 * a resolvable version are omitted. If the configured file cannot be
-	 * represented as an XML POM, the result is empty.
-	 *
-	 * @return the managed members keyed by artifact coordinates.
+	 * Return resolvable managed members. Imported BOMs are not expanded.
+	 * <p>Returns an empty map if the file is not an XML POM.
 	 */
 	@RequiresReadLock
 	public Map<ArtifactId, ArtifactVersion> readMembers() {
@@ -117,10 +110,7 @@ class MavenBomParser extends MavenPomSupport {
 	}
 
 	/**
-	 * {@link PropertyResolver} backed by {@link MavenPropertyResolver} against the
-	 * containing POM's DOM model. {@code project.*} and {@code pom.*}
-	 * self-references resolve from the POM's own coordinates, falling back to the
-	 * parent coordinates.
+	 * Resolves POM properties with Maven DOM fallback.
 	 */
 	static class DomPropertyResolver implements PropertyResolver {
 

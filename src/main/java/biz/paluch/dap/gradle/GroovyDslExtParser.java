@@ -28,7 +28,7 @@ import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals
 /**
  * Parser methods for Gradle {@code ext} property declarations using Groovy DSL.
  *
- * <p>Declaration shapes are recognized by {@link GroovyExtAssignment}; this
+ * <p>Declaration shapes are supported by {@link GroovyExtAssignment}; this
  * parser only traverses the file.
  *
  * @author Mark Paluch

@@ -43,27 +43,12 @@ import com.intellij.psi.PsiFile;
 import com.intellij.refactoring.rename.RenameHandler;
 
 /**
- * Platform rename entry point for Upgrade Plan items: makes Shift+F6, Refactor
- * | Rename, and the plan popup's Rename entry open a {@link RenameItemDialog}
- * for the single selected top-level item and apply the accepted name as one
- * undoable plan transition.
- *
- * <p>Availability is a single read of {@link UpgradePlanItem#RENAME_TARGET},
- * which the Upgrade Plan panel publishes only for exactly one selected
- * top-level row while the plan is idle. The handler is {@link DumbAware}
- * because the platform filters renamers by dumb-awareness and the rename
- * touches no index.
- *
- * <p>Beyond the plan transition the handler acts on the dialog's two choices:
- * "remember name" stores the accepted name as a
- * {@link ApplicationSettings#addNameHint(String, List) name hint} for the
- * item's member constellation, including implicit group members, when the
- * accepted name differs from the current name. Clearing the choice suppresses
- * this hint update but does not remove an existing hint. "Update
- * dependencyfile.json" writes the name into the project's descriptor. The
- * choices are persisted in {@link ApplicationSettings} as the preselection for
- * the next rename; the descriptor choice is stored only while a descriptor is
- * available.
+ * Rename the single plan item published as
+ * {@link UpgradePlanItem#RENAME_TARGET}.
+ * <p>The plan rename is undoable. Optional name hints include implicit members.
+ * Declining to remember a name preserves existing hints. Descriptor updates
+ * require an existing descriptor.
+ * <p>The handler is {@link DumbAware} because plan renaming uses no index.
  *
  * @author Mark Paluch
  */
@@ -80,8 +65,7 @@ public class RenameItemHandler implements RenameHandler, TitledHandler, DumbAwar
 	}
 
 	/**
-	 * Never reached from the tool window: without an editor in the data context the
-	 * platform dispatches to {@link #invoke(Project, PsiElement[], DataContext)}.
+	 * The tool window invokes {@link #invoke(Project, PsiElement[], DataContext)}.
 	 */
 	@Override
 	public void invoke(Project project, Editor editor, PsiFile file, DataContext dataContext) {
@@ -125,9 +109,6 @@ public class RenameItemHandler implements RenameHandler, TitledHandler, DumbAwar
 		}
 	}
 
-	/**
-	 * Coordinates of all item members, including implicit group members.
-	 */
 	private static List<ArtifactId> getArtifactIds(UpgradePlanItem item) {
 
 		List<ArtifactId> artifactIds = new ArrayList<>();
@@ -168,11 +149,6 @@ public class RenameItemHandler implements RenameHandler, TitledHandler, DumbAwar
 		return suggestions;
 	}
 
-	/**
-	 * Set {@code name} on the descriptor entries covering all item members (see
-	 * {@link DependencyfileArtifacts#setName}). Never creates the descriptor and
-	 * does not open it in the editor.
-	 */
 	private static void updateDependencyfile(Project project, UpgradePlanItem item, String name) {
 
 		VirtualFile descriptor = DependencyfileService.getInstance(project).getDescriptor();

@@ -24,10 +24,8 @@ import com.intellij.lang.properties.psi.Property;
 import com.intellij.psi.PsiFileFactory;
 
 /**
- * {@link PropertyContributorSupport} that completes Gradle
- * {@link WrapperProperty Gradle Wrapper property} lines with the default URL
- * for the newest cached non-preview release. When no such release is cached,
- * completion uses the built-in default version.
+ * Complete Wrapper property lines using the latest cached stable release.
+ * <p>Uses the built-in version when no stable release is cached.
  *
  * @author Mark Paluch
  */

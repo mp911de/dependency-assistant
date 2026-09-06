@@ -32,11 +32,7 @@ import com.intellij.openapi.vcs.changes.ChangeListManager;
 import com.intellij.openapi.vcs.changes.LocalChangeList;
 
 /**
- * Factory for the follow-up actions offered on plugin notifications.
- *
- * <p>Every action is one-shot: choosing it expires the notification. Actions
- * that drive platform services take the project; actions that merely label a
- * caller-supplied operation take the operation.
+ * Follow-up actions that expire their notification when chosen.
  *
  * @author Mark Paluch
  * @see NotificationBuilder#action(NotificationAction)
@@ -44,10 +40,7 @@ import com.intellij.openapi.vcs.changes.LocalChangeList;
 public class NotificationActions {
 
 	/**
-	 * Undo the platform's current undo operation, if any.
-	 *
-	 * @param project the project whose undo stack is used.
-	 * @return the action.
+	 * Undo the current platform undo operation, if available.
 	 */
 	public static NotificationAction undo(Project project) {
 
@@ -60,17 +53,11 @@ public class NotificationActions {
 	}
 
 	/**
-	 * Undo every undo step of a run that created one global command per item.
+	 * Undo matching steps from an upgrade run, stopping at the first unrelated
+	 * step.
 	 *
-	 * <p>Steps are popped from the top of the undo stack while the next step's
-	 * description ends with one of the given command names, each name consuming one
-	 * step. The loop stops at the first foreign step, so edits made after the run
-	 * are never undone, and steps the user already reverted with Ctrl-Z are simply
-	 * skipped.
-	 *
-	 * @param project the project whose undo stack is used.
-	 * @param commandNames the command names the run created, one per step.
-	 * @return the action.
+	 * @param commandNames the command names created by the run, one per undo step.
+	 * Names are matched against the end of the platform undo description.
 	 */
 	public static NotificationAction undoAll(Project project, Collection<String> commandNames) {
 
@@ -90,7 +77,6 @@ public class NotificationActions {
 		});
 	}
 
-	// remove the first command name the undo description ends with
 	private static boolean consume(List<String> commandNames, String undoDescription) {
 
 		for (Iterator<String> iterator = commandNames.iterator(); iterator.hasNext();) {
@@ -104,12 +90,8 @@ public class NotificationActions {
 	}
 
 	/**
-	 * Save all documents and open the commit dialog for the default change list,
-	 * pre-filled with a commit message for the applied updates.
-	 *
-	 * @param project the project to commit in.
-	 * @param updates the applied updates the commit message describes.
-	 * @return the action.
+	 * Save documents and open the commit dialog for the default change list, with a
+	 * commit message describing the applied updates.
 	 */
 	public static NotificationAction commit(Project project, AppliedUpdates updates) {
 
@@ -128,54 +110,24 @@ public class NotificationActions {
 		});
 	}
 
-	/**
-	 * Reverse-apply the flagged entries of an applied-updates run.
-	 *
-	 * @param revert the operation that reverse-applies only flagged entries.
-	 * @return the action.
-	 */
 	public static NotificationAction revertFlagged(Runnable revert) {
 		return NotificationAction.createSimpleExpiring(MessageBundle.message("notification.undo-out-of-bounds"),
 				revert);
 	}
 
-	/**
-	 * Push committed changes.
-	 *
-	 * @param push the push operation.
-	 * @return the action.
-	 */
 	public static NotificationAction push(Runnable push) {
 		return NotificationAction.createSimpleExpiring(MessageBundle.message("notification.push"), push);
 	}
 
-	/**
-	 * Restore a shelf created for a run.
-	 *
-	 * @param unshelve the unshelve operation.
-	 * @return the action.
-	 */
 	public static NotificationAction unshelve(Runnable unshelve) {
 		return NotificationAction.createSimpleExpiring(MessageBundle.message("notification.unshelve"), unshelve);
 	}
 
-	/**
-	 * Refresh the release metadata cache.
-	 *
-	 * @param refresh the refresh operation.
-	 * @return the action.
-	 */
 	public static NotificationAction refreshReleaseMetadata(Runnable refresh) {
 		return NotificationAction.createSimpleExpiring(
 				MessageBundle.message("notification.action.refresh-releases-metadata"), refresh);
 	}
 
-	/**
-	 * Dismiss a prompt for now.
-	 *
-	 * @param dismiss the operation that records the dismissal.
-	 * @return the action.
-	 */
 	public static NotificationAction notNow(Runnable dismiss) {
 		return NotificationAction.createSimpleExpiring(MessageBundle.message("notification.not-now"), dismiss);
 	}

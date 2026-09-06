@@ -27,23 +27,7 @@ import org.assertj.core.api.AbstractAssert;
 /**
  * AssertJ assertions for {@link Releases}.
  *
- * <p>Methods that locate a release navigate to {@link ReleaseAssert} so tests
- * can continue with assertions on that release's version and date. Methods that
- * verify collection-level shape (ordering, scheme precedence, membership)
- * return this assertion object for chaining.
- *
- * <p>Example: <pre class="code">
- * assertThat(releases)
- *     .containsRelease("1.0.0")
- *     .hasReleaseDate("2026-06-08");
- *
- * assertThat(releases)
- *     .hasSuccessorScheme(VersioningScheme.NUMERIC)
- *     .containsExactlyVersions("3.10.0", "3.9.9", "3.9.6");
- * </pre>
- *
  * @author Mark Paluch
- * @see ReleaseAssert
  */
 public class ReleasesAssert extends AbstractAssert<ReleasesAssert, Releases> {
 
@@ -51,22 +35,10 @@ public class ReleasesAssert extends AbstractAssert<ReleasesAssert, Releases> {
 		super(releases, ReleasesAssert.class);
 	}
 
-	/**
-	 * Verifies that a release for the given version is contained and returns an
-	 * assertion object for that release.
-	 * @param version the version to look up.
-	 * @return an assertion object for the matching release.
-	 */
 	public ReleaseAssert containsRelease(String version) {
 		return containsRelease(ArtifactVersion.of(version));
 	}
 
-	/**
-	 * Verifies that a release for the given version is contained and returns an
-	 * assertion object for that release.
-	 * @param version the version to look up.
-	 * @return an assertion object for the matching release.
-	 */
 	public ReleaseAssert containsRelease(ArtifactVersion version) {
 		isNotNull();
 		Release release = this.actual.getRelease(version);
@@ -77,20 +49,10 @@ public class ReleasesAssert extends AbstractAssert<ReleasesAssert, Releases> {
 		return new ReleaseAssert(release);
 	}
 
-	/**
-	 * Verifies that no release for the given version is contained.
-	 * @param version the version expected to be absent.
-	 * @return this assertion object.
-	 */
 	public ReleasesAssert doesNotContainRelease(String version) {
 		return doesNotContainRelease(ArtifactVersion.of(version));
 	}
 
-	/**
-	 * Verifies that no release for the given version is contained.
-	 * @param version the version expected to be absent.
-	 * @return this assertion object.
-	 */
 	public ReleasesAssert doesNotContainRelease(ArtifactVersion version) {
 		isNotNull();
 		Release release = this.actual.getRelease(version);
@@ -101,10 +63,7 @@ public class ReleasesAssert extends AbstractAssert<ReleasesAssert, Releases> {
 	}
 
 	/**
-	 * Verifies that the releases, in artifact-level order, carry exactly the given
-	 * version strings.
-	 * @param expected the expected version strings, in order.
-	 * @return this assertion object.
+	 * Require these version strings in artifact-level order.
 	 */
 	public ReleasesAssert containsExactlyVersions(String... expected) {
 		isNotNull();
@@ -113,12 +72,8 @@ public class ReleasesAssert extends AbstractAssert<ReleasesAssert, Releases> {
 	}
 
 	/**
-	 * Verifies that the releases within the given scheme, newest first, carry
-	 * exactly the given version strings. Passing no versions asserts the scheme is
-	 * empty.
-	 * @param scheme the versioning scheme to select.
-	 * @param expected the expected version strings, in order.
-	 * @return this assertion object.
+	 * Require these version strings within the scheme, newest first.
+	 * <p>No expected versions means the scheme must be empty.
 	 */
 	public ReleasesAssert containsExactlyVersionsInScheme(VersioningScheme scheme, String... expected) {
 		isNotNull();
@@ -128,11 +83,6 @@ public class ReleasesAssert extends AbstractAssert<ReleasesAssert, Releases> {
 		return this;
 	}
 
-	/**
-	 * Verifies that the successor scheme equals the given scheme.
-	 * @param expected the expected successor scheme.
-	 * @return this assertion object.
-	 */
 	public ReleasesAssert hasSuccessorScheme(VersioningScheme expected) {
 		isNotNull();
 		if (expected != this.actual.successorScheme()) {
@@ -142,10 +92,6 @@ public class ReleasesAssert extends AbstractAssert<ReleasesAssert, Releases> {
 		return this;
 	}
 
-	/**
-	 * Verifies that there is no successor scheme, i.e. the releases are empty.
-	 * @return this assertion object.
-	 */
 	public ReleasesAssert hasNoSuccessorScheme() {
 		isNotNull();
 		if (this.actual.successorScheme() != null) {
@@ -154,10 +100,6 @@ public class ReleasesAssert extends AbstractAssert<ReleasesAssert, Releases> {
 		return this;
 	}
 
-	/**
-	 * Verifies that there are no releases.
-	 * @return this assertion object.
-	 */
 	public ReleasesAssert isEmpty() {
 		isNotNull();
 		if (!this.actual.isEmpty()) {

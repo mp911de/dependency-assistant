@@ -23,38 +23,23 @@ import com.intellij.psi.PsiElement;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * A {@link LocalQuickFix} that exposes the {@link DependencyUpdate} it would
- * apply, so an aggregating action can discover and batch matching fixes without
- * knowing the concrete fix type.
+ * A quick fix exposing its selected update for batch application.
  *
  * @author Mark Paluch
- * @see DependencyUpdate
  * @see ApplyAllUpgradesIntention
  */
 public interface DependencyUpdateFix extends LocalQuickFix {
 
 	/**
-	 * Return the chosen update this fix writes when invoked, carrying the target
-	 * version and the declaration and version sources an update writer rewrites.
-	 *
-	 * @return the dependency update; a chosen target, not a suggestion.
+	 * Return the selected update this fix applies.
 	 */
 	DependencyUpdate getUpdate();
 
-	/**
-	 * Return whether this fix was produced for the given upgrade strategy.
-	 *
-	 * @param strategy the upgrade strategy to match against.
-	 * @return {@literal true} if this fix targets {@code strategy};
-	 * {@literal false} otherwise.
-	 */
 	boolean hasStrategy(UpgradeStrategy strategy);
 
 	/**
-	 * Return the version-literal element this fix rewrites.
-	 *
-	 * @return the anchored version literal, or {@literal null} when its PSI anchor
-	 * is no longer valid.
+	 * Return the version literal, or {@literal null} if its anchor is no longer
+	 * valid.
 	 */
 	@Nullable
 	PsiElement getStartElement();

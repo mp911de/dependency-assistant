@@ -27,9 +27,7 @@ import com.intellij.ui.scale.JBUIScale;
 import com.intellij.util.ui.GraphicsUtil;
 
 /**
- * Round color swatch for a GitHub label, shown in the label selector popup the
- * way GitHub renders label dots. Sized on the 16x16 icon grid with a centered
- * filled circle.
+ * Color swatch for a ticket label.
  *
  * @author Mark Paluch
  */

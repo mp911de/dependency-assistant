@@ -28,14 +28,10 @@ import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 
 /**
- * Build-file scope shared by the dependency check result and the Upgrade Plan,
- * resolved to live files, retaining the paths that could not be resolved so
- * callers can report them. Immutable; {@link #rebuild()} re-resolves against
- * the current file system state.
- *
- * <p>Iterating or {@link #stream() streaming} a scope yields only the resolved
- * files, whereas {@link #getPaths()} returns every declared path including the
- * ones that are currently missing.
+ * Immutable build-file scope retaining unresolved paths for reporting.
+ * Iteration exposes only resolved files. {@link #getPaths()} includes missing
+ * paths in declaration order. Use {@link #rebuild()} to resolve the paths
+ * again.
  *
  * @author Mark Paluch
  */
@@ -58,33 +54,22 @@ public class FileScope implements Sequence<VirtualFile> {
 	}
 
 	/**
-	 * Create a scope from already-resolved build files, with no missing paths.
-	 *
-	 * @param files the resolved build files.
-	 * @return the scope.
-	 * @see #of(Collection)
+	 * Copy the resolved files into a scope with no missing paths.
 	 */
 	public static FileScope of(VirtualFile... files) {
 		return new FileScope(List.of(files));
 	}
 
 	/**
-	 * Create a scope from already-resolved build files, with no missing paths.
-	 *
-	 * @param files the resolved build files.
-	 * @return the scope.
+	 * Copy the resolved files into a scope with no missing paths.
 	 */
 	public static FileScope of(Collection<VirtualFile> files) {
 		return new FileScope(List.copyOf(files));
 	}
 
 	/**
-	 * Resolve the given paths against the local file system, keeping the ones that
-	 * do not resolve as missing paths. The declared order is preserved and drives
-	 * {@link #getPaths()}.
-	 *
-	 * @param paths the declared build-file paths to resolve.
-	 * @return the scope with resolved files and retained missing paths.
+	 * Resolve local paths in declaration order, retaining unresolved paths as
+	 * missing.
 	 */
 	public static FileScope from(Collection<String> paths) {
 
@@ -106,10 +91,8 @@ public class FileScope implements Sequence<VirtualFile> {
 	}
 
 	/**
-	 * Re-resolve the scope against the current file system state: files that
-	 * disappeared become missing paths, missing paths that reappeared become files.
-	 *
-	 * @return a new scope resolved from the original declared paths.
+	 * Return a new scope by resolving the original paths against the current file
+	 * system.
 	 */
 	public FileScope rebuild() {
 		return from(paths);
@@ -126,43 +109,26 @@ public class FileScope implements Sequence<VirtualFile> {
 	}
 
 	/**
-	 * Return every declared path in the scope in declaration order, resolved and
-	 * currently missing alike. The inverse of {@link #from(Collection)}:
-	 * {@code from(scope.getPaths())} reconstructs an equivalent scope against the
-	 * current file system state.
-	 *
-	 * @return the declared paths, resolved and missing alike.
+	 * Return the immutable declared paths, including those that could not be
+	 * resolved.
 	 */
 	public List<String> getPaths() {
 		return paths;
 	}
 
 	/**
-	 * Return the live files' presentable URLs joined line-by-line, for dialog and
-	 * notification texts.
-	 *
-	 * @return the presentable URLs of resolved files in declaration order.
+	 * Return resolved files' presentable URLs, one per line in declaration order.
 	 */
 	public String getPresentablePaths() {
 		return files.stream().map(VirtualFile::getPresentableUrl).collect(Collectors.joining("\n"));
 	}
 
-	/**
-	 * Return whether the scope declares any path that does not currently resolve to
-	 * a file.
-	 *
-	 * @return {@literal true} if at least one declared path is missing;
-	 * {@literal false} otherwise.
-	 */
 	public boolean hasMissingFiles() {
 		return !missingPaths.isEmpty();
 	}
 
 	/**
-	 * Return the paths that could not be resolved, joined line-by-line for dialog
-	 * and notification texts.
-	 *
-	 * @return the unresolved declared paths in declaration order.
+	 * Return unresolved paths, one per line in declaration order.
 	 */
 	public String getMissingPaths() {
 		return String.join("\n", missingPaths);

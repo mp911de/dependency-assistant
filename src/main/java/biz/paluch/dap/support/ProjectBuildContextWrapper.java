@@ -37,11 +37,6 @@ public class ProjectBuildContextWrapper implements ProjectBuildContext {
 
 	private final ProjectBuildContext delegate;
 
-	/**
-	 * Create a wrapper for the given build context.
-	 *
-	 * @param delegate the context receiving all delegated calls.
-	 */
 	public ProjectBuildContextWrapper(ProjectBuildContext delegate) {
 		this.delegate = delegate;
 	}

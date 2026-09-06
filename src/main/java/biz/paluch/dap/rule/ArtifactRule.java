@@ -17,14 +17,10 @@
 package biz.paluch.dap.rule;
 
 /**
- * Declared rule associating an {@link ArtifactPattern} with an optional
- * Artifact Display Name and the permitted {@link Generations}.
- *
- * <p>Pattern specificity determines which of several matching artifact rules
- * governs a dependency; equally specific rules resolve to the first declared
- * rule.
+ * An artifact pattern with permitted generations and an optional display name.
  *
  * @author Mark Paluch
+ * @see DependencyRules
  */
 public class ArtifactRule {
 
@@ -40,27 +36,12 @@ public class ArtifactRule {
 		this.generations = generations;
 	}
 
-	/**
-	 * Create an artifact rule.
-	 *
-	 * @param pattern the artifact pattern.
-	 * @param generations the required generations, see
-	 * {@link Generations#from(String...)}.
-	 * @return the artifact rule.
-	 * @see #of(String, String, Generations)
-	 */
 	public static ArtifactRule of(String pattern, Generations generations) {
 		return new ArtifactRule(ArtifactPattern.of(pattern), "", generations);
 	}
 
 	/**
-	 * Create a named artifact rule.
-	 *
-	 * @param pattern the artifact pattern.
-	 * @param name the Artifact Display Name, or an empty string when unnamed.
-	 * @param generations the required generations, see
-	 * {@link Generations#from(String...)}.
-	 * @return the artifact rule.
+	 * Create a named artifact rule. An empty name leaves the rule unnamed.
 	 */
 	public static ArtifactRule of(String pattern, String name, Generations generations) {
 		return new ArtifactRule(ArtifactPattern.of(pattern), name, generations);

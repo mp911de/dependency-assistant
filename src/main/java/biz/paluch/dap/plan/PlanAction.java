@@ -33,70 +33,38 @@ import biz.paluch.dap.util.MessageBundle;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A single reversible transition of the persisted Upgrade Plan, recorded as one
- * entry on the platform undo stack.
- *
- * <p>Implementations are the unit of change behind every plan mutation:
- * capture, remove, paste, discard, rename, and ticket link and unlink.
- * {@link UpgradePlanService} drives them and owns the surrounding machinery: it
- * opens the platform command, advances the plan generation, runs
- * {@link #apply()}, registers the undo adapter, and publishes the change event
- * chosen by {@link #materialization()}. An implementation mutates its
- * transition-owned {@link UpgradePlanState.Content} or
- * {@link UpgradePlanState.Plan} and reports its command name and
- * materialization. Rename transitions also update the associated
- * application-level name hint when requested. Implementations do not touch the
- * command boundary, the undo stack, or the UI.
- *
- * <p>{@link #apply()} and {@link #undo()} must be exact inverses: undo restores
- * the state that apply changed, and redo re-runs apply. An instance is
- * single-use and captures whatever it needs to reverse itself, either at
- * construction or on apply. {@link #undo()} is only invoked after a preceding
- * {@link #apply()}. All methods run on the EDT inside the service's command and
- * plan-generation advance.
+ * Reversible persisted-plan transition managed by {@link UpgradePlanService}.
+ * <p>Implementations own state changes and leave commands, undo registration
+ * and UI notification to the service. Each instance represents one transition.
+ * <p>Apply and undo must be exact inverses. Redo calls apply again. Undo
+ * follows a successful apply. The service invokes transitions on the EDT.
  *
  * @author Mark Paluch
  */
 interface PlanAction {
 
 	/**
-	 * Return the user-visible name of this transition, shown in the platform Undo
-	 * and Redo menu entries.
-	 *
-	 * @return the localized command name.
+	 * Return the localized name shown in Undo and Redo menus.
 	 */
 	String getCommandName();
 
 	/**
-	 * Return how the service refreshes the live plan after this transition, which
-	 * also selects the change event it publishes.
-	 *
-	 * @return {@link Materialization#REBUILD} when the live plan must be
-	 * re-materialized, or {@link Materialization#RETAIN} for an item-scoped change.
+	 * Choose whether the service rebuilds the plan or retains materialized items.
 	 */
 	Materialization materialization();
 
 	/**
-	 * Perform the forward transition, mutating the persisted plan state. Also
-	 * serves as the redo step, re-run by the platform after an {@link #undo()}.
+	 * Apply the forward transition, including redo.
 	 */
 	void apply();
 
 	/**
-	 * Reverse the most recent {@link #apply()}, restoring the plan state it
-	 * changed. Invoked by the platform undo stack only after a preceding
-	 * {@link #apply()}.
+	 * Reverse the preceding apply.
 	 */
 	void undo();
 
 	/**
-	 * Create the capture transition that replaces the plan with fresh content built
-	 * from the armed upgrades and the build files they were captured from.
-	 *
-	 * @param upgrades the reviewed upgrades mapped to their pinned target versions.
-	 * @param scope the build-file scope the upgrades were captured from.
-	 * @param plan the persisted plan to replace.
-	 * @return the reversible capture transition.
+	 * Replace the plan with the reviewed upgrades and their captured file scope.
 	 */
 	static PlanAction planUpgrades(Map<? extends PlannedUpgrade, ArtifactVersion> upgrades, FileScope scope,
 			UpgradePlanState.Plan plan) {
@@ -104,130 +72,68 @@ interface PlanAction {
 	}
 
 	/**
-	 * Create the transition that merges a copied plan fragment into the current
-	 * content. A pasted item replaces the current item with the same
-	 * {@link ItemId}; other pasted items are appended in fragment order. Affected
-	 * files are unioned.
-	 *
-	 * @param pasteContent the copied plan fragment to merge in.
-	 * @param content the current plan content to merge into.
-	 * @return the reversible paste transition.
+	 * Merge a copied fragment by item identity and union its file scope. Pasted
+	 * items replace matching items and are appended in fragment order.
 	 */
 	static PlanAction pasteItems(Content pasteContent, Content content) {
 		return new PasteItems(pasteContent, content);
 	}
 
-	/**
-	 * Create the transition that removes a single item from the plan.
-	 *
-	 * @param content the plan content to remove from.
-	 * @param item the item to remove.
-	 * @return the reversible remove transition.
-	 */
 	static PlanAction removeItems(Content content, UpgradePlanItem item) {
 		return new RemoveItems(content, item);
 	}
 
-	/**
-	 * Create the transition that removes the given items from the plan.
-	 *
-	 * @param content the plan content to remove from.
-	 * @param items the items to remove.
-	 * @return the reversible remove transition.
-	 */
 	static PlanAction removeItems(Content content, Collection<UpgradePlanItem> items) {
 		return new RemoveItems(content, items);
 	}
 
 	/**
-	 * Create the transition that links a ticket to a plan item, or clears its
-	 * association when the ticket is {@literal null}.
-	 *
-	 * @param content the plan content owning the item.
-	 * @param item the item whose ticket association changes.
-	 * @param ticket the ticket to link, or {@literal null} to clear the
-	 * association.
-	 * @return the reversible ticket-link transition.
+	 * Link a ticket, or clear the association when {@code ticket} is
+	 * {@literal null}.
 	 */
 	static PlanAction linkTicket(Content content, UpgradePlanItem item, @Nullable UpgradeTicket ticket) {
 		return new LinkTicket(content, item, ticket);
 	}
 
-	/**
-	 * Create the transition that clears the ticket association of a plan item.
-	 *
-	 * @param content the plan content owning the item.
-	 * @param item the item to unlink.
-	 * @return the reversible ticket-unlink transition.
-	 */
 	static PlanAction unlinkTicket(Content content, UpgradePlanItem item) {
 		return new UnlinkTicket(content, item);
 	}
 
 	/**
-	 * Create the transition that renames a plan item, replacing its persisted
-	 * display name.
-	 *
-	 * @param content the plan content owning the item.
-	 * @param item the item to rename.
-	 * @param displayName the new, already sanitized display name.
-	 * @param rememberName whether the name was remembered by the user.
-	 * @return the reversible rename transition.
+	 * Rename an item, optionally updating its application-wide name hint.
+	 * @param displayName an already sanitized name.
 	 */
 	static PlanAction renameItem(Content content, UpgradePlanItem item, String displayName, boolean rememberName) {
 		return new RenameItem(content, item, displayName, rememberName);
 	}
 
 	/**
-	 * Compose several transitions into one undoable unit, applied in order and
-	 * undone in reverse. The composed actions should share a command name and
-	 * materialization, both taken from the first action.
-	 *
-	 * @param <T> the composed action type.
-	 * @param actions the transitions to apply as one unit, in application order.
-	 * @return the reversible composite transition.
+	 * Combine a non-empty list of transitions, applying in order and undoing in
+	 * reverse. Actions must share the first action's command name and
+	 * materialization.
 	 */
 	static <T extends PlanAction> PlanAction composite(List<T> actions) {
 		return new CompositeAction<>(actions);
 	}
 
-	/**
-	 * Create the transition that clears the plan to empty content.
-	 *
-	 * @param plan the persisted plan to clear.
-	 * @return the reversible discard transition.
-	 */
 	static PlanAction discardUpgrades(UpgradePlanState.Plan plan) {
 		return new DiscardUpgrades(plan);
 	}
 
-	/**
-	 * How the service refreshes the live plan after a transition, selecting the
-	 * change event published on apply, undo, and redo.
-	 */
 	enum Materialization {
 
 		/**
-		 * Re-materialize the live plan from persisted state, resolving interface
-		 * metadata and the build-file scope and rebuilding the tree. Used when capture,
-		 * paste, or discard changes the content that must be materialized.
+		 * Rebuild the live plan from persisted state.
 		 */
 		REBUILD,
 
 		/**
-		 * Reuse the already-materialized items and refresh their views in place,
-		 * preserving tree expansion and selection. Used when no item needs
-		 * re-materialization: remove, rename, and ticket link and unlink.
+		 * Retain materialized items and refresh their views.
 		 */
 		RETAIN
 
 	}
 
-	/**
-	 * Applies several transitions as one undoable unit, undoing them in reverse
-	 * order. Reports the first action's command name and materialization, so the
-	 * composed actions are expected to share both.
-	 */
 	class CompositeAction<T extends PlanAction> implements PlanAction {
 
 		private final List<T> actions;
@@ -262,11 +168,6 @@ interface PlanAction {
 
 	}
 
-	/**
-	 * Links a ticket to one plan item, or clears its association when the new
-	 * ticket is {@literal null}, capturing the prior ticket at construction for
-	 * undo.
-	 */
 	class LinkTicket implements PlanAction {
 
 		private final Content content;
@@ -321,10 +222,6 @@ interface PlanAction {
 
 	}
 
-	/**
-	 * Clears the ticket association of one plan item: a {@link LinkTicket} with no
-	 * new ticket and its own command name for the Undo and Redo menu.
-	 */
 	class UnlinkTicket extends LinkTicket {
 
 		private UnlinkTicket(Content content, UpgradePlanItem item) {
@@ -338,12 +235,6 @@ interface PlanAction {
 
 	}
 
-	/**
-	 * Renames one plan item by replacing its persisted display name. When
-	 * requested, also replaces the remembered name for the item's member
-	 * constellation. The prior display name and remembered name are restored on
-	 * undo.
-	 */
 	class RenameItem implements PlanAction {
 
 		private final ApplicationSettings settings;
@@ -427,10 +318,6 @@ interface PlanAction {
 
 	}
 
-	/**
-	 * Removes the given items from the plan by their id, capturing the prior item
-	 * list on apply so undo restores it in full.
-	 */
 	class RemoveItems implements PlanAction {
 
 		private final Content content;
@@ -478,10 +365,6 @@ interface PlanAction {
 
 	}
 
-	/**
-	 * Captures the armed upgrades and their build-file scope into fresh plan
-	 * content, replacing any previous plan and keeping the prior content for undo.
-	 */
 	class PlanUpgrades implements PlanAction {
 
 		private final UpgradePlanState.Plan plan;
@@ -525,9 +408,6 @@ interface PlanAction {
 
 	}
 
-	/**
-	 * Clears the plan to empty content, keeping the prior content for undo.
-	 */
 	class DiscardUpgrades implements PlanAction {
 
 		private final UpgradePlanState.Plan plan;
@@ -563,11 +443,6 @@ interface PlanAction {
 
 	}
 
-	/**
-	 * Merges a copied plan fragment into the current content. Equal-identity items
-	 * are replaced by their pasted form, other fragment items are appended, and
-	 * affected files are unioned. Keeps the prior content for undo.
-	 */
 	class PasteItems implements PlanAction {
 
 		private final Content pasteContent;

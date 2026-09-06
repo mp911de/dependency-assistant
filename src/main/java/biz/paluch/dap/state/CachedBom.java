@@ -32,18 +32,11 @@ import com.intellij.util.xmlb.annotations.XCollection;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Persistent Bill of Materials membership for one BOM version.
+ * Persistent membership for one BOM version. Members with the same group and
+ * version share a serialized entry to keep large BOMs compact.
  *
- * <p>Members are stored grouped by group identifier and managed version rather
- * than one element per member, because a BOM typically manages many artifacts
- * of the same group at a single version. A group omits its version when the
- * members are managed at the BOM version itself, which is the common case. The
- * grouped form is produced by {@link #snapshot()} and expanded again on read,
- * so callers never see it.
- *
- * <p>Documents written before grouping stored one member per element carrying
- * its own {@code artifactId}. Such elements still read correctly and are
- * rewritten in grouped form on the next snapshot.
+ * <p>Older single-member entries remain readable and are grouped on the next
+ * persistence snapshot.
  *
  * @author Mark Paluch
  */
@@ -65,13 +58,6 @@ public class CachedBom {
 		this.version = version;
 	}
 
-	/**
-	 * Create a membership entry for the given BOM version and members.
-	 *
-	 * @param version the BOM version the membership is scoped to.
-	 * @param members the managed members keyed by artifact coordinates.
-	 * @return the membership entry.
-	 */
 	public static CachedBom from(ArtifactVersion version, Map<ArtifactId, ArtifactVersion> members) {
 
 		CachedBom membership = new CachedBom(version);
@@ -79,21 +65,10 @@ public class CachedBom {
 		return membership;
 	}
 
-	/**
-	 * Return the BOM version this membership is scoped to.
-	 *
-	 * @return the BOM version.
-	 */
 	public ArtifactVersion getVersion() {
 		return version;
 	}
 
-	/**
-	 * Return whether the given artifact is listed as a member of this membership,
-	 * regardless of version.
-	 * @param artifactId the member coordinates to look up.
-	 * @return {@code true} if a member entry matches the coordinates.
-	 */
 	public boolean isMember(ArtifactId artifactId) {
 
 		for (CachedBomMembers group : members) {
@@ -107,10 +82,7 @@ public class CachedBom {
 	}
 
 	/**
-	 * Expand the stored groups into a domain member map, skipping entries whose
-	 * coordinates or version no longer parse.
-	 *
-	 * @return the managed members keyed by artifact coordinates.
+	 * Return the managed members, omitting groups without an identifier or version.
 	 */
 	public Map<ArtifactId, ArtifactVersion> toMembers() {
 
@@ -131,10 +103,7 @@ public class CachedBom {
 	}
 
 	/**
-	 * Return a copy in grouped form for persistence snapshots.
-	 * <p>Grouping runs off the {@link #toMembers() expanded} view rather than the
-	 * stored groups, so re-snapshotting an entry that was itself read from a
-	 * snapshot preserves every member.
+	 * Copy into the current persistence format, including legacy members.
 	 */
 	CachedBom snapshot() {
 
@@ -144,9 +113,7 @@ public class CachedBom {
 	}
 
 	/**
-	 * Replace the stored groups with the given members, grouped by group identifier
-	 * and managed version. Groups, and the identifiers within them, are ordered so
-	 * that equal memberships serialize to an identical document.
+	 * Use stable ordering so equivalent memberships produce the same document.
 	 */
 	private void group(Map<ArtifactId, ArtifactVersion> memberVersions) {
 
@@ -223,20 +190,14 @@ public class CachedBom {
 		}
 
 		/**
-		 * Return the managed version shared by this group, or {@literal null} when the
-		 * group inherits the BOM version.
-		 *
-		 * @return the shared managed version, or {@literal null} when inherited.
+		 * Return the shared version, or {@code null} to inherit the BOM version.
 		 */
 		public @Nullable ArtifactVersion getVersion() {
 			return version;
 		}
 
 		/**
-		 * Return the artifact identifiers in this group, falling back to the
-		 * single-member form used by documents written before grouping.
-		 *
-		 * @return the grouped artifact identifiers.
+		 * Return the identifiers, including the legacy single-member form.
 		 */
 		public List<String> getArtifactIds() {
 			return artifacts.isEmpty() && StringUtils.hasText(artifactId) ? List.of(artifactId) : artifacts;

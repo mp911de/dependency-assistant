@@ -37,85 +37,45 @@ import org.jspecify.annotations.Nullable;
  */
 public interface ProjectState {
 
-	/**
-	 * Find a dependency by its artifact coordinates.
-	 *
-	 * @param artifactId the dependency coordinates to locate.
-	 * @return the matching dependency, or {@literal null} if the current runtime state
-	 * does not contain it.
-	 */
 	@Nullable
 	Dependency findDependency(ArtifactId artifactId);
 
 	/**
-	 * Replace the current runtime dependency state of this project.
-	 * <p>Bills of Materials the scan resolved are seeded into the cache, keyed by
-	 * the ecosystem each Bill of Materials carries.
-	 *
-	 * @param collector the freshly analyzed dependency collector.
+	 * Replace runtime dependencies and persist their property correlations and
+	 * resolved BOM memberships.
 	 */
 	void setDependencies(DependencyCollector collector);
 
 	/**
-	 * Return whether dependencies are available.
-	 *
-	 * @return {@literal true} if dependencies were set and not yet invalidated.
+	 * Whether runtime dependencies have been supplied and not invalidated.
 	 */
 	boolean hasDependencies();
 
-	/**
-	 * Discard the current runtime dependency state.
-	 */
 	void invalidateDependencies();
 
 	/**
-	 * Remove the project state from the cache.
-	 * <p>Useful when a project file has been deleted.
-	 * @see #invalidateDependencies()
+	 * Remove both runtime dependencies and persisted project state.
 	 */
 	void remove();
 
 	/**
-	 * Find a property by name that is associated with at least one artifact.
-	 *
-	 * @param propertyName the property name to locate.
-	 * @return the matching property, or {@literal null} if none is known or no
-	 * artifact correlation exists.
+	 * Find a property with at least one artifact association.
 	 */
 	default @Nullable VersionProperty findProperty(String propertyName) {
 		return findProperty(propertyName, VersionProperty::hasArtifacts);
 	}
 
-	/**
-	 * Find a property by name using the given filter.
-	 *
-	 * @param propertyName the property name to locate.
-	 * @param filter the conditional that must accept the matching property.
-	 * @return the matching property, or {@literal null}.
-	 */
 	@Nullable
 	VersionProperty findProperty(String propertyName, Predicate<VersionProperty> filter);
 
 	/**
-	 * Find a project property by name that is associated with at least one
-	 * artifact.
-	 *
-	 * @param propertyName the property name to locate.
-	 * @return the matching project property, or {@literal null} if none is known or no
-	 * artifact correlation exists.
+	 * Find a property with at least one artifact association, retaining its owner.
 	 */
 
 	default @Nullable ProjectProperty findProjectProperty(String propertyName) {
 		return findProjectProperty(propertyName, VersionProperty::hasArtifacts);
 	}
 
-	/**
-	 * Find a project property by name using the given filter.
-	 *
-	 * @param propertyName the property name to locate.
-	 * @param filter the conditional that must accept the matching property.
-	 * @return the matching project property, or {@literal null}.
-	 */
 	@Nullable
 	ProjectProperty findProjectProperty(String propertyName, Predicate<VersionProperty> filter);
 

@@ -56,13 +56,9 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 	}
 
 	/**
-	 * Create a non-fallback rule that matches every branch and governs only the
-	 * given artifacts.
+	 * Create a rule for every branch. Both collections are copied.
 	 *
-	 * @param artifacts the artifact rules snapshotted by the returned rule.
-	 * @param upgradeStrategies the supported upgrade strategies; empty for no
-	 * limits. The set is snapshotted by the returned rule.
-	 * @return the branch rule.
+	 * @param upgradeStrategies permitted strategies, or empty for no limits.
 	 */
 	public static BranchRule of(Collection<ArtifactRule> artifacts,
 			Set<UpgradeStrategy> upgradeStrategies) {
@@ -70,13 +66,10 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 	}
 
 	/**
-	 * Create a non-fallback rule for the given branch or project-version pattern.
+	 * Create a rule for a branch or project-version pattern. Both collections are
+	 * copied.
 	 *
-	 * @param pattern the branch or project-version pattern.
-	 * @param artifacts the artifact rules snapshotted by the returned rule.
-	 * @param upgradeStrategies the supported upgrade strategies; empty for no
-	 * limits. The set is snapshotted by the returned rule.
-	 * @return the branch rule.
+	 * @param upgradeStrategies permitted strategies, or empty for no limits.
 	 */
 	public static BranchRule of(String pattern, Collection<ArtifactRule> artifacts,
 			Set<UpgradeStrategy> upgradeStrategies) {
@@ -84,24 +77,15 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 	}
 
 	/**
-	 * Create a fallback declaration matching every branch, with default artifact
-	 * rules and upgrade-strategy limits. {@link DependencyRules} uses this marker
-	 * to retain branch-level governance when no artifact rule matches.
+	 * Create a fallback that retains branch governance even without a matching
+	 * artifact rule. Both collections are copied.
 	 *
-	 * @param artifacts the default artifact dependency rules snapshotted by the
-	 * returned rule.
-	 * @param upgradeStrategies the supported upgrade strategies; empty for no
-	 * limits. The set is snapshotted by the returned rule.
-	 * @return the fallback branch rule.
+	 * @param upgradeStrategies permitted strategies, or empty for no limits.
 	 */
 	public static BranchRule fallback(Collection<ArtifactRule> artifacts, Set<UpgradeStrategy> upgradeStrategies) {
 		return new BranchRule(true, KnownPattern.ANY, artifacts, upgradeStrategies);
 	}
 
-	/**
-	 * Rank pattern specificity: exact patterns order highest, then wildcard
-	 * patterns, then the match-all pattern.
-	 */
 	private static int specificity(String pattern) {
 		if ("*".equals(pattern)) {
 			return 0;
@@ -114,12 +98,8 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 	}
 
 	/**
-	 * Return whether this branch rule permits the given upgrade strategy. A rule
-	 * without upgrade-strategy limits permits every strategy.
-	 *
-	 * @param upgradeStrategy the upgrade strategy.
-	 * @return {@literal true} if the strategy is permitted; {@literal false}
-	 * otherwise.
+	 * Return whether the strategy is permitted. An unrestricted rule permits every
+	 * strategy.
 	 */
 	public boolean supports(UpgradeStrategy upgradeStrategy) {
 		return this.upgradeStrategies.isEmpty() || this.upgradeStrategies.contains(upgradeStrategy);
@@ -138,9 +118,7 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 	}
 
 	/**
-	 * Return the explicitly configured or inferred upgrade-strategy limits.
-	 *
-	 * @return the strategy set retained by this rule. An empty set means no limits.
+	 * Return the immutable strategy limits, or an empty set for no limits.
 	 */
 	public Set<UpgradeStrategy> upgradeStrategies() {
 		return this.upgradeStrategies;

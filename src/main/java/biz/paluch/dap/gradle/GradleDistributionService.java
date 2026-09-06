@@ -59,9 +59,6 @@ public class GradleDistributionService implements ReleaseSource {
 	 */
 	public static final ArtifactId GRADLE_DISTRIBUTION = ArtifactId.of("org.gradle", "gradle");
 
-	/**
-	 * Shared Gradle distribution release source.
-	 */
 	public static final GradleDistributionService INSTANCE = new GradleDistributionService();
 
 	private static final Logger LOG = Logger.getInstance(GradleDistributionService.class);
@@ -80,11 +77,6 @@ public class GradleDistributionService implements ReleaseSource {
 		this(GradleDistributionService::fetchUrl);
 	}
 
-	/**
-	 * Create a release source using the supplied Gradle versions feed fetcher.
-	 *
-	 * @param fetcher the fetcher for the Gradle versions feed.
-	 */
 	public GradleDistributionService(VersionsFetcher fetcher) {
 		this.fetcher = fetcher;
 	}
@@ -204,19 +196,13 @@ public class GradleDistributionService implements ReleaseSource {
 	}
 
 	/**
-	 * Fetches the content of a Gradle versions feed endpoint.
-	 *
-	 * <p>Implementations may return {@literal null} when the endpoint has no
-	 * response body and propagate transport failures as {@link IOException}.
+	 * Fetch the Gradle versions feed.
 	 */
 	@FunctionalInterface
 	public interface VersionsFetcher {
 
 		/**
-		 * Fetch the response body from the given endpoint.
-		 *
-		 * @param uri the feed endpoint.
-		 * @return the response body, or {@literal null} when no body is available.
+		 * Return the response body, or {@literal null} if absent.
 		 * @throws IOException if the endpoint cannot be read.
 		 */
 		@Nullable

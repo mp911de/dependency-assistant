@@ -22,7 +22,6 @@ import javax.swing.Icon;
 
 import biz.paluch.dap.assistant.ArtifactReferenceContext;
 import biz.paluch.dap.metadata.ProjectMetadata;
-import biz.paluch.dap.metadata.ProjectMetadataService;
 import biz.paluch.dap.util.HttpClientUtil;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.codeInsight.intention.PriorityAction;
@@ -36,16 +35,11 @@ import com.intellij.psi.PsiFile;
 import com.intellij.util.IncorrectOperationException;
 
 /**
- * Intention that opens the release notes of the declared dependency version in
- * the browser.
- *
- * <p>Availability is cache-only and version-specific: the intention shows up
- * only when the {@link ProjectMetadataService} facade finds a cached repository
- * tag representing the declared version and the hosting platform can render a
- * release-notes URL for that tag.
+ * Opens release notes for the declared dependency version.
+ * <p>Availability requires a matching cached tag and a platform release-notes
+ * URL.
  *
  * @author Mark Paluch
- * @see ReportIssueIntention
  */
 public class OpenReleaseNotesIntention extends BaseIntentionAction implements PriorityAction, Iconable {
 

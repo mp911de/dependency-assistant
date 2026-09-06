@@ -39,9 +39,7 @@ import com.intellij.ui.content.ContentFactory;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Factory for the bottom-anchored Upgrade Plan tool window, and the entry point
- * for {@link #openWith opening it} with upgrades transferred from the review
- * dialog.
+ * Upgrade Plan tool window and entry point for reviewed upgrades.
  *
  * @author Mark Paluch
  */
@@ -56,13 +54,7 @@ public class UpgradePlanToolWindowFactory implements ToolWindowFactory, DumbAwar
 			DependencyAssistantIcons.TOOL_WINDOW_UPGRADE_PLAN);
 
 	/**
-	 * Capture the armed upgrades into a fresh plan and reveal the Upgrade Plan tool
-	 * window showing them. Any previously planned upgrade is discarded so the
-	 * transfer defines the plan afresh.
-	 *
-	 * @param project the project owning the plan.
-	 * @param upgrades the armed upgrades to transfer; they become the whole plan.
-	 * @param scope the build-file scope that becomes the plan's scope.
+	 * Replace the plan with reviewed upgrades and their file scope, then reveal it.
 	 */
 	public static void openWith(Project project, Map<? extends PlannedUpgrade, ArtifactVersion> upgrades,
 			FileScope scope) {
@@ -126,7 +118,7 @@ public class UpgradePlanToolWindowFactory implements ToolWindowFactory, DumbAwar
 		toolWindow.getContentManager().addContent(content);
 
 		// the New UI fades header toolbars (including tab actions) when the tool
-		// window deactivates; the milestone/label selectors are persistent
+		// window deactivates. The milestone/label selectors are persistent
 		// controls, so opt out via the documented client property
 		toolWindow.getComponent().putClientProperty(ToolWindowContentUi.DONT_HIDE_TOOLBAR_IN_HEADER, true);
 

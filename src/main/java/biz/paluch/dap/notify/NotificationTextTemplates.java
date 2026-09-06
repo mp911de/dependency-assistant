@@ -41,9 +41,6 @@ class NotificationTextTemplates {
 		this.manager = FileTemplateManager.getInstance(project);
 	}
 
-	/**
-	 * Commit message for multiple dependency updates.
-	 */
 	public String getCommitMessage(AppliedUpdates updates) {
 
 		if (updates.size() == 1) {

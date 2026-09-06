@@ -50,51 +50,36 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * Declared-version and declaration-style facts for one artifact across its
+ * Versions and declaration styles for one artifact across its
  * {@link DeclarationSite declaration sites}.
  *
  * <p>The lowest declared version is the conservative upgrade baseline. Version
- * drift exists when the sites resolve to more than one distinct version,
- * whether across files or within one file. Declaration drift exists when the
- * sites mix inline versions and version properties. The record retains and
- * exposes the supplied sets directly, so callers must not modify them after
- * construction. Factory-created version sets iterate in descending order;
- * direct construction preserves the supplied set's iteration order.
+ * drift can occur across files or within one file. Declaration drift means that
+ * sites mix inline versions and version properties.
+ *
+ * <p>The supplied sets are retained and exposed directly. Callers must not
+ * modify them after construction. Factories order versions from highest to
+ * lowest. Direct construction preserves the supplied order.
  *
  * @author Mark Paluch
- * @param versions the distinct parsed versions found in the declaration sites.
- * @param entries the sortable declaration entries used for version-drift
- * display.
- * @param declarationEntries the sortable declaration-style entries used for
- * drift display.
+ * @param versions the distinct parsed versions.
+ * @param entries the version-drift display entries.
+ * @param declarationEntries the declaration-style display entries.
  */
 public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> entries,
 		Set<DeclarationDrift> declarationEntries) implements Sequence<ArtifactVersion> {
 
-	/** Maximum number of version groups listed in the version-drift tool tip. */
 	private static final int MAX_DISPLAYED_VERSIONS = 5;
 
-	/** Maximum number of locations listed per drift group before overflow. */
 	private static final int MAX_DISPLAYED_FILES = 3;
 
-	/**
-	 * Return an empty result with no declared versions.
-	 *
-	 * @return a result with no versions and no declaration entries.
-	 */
 	public static DeclaredVersions empty() {
 		return new DeclaredVersions(Set.of(), Set.of(), Set.of());
 	}
 
 	/**
-	 * Return a result declaring the artifact at a single version, with no drift.
-	 *
-	 * <p>Used when reconstructing an upgrade candidate from a persisted plan, where
-	 * only the effective current version is known and no declaration sites are
-	 * available for drift reporting.
-	 *
-	 * @param version the single declared version.
-	 * @return a result carrying the one version.
+	 * Represent a single version without drift.
+	 * <p>Persisted plans lack the declaration sites needed to report drift.
 	 */
 	public static DeclaredVersions of(ArtifactVersion version) {
 
@@ -104,10 +89,7 @@ public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> 
 	}
 
 	/**
-	 * Merge declared-version and drift facts from several dependencies.
-	 *
-	 * @param declaredVersions the declared-version facts to merge.
-	 * @return one result containing all distinct versions and drift entries.
+	 * Merge distinct declared versions and drift entries.
 	 */
 	public static DeclaredVersions merge(Collection<DeclaredVersions> declaredVersions) {
 
@@ -151,6 +133,7 @@ public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> 
 		boolean containsGitVersion = hasGitVersion(declarationSites);
 		for (DeclarationSite site : declarationSites) {
 			DeclaredDependency declaredDependency = site.dependency();
+			// Resolve display paths here to keep path resolution out of EDT rendering.
 			String location = getDisplayLocation(site.projectId(), site.file(), project);
 
 			if (declaredDependency instanceof Dependency dependency) {
@@ -211,20 +194,14 @@ public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> 
 	}
 
 	/**
-	 * Return whether the declared versions disagree.
-	 *
-	 * @return {@literal true} if the resolved declared versions differ;
-	 * {@literal false} otherwise.
+	 * Return whether declaration sites report different versions.
 	 */
 	public boolean hasVersionDrift() {
 		return versions().size() > 1 && entries.size() > 1;
 	}
 
 	/**
-	 * Return whether the declaration styles disagree.
-	 *
-	 * @return {@literal true} when the declaration sites mix inline versions and
-	 * version properties; {@literal false} otherwise.
+	 * Return whether sites mix inline versions and version properties.
 	 */
 	public boolean hasDeclarationDrift() {
 
@@ -245,42 +222,24 @@ public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> 
 		return inline && property;
 	}
 
-	/**
-	 * Return whether either version values or declaration styles drift.
-	 *
-	 * @return {@literal true} if version or declaration drift exists;
-	 * {@literal false} otherwise.
-	 */
 	public boolean hasDrift() {
 		return hasVersionDrift() || hasDeclarationDrift();
 	}
 
 	/**
-	 * Visit each recorded version and declaration location in display order.
-	 *
-	 * <p>File locations are rendered relative to the project base path when a
-	 * project is available.
-	 *
-	 * @param consumer the consumer receiving version strings and display locations.
+	 * Visit recorded versions and their locations in display order.
+	 * @param consumer receives version strings and precomputed display locations.
 	 */
 	public void forEachDrift(BiConsumer<String, String> consumer) {
 		entries.forEach(it -> consumer.accept(it.version().toString(), it.location()));
 	}
 
-	/**
-	 * Return whether any concrete version was found.
-	 *
-	 * @return {@literal true} if at least one version was found; {@literal false}
-	 * otherwise.
-	 */
 	public boolean hasVersion() {
 		return !versions.isEmpty();
 	}
 
 	/**
-	 * Return the highest version the artifact is declared at.
-	 *
-	 * @return the first version according to the artifact version ordering.
+	 * Return the highest declared version.
 	 * @throws IllegalStateException if no version was found.
 	 */
 	public ArtifactVersion getHighestDeclaredVersion() {
@@ -289,10 +248,7 @@ public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> 
 	}
 
 	/**
-	 * Return the lowest version the artifact is declared at, the most conservative
-	 * declared version across all sites.
-	 *
-	 * @return the last version according to the artifact version ordering.
+	 * Return the lowest declared version as the conservative upgrade baseline.
 	 * @throws IllegalStateException if no version was found.
 	 */
 	public ArtifactVersion getLowestDeclaredVersion() {
@@ -306,21 +262,10 @@ public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> 
 
 
 	/**
-	 * Render the version-drift tool tip.
-	 *
-	 * <p>Declarations are grouped by their declared version, ordered by version. Up
-	 * to {@link #MAX_DISPLAYED_VERSIONS} version groups are listed, each naming up
-	 * to {@link #MAX_DISPLAYED_FILES} locations before collapsing the remainder
-	 * into an overflow count. The {@code currentVersion} group is omitted because
-	 * it is already shown in the current-version column.
-	 *
-	 * <p>Declared versions and locations originate from build files and are
-	 * escaped; the returned chunk is safe to embed in HTML tooltips.
-	 *
-	 * @param currentVersion the version shown in the current-version column,
-	 * excluded from the listed groups.
-	 * @return the version-drift tool tip markup. The chunk is empty when no version
-	 * drift exists.
+	 * Render a tooltip for conflicting declared versions.
+	 * <p>Omit the current version because the table already shows it.
+	 * @param currentVersion the version shown in the table.
+	 * @return escaped HTML, or an empty chunk when there is no version drift.
 	 */
 	public HtmlChunk getVersionDriftToolTip(ArtifactVersion currentVersion) {
 
@@ -361,16 +306,8 @@ public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> 
 	}
 
 	/**
-	 * Render the declaration-drift tool tip.
-	 *
-	 * <p>The tooltip names the declaration styles in use and lists up to
-	 * {@link #MAX_DISPLAYED_FILES} distinct locations across those styles before
-	 * collapsing the remainder into an overflow count.
-	 *
-	 * <p>Locations originate from build files and are escaped; the returned chunk
-	 * is safe to embed in HTML tooltips.
-	 *
-	 * @return the declaration-drift tool tip markup.
+	 * Render a tooltip showing declaration styles and their locations.
+	 * @return escaped HTML for the declaration drift.
 	 */
 	public HtmlChunk getDeclarationDriftToolTip() {
 
@@ -389,14 +326,6 @@ public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> 
 				.append(renderLocations(files)).toFragment();
 	}
 
-	/**
-	 * Render a list of up to {@link #MAX_DISPLAYED_FILES} declaration locations,
-	 * collapsing any remaining locations into an overflow count. Locations are
-	 * escaped.
-	 *
-	 * @param locations the locations to render, in display order.
-	 * @return the rendered location markup.
-	 */
 	private static HtmlChunk renderLocations(Collection<String> locations) {
 
 		HtmlBuilder rendered = new HtmlBuilder();
@@ -419,20 +348,6 @@ public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> 
 		return rendered.wrapWith("ul");
 	}
 
-	/**
-	 * Compute the declaration location.
-	 *
-	 * <p>Resolved eagerly at construction because rendering a path relative to the
-	 * project base path is a slow operation that must not run on the EDT. Project
-	 * coordinates take precedence; otherwise the file path is rendered relative to
-	 * the project base path, or as an absolute path when no project is available.
-	 *
-	 * @param projectId the project identity associated with the declaration.
-	 * @param file the file containing the declaration.
-	 * @param project the project used for base-path resolution, or {@literal null}
-	 * to retain absolute file paths.
-	 * @return the declaration location.
-	 */
 	private static String getDisplayLocation(ProjectId projectId, VirtualFile file, @Nullable Project project) {
 
 		if (StringUtils.hasText(projectId.groupId()) && StringUtils.hasText(projectId.artifactId())
@@ -444,11 +359,7 @@ public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> 
 	}
 
 	/**
-	 * Display entry for one drift declaration.
-	 *
-	 * @param version the parsed or resolved declared version.
-	 * @param location the declaration location shown to users, resolved at
-	 * construction.
+	 * A declared version and its precomputed display location.
 	 */
 	record VersionDrift(ArtifactVersion version, String location) implements Comparable<VersionDrift> {
 
@@ -463,11 +374,7 @@ public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> 
 	}
 
 	/**
-	 * Display entry for one declaration-style drift location.
-	 *
-	 * @param style the declaration style seen at the location.
-	 * @param location the declaration location shown to users, resolved at
-	 * construction.
+	 * A declaration style and its precomputed display location.
 	 */
 	record DeclarationDrift(DeclarationStyle style, String location) implements Comparable<DeclarationDrift> {
 

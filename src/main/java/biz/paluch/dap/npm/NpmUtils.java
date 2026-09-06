@@ -27,12 +27,8 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 
 /**
- * Identifies NPM {@code package.json} files and renders package coordinates.
- *
- * <p>PSI detection requires a JSON file named {@code package.json} whose root
- * object contains a {@code dependencies} or {@code devDependencies} property
- * whose value is a JSON object. Files without such an object are outside the
- * integration.
+ * NPM file identification and package coordinates.
+ * <p>PSI detection requires a dependency object in {@code package.json}.
  *
  * @author Mark Paluch
  */
@@ -49,10 +45,7 @@ class NpmUtils {
 	}
 
 	/**
-	 * Render an artifact coordinate as an NPM package name.
-	 *
-	 * @param artifactId the normalized package coordinate.
-	 * @return the unscoped name or {@code @scope/name} representation.
+	 * Render a coordinate as an unscoped name or {@code @scope/name}.
 	 */
 	static String toString(ArtifactId artifactId) {
 		if (artifactId.groupId().equals(artifactId.artifactId())) {
@@ -62,9 +55,8 @@ class NpmUtils {
 	}
 
 	/**
-	 * Return the canonical artifact identity for the given NPM package name.
-	 * @param name an NPM package name that passed the package-name allowlist.
-	 * @return the canonical artifact identity.
+	 * Return the canonical artifact identity for an NPM package name.
+	 * @param name a name that passed the package-name allowlist.
 	 */
 	static ArtifactId toArtifactId(String name) {
 
@@ -75,13 +67,6 @@ class NpmUtils {
 		return ArtifactId.of(name.substring(0, slash), name.substring(slash + 1));
 	}
 
-	/**
-	 * Return whether the given file is a {@code package.json} that the integration
-	 * should manage.
-	 *
-	 * @param file the PSI file to test.
-	 * @return {@literal true} when the file qualifies.
-	 */
 	static boolean isPackageJson(PsiFile file) {
 
 		if (!PACKAGE_JSON.equals(file.getName())) {
@@ -92,14 +77,7 @@ class NpmUtils {
 	}
 
 	/**
-	 * Return whether the given virtual file is named {@code package.json}.
-	 *
-	 * <p>This is a name check only. The IDE caller still needs to inspect the PSI
-	 * to verify the document carries dependency keys.
-	 *
-	 * @param file the virtual file to test.
-	 * @return {@literal true} when the file has the NPM package descriptor name;
-	 * {@literal false} otherwise.
+	 * Check the file name only. Dependency sections require a separate PSI check.
 	 */
 	static boolean isPackageJson(VirtualFile file) {
 		return PACKAGE_JSON.equals(file.getName());

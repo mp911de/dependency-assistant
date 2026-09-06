@@ -29,14 +29,9 @@ import com.intellij.openapi.actionSystem.PlatformDataKeys;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The plan items a user action targets, resolved from an {@link AnActionEvent}
- * selection or handed over directly from the plan tree.
- *
- * <p>Holds the selected items in source order and adds first-item and fallback
- * access for actions that operate on the selection, or on a supplied fallback
- * when nothing is selected. The plan tree supplies selections in Plan Order,
- * independent of its current view sorting. Non-plan-item entries in an action
- * event (such as member rows) are dropped during resolution.
+ * Plan items targeted by an action, in source order.
+ * <p>Event resolution ignores non-item entries. The plan tree supplies plan
+ * order regardless of its display sorting.
  *
  * @author Mark Paluch
  */
@@ -50,32 +45,17 @@ class PlanSelection implements Sequence<UpgradePlanItem> {
 		this.items = items;
 	}
 
-	/**
-	 * Returns an empty {@code PlanSelection} instance.
-	 *
-	 * @return an empty {@code PlanSelection}.
-	 */
 	static PlanSelection empty() {
 		return EMPTY;
 	}
 
 	/**
-	 * Wrap an already-resolved selection, such as the plan tree's selected items.
-	 *
-	 * @param items the selected plan items in the order actions should process
-	 * them.
-	 * @return the plan selection.
+	 * Copy the selected items in action-processing order.
 	 */
 	static PlanSelection of(List<UpgradePlanItem> items) {
 		return new PlanSelection(List.copyOf(items));
 	}
 
-	/**
-	 * Create the selection from the given action event.
-	 *
-	 * @param e the action event carrying the tree selection.
-	 * @return the plan selection.
-	 */
 	static PlanSelection from(AnActionEvent e) {
 
 		Object[] selection = e.getData(PlatformDataKeys.SELECTED_ITEMS);
@@ -93,16 +73,12 @@ class PlanSelection implements Sequence<UpgradePlanItem> {
 		return new PlanSelection(items);
 	}
 
-	/**
-	 * Return the selected plan items in source order; empty without a selection.
-	 */
 	List<UpgradePlanItem> items() {
 		return items;
 	}
 
 	/**
-	 * Return the first selected plan item, or {@literal null} when the selection is
-	 * empty.
+	 * Return the first item, or {@literal null} for an empty selection.
 	 */
 	@Nullable
 	UpgradePlanItem first() {
@@ -110,10 +86,7 @@ class PlanSelection implements Sequence<UpgradePlanItem> {
 	}
 
 	/**
-	 * Run the given action on the first selected item, doing nothing when the
-	 * selection is empty.
-	 *
-	 * @param consumer the action to run on the first selected item.
+	 * Run the action for the first item if present.
 	 */
 	void doWithFirst(Consumer<UpgradePlanItem> consumer) {
 		if (!items.isEmpty()) {
@@ -137,14 +110,7 @@ class PlanSelection implements Sequence<UpgradePlanItem> {
 	}
 
 	/**
-	 * Return the plan items the selection covers: the selected items, or the
-	 * supplied fallback when nothing is selected. The supplier is consulted only
-	 * for an empty selection.
-	 *
-	 * @param supplier the fallback items, evaluated only when the selection is
-	 * empty.
-	 * @return the selected items, or the supplier's result when nothing is
-	 * selected.
+	 * Return selected items, evaluating the fallback only for an empty selection.
 	 */
 	List<UpgradePlanItem> orElseGet(Supplier<? extends List<UpgradePlanItem>> supplier) {
 		return items.isEmpty() ? supplier.get() : items;

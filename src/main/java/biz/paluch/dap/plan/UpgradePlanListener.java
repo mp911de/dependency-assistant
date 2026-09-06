@@ -28,14 +28,10 @@ import com.intellij.util.messages.Topic;
  */
 interface UpgradePlanListener extends EventListener {
 
-	/**
-	 * Topic carrying {@link UpgradePlanListener} events on the project message bus.
-	 */
 	Topic<UpgradePlanListener> TOPIC = new Topic<>(UpgradePlanListener.class, Topic.BroadcastDirection.NONE);
 
 	/**
-	 * Notified when the live plan must be rebuilt from persisted state, after a
-	 * structural transition or an explicit reload request.
+	 * Rebuild the live plan after a structural change or reload request.
 	 */
 	default void planChanged() {
 	}
@@ -44,26 +40,22 @@ interface UpgradePlanListener extends EventListener {
 	}
 
 	/**
-	 * Notified after the ticket system bound to the plan changed or became
-	 * unavailable.
+	 * The bound ticket system changed or became unavailable.
 	 */
 	default void ticketSystemChanged() {
 	}
 
 	/**
-	 * Notified when the persisted plan was replaced from outside the plan command
-	 * model. UI listeners reload as for a structural change; the plan service also
-	 * terminates the preceding undo history.
+	 * Persisted state was replaced outside the plan command model. Reload the view
+	 * because prior materialization is stale.
 	 */
 	default void planReplaced() {
 		planChanged();
 	}
 
 	/**
-	 * Notified when the materialized plan remains valid after a change, for example
-	 * when a ticket was linked or an applied item left the plan. Listeners
-	 * re-render the current items instead of reconstructing them. May arrive on a
-	 * background thread.
+	 * Refresh current materialized items without reconstructing them. This event
+	 * may arrive on a background thread.
 	 */
 	default void planItemChanged() {
 	}

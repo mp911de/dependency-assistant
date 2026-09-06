@@ -38,34 +38,21 @@ import org.springframework.lang.Contract;
 import org.springframework.util.Assert;
 
 /**
- * Performs bounded, IDE-aware HTTP requests and validates browser targets used
- * by plugin actions.
+ * IDE-aware HTTP requests using platform proxy and cancellation support.
+ * Requests share timeouts and a concurrency bound. Interruption while waiting
+ * for a permit returns an absent result with interrupt status restored.
  *
- * <p>HTTP transport uses {@link HttpRequests}, which integrates with the IDE
- * proxy selector, proxy authentication, and progress-indicator cancellation.
- * Requests share the configured timeouts, user agent, and a 24-request
- * concurrency limit. The string-returning fetch enforces the response-size
- * limit; a fetch supplying its own response processor opts in through
- * {@link #capped(InputStream, int)}. A thread interrupted while waiting for a
- * request permit returns an absent result with its interrupt status restored.
+ * <p>String responses are size-limited. Custom response processors must apply
+ * {@link #capped(InputStream, int)} themselves when a size limit is needed.
  *
  * @author Mark Paluch
  */
 public class HttpClientUtil {
 
-	/**
-	 * Maximum response body size accepted by metadata fetches (10 MB).
-	 */
 	public static final int MAX_RESPONSE_BODY_BYTES = 10 * 1024 * 1024;
 
-	/**
-	 * Connect timeout for metadata fetches (10 seconds).
-	 */
 	public static final int CONNECT_TIMEOUT_MS = 10_000;
 
-	/**
-	 * Read timeout for metadata fetches (10 seconds).
-	 */
 	public static final int READ_TIMEOUT_MS = 10_000;
 
 	private static final Semaphore semaphore = new Semaphore(24);
@@ -74,17 +61,11 @@ public class HttpClientUtil {
 	}
 
 	/**
-	 * Fetch the given URI as a UTF-8 string after applying the request
-	 * customization.
+	 * Fetch a UTF-8 response limited to {@link #MAX_RESPONSE_BODY_BYTES}.
 	 *
-	 * <p>The response body is limited to {@link #MAX_RESPONSE_BODY_BYTES}.
-	 *
-	 * @param uri the URL to fetch.
-	 * @param requestFunction the request customization to apply before connecting.
-	 * @return the response body, or {@literal null} if the thread is interrupted
-	 * while waiting for a request permit.
-	 * @throws IOException if the request fails or the response exceeds the size
-	 * limit.
+	 * @param requestFunction customizes the request before connecting.
+	 * @return {@code null} if interrupted while waiting for a permit.
+	 * @throws IOException if the request fails or the response exceeds the limit.
 	 */
 	public static @Nullable String fetchUrl(URI uri, Function<RequestBuilder, RequestBuilder> requestFunction)
 			throws IOException {
@@ -92,14 +73,11 @@ public class HttpClientUtil {
 	}
 
 	/**
-	 * Fetch the given URI and process its connected response.
+	 * Fetch and process a connected response. The processor owns response-size
+	 * limits.
 	 *
-	 * @param <T> the processed response type.
-	 * @param uri the URL to fetch.
-	 * @param requestFunction the request customization to apply before connecting.
-	 * @param responseProcessor the function that reads the connected response.
-	 * @return the processed response, or {@literal null} if the thread is
-	 * interrupted while waiting for a request permit.
+	 * @param requestFunction customizes the request before connecting.
+	 * @return {@code null} if interrupted while waiting for a permit.
 	 * @throws IOException if the request or response processing fails.
 	 */
 	public static <T> @Nullable T fetchUrl(URI uri, Function<RequestBuilder, RequestBuilder> requestFunction,
@@ -124,10 +102,7 @@ public class HttpClientUtil {
 	}
 
 	/**
-	 * Test whether the URI uses the HTTP or HTTPS scheme.
-	 *
-	 * @param uri the URI to inspect. It must declare a scheme.
-	 * @return {@code true} if the scheme is {@code http} or {@code https}.
+	 * Test for HTTP or HTTPS, ignoring scheme case. The URI must declare a scheme.
 	 */
 	public static boolean isBrowsable(URI uri) {
 		String scheme = uri.getScheme().toLowerCase(Locale.ROOT);
@@ -135,11 +110,7 @@ public class HttpClientUtil {
 	}
 
 	/**
-	 * Test whether the supplied URI text starts with a lowercase HTTP or HTTPS
-	 * scheme.
-	 *
-	 * @param scheme the URI text to inspect, or {@literal null}.
-	 * @return {@code true} if the text starts with {@code http:} or {@code https:}.
+	 * Test whether the text begins with lowercase {@code http:} or {@code https:}.
 	 */
 	@Contract("null -> false")
 	public static boolean isBrowsable(@Nullable String scheme) {
@@ -147,11 +118,9 @@ public class HttpClientUtil {
 	}
 
 	/**
-	 * Open the given URI text in the default browser.
+	 * Open an HTTP or HTTPS target in the browser.
 	 *
-	 * @param uri the URI to open.
-	 * @throws IllegalArgumentException if the value is blank or does not start with
-	 * an HTTP or HTTPS scheme.
+	 * @throws IllegalArgumentException if the text is blank or has another scheme.
 	 */
 	public static void openBrowser(String uri) {
 		Assert.hasText(uri, "URI must not be empty");
@@ -161,10 +130,9 @@ public class HttpClientUtil {
 	}
 
 	/**
-	 * Open the given URI in the default browser.
+	 * Open an HTTP or HTTPS target in the browser. The URI must declare a scheme.
 	 *
-	 * @param uri the URI to open. It must declare a scheme.
-	 * @throws IllegalArgumentException if the declared scheme is not HTTP or HTTPS.
+	 * @throws IllegalArgumentException if the scheme is not HTTP or HTTPS.
 	 */
 	public static void openBrowser(URI uri) {
 		Assert.isTrue(isBrowsable(uri), "URI must start with http or https");
@@ -172,13 +140,8 @@ public class HttpClientUtil {
 	}
 
 	/**
-	 * Return the {@code User-Agent} for metadata requests.
-	 *
-	 * <p>The value is derived from IntelliJ product information when the
-	 * application is available and falls back to a generic IDE identifier in
-	 * non-application contexts.
-	 *
-	 * @return the user agent string.
+	 * Return an IDE user agent, falling back to a generic identifier outside the
+	 * application.
 	 */
 	public static String getUserAgent() {
 
@@ -192,14 +155,11 @@ public class HttpClientUtil {
 	}
 
 	/**
-	 * Read the response body as a UTF-8 string, failing before a body larger than
-	 * {@link #MAX_RESPONSE_BODY_BYTES} is fully allocated.
+	 * Read a UTF-8 response and close its stream.
 	 *
-	 * @param request the HTTP request to read.
-	 * @return the response body decoded as UTF-8.
-	 * @throws ResponseTooLargeException if the response exceeds
+	 * @throws ResponseTooLargeException if the body exceeds
 	 * {@link #MAX_RESPONSE_BODY_BYTES}.
-	 * @throws IOException if the response cannot be read.
+	 * @throws IOException if the body cannot be read.
 	 */
 	public static String readUtf8StreamCapped(HttpRequests.Request request) throws IOException {
 
@@ -209,30 +169,16 @@ public class HttpClientUtil {
 	}
 
 	/**
-	 * Wrap a response body stream so that reading past {@code maxBytes} throws
-	 * {@link ResponseTooLargeException}.
-	 *
-	 * <p>Closing the returned stream closes the wrapped one.
-	 *
-	 * @param body the response body stream to wrap.
-	 * @param maxBytes the number of bytes to accept.
-	 * @return the capped stream.
+	 * Limit bytes read from the stream, throwing {@link ResponseTooLargeException}
+	 * when the limit is exceeded. Closing the wrapper closes the underlying stream.
 	 */
 	public static InputStream capped(InputStream body, int maxBytes) {
 		return new CappedInputStream(body, maxBytes);
 	}
 
 	/**
-	 * Return the effective port for the given URI.
-	 *
-	 * <p>When the URI specifies an explicit port, that port is returned. Otherwise
-	 * the scheme default is used: {@code 443} for {@code https} and {@code 80} for
-	 * {@code http}.
-	 *
-	 * @param uri the URI to inspect.
-	 * @return the explicit port, the scheme default ({@code 443} or {@code 80}), or
-	 * {@code -1} when no port is given and the scheme is neither {@code http} nor
-	 * {@code https}.
+	 * Return the explicit port or HTTP/HTTPS default. Return {@code -1} for other
+	 * schemes without an explicit port.
 	 */
 	public static int getEffectivePort(URI uri) {
 
@@ -251,13 +197,8 @@ public class HttpClientUtil {
 	}
 
 	/**
-	 * Return whether two URIs have the same host and effective port.
-	 *
-	 * <p>Host comparison is case-insensitive. Scheme and path are not compared.
-	 *
-	 * @param u1 the configured repository URI.
-	 * @param u2 the effective request URI.
-	 * @return {@code true} if host and effective port match.
+	 * Compare hosts case-insensitively and effective ports. Scheme and path are not
+	 * compared. Missing hosts never match.
 	 */
 	public static boolean hasSameBaseUri(URI u1, URI u2) {
 
@@ -269,9 +210,6 @@ public class HttpClientUtil {
 		return baseHost.equalsIgnoreCase(targetHost) && getEffectivePort(u1) == getEffectivePort(u2);
 	}
 
-	/**
-	 * Stream that fails once the number of bytes read exceeds the configured cap.
-	 */
 	private static class CappedInputStream extends FilterInputStream {
 
 		private final int maxBytes;

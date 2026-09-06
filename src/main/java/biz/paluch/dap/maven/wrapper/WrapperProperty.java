@@ -81,22 +81,13 @@ enum WrapperProperty {
 		this.defaultVersion = ArtifactVersion.of(defaultVersion);
 	}
 
-	/**
-	 * Return whether the property is a supported wrapper URL property.
-	 *
-	 * @param property the property to inspect.
-	 * @return {@literal true} if the property key is supported.
-	 */
 	static boolean isWrapperProperty(IProperty property) {
 		return forKey(property.getUnescapedKey()) != null;
 	}
 
 	/**
-	 * Return the {@link WrapperProperty} that matches the given property key, or
-	 * {@literal null} when the key is unknown.
-	 *
-	 * @param key the property key to inspect. A {@literal null} key has no match.
-	 * @return the matching {@link WrapperProperty}, or {@literal null}.
+	 * Return the matching property kind, or {@literal null} if the key is absent or
+	 * unknown.
 	 */
 	static @Nullable WrapperProperty forKey(@Nullable String key) {
 
@@ -108,11 +99,6 @@ enum WrapperProperty {
 		return null;
 	}
 
-	/**
-	 * Return supported property names.
-	 *
-	 * @return the supported property keys.
-	 */
 	public static String[] propertyNames() {
 		return new String[] {
 				DISTRIBUTION.key(), WRAPPER.key()
@@ -144,16 +130,9 @@ enum WrapperProperty {
 	}
 
 	/**
-	 * Return the canonical file name for this wrapper property, the given version,
-	 * and an optional preserved extension.
-	 *
-	 * <p>If {@code preservedExtension} is one of the supported extensions for this
-	 * property, it is honored; otherwise the default extension is used.
-	 *
-	 * @param version the canonical version.
-	 * @param preservedExtension the extension to preserve. A {@literal null} or
-	 * unsupported extension selects the property's default.
-	 * @return the canonical file name.
+	 * Return the canonical filename for the version.
+	 * @param preservedExtension a supported extension to retain, or {@literal null}
+	 * for the default. Unsupported extensions also use the default.
 	 */
 	public String canonicalFileName(String version, @Nullable String preservedExtension) {
 		String extension = preservedExtension != null && supportedExtensions.contains(preservedExtension)
@@ -163,12 +142,7 @@ enum WrapperProperty {
 	}
 
 	/**
-	 * Return whether {@code fileName} exactly matches one of the canonical file
-	 * names for this wrapper property at the given version.
-	 *
-	 * @param fileName the file name to check.
-	 * @param version the canonical version.
-	 * @return {@literal true} if the file name is canonical.
+	 * Test an exact filename match against the supported archive extensions.
 	 */
 	public boolean isCanonicalFileName(String fileName, String version) {
 		String base = baseFileName.formatted(version);
@@ -181,11 +155,8 @@ enum WrapperProperty {
 	}
 
 	/**
-	 * Return the normalized supported extension if {@code fileName} ends with one,
-	 * ignoring case.
-	 *
-	 * @param fileName the file name to inspect.
-	 * @return the lowercase supported extension, or {@literal null} otherwise.
+	 * Return the lowercase supported extension, ignoring filename case.
+	 * @return {@literal null} if no supported extension matches.
 	 */
 	public @Nullable String getSupportedExtension(String fileName) {
 
@@ -201,26 +172,14 @@ enum WrapperProperty {
 
 
 	/**
-	 * Return an {@link ArtifactRelease} containing the latest non-preview release.
-	 *
-	 * <p>The property's built-in fallback version is used when the {@link Cache}
-	 * has no non-preview release for the artifact.
-	 *
-	 * @param cache the state cache to query for releases.
-	 * @return the artifact and its latest non-preview or fallback release.
+	 * Return this artifact with {@link #getLatestRelease(Cache)}.
 	 */
 	public ArtifactRelease getLatestArtifactRelease(Cache cache) {
 		return new ArtifactRelease(artifactId(), getLatestRelease(cache));
 	}
 
 	/**
-	 * Return the latest non-preview {@link Release} from the cache.
-	 *
-	 * <p>The property's built-in fallback version is used when the {@link Cache}
-	 * has no non-preview release for the artifact.
-	 *
-	 * @param cache the state cache to query for releases.
-	 * @return the latest non-preview or fallback release.
+	 * Return the latest cached non-preview release, or the built-in fallback.
 	 */
 	public Release getLatestRelease(Cache cache) {
 		return cache.getReleases(artifactId())

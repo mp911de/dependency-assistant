@@ -24,7 +24,7 @@ import biz.paluch.dap.artifact.RemoteUrl;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Recognizes Codeberg ({@code codeberg.org}) only. URL patterns coincide with
+ * supports Codeberg ({@code codeberg.org}) only. URL patterns coincide with
  * GitHub's (issues {@code /issues}, releases {@code /releases}, release notes
  * {@code /releases/tag/{tag}}), yet the platforms stay independent: Forgejo
  * evolves its URLs separately. Codeberg is a flat {@code owner/repo} host, so

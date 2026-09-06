@@ -17,22 +17,12 @@
 package biz.paluch.dap.artifact;
 
 /**
- * The system by which an artifact's versions are formed and ordered.
- *
- * <p>Scheme equality is the comparability rule: two {@link ArtifactVersion}s
- * can be ordered relative to each other only when they share a scheme and the
- * scheme is not {@link #OPAQUE}. The scheme classifies version <em>shape</em>;
- * {@link #NUMERIC} deliberately treats semantic and calendar versions as one
- * comparable family.
- *
- * <p>For total ordering of mixed histories,
- * {@link #compareEra(VersioningScheme, VersioningScheme) era precedence} places
- * the {@link #RELEASE_TRAIN} era below the {@link #NUMERIC} era: projects that
- * renamed their versioning moved from named trains to semantic or calendar
- * versions, never back.
+ * How artifact versions are formed and compared.
+ * <p>Semantic comparison requires a shared non-opaque scheme. Numeric versions
+ * include both semantic and calendar forms. {@link Releases} owns ordering
+ * across schemes in an artifact history.
  *
  * @author Mark Paluch
- * @see ArtifactVersion#scheme()
  * @see ArtifactVersion#canCompare(ArtifactVersion)
  */
 public enum VersioningScheme {
@@ -54,14 +44,9 @@ public enum VersioningScheme {
 	OPAQUE;
 
 	/**
-	 * Compare two schemes by era precedence for ordering mixed release histories:
-	 * the {@link #RELEASE_TRAIN} era predates the {@link #NUMERIC} era.
-	 *
-	 * @param left the first scheme.
-	 * @param right the second scheme.
-	 * @return a negative value when {@code left} belongs to an earlier era, a
-	 * positive value when it belongs to a later era, and {@code 0} for equal
-	 * schemes or when either scheme is {@link #OPAQUE} (no era relation).
+	 * Provide a fallback ordering with release trains before numeric versions.
+	 * <p>This is not evidence of a scheme migration.
+	 * @return zero for equal schemes or when either scheme is opaque.
 	 */
 	public static int compareEra(VersioningScheme left, VersioningScheme right) {
 

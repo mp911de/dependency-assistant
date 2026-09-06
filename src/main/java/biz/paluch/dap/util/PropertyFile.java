@@ -31,10 +31,6 @@ import org.jspecify.annotations.Nullable;
 /**
  * PSI-backed {@link Properties} view for Java {@code .properties} files.
  *
- * <p>The live view traverses the PSI tree when consumed and includes nested
- * property elements in the order reported by IntelliJ's syntax traverser.
- * Consumption must occur inside a read action.
- *
  * @author Mark Paluch
  */
 public class PropertyFile implements Properties<PropertyImpl> {
@@ -45,12 +41,6 @@ public class PropertyFile implements Properties<PropertyImpl> {
 		this.psiFile = psiFile;
 	}
 
-	/**
-	 * Return a PSI-backed property view for the given properties file.
-	 *
-	 * @param file the properties file to adapt.
-	 * @return a property view over the file.
-	 */
 	public static PropertyFile from(PropertiesFile file) {
 		return new PropertyFile((PsiFile) file);
 	}

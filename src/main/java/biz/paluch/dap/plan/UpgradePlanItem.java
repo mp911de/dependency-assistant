@@ -43,24 +43,16 @@ import org.springframework.util.Assert;
 import org.springframework.util.ObjectUtils;
 
 /**
- * One materialized Upgrade Plan item over persisted member facts, a pinned
- * target version, and the interface metadata needed to render its icon.
- * Persisted plan state is resolved into this type by the plan loader.
- *
- * <p>Item identity is the {@link #getId() item id} alone: two items with the
- * same id are equal regardless of their versions, display name, or linked
- * ticket. The linked ticket and the display name are the two mutable aspects,
- * replaced in place through {@link #setTicket} by the link and unlink undo flow
- * and through {@link #setDisplayName} by the rename undo flow; every other
- * member fact is fixed at construction.
+ * Materialized plan item with captured member facts and a pinned target.
+ * <p>Equality uses {@link ItemId}. Display name and ticket association may
+ * change in place without changing identity.
  *
  * @author Mark Paluch
  */
 class UpgradePlanItem implements Sequence<ItemDependency> {
 
 	/**
-	 * The single top-level plan item a rename applies to, published by the Upgrade
-	 * Plan panel only while exactly one top-level row is selected and the plan is
+	 * Rename target published only for one selected top-level row while the plan is
 	 * idle.
 	 */
 	static final DataKey<UpgradePlanItem> RENAME_TARGET = DataKey
@@ -97,20 +89,13 @@ class UpgradePlanItem implements Sequence<ItemDependency> {
 	private @Nullable Badge ticketBadge;
 
 	/**
-	 * Create a materialized item from persisted state and resolved interface
-	 * metadata, deriving the source version as the oldest current version across
-	 * the members and the attention level from the version span.
-	 *
-	 * @param itemId the stable item identity.
-	 * @param displayName the captured display name, or {@literal null} to derive it
-	 * from the first member's package system.
-	 * @param to the pinned target version.
-	 * @param vulnerabilityFix whether the target fixes current vulnerabilities.
-	 * @param vulnerabilityCount the captured current vulnerability count.
-	 * @param highestSeverity the captured highest current severity.
-	 * @param members the reconstructed member dependencies.
-	 * @param assistants the interface metadata resolved for the members, in member
-	 * order.
+	 * Create an item from captured facts.
+	 * @param displayName captured name, or blank to derive it from the first
+	 * member.
+	 * @param members non-empty member list, retained by this item.
+	 * @param assistants one interface assistant per member, in member order.
+	 * @throws IllegalArgumentException if members are empty or assistant counts
+	 * differ.
 	 */
 	UpgradePlanItem(ItemId itemId, String displayName, ArtifactVersion to,
 			boolean vulnerabilityFix, int vulnerabilityCount,
@@ -149,9 +134,6 @@ class UpgradePlanItem implements Sequence<ItemDependency> {
 		this.icon = assistant.getTableIcon(dependency);
 	}
 
-	/**
-	 * Badge for the item's attention level.
-	 */
 	private Badge createAttentionBadge() {
 
 		return switch (this.getAttentionLevel()) {
@@ -186,10 +168,8 @@ class UpgradePlanItem implements Sequence<ItemDependency> {
 	}
 
 	/**
-	 * Return all materialized members in captured order, including implicit group
-	 * members. The returned list is live and must be treated as read-only.
-	 *
-	 * @return the item members.
+	 * Return members in captured order, including implicit members. Treat the live
+	 * list as read-only.
 	 */
 	public List<ItemDependency> getMembers() {
 		return members;
@@ -212,18 +192,14 @@ class UpgradePlanItem implements Sequence<ItemDependency> {
 	}
 
 	/**
-	 * Replace the display name in place. Driven by the rename undo flow; the name
-	 * is expected to be sanitized and non-blank.
-	 *
-	 * @param displayName the new display name.
+	 * Replace the display name with an already sanitized, non-blank name.
 	 */
 	public void setDisplayName(String displayName) {
 		this.displayName = displayName;
 	}
 
 	/**
-	 * Return the version the item upgrades from: the oldest current version across
-	 * the item's members.
+	 * Return the oldest current version among members.
 	 */
 	public ArtifactVersion getFromVersion() {
 		return from;
@@ -242,9 +218,7 @@ class UpgradePlanItem implements Sequence<ItemDependency> {
 	}
 
 	/**
-	 * Return the bare property names backing the persisted member versions.
-	 *
-	 * @return the property names in member and source order.
+	 * Return bare property names in member and source order.
 	 */
 	Set<String> getVersionPropertyNames() {
 
@@ -260,9 +234,7 @@ class UpgradePlanItem implements Sequence<ItemDependency> {
 	}
 
 	/**
-	 * Derive the Dependency Site query for all persisted members.
-	 *
-	 * @return the query covering every member artifact and version property.
+	 * Create a dependency-site query covering every member and version property.
 	 */
 	DependencySiteQuery toQuery() {
 		return DependencySiteQuery.create(builder -> {
@@ -290,11 +262,7 @@ class UpgradePlanItem implements Sequence<ItemDependency> {
 	}
 
 	/**
-	 * Replace the linked ticket association in place, refreshing the derived ticket
-	 * badge. Driven by the link and unlink undo flow; passing {@literal null}
-	 * clears both the association and the badge.
-	 *
-	 * @param ticket the linked ticket, or {@literal null} to clear the association.
+	 * Replace the ticket link, or clear it with {@literal null}.
 	 */
 	public void setTicket(@Nullable UpgradeTicket ticket) {
 		this.ticket = ticket;
@@ -311,9 +279,8 @@ class UpgradePlanItem implements Sequence<ItemDependency> {
 	}
 
 	/**
-	 * Return the build-file updates that move this item's explicit members to the
-	 * pinned target. Implicit group members remain represented in the item but emit
-	 * no update because another member owns their shared version-property write.
+	 * Create updates for explicit members. Implicit members share another member's
+	 * version-property write.
 	 */
 	public List<DependencyUpdate> createUpdates() {
 
@@ -351,8 +318,7 @@ class UpgradePlanItem implements Sequence<ItemDependency> {
 	}
 
 	/**
-	 * Review attention assigned to an Upgrade Plan item, declared from highest to
-	 * lowest attention.
+	 * Review attention in descending priority.
 	 *
 	 * @author Mark Paluch
 	 */

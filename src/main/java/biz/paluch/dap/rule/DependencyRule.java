@@ -77,71 +77,38 @@ public interface DependencyRule extends Predicate<ArtifactVersion> {
 		}
 	};
 
-	/**
-	 * Return an absent rule that allows every version.
-	 *
-	 * @return the shared absent rule.
-	 */
 	static DependencyRule absent() {
 		return ABSENT;
 	}
 
-	/**
-	 * Return whether a rule is defined for the dependency.
-	 *
-	 * @return {@literal true} if a rule is defined; {@literal false} for the
-	 * {@linkplain #absent() absent} rule.
-	 */
 	boolean isPresent();
 
 	/**
-	 * Return whether semantic version upgrading governs this rule. This is the
-	 * semVer governance mode (the cause), not the observable strategy narrowing
-	 * (the effect): it is {@literal true} when semVer-based upgrading is active for
-	 * a present, generation-unconstrained dependency, and {@literal false} for an
-	 * {@linkplain #absent() absent} rule, a generation-locked rule, a rule with
-	 * semVer disabled, and a rule whose semVer governance was lifted (a plugin).
-	 * Use this instead of inferring the mode from {@link #getGenerations()} or
-	 * {@link #isEnabled(UpgradeStrategy)}.
+	 * Return whether semantic upgrading governs this dependency. Generation locks
+	 * and plugin-only declarations disable this mode.
 	 *
-	 * @return {@literal true} if semVer upgrading governs this rule;
-	 * {@literal false} otherwise.
+	 * <p>Use this flag to identify the governance mode. Enabled strategies alone do
+	 * not establish whether semantic upgrading is active.
 	 */
 	boolean isSemanticUpgradingEnabled();
 
 	/**
-	 * Return the required generations, or the
-	 * {@linkplain Generations#unconstrained() unconstrained} instance if this rule
-	 * is {@linkplain #absent() absent} or unconstrained.
-	 *
-	 * @return the permitted generations.
+	 * Return the permitted generations, or unconstrained generations for an absent
+	 * rule.
 	 */
 	Generations getGenerations();
 
 	/**
-	 * Return the Artifact Display Name, or an empty string when this rule is
-	 * unnamed or {@linkplain #absent() absent}.
-	 *
-	 * @return the Artifact Display Name, or an empty string when none is defined.
+	 * Return the display name, or an empty string for an unnamed or absent rule.
 	 */
 	String getDependencyName();
 
-	/**
-	 * Return whether the given upgrade strategy is enabled.
-	 *
-	 * @param upgradeStrategy the upgrade strategy.
-	 * @return {@literal true} if the strategy is enabled; {@literal false}
-	 * otherwise.
-	 */
 	boolean isEnabled(UpgradeStrategy upgradeStrategy);
 
 	/**
-	 * Suggest a release from the given history that realigns a version with this
-	 * rule.
+	 * Suggest a compliant release that realigns the dependency with this rule.
 	 *
-	 * @param releases the available release history.
-	 * @return a compliant remediation release, or {@literal null} when this rule
-	 * has no available remediation target.
+	 * @return {@code null} if no remediation target is available.
 	 */
 	@Nullable
 	Release suggestRemediation(Releases releases);

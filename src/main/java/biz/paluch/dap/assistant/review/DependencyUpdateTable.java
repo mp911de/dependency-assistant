@@ -83,12 +83,7 @@ import com.intellij.util.ui.UIUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Dependency review table: the five columns with their renderers and editor,
- * and the point-based interactivity of the upgrade-targets strategy strip
- * (hover feedback, one-click apply, tooltips).
- *
- * <p>The strategy strip is painted by a stamp renderer; hit-testing mirrors the
- * strip geometry arithmetically so no layout runs on the mouse-move path.
+ * Dependency review table backed by {@link UpgradeReview}.
  *
  * @author Mark Paluch
  */
@@ -98,22 +93,14 @@ class DependencyUpdateTable extends TableView<TableRow> {
 
 	static final int UPGRADE_TARGETS_COLUMN_INDEX = 2;
 
-	/**
-	 * Strategies offered as one-click targets in the upgrades column. LATEST and
-	 * RELEASE are not shown.
-	 */
 	private static final Set<UpgradeStrategy> UPGRADE_TARGET_STRATEGIES = EnumSet
 			.complementOf(EnumSet.of(UpgradeStrategy.LATEST, UpgradeStrategy.RELEASE));
 
-	/** Unscaled gap between strategy icons; mirrored by the strip hit-testing. */
+	// Unscaled gap shared by rendering and hit-testing.
 	private static final int STRATEGY_ICON_GAP = 2;
 
 	private static final int SUGGESTED_VERSION_CELL_PADDING = 6;
 
-	/**
-	 * Unscaled width of the suggested-version combo; also anchors the right-aligned
-	 * release date in its dropdown.
-	 */
 	private static final int SUGGESTED_VERSION_WIDTH = 170;
 
 	private final UpgradeReview review;
@@ -122,7 +109,7 @@ class DependencyUpdateTable extends TableView<TableRow> {
 
 	private final BiConsumer<TableRow, RelativePoint> onContextMenu;
 
-	/** View row whose strategy strip is hovered, {@code -1} for none. */
+	// View row index, -1 when no strategy is hovered.
 	private int hoveredStrategyRow = -1;
 
 	private @Nullable UpgradeStrategy hoveredStrategy;
@@ -160,11 +147,6 @@ class DependencyUpdateTable extends TableView<TableRow> {
 		TableUtil.setupCheckboxColumn(columns.getColumn(4), columns.getColumnMargin() + JBUI.scale(32));
 	}
 
-	/**
-	 * Row-height floor matching the upgrades column button strip so rows keep the
-	 * same height whether or not any row offers strategy buttons. Resolved per
-	 * table so an IDE scale change is picked up by the next dialog.
-	 */
 	private static int strategyStripHeight() {
 
 		int height = 0;
@@ -174,12 +156,9 @@ class DependencyUpdateTable extends TableView<TableRow> {
 		return height;
 	}
 
-	/**
-	 * A disabled "cancel" action keeps JTable's ESC binding from consuming the
-	 * event, so ESC reaches the dialog while the table has focus.
-	 */
 	private void installEscForwarding() {
 
+		// Let ESC reach the dialog instead of being consumed by JTable.
 		getActionMap().put("cancel", new AbstractAction() {
 
 			@Override
@@ -278,10 +257,6 @@ class DependencyUpdateTable extends TableView<TableRow> {
 		}
 	}
 
-	/**
-	 * Return the candidate under the mouse when it hovers the Dependency coordinate
-	 * column, or {@literal null} for any other column or no row.
-	 */
 	private @Nullable TableRow coordinateRowAt(MouseEvent e) {
 
 		Point p = e.getPoint();
@@ -365,20 +340,11 @@ class DependencyUpdateTable extends TableView<TableRow> {
 		setHoveredStrategy(-1, null);
 	}
 
-	/**
-	 * Return the hovered strategy icon of the given view row, or {@literal null}
-	 * when the mouse is not over one of the row's strategy icons.
-	 */
 	@Nullable
 	UpgradeStrategy getHoveredStrategy(int row) {
 		return row == hoveredStrategyRow ? hoveredStrategy : null;
 	}
 
-	/**
-	 * Return the upgrade strategy whose icon is under the given point within the
-	 * upgrade-targets column, or {@literal null} for any other column, no row, or a
-	 * point between icons.
-	 */
 	private @Nullable UpgradeStrategy strategyAt(Point point, int row) {
 
 		int column = columnAtPoint(point);
@@ -597,9 +563,7 @@ class DependencyUpdateTable extends TableView<TableRow> {
 	}
 
 	/**
-	 * Paint-only stamp of the strategy button strip. Interactivity (hover feedback,
-	 * clicks, tooltips) is provided by {@link DependencyUpdateTable} through
-	 * point-based hit-testing; no cell editing is involved.
+	 * Paint-only strategy strip. The table handles interaction through hit-testing.
 	 */
 	static class UpgradeTargetsRenderer implements TableCellRenderer {
 
@@ -642,10 +606,9 @@ class DependencyUpdateTable extends TableView<TableRow> {
 		}
 
 		/**
-		 * Return the strategy whose icon is at {@code cellPoint} within a cell of
-		 * {@code cellHeight}, or {@literal null} if the point hits no visible icon.
-		 * Mirrors the strip geometry (left-packed fixed-size icons separated by a fixed
-		 * gap) arithmetically, without a layout pass.
+		 * Find the strategy at a cell-relative point, or {@literal null} between icons.
+		 * <p>Keep this geometry aligned with the renderer to avoid a layout pass on
+		 * mouse movement.
 		 */
 		@Nullable
 		UpgradeStrategy getStrategyAt(TableRow candidate, Point cellPoint, int cellHeight) {
@@ -668,10 +631,6 @@ class DependencyUpdateTable extends TableView<TableRow> {
 			return null;
 		}
 
-		/**
-		 * Icon label painting the action-button hover background when the mouse is over
-		 * it, mimicking a toolbar {@code ActionButton} rollover.
-		 */
 		static class StrategyIconLabel extends JLabel {
 
 			private boolean hovered;
@@ -752,10 +711,6 @@ class DependencyUpdateTable extends TableView<TableRow> {
 
 	}
 
-	/**
-	 * Configure the shared look of the suggested-version combo used by both the
-	 * cell editor and the paint-only renderer, so the two cannot drift apart.
-	 */
 	private static VersionOptionCellRenderer configureSuggestedVersionCombo(ComboBox<Release> combo) {
 
 		VersionOptionCellRenderer optionRenderer = new VersionOptionCellRenderer();
@@ -766,10 +721,7 @@ class DependencyUpdateTable extends TableView<TableRow> {
 	}
 
 	/**
-	 * Shared editor for the suggested-version column: a combo box of the visible
-	 * release options, re-targeted to the edited row when editing starts. Picking
-	 * an option stops editing; {@link UpdateToColumn#setValue} pushes the pick into
-	 * the review.
+	 * Shared editor for the selected upgrade version.
 	 */
 	static class SuggestedVersionComboBoxEditor extends AbstractCellEditor implements TableCellEditor {
 
@@ -819,8 +771,7 @@ class DependencyUpdateTable extends TableView<TableRow> {
 	}
 
 	/**
-	 * Paint-only stamp for the suggested-version column: a combo box showing the
-	 * candidate's selected release.
+	 * Paint-only version selector.
 	 */
 	static class SuggestedVersionRenderer implements TableCellRenderer {
 
@@ -859,10 +810,7 @@ class DependencyUpdateTable extends TableView<TableRow> {
 	}
 
 	/**
-	 * List cell renderer showing each release's version status, version text, and
-	 * release date. Rule violations are grayed out, and a selected release outside
-	 * the candidate's release universe receives a warning icon. Options are
-	 * classified relative to the candidate row through
+	 * Release options classified relative to the row supplied by
 	 * {@link #setCandidate(TableRow)}.
 	 */
 	static class VersionOptionCellRenderer extends ColoredListCellRenderer<Release> {

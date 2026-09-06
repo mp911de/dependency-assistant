@@ -25,11 +25,8 @@ import com.intellij.openapi.project.DumbAwareAction;
 import com.intellij.openapi.project.Project;
 
 /**
- * Remove the ticket association of the selected plan items. The ticket itself
- * stays in the external system; only the plan link is cleared, so the next
- * ticket-creation run finds or recreates it. Visible only when a ticket system
- * is bound; enabled when the selection carries at least one linked ticket and
- * no plan run is in flight.
+ * Clear selected plan items' ticket associations without deleting external
+ * tickets.
  *
  * @author Mark Paluch
  */

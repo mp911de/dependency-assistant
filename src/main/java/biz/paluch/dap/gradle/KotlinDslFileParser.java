@@ -59,12 +59,6 @@ class KotlinDslFileParser {
 		this.parser = new KotlinDslParser(this.propertyResolver, registry);
 	}
 
-	/**
-	 * Parse the given call element into an {@link ArtifactDeclaration}.
-	 * @param call the call element to parse.
-	 * @return the parsed declaration, or {@literal null} when the call is not
-	 * supported.
-	 */
 	public @Nullable ArtifactDeclaration parse(KtCallElement call) {
 		return parser.parse(call);
 	}

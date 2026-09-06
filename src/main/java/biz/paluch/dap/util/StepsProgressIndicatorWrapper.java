@@ -19,10 +19,7 @@ package biz.paluch.dap.util;
 import com.intellij.ide.util.DelegatingProgressIndicator;
 
 /**
- * Adapter exposing the platform {@code StepsProgressIndicator} through the
- * {@link StepsProgressIndicator} interface. Progress calls forward to the
- * wrapped platform indicator, and {@link #nextStep()} delegates to its step
- * advance.
+ * Adapter from the platform step indicator to {@link StepsProgressIndicator}.
  */
 class StepsProgressIndicatorWrapper extends DelegatingProgressIndicator implements StepsProgressIndicator {
 

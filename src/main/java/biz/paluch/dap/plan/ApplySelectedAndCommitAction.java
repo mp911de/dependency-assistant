@@ -20,19 +20,13 @@ import com.intellij.openapi.actionSystem.AnActionEvent;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Apply the selected planned upgrades and create one commit per upgrade,
- * sharing the confirmation, shelving, commit, and push behavior of
- * {@link ApplyAllAndCommitAction}. Unlike its parent this action never expands
- * to the whole plan: it stays disabled without a plan-item selection and does
- * nothing when invoked without one.
+ * Apply and commit selected items through {@link ApplyAllAndCommitAction}. An
+ * empty selection does not expand to the whole plan.
  *
  * @author Mark Paluch
  */
 public class ApplySelectedAndCommitAction extends ApplyAllAndCommitAction {
 
-	/**
-	 * Disabled without a plan-item selection to apply.
-	 */
 	@Override
 	public void update(AnActionEvent e, @Nullable UpgradePlanService service) {
 

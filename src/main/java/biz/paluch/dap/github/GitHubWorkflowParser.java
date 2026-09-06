@@ -27,25 +27,14 @@ import org.jetbrains.yaml.psi.YAMLScalar;
 import org.jspecify.annotations.Nullable;
 
 /**
- * YAML PSI parser for GitHub Actions {@code uses:} declarations.
- *
- * <p>Scans a YAML file for all {@code uses:} key-value pairs, parses the scalar
- * value into a {@link UsesRepositoryAction}, and collects the results.
- * References that represent local paths ({@code ./} or {@code ../}) or Docker
- * images ({@code docker://}) are silently ignored. References outside the
- * repository-backed action model handled by {@link GitHubAction} are also
- * ignored.
+ * Parses repository-backed {@code uses:} references from YAML.
+ * <p>Local actions, Docker images, and unsupported values are ignored.
  *
  * @author Mark Paluch
+ * @see GitHubAction
  */
 class GitHubWorkflowParser {
 
-	/**
-	 * Collect all {@code uses:} references from the given YAML file.
-	 *
-	 * @param file the YAML PSI file to scan.
-	 * @return the parsed references, possibly empty.
-	 */
 	public List<UsesRepositoryAction> parse(PsiFile file) {
 
 		List<UsesRepositoryAction> result = new ArrayList<>();
@@ -63,12 +52,7 @@ class GitHubWorkflowParser {
 	}
 
 	/**
-	 * Parse a single {@code uses:} key-value pair into a
-	 * {@link UsesRepositoryAction}.
-	 *
-	 * @param keyValue the YAML key-value PSI element.
-	 * @return the parsed reference, or {@literal null} if the value cannot be
-	 * parsed.
+	 * Parse a scalar value, or return {@literal null} if unsupported or invalid.
 	 */
 	public static @Nullable UsesRepositoryAction parseUses(YAMLKeyValue keyValue) {
 
@@ -81,11 +65,7 @@ class GitHubWorkflowParser {
 	}
 
 	/**
-	 * Parse the scalar text of a {@code uses:} value.
-	 *
-	 * @param text the raw uses value string.
-	 * @return the parsed reference, or {@literal null} if the value should be
-	 * ignored.
+	 * Parse a repository action, or return {@literal null} if unsupported.
 	 */
 	public static @Nullable UsesRepositoryAction parseUses(String text) {
 		return GitHubAction.isValidUsage(text) ? new UsesRepositoryAction(GitHubAction.from(text)) : null;

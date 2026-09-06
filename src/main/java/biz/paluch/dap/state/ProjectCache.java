@@ -37,11 +37,6 @@ import org.springframework.util.ObjectUtils;
 /**
  * Persistent property-to-artifact correlations for one {@link ProjectId}.
  *
- * <p>The XML-serializable property list is authoritative. A transient name
- * index is rebuilt lazily after deserialization. Collection accessors return
- * snapshots, and {@link #snapshot()} copies each mutable
- * {@link VersionProperty}.
- *
  * @author Mark Paluch
  */
 @Tag("project")
@@ -56,10 +51,6 @@ public class ProjectCache {
 
 	private @Attribute @Nullable String descriptor;
 
-	/**
-	 * Epoch-millisecond timestamp of the last write to this entry, or {@code 0} if
-	 * the entry pre-dates expiry tracking and should never be expired.
-	 */
 	@Attribute
 	private long lastSeen = 0L;
 
@@ -74,98 +65,60 @@ public class ProjectCache {
 	public ProjectCache() {
 	}
 
-	/**
-	 * Create a cache entry for the given project identity.
-	 *
-	 * @param identity the project identity to persist.
-	 */
 	public ProjectCache(ProjectId identity) {
 		this.artifactId = identity.artifactId();
 		this.groupId = identity.groupId();
 		this.descriptor = identity.buildFile();
 	}
 
-	/**
-	 * Return the cached artifact identifier of the owning project, if known.
-	 *
-	 * @return the project artifact identifier, or {@literal null}.
-	 */
 	public @Nullable String getArtifactId() {
 		return artifactId;
 	}
 
 	/**
-	 * Return the cached artifact identifier or an empty string if absent.
-	 *
-	 * @return a non-{@literal null} artifact identifier representation.
+	 * Return the identifier, or an empty string if absent.
 	 */
 	@Transient
 	public String getSafeArtifactId() {
 		return StringUtils.hasText(artifactId) ? artifactId : "";
 	}
 
-	/**
-	 * Set the cached artifact identifier of the owning project.
-	 *
-	 * @param artifactId the artifact identifier to store.
-	 */
 	public void setArtifactId(String artifactId) {
 		this.artifactId = artifactId;
 	}
 
-	/**
-	 * Return the cached group identifier of the owning project, if known.
-	 *
-	 * @return the project group identifier, or {@literal null}.
-	 */
 	public @Nullable String getGroupId() {
 		return groupId;
 	}
 
 	/**
-	 * Return the cached group identifier or an empty string if absent.
-	 *
-	 * @return a non-{@literal null} group identifier representation.
+	 * Return the identifier, or an empty string if absent.
 	 */
 	@Transient
 	public String getSafeGroupId() {
 		return StringUtils.hasText(groupId) ? groupId : "";
 	}
 
-	/**
-	 * Set the cached group identifier of the owning project.
-	 *
-	 * @param groupId the group identifier to store.
-	 */
 	public void setGroupId(String groupId) {
 		this.groupId = groupId;
 	}
 
 	/**
-	 * Return the descriptor used to distinguish the owning project entry, typically
-	 * the build file path.
-	 *
-	 * @return the descriptor, or {@literal null}.
+	 * Return the descriptor that distinguishes this project, typically its build
+	 * file path.
 	 */
 	public @Nullable String getDescriptor() {
 		return descriptor;
 	}
 
 	/**
-	 * Return the descriptor or an empty string if absent.
-	 *
-	 * @return a non-{@literal null} descriptor representation.
+	 * Return the descriptor, or an empty string if absent.
 	 */
 	@Transient
 	public String getSafeDescriptor() {
 		return StringUtils.hasText(descriptor) ? descriptor : "";
 	}
 
-	/**
-	 * Set the descriptor used to distinguish the owning project entry.
-	 *
-	 * @param descriptor the descriptor to store.
-	 */
 	public void setDescriptor(String descriptor) {
 		this.descriptor = descriptor;
 	}
@@ -181,28 +134,17 @@ public class ProjectCache {
 	}
 
 	/**
-	 * Return all known property-to-artifact mappings. Each {@link VersionProperty}
-	 * carries the property name and the artifact(s) whose version it controls.
-	 *
-	 * @return an immutable snapshot containing the live property entries.
+	 * Return an immutable list containing live property entries.
 	 */
 	public synchronized List<VersionProperty> getProperties() {
 		return List.copyOf(properties);
 	}
 
 	/**
-	 * Set this project's property correlations from the given dependency collector.
-	 * <p>The resulting property set contains both:
-	 * <ul>
-	 * <li>properties that are used as version sources for one or more declarations,
-	 * and</li>
-	 * <li>properties that are merely declared in the project and therefore have no
-	 * associated artifacts yet.</li>
-	 * </ul>
+	 * Replace property correlations, including declared properties that have no
+	 * known artifact use.
 	 *
-	 * @param collector the collector whose declarations and properties should be
-	 * used.
-	 * @param timestamp the current epoch-millisecond timestamp for expiry tracking.
+	 * @param timestamp the write time in epoch milliseconds.
 	 */
 	@Transient
 	public synchronized void setProperties(DependencyCollector collector, long timestamp) {
@@ -236,12 +178,7 @@ public class ProjectCache {
 	}
 
 	/**
-	 * Return the cached property with the given name.
-	 * <p>If this instance was deserialized and the transient lookup map is not yet
-	 * in sync with the persisted list, the lookup map is rebuilt first.
-	 *
-	 * @param propertyName the property name.
-	 * @return the matching property, or {@literal null} if none is known.
+	 * Find a property by name, or {@code null} if unknown.
 	 */
 	@Transient
 	public synchronized @Nullable VersionProperty getProperty(String propertyName) {
@@ -257,21 +194,10 @@ public class ProjectCache {
 		return propertyMap.get(propertyName);
 	}
 
-	/**
-	 * Return this cache entry's project identity.
-	 *
-	 * @return the corresponding project identity.
-	 */
 	public ProjectId getId() {
 		return ProjectId.of(groupId, artifactId, descriptor);
 	}
 
-	/**
-	 * Return whether this entry represents the given project identity.
-	 *
-	 * @param identity the project identity to compare with.
-	 * @return {@literal true} if group, artifact, and descriptor all match.
-	 */
 	public boolean matches(ProjectId identity) {
 
 		if (!ObjectUtils.nullSafeEquals(this.descriptor, identity.buildFile())) {
@@ -290,12 +216,7 @@ public class ProjectCache {
 	}
 
 	/**
-	 * Return a deep snapshot of this cache entry safe to hand off to the platform
-	 * serializer while concurrent mutations may still be in progress.
-	 * <p>{@link VersionProperty} entries are mutable. Each is copied so that the
-	 * snapshot does not share state with the live cache.
-	 *
-	 * @return a snapshot suitable for serialization.
+	 * Copy for persistence, including the mutable property entries.
 	 */
 	synchronized ProjectCache snapshot() {
 

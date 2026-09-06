@@ -38,12 +38,9 @@ import com.intellij.icons.AllIcons;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Renders release lookup rows with release metadata and their
- * {@link VersionStatus}.
- *
- * <p>Instances belong to one completion result. Every proposed release must be
- * registered through {@link #withVersion(ArtifactRelease)} before rendering so
- * the row tails use a common version-column width.
+ * Release completion rows with metadata and {@link VersionStatus}.
+ * <p>Use one instance per completion result and register all releases through
+ * {@link #withVersion} before rendering to align the rows.
  *
  * @author Mark Paluch
  */
@@ -64,13 +61,8 @@ class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement> {
 	private int versionLength = 0;
 
 	/**
-	 * Create a renderer for the proposed releases of one artifact.
-	 *
-	 * @param currentVersion the currently declared version, or {@literal null} when
-	 * no comparable version is available. Opaque versions are treated as absent.
-	 * @param rule the dependency rule governing the artifact.
-	 * @param vulnerabilities the read-only per-version vulnerability view.
-	 * @param presentation the dependency names rendered in row tails.
+	 * @param currentVersion the current version, or {@literal null} if unknown.
+	 * Opaque versions are treated as unknown.
 	 */
 	public ArtifactReleaseRenderer(@Nullable ArtifactVersion currentVersion, DependencyRule rule,
 			VulnerabilityRepository vulnerabilities, DependencyPresentation presentation) {
@@ -82,10 +74,7 @@ class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement> {
 	}
 
 	/**
-	 * Format the release date for a lookup row.
-	 *
-	 * @param release the release whose date to format.
-	 * @return the formatted date, or an empty string when the release has no date.
+	 * Format the release date, or return an empty string if unknown.
 	 */
 	public String formatReleaseDate(ArtifactRelease release) {
 		LocalDateTime releaseDate = release.getReleaseDate();
@@ -156,12 +145,7 @@ class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement> {
 	}
 
 	/**
-	 * Register a proposed release for version-column width calculation.
-	 *
-	 * <p>All proposed releases must be registered before
-	 * {@link #renderElement(LookupElement, LookupElementPresentation)} is called.
-	 *
-	 * @param release the proposed release to register.
+	 * Register a release before rendering.
 	 */
 	public void withVersion(ArtifactRelease release) {
 

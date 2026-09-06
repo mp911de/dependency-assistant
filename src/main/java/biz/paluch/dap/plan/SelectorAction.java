@@ -70,10 +70,7 @@ import com.intellij.util.ui.UIUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Dropdown selector for the tool window tab row, rendered by a
- * {@link SelectorButton} in the toolbar-combo-widget style: icon, selected
- * value, chevron. Opens a filterable action popup; the full "Milestone: x"
- * wording moves to the tooltip.
+ * Ticket-value selector in the tool window header.
  */
 class SelectorAction<T> extends DumbAwareAction implements CustomComponentAction {
 
@@ -243,8 +240,7 @@ class SelectorAction<T> extends DumbAwareAction implements CustomComponentAction
 	}
 
 	/**
-	 * Custom dropdown control that opens the selector popup and exposes a separate
-	 * clear hit zone when a value is selected.
+	 * Dropdown control with a separate clear action.
 	 *
 	 * @author Mark Paluch
 	 */
@@ -413,12 +409,6 @@ class SelectorAction<T> extends DumbAwareAction implements CustomComponentAction
 			repaint();
 		}
 
-		/**
-		 * Show the balloon tooltip with the pointer callout, like the platform's tab
-		 * close cross (see ContentLabel): anchored at the cross center while over the
-		 * clear zone, at the mouse position otherwise. The Swing tooltip path would
-		 * render the flat rectangle instead.
-		 */
 		private void showTooltip(Point point) {
 
 			boolean overClear = inClearZone(point);
@@ -440,6 +430,8 @@ class SelectorAction<T> extends DumbAwareAction implements CustomComponentAction
 			Point anchor = overClear
 					? new Point(clearZone.x + clearZone.width / 2, clearZone.y + clearZone.height / 2)
 					: point;
+			// Use the platform balloon so the clear action matches tool window tab
+			// tooltips.
 			IdeTooltip balloon = new IdeTooltip(this, anchor, new JLabel(text));
 			shownTooltip = IdeTooltipManager.getInstance().show(balloon, false, false);
 			shownTooltipForClear = overClear;
@@ -567,9 +559,8 @@ class SelectorAction<T> extends DumbAwareAction implements CustomComponentAction
 	}
 
 	/**
-	 * Option model backing a {@link SelectorAction}.
+	 * Option model for a {@link SelectorAction}.
 	 *
-	 * @param <T> the option type.
 	 * @author Mark Paluch
 	 */
 	abstract static class SelectorModel<T> extends CollectionComboBoxModel<T> {

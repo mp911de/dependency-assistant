@@ -22,14 +22,12 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * Mutable criteria object for ticket search.
+ * Mutable search criteria. Criteria combine as AND, values within a criterion
+ * as OR. Empty criteria impose no constraint. Titles match exactly.
  *
- * <p>Criteria combine as AND, values within one criterion combine as OR, and an
- * empty criterion is unconstrained. Titles match exactly.
- *
- * <p>The repository creates a fresh query for each search and consumes it after
- * invoking the search callback. A query is not thread-safe and should not be
- * retained after the callback returns.
+ * <p>Use repository-owned values. Mutators append values and return this query.
+ * Accessors expose live lists. Do not retain the query after its search
+ * callback or share it across threads.
  *
  * @author Mark Paluch
  */
@@ -43,131 +41,58 @@ public class TicketQuery {
 
 	private final List<Label> labels = new ArrayList<>();
 
-	/**
-	 * Add exact-title values to match.
-	 *
-	 * @param titles the exact titles to add.
-	 * @return {@code this} query.
-	 * @see #title(Collection)
-	 */
 	public TicketQuery title(String... titles) {
 		return title(Arrays.asList(titles));
 	}
 
-	/**
-	 * Add exact-title values to match.
-	 *
-	 * @param titles the exact titles to add.
-	 * @return {@code this} query.
-	 */
 	public TicketQuery title(Collection<String> titles) {
 
 		this.titles.addAll(titles);
 		return this;
 	}
 
-	/**
-	 * Add ticket states to match.
-	 *
-	 * @param states states obtained from the queried repository.
-	 * @return {@code this} query.
-	 * @see #state(Collection)
-	 */
 	public TicketQuery state(TicketState... states) {
 		return state(Arrays.asList(states));
 	}
 
-	/**
-	 * Add ticket states to match.
-	 *
-	 * @param states states obtained from the queried repository.
-	 * @return {@code this} query.
-	 */
 	public TicketQuery state(Collection<TicketState> states) {
 
 		this.states.addAll(states);
 		return this;
 	}
 
-	/**
-	 * Add milestones to match.
-	 *
-	 * @param milestones milestones obtained from the queried repository.
-	 * @return {@code this} query.
-	 * @see #milestone(Collection)
-	 */
 	public TicketQuery milestone(Milestone... milestones) {
 		return milestone(Arrays.asList(milestones));
 	}
 
-	/**
-	 * Add milestones to match.
-	 *
-	 * @param milestones milestones obtained from the queried repository.
-	 * @return {@code this} query.
-	 */
 	public TicketQuery milestone(Collection<Milestone> milestones) {
 
 		this.milestones.addAll(milestones);
 		return this;
 	}
 
-	/**
-	 * Add labels to match.
-	 *
-	 * @param labels labels obtained from the queried repository.
-	 * @return {@code this} query.
-	 * @see #label(Collection)
-	 */
 	public TicketQuery label(Label... labels) {
 		return label(Arrays.asList(labels));
 	}
 
-	/**
-	 * Add labels to match.
-	 *
-	 * @param labels labels obtained from the queried repository.
-	 * @return {@code this} query.
-	 */
 	public TicketQuery label(Collection<Label> labels) {
 
 		this.labels.addAll(labels);
 		return this;
 	}
 
-	/**
-	 * Return the configured exact-title values.
-	 *
-	 * @return the live exact-title list. An empty list leaves title unconstrained.
-	 */
 	public List<String> getTitles() {
 		return titles;
 	}
 
-	/**
-	 * Return the configured states to match.
-	 *
-	 * @return the live state list. An empty list leaves state unconstrained.
-	 */
 	public List<TicketState> getStates() {
 		return states;
 	}
 
-	/**
-	 * Return the configured milestones to match.
-	 *
-	 * @return the live milestone list. An empty list leaves milestone
-	 * unconstrained.
-	 */
 	public List<Milestone> getMilestones() {
 		return milestones;
 	}
 
-	/**
-	 * Return the configured labels to match.
-	 *
-	 * @return the live label list. An empty list leaves label unconstrained.
-	 */
 	public List<Label> getLabels() {
 		return labels;
 	}

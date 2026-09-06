@@ -31,7 +31,7 @@ import biz.paluch.dap.util.HttpClientUtil;
  * Classifies decoded Gradle distribution URLs without modifying PSI or
  * accessing project state.
  *
- * <p>A recognized URL must be absolute and end in
+ * <p>A supported URL must be absolute and end in
  * {@code gradle-<version>-(bin|all).zip}. Custom hosts and path prefixes are
  * accepted. Embedded credentials, invalid URLs, other artifact names, and
  * malformed file names are reported as {@link GradleWrapperUrlProblem}s. Values

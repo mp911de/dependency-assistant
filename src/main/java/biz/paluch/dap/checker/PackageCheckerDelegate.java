@@ -106,7 +106,6 @@ abstract class PackageCheckerDelegate {
 
 		Function2<CoroutineScope, Continuation<? super Object>, Object> block = (scope, continuation) -> {
 			try {
-				// forward the builder's continuation; return value-or-sentinel unchanged
 				return checkPackages.invoke(checker, packages, continuation);
 			} catch (InvocationTargetException e) { // failure before first suspend
 				Throwable cause = e.getCause();

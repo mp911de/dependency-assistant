@@ -32,21 +32,14 @@ import com.intellij.openapi.diagnostic.Logger;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Parses a {@code dependencyfile.json} descriptor into {@link DependencyRules}.
+ * Parses dependencyfile rules. Callers must hold a read action. Invalid entries
+ * are logged and skipped so other rules remain usable. Unknown strategies are
+ * ignored.
  *
- * <p>Parsing is lenient: non-object branch entries are ignored, and failures in
- * an individual artifact or branch entry are logged and skipped rather than
- * failing the whole descriptor. Generation values (a single string or an array
- * of strings) are salvaged entry by entry. Invalid or unsupported generation
- * values are logged and dropped, and a rule whose generations all fail to parse
- * stays present but unconstrained. Unknown upgrade strategies are ignored. A
- * descriptor whose top-level value is not a JSON object resolves to
- * {@link DependencyRules#absent()}.
- *
- * <p>The parser reads PSI and must be invoked inside a read action.
+ * <p>Invalid generations are dropped individually. A rule with no valid
+ * generations stays present but unconstrained. A non-object root has no rules.
  *
  * @author Mark Paluch
- * @see DependencyRules
  * @see DependencyfileService
  */
 class RuleParser {
@@ -55,22 +48,10 @@ class RuleParser {
 
 	private final JsonFile file;
 
-	/**
-	 * Create a parser for the given descriptor.
-	 *
-	 * @param file the {@code dependencyfile.json} PSI file to parse.
-	 */
 	RuleParser(JsonFile file) {
 		this.file = file;
 	}
 
-	/**
-	 * Parse the descriptor into a resolution view using the lenient entry handling
-	 * described for this parser.
-	 *
-	 * @return the parsed rules, or {@link DependencyRules#absent()} when the
-	 * descriptor has no JSON object root.
-	 */
 	DependencyRules parse() {
 
 		if (!(file.getTopLevelValue() instanceof JsonObject root)) {
@@ -147,13 +128,6 @@ class RuleParser {
 		rule.generation(generations(value));
 	}
 
-	/**
-	 * Read a generation value (a single string or an array of strings) into
-	 * {@link Generations}, dropping entries that are not valid generations with
-	 * a warning. When no valid entry survives, the result is
-	 * {@linkplain Generations#unconstrained() unconstrained} rather than a
-	 * parse failure, so a typo never silently drops the whole rule.
-	 */
 	private Generations generations(@Nullable JsonValue value) {
 
 		List<String> entries = new ArrayList<>();

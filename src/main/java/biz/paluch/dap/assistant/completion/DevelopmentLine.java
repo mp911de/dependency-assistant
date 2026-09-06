@@ -25,15 +25,11 @@ import biz.paluch.dap.util.Sequence;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A development line of an artifact's version history: the run of versions
- * sharing the same major and minor version (or the same release train), newest
- * first. Patch releases and pre-releases of the same base version belong to one
- * line; a rule {@code Generation} may span several lines (generation {@code 5}
- * covers the {@code 5.0} and {@code 5.1} lines).
+ * Versions sharing a major and minor version, or release train, newest first.
+ * <p>Patch and preview releases belong to the same line. A rule generation may
+ * span several lines, such as generation 5 covering 5.0 and 5.1.
  *
  * @author Mark Paluch
- * @see DevelopmentLines
- * @see ArtifactVersion#hasSameMajorMinor(ArtifactVersion)
  */
 class DevelopmentLine implements Sequence<ArtifactVersion> {
 
@@ -56,53 +52,36 @@ class DevelopmentLine implements Sequence<ArtifactVersion> {
 	}
 
 	/**
-	 * Return the versions of this line, newest first.
-	 *
-	 * <p>The returned list is the retained backing list. Mutating it can invalidate
-	 * the line's cached stable-version result.
-	 *
-	 * @return the versions of this line. The list is never empty.
+	 * Return the retained non-empty version list, newest first.
+	 * <p>Do not mutate it because the stable-version result is cached.
 	 */
 	public List<ArtifactVersion> getVersions() {
 		return versions;
 	}
 
 	/**
-	 * Return the newest version of this line, stable or pre-release.
-	 *
-	 * @return the newest version.
+	 * Return the newest version, including previews.
 	 */
 	public ArtifactVersion getLatest() {
 		return versions.getFirst();
 	}
 
 	/**
-	 * Return the newest stable (non-preview) version of this line.
-	 *
-	 * @return the newest stable version, or {@literal null} for a pre-release-only
-	 * line.
+	 * Return the newest stable version, or {@literal null} for a preview-only line.
 	 */
 	public @Nullable ArtifactVersion getLatestStable() {
 		return this.latestStable;
 	}
 
 	/**
-	 * Return whether the given version belongs to this development line.
-	 *
-	 * @param version the version to test.
-	 * @return {@literal true} if the version shares this line's major and minor;
-	 * {@literal false} otherwise.
+	 * Return whether the version shares this line's major and minor.
 	 */
 	public boolean contains(ArtifactVersion version) {
 		return getLatest().unwrap().hasSameMajorMinor(version);
 	}
 
 	/**
-	 * Return whether this entire line is older than the given version.
-	 *
-	 * @param version the version to compare against.
-	 * @return {@literal true} if this line's newest version compares older than the
-	 * given version; {@literal false} otherwise.
+	 * Return whether this line's newest version is older than the given version.
 	 */
 	public boolean isOlderThan(ArtifactVersion version) {
 		return getLatest().compareTo(version) < 0;
@@ -113,11 +92,6 @@ class DevelopmentLine implements Sequence<ArtifactVersion> {
 		return versions.iterator();
 	}
 
-	/**
-	 * Return the versions of this line as a stream, newest first.
-	 *
-	 * @return a new stream over the versions.
-	 */
 	@Override
 	public Stream<ArtifactVersion> stream() {
 		return versions.stream();

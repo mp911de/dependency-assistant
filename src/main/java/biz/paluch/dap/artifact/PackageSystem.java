@@ -67,24 +67,14 @@ public enum PackageSystem {
 
 	},
 
-	/**
-	 * Other ecosystem.
-	 */
 	OTHER;
 
-	/**
-	 * Return the package name component of the given artifact coordinates.
-	 * @param artifactId the artifact coordinates.
-	 * @return the package name component.
-	 */
 	public String getArtifactId(ArtifactId artifactId) {
 		return artifactId.artifactId();
 	}
 
 	/**
-	 * Return the artifact coordinates.
-	 * @param artifactId the artifact coordinates.
-	 * @return the artifact coordinates.
+	 * Render coordinates in the package ecosystem's notation.
 	 */
 	public String getCoordinates(ArtifactId artifactId) {
 		return artifactId.toString();

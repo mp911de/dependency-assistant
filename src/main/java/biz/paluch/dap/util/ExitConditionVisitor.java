@@ -22,8 +22,7 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiRecursiveElementVisitor;
 
 /**
- * Recursive PSI visitor that applies an action to selected elements and prunes
- * further descent after the action signals completion.
+ * Visitor used by {@link PsiElements#visitTreeUntil} to stop recursive descent.
  *
  * @author Mark Paluch
  */

@@ -39,7 +39,7 @@ import org.jspecify.annotations.Nullable;
  * Adds a missing {@code distributionSha256Sum} from cached Gradle release
  * metadata.
  *
- * <p>The intention is available only for a recognized distribution URL whose
+ * <p>The intention is available only for a supported distribution URL whose
  * published checksum is already cached. It does not fetch or compute a
  * checksum. The property replaces a blank caret line or is inserted after the
  * non-blank caret line inside a write command.

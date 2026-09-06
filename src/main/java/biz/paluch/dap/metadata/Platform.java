@@ -21,77 +21,47 @@ import com.intellij.openapi.project.Project;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Strategy interface for the hosting platform behind a project repository URL.
- *
- * <p>A platform decides whether it recognizes a normalized
- * {@link RepositoryUrl} and creates the {@link ProjectRepository} handle that
- * renders the platform's browsable URLs. Detection is purely syntactic (host
- * name and path shape). No network probing is involved. A declared hint, the
- * Maven {@code issueManagement/system} value, can vouch for self-hosted
- * instances whose host name alone does not reveal the platform, such as GitHub
- * Enterprise or a self-hosted GitLab.
- *
- * <p>Implementations are registered through the {@code biz.paluch.dap.platform}
- * extension point and must be stateless. Detection order follows the extension
- * registration order. The static {@link #findConnection} and
- * {@link #findIssueTracker} entry points return the first match.
+ * Strategy interface for repository hosts and creating platform-specific
+ * handles.
+ * <p>Detection uses the URL and an optional platform hint without network
+ * access. A hint, such as Maven's {@code issueManagement/system}, can identify
+ * a self-hosted instance. A {@literal null} hint means none was declared.
+ * <p>Implementations must be stateless and register through the
+ * {@code biz.paluch.dap.platform} extension point. The static lookup methods
+ * use the first match in extension registration order.
  *
  * @author Mark Paluch
- * @see RepositoryConnection
- * @see ProjectRepository
- * @see RepositoryUrl
- * @see IssueTracker
  */
 public interface Platform {
 
-	/**
-	 * Extension point for platforms.
-	 */
 	ExtensionPointName<Platform> EP_NAME = ExtensionPointName.create("biz.paluch.dap.platform");
 
 	/**
 	 * Detect whether this platform hosts the given repository URL.
-	 * @param repositoryUrl the normalized repository URL.
-	 * @param hint a declared platform hint such as the Maven
-	 * {@code issueManagement/system} value, or {@literal null} if undeclared.
-	 * @return the connection, or {@literal null} if this platform does not
-	 * recognize the URL.
+	 * @return the connection, or {@literal null} if the URL is not supported.
 	 */
 	@Nullable
 	RepositoryConnection detect(RepositoryUrl repositoryUrl, @Nullable String hint);
 
 	/**
-	 * Derive the issue tracker for a connection detected by this platform.
-	 *
-	 * @param repositoryConnection the detected repository connection.
-	 * @param hint a declared platform hint such as the Maven
-	 * {@code issueManagement/system} value, or {@literal null} if undeclared.
-	 * @return the derived issue tracker, or {@literal null} if this platform cannot
-	 * derive one for the connection.
+	 * Derive an issue tracker from a detected connection and optional platform
+	 * hint.
+	 * @return the tracker, or {@literal null} if none can be derived.
 	 */
 	@Nullable
 	IssueTracker detectIssueTracker(RepositoryConnection repositoryConnection, @Nullable String hint);
 
 	/**
-	 * Create the repository handle for a connection detected by this platform.
-	 *
-	 * @param project the project requesting the handle.
-	 * @param connection the detected repository connection.
-	 * @return the repository handle, or {@literal null} if the connection does not
-	 * belong to this platform.
+	 * Create a repository handle for a connection detected by this platform.
+	 * @return the handle, or {@literal null} if the platform cannot create one.
 	 */
 	@Nullable
 	ProjectRepository createRepository(Project project, RepositoryConnection connection);
 
 	/**
-	 * Detect the hosting platform of a declared repository URL by asking all
-	 * registered platforms. The URL is parsed once. The first platform that
-	 * recognizes the parsed URL wins.
-	 * @param url the declared repository URL.
-	 * @param hint a declared platform hint such as the Maven
-	 * {@code issueManagement/system} value, or {@literal null} if undeclared.
-	 * @return the connection of the first recognizing platform, or {@literal null}
-	 * if the value does not parse as a repository URL or no platform recognizes it.
+	 * Find a connection for a declared repository URL.
+	 * @return the connection, or {@literal null} if the URL cannot be parsed or no
+	 * platform supports it.
 	 */
 	static @Nullable RepositoryConnection findConnection(String url, @Nullable String hint) {
 
@@ -110,13 +80,8 @@ public interface Platform {
 	}
 
 	/**
-	 * Derive the issue tracker for a detected connection by asking all registered
-	 * platforms.
-	 * @param repositoryConnection the detected repository connection.
-	 * @param hint a declared platform hint such as the Maven
-	 * {@code issueManagement/system} value, or {@literal null} if undeclared.
-	 * @return the tracker of the first platform that derives one, or
-	 * {@literal null} if no platform derives a tracker.
+	 * Find an issue tracker for a detected connection.
+	 * @return the tracker, or {@literal null} if no platform can derive one.
 	 */
 	static @Nullable IssueTracker findIssueTracker(RepositoryConnection repositoryConnection, @Nullable String hint) {
 		for (Platform platform : EP_NAME.getExtensionList()) {

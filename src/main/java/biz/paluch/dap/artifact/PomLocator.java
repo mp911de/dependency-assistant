@@ -33,17 +33,11 @@ import org.jspecify.annotations.Nullable;
  */
 public interface PomLocator {
 
-	/**
-	 * Extension point for POM locators.
-	 */
 	ExtensionPointName<PomLocator> EP_NAME = ExtensionPointName.create("biz.paluch.dap.pomLocator");
 
 	/**
 	 * Locate the POM file for the given coordinates.
 	 *
-	 * @param project the project providing repository configuration.
-	 * @param artifactId the artifact coordinates.
-	 * @param version the artifact version.
 	 * @return the POM file, or {@literal null} if this locator cannot find it.
 	 */
 	@Nullable
@@ -54,9 +48,6 @@ public interface PomLocator {
 	/**
 	 * Locate the POM file for the given coordinates.
 	 *
-	 * @param project the project providing repository configuration.
-	 * @param artifactId the artifact coordinates.
-	 * @param version the artifact version.
 	 * @return the POM file, or {@literal null} if this locator cannot find it.
 	 */
 	@Nullable
@@ -66,9 +57,6 @@ public interface PomLocator {
 	 * Locate the POM file through the registered locators, returning the first
 	 * match in registration order.
 	 *
-	 * @param project the project providing repository configuration.
-	 * @param artifactId the artifact coordinates.
-	 * @param version the artifact version.
 	 * @return the POM file, or {@literal null} if no locator finds it.
 	 */
 	static @Nullable VirtualFile findPom(Project project, ArtifactId artifactId, ArtifactVersion version) {
@@ -85,9 +73,6 @@ public interface PomLocator {
 	 * Locate the POM file through the registered locators, returning the first
 	 * match in registration order.
 	 *
-	 * @param project the project providing repository configuration.
-	 * @param artifactId the artifact coordinates.
-	 * @param version the artifact version.
 	 * @return the POM file, or {@literal null} if no locator finds it.
 	 */
 	static @Nullable VirtualFile findPom(Project project, ArtifactId artifactId, String version) {

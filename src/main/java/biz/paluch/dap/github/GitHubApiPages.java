@@ -28,17 +28,10 @@ import org.jetbrains.plugins.github.api.data.GithubResponsePage;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Collects all items of a paginated GitHub REST API resource by following the
- * {@code Link: rel="next"} header of each response.
- *
- * <p>Each follow-up URL must start with the API base string supplied by the
- * caller. A non-matching link is rejected. This lexical prefix check neither
- * parses nor normalizes the URLs and must not be used as a credential or trust
- * boundary.
- *
- * <p>This is a Java replacement for the GitHub plugin's internal
- * {@code GithubApiPagesLoader}. The page-request flavor ({@code JsonPage}
- * versus {@code JsonSearchPage}) is supplied by the caller.
+ * Loads paginated GitHub REST resources without using the plugin's internal
+ * loader.
+ * <p>Follow-up URLs must start with the supplied API base. This lexical check
+ * is not a credential or trust boundary.
  *
  * @author Mark Paluch
  */
@@ -48,17 +41,10 @@ class GitHubApiPages {
 	}
 
 	/**
-	 * Load all pages, starting at {@code initialRequest}.
-	 *
-	 * @param executor the executor running the requests.
-	 * @param indicator progress indicator to cancel long-running fetches.
-	 * @param apiBase the API base URL every page request must start with.
-	 * @param initialRequest request for the first page.
-	 * @param nextPageRequest factory creating a page request for a {@code next}
-	 * URL.
-	 * @return all items across all pages, in page order.
+	 * Load all items in page order.
+	 * @param nextPageRequest creates a request for the next-page URL.
 	 * @throws IOException if a page request fails.
-	 * @throws IllegalStateException if a {@code next} URL does not start with
+	 * @throws IllegalStateException if a next-page URL does not start with
 	 * {@code apiBase}.
 	 */
 	static <T> List<T> loadAll(GithubApiRequestExecutor executor, ProgressIndicator indicator, String apiBase,

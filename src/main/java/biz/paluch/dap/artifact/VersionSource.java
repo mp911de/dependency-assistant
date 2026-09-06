@@ -65,7 +65,7 @@ public abstract class VersionSource {
 	}
 
 	/**
-	 * Return the sentinel representing an absent version.
+	 * Return an absent version.
 	 */
 	public static VersionSource none() {
 		return NONE;

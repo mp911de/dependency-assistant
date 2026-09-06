@@ -41,30 +41,13 @@ import org.jetbrains.yaml.psi.YAMLScalar;
 import org.jspecify.annotations.Nullable;
 
 /**
- * {@link LocalInspectionTool} that flags a GitHub Actions {@code uses:}
- * reference pinned to a mutable symbolic ref when an immutable commit SHA is
- * already known for the canonical Git ref resolution target.
- *
- * <p>Pinning third-party actions to a tag is a supply-chain risk: a tag can be
- * moved to point at different code after review. The inspection reports a
- * version-style ref only when the project's release cache already holds a SHA
- * for the canonical Git ref resolution target, so every finding is directly
- * fixable without a network lookup. For example, {@code @v4} pins to an exact
- * {@code v4} tag when one exists, otherwise to the newest stable SHA-backed
- * {@code v4.x} release.
- *
- * <p>Already-SHA refs, including short SHAs, are not flagged. Other symbolic
- * refs, including branch-shaped values, are reported only when canonical Git
- * ref resolution finds a cached release with a SHA. Findings depend on cached
- * release metadata. Refreshing the release cache may surface additional refs.
- *
- * <p>The problem is reported on the whole {@code uses:} scalar rather than on
- * the ref token alone, so the pin quick fix is offered from any caret position
- * within the declaration.
+ * Flags mutable action refs that can be pinned to a cached commit SHA.
+ * <p>Tags can move after review. Findings use canonical Git ref resolution and
+ * require cached SHA metadata so the fix needs no network access.
+ * Already-pinned refs, including abbreviated SHAs, are left unchanged.
  *
  * @author Mark Paluch
- * @see GitHubArtifactReferenceResolver
- * @see RefStyle
+ * @see GitVersionResolver
  */
 public class UnpinnedGitHubActionInspection extends LocalInspectionTool implements DumbAware {
 
@@ -119,8 +102,7 @@ public class UnpinnedGitHubActionInspection extends LocalInspectionTool implemen
 	}
 
 	/**
-	 * Quick fix that rewrites a mutable symbolic {@code uses:} ref to the immutable
-	 * commit SHA and appends the resolved version as a managed comment.
+	 * Pins the ref and adds the resolved version as a managed comment.
 	 */
 	static class PinToShaQuickFix extends ModCommandQuickFix {
 

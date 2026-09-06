@@ -24,7 +24,8 @@ import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.state.CachedArtifact;
 
 /**
- * Test fixture providing curated {@link CachedArtifact} samples.
+ * Shared release samples for tests.
+ * <p>Use a copy when the test needs to mutate cache state.
  *
  * @author Mark Paluch
  */
@@ -142,17 +143,14 @@ public class Releases {
 	}
 
 	/**
-	 * @return all artifacts registered in this fixture, in declaration order.
+	 * Return all registered artifacts in declaration order.
 	 */
 	public static List<CachedArtifact> all() {
 		return List.copyOf(ALL);
 	}
 
 	/**
-	 * Return an isolated Maven cache entry copied from the given release fixture.
-	 *
-	 * @param artifact the shared release fixture to copy.
-	 * @return a mutable snapshot with the Maven package system assigned.
+	 * Return a mutable snapshot with the Maven package system assigned.
 	 */
 	public static CachedArtifact maven(CachedArtifact artifact) {
 		CachedArtifact copy = artifact.snapshot();

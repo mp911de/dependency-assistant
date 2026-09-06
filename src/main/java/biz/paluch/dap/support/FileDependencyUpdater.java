@@ -30,11 +30,6 @@ import com.intellij.psi.PsiFile;
 @FunctionalInterface
 public interface FileDependencyUpdater {
 
-	/**
-	 * Apply the given dependency updates to the supplied file.
-	 * @param file the PSI file to modify in place.
-	 * @param updates the dependency updates to apply.
-	 */
 	void applyUpdates(PsiFile file, DependencyUpdates updates);
 
 }

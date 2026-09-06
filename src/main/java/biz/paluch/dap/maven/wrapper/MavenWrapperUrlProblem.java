@@ -23,33 +23,19 @@ import com.intellij.lang.properties.psi.Property;
 import com.intellij.modcommand.PsiUpdateModCommandAction;
 
 /**
- * A problem reported for a Maven {@link WrapperProperty} URL declaration.
- *
- * <p>Each variant captures only the user-visible deviation payload required to
- * render the inspection message. Canonical and suggested values are derived
- * from the {@link WrapperProperty} kind at fix-construction time.
+ * Maven Wrapper URL problem with a message and applicable repairs.
  *
  * @author Mark Paluch
  */
 sealed interface MavenWrapperUrlProblem {
 
-	/**
-	 * Return the localized inspection message describing this problem.
-	 * @return the localized inspection message for this problem.
-	 */
 	String getMessage();
 
 	/**
-	 * Return the quick-fixes offered for this problem.
-	 * @param kind the wrapper URL property kind being inspected.
-	 * @return the specific quick-fixes offered for this problem, excluding the
-	 * generic "use default URL" fallback added by the inspection.
+	 * Return problem-specific fixes. The inspection adds the default-URL fallback.
 	 */
 	List<PsiUpdateModCommandAction<Property>> getFixes(WrapperProperty kind);
 
-	/**
-	 * Plaintext credentials are embedded in the URL authority.
-	 */
 	record CredentialsInUrl() implements MavenWrapperUrlProblem {
 
 		@Override
@@ -65,8 +51,7 @@ sealed interface MavenWrapperUrlProblem {
 	}
 
 	/**
-	 * The URL does not match the canonical Maven coordinate shape and cannot be
-	 * classified further.
+	 * The URL does not have a recognizable Maven coordinate shape.
 	 */
 	record InvalidUrl() implements MavenWrapperUrlProblem {
 
@@ -83,9 +68,7 @@ sealed interface MavenWrapperUrlProblem {
 	}
 
 	/**
-	 * The path version segment disagrees with the file version segment.
-	 * @param pathVersion the version that appears as a path segment.
-	 * @param fileVersion the version embedded inside the file name.
+	 * The path and filename versions differ.
 	 */
 	record InconsistentVersion(String pathVersion, String fileVersion) implements MavenWrapperUrlProblem {
 
@@ -105,9 +88,7 @@ sealed interface MavenWrapperUrlProblem {
 	}
 
 	/**
-	 * The path artifact token disagrees with the file artifact token.
-	 * @param pathArtifact the artifactId that appears as a path segment.
-	 * @param fileArtifact the artifactId embedded inside the file name.
+	 * The path and filename artifact IDs differ.
 	 */
 	record InconsistentArtifact(String pathArtifact, String fileArtifact) implements MavenWrapperUrlProblem {
 
@@ -125,9 +106,7 @@ sealed interface MavenWrapperUrlProblem {
 	}
 
 	/**
-	 * The last-N segments of the captured groupId do not equal the canonical
-	 * group-path for the property kind.
-	 * @param actualGroupPath the last-N segments joined by {@code /}.
+	 * The group path differs from the wrapper property's coordinates.
 	 */
 	record ImproperGroupId(String actualGroupPath) implements MavenWrapperUrlProblem {
 
@@ -144,8 +123,7 @@ sealed interface MavenWrapperUrlProblem {
 	}
 
 	/**
-	 * The artifactId does not equal the canonical artifactId for the property kind.
-	 * @param actualArtifactId the artifactId observed in the URL.
+	 * The artifact ID is not the artifact expected for this property.
 	 */
 	record UnknownArtifact(String actualArtifactId) implements MavenWrapperUrlProblem {
 
@@ -162,11 +140,8 @@ sealed interface MavenWrapperUrlProblem {
 	}
 
 	/**
-	 * The file-name segment does not follow the canonical pattern for the property
-	 * kind.
-	 * @param actualFileName the file-name segment observed in the URL.
-	 * @param sharedVersion the version shared by both URL segments, used by the
-	 * file-name fix.
+	 * The filename does not match the wrapper artifact.
+	 * @param sharedVersion the version agreed by the path and filename.
 	 */
 	record MalformedFileName(String actualFileName, String sharedVersion) implements MavenWrapperUrlProblem {
 
@@ -182,10 +157,6 @@ sealed interface MavenWrapperUrlProblem {
 
 	}
 
-	/**
-	 * The URL is valid but the sibling SHA-256 checksum property is absent.
-	 * @param property the URL property whose checksum is missing.
-	 */
 	record MissingChecksum(WrapperProperty property) implements MavenWrapperUrlProblem {
 
 		@Override

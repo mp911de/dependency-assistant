@@ -59,20 +59,14 @@ class MavenParser extends MavenPomSupport {
 	}
 
 	/**
-	 * Create a parser using the given fallback properties.
-	 *
-	 * @param propertyResolver the Maven properties used for declarations whose
-	 * values are not defined in the parsed file.
+	 * @param propertyResolver fallback for values absent from the parsed file.
 	 */
 	MavenParser(MavenPomProperties propertyResolver) {
 		this.propertyResolver = propertyResolver;
 	}
 
 	/**
-	 * Parse the supported artifact declarations from the given POM file.
-	 *
-	 * @param pomFile the POM file to parse.
-	 * @return the declarations in POM traversal order.
+	 * Return supported declarations in POM traversal order.
 	 */
 	public List<ArtifactDeclaration> parsePomFile(XmlFile pomFile) {
 
@@ -84,11 +78,8 @@ class MavenParser extends MavenPomSupport {
 	}
 
 	/**
-	 * Parse artifact declarations from the given {@code extensions.xml} file.
-	 *
-	 * @param extensionsFile the extensions file to parse.
-	 * @return the extension declarations in document order. The result is empty
-	 * when the document root is not {@code <extensions>}.
+	 * Return extension declarations in document order.
+	 * <p>Returns an empty list if the root is not {@code <extensions>}.
 	 */
 	public List<ArtifactDeclaration> parseExtensionsFile(XmlFile extensionsFile) {
 
@@ -255,12 +246,9 @@ class MavenParser extends MavenPomSupport {
 	}
 
 	/**
-	 * Return the {@link DeclarationSource} for the given dependency or plugin
-	 * declaration tag. A dependency-management entry with {@code scope=import} and
-	 * {@code type=pom} classifies as a Bill of Materials import.
-	 *
-	 * @param owner the dependency, plugin, or extension tag to classify.
-	 * @return the declaration source describing where the artifact is declared.
+	 * Classify a declaration by its POM section and enclosing profile.
+	 * <p>Dependency-management entries with {@code scope=import} and
+	 * {@code type=pom} are BOM imports.
 	 */
 	public static DeclarationSource getDeclarationSource(XmlTag owner) {
 

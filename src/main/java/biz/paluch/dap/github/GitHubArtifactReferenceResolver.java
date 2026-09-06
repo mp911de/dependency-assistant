@@ -17,7 +17,6 @@
 package biz.paluch.dap.github;
 
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.Versioned;
@@ -26,25 +25,14 @@ import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
-import org.jetbrains.yaml.psi.YAMLKeyValue;
 import org.jetbrains.yaml.psi.YAMLScalar;
 import org.jspecify.annotations.Nullable;
 
 /**
- * {@link ArtifactReferenceResolver} implementation for GitHub Actions
- * {@code uses:} declarations.
- *
- * <p>Resolves {@code uses:} scalar values into an {@link ArtifactReference} by
- * parsing the scalar text and resolving the ref through
- * {@link GitVersionResolver#resolveLenient(ArtifactId, String)}. The canonical
- * chain applies cached Git ref matching, then a raw
- * {@link ArtifactVersion#from(String)} parse. Remote API access is never
- * triggered.
- *
- * <p>Only elements inside the scalar value of a {@code uses:}
- * {@link YAMLKeyValue} are considered. The input must be a structural PSI
- * element rather than a terminal leaf. All other elements resolve to
- * {@link ArtifactReference#unresolved()}.
+ * Resolves GitHub Actions references using cached Git metadata.
+ * <p>Accepts structural elements inside a {@code uses:} scalar. Unsupported
+ * elements and unavailable contexts produce an unresolved reference. No network
+ * access is required.
  *
  * @author Mark Paluch
  */
@@ -54,12 +42,6 @@ class GitHubArtifactReferenceResolver implements ArtifactReferenceResolver {
 
 	private final GitHubProjectContext buildContext;
 
-	/**
-	 * Create a resolver using cached Git ref metadata for the given build context.
-	 *
-	 * @param versionResolver the cached Git-ref resolver.
-	 * @param buildContext the GitHub Actions file context.
-	 */
 	GitHubArtifactReferenceResolver(GitVersionResolver versionResolver, GitHubProjectContext buildContext) {
 		this.versionResolver = versionResolver;
 		this.buildContext = buildContext;

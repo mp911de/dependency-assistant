@@ -201,9 +201,6 @@ class SingleTableRow extends TableRow implements HasArtifactId, HasPackageIdenti
 		return upgradeCandidate.getVulnerabilities(version);
 	}
 
-	/**
-	 * The headline rendered above the section table, or {@link HtmlChunk#empty()}.
-	 */
 	protected HtmlChunk getToolTipIntro() {
 		return toolTipIntro;
 	}
@@ -212,14 +209,6 @@ class SingleTableRow extends TableRow implements HasArtifactId, HasPackageIdenti
 		return toolTipSections;
 	}
 
-	/**
-	 * Return whether this row stands for the given artifact, used to select the row
-	 * a gutter icon or documentation link points at.
-	 *
-	 * @param pkg the artifact to match.
-	 * @return {@literal true} if the row represents the artifact; {@literal false}
-	 * otherwise.
-	 */
 	public boolean represents(PackageIdentity pkg) {
 		return upgradeCandidate.getPackageIdentity().equals(pkg);
 	}
@@ -243,18 +232,10 @@ class SingleTableRow extends TableRow implements HasArtifactId, HasPackageIdenti
 				+ upgradeCandidate.getDisplayReleases() + "]";
 	}
 
-	/**
-	 * Render one label/value row in {@link DocumentationMarkup} section style.
-	 * Swing tooltips do not carry the documentation pane's stylesheet, so the
-	 * {@code section} class is inert and the label styling is inlined: context-help
-	 * gray plus a right padding separating the label column from the value column.
-	 *
-	 * @param labelKey the message key for the row label.
-	 * @param value the rendered row value.
-	 * @return the tooltip table row.
-	 */
 	static HtmlChunk section(String labelKey, HtmlChunk value) {
 
+		// Swing tooltips lack the documentation stylesheet, so label styling must be
+		// inline.
 		String labelStyle = "color: %s; padding-right: %dpx".formatted(
 				ColorUtil.toHtmlColor(UIUtil.getContextHelpForeground()), JBUI.scale(8));
 		return HtmlChunk.tag("tr").children(

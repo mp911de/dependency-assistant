@@ -386,9 +386,7 @@ class GradleAssistant implements DependencyAssistant {
 		}
 
 		/**
-		 * Strip the surrounding quote characters from quoted version-catalog literals
-		 * ({@code .versions.toml}) so the highlight covers only the version text. All
-		 * other Gradle files highlight the full element range.
+		 * Exclude surrounding quotes from version-catalog highlights.
 		 */
 		@Override
 		public TextRange getHighlightRange(PsiElement element) {

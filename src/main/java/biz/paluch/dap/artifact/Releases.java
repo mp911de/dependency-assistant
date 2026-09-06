@@ -35,25 +35,13 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Immutable release history for one artifact.
- *
- * <p>Instances are immutable; {@link #withRelease(Release)} returns a new
- * instance including the additional release.
- *
- * <p>An artifact can change how it names versions over time. For example, a
- * project can move from release train names to calendar versions or later move
- * back. Individual versions are comparable only within their
- * {@link VersioningScheme}; this type gives callers the artifact-level view
- * needed by {@link UpgradeStrategy upgrade strategies} and completion lists.
- *
- * <p>The scheme with the most recent dated release is the successor scheme.
- * Without dates, enum encounter order provides a deterministic fallback that
- * does not establish a real scheme migration. Releases in the selected scheme
- * appear before releases from superseded schemes. Release dates choose scheme
- * precedence; they do not interleave releases from different schemes. Within
- * each scheme, releases follow the scheme's version order, newest first.
+ * <p>Projects can change versioning schemes. The scheme with the latest dated
+ * release ranks first. Dates rank whole schemes rather than individual
+ * releases. Within each scheme, versions appear newest first.
+ * <p>Without dates, enum order provides a deterministic fallback. It does not
+ * establish a real scheme migration.
  *
  * @author Mark Paluch
- * @see Release
  * @see VersioningScheme
  * @see UpgradeStrategy
  */
@@ -85,59 +73,27 @@ public class Releases implements Sequence<Release> {
 		return copy;
 	}
 
-	/**
-	 * Return the shared empty {@code Releases} instance.
-	 *
-	 * @return the empty {@code Releases} instance (shared, immutable).
-	 */
 	public static Releases empty() {
 		return EMPTY;
 	}
 
-	/**
-	 * Create {@code Releases} for a single release.
-	 *
-	 * @param release the release to include.
-	 * @return a single-element {@code Releases} instance containing the given
-	 * release.
-	 */
 	public static Releases just(Release release) {
 		return of(List.of(release));
 	}
 
-	/**
-	 * Create {@code Releases} for a single release.
-	 *
-	 * @param version the version to include.
-	 * @return a single-element {@code Releases} instance containing the given
-	 * release.
-	 */
 	public static Releases just(ArtifactVersion version) {
 		return of(Release.from(version));
 	}
 
 	/**
-	 * Create {@code Releases} from an array of releases.
-	 *
-	 * @param releases releases for the same artifact and must contain no
-	 * {@literal null} elements.
-	 * @return a new {@code Releases} instance containing the given releases.
+	 * Copy releases for one artifact into a history.
 	 */
 	public static Releases of(Release... releases) {
 		return of(List.of(releases));
 	}
 
 	/**
-	 * Create {@code Releases} from a collection of releases.
-	 *
-	 * <p>The collection's iteration order is irrelevant; releases are partitioned
-	 * by {@link VersioningScheme} and ordered as described in the class-level
-	 * Javadoc.
-	 *
-	 * @param releases releases for the same artifact and must contain no
-	 * {@literal null} elements.
-	 * @return a new {@code Releases} instance containing the given releases.
-	 * @see #just(Release)
+	 * Copy releases for one artifact, ordering them by scheme and version.
 	 */
 	public static Releases of(Iterable<Release> releases) {
 
@@ -185,26 +141,13 @@ public class Releases implements Sequence<Release> {
 		return latest;
 	}
 
-	/**
-	 * Create a new {@link Builder} that assembles a {@code Releases} instance from
-	 * individual version strings, {@link ArtifactVersion versions}, and
-	 * {@link Release releases}.
-	 *
-	 * @return a new, empty builder.
-	 */
 	public static Builder builder() {
 		return new Builder();
 	}
 
 	/**
-	 * Create a new {@code Releases} instance that also includes the given release.
-	 *
-	 * <p>The release is ordered into its {@link VersioningScheme} partition rather
-	 * than appended; an already-contained release is not deduplicated.
-	 *
-	 * @param release the release to include.
-	 * @return a new {@code Releases} instance containing all existing releases and
-	 * the given release.
+	 * Return a history including the additional release in version order.
+	 * Duplicates are retained.
 	 */
 	public Releases withRelease(Release release) {
 
@@ -215,12 +158,8 @@ public class Releases implements Sequence<Release> {
 	}
 
 	/**
-	 * Create a new {@code Releases} instance that also includes the given version
-	 * as an undated release when it is not already present.
-	 *
-	 * @param version the version to include.
-	 * @return this instance if the version is already present, or a new instance
-	 * containing the additional release.
+	 * Include the version as an undated release if absent.
+	 * @return this history if the version is already present.
 	 */
 	public Releases withVersion(ArtifactVersion version) {
 
@@ -232,53 +171,32 @@ public class Releases implements Sequence<Release> {
 	}
 
 	/**
-	 * Create a new {@code Releases} instance retaining only releases accepted by
-	 * the given predicate.
-	 *
-	 * <p>Existing partition ordering is reused; scheme precedence is recomputed for
-	 * the retained subset.
-	 *
-	 * @param predicate the release predicate.
-	 * @return the retained releases.
+	 * Return a filtered history, recomputing scheme precedence for the retained
+	 * releases.
 	 */
 	public Releases filter(Predicate<Release> predicate) {
 		return of(ordered.stream().filter(predicate).toList());
 	}
 
 	/**
-	 * Return the releases within the given {@link VersioningScheme}, newest first.
-	 *
-	 * <p>Upgrade strategies can use this view when the current version already
-	 * identifies the scheme to compare against.
-	 *
-	 * @param scheme the versioning scheme to select.
-	 * @return the releases in the given scheme, newest first, or an empty list when
-	 * none are known.
+	 * Return releases in the given scheme, newest first, or an empty list if none
+	 * are known.
 	 */
 	public List<Release> inScheme(VersioningScheme scheme) {
 		return partitions.getOrDefault(scheme, List.of());
 	}
 
 	/**
-	 * Return the highest-ranked versioning scheme.
-	 *
-	 * <p>The scheme with the most recent dated release ranks first. If an artifact
-	 * switched schemes more than once, the most recently active scheme wins again.
-	 * Without dates, enum encounter order breaks ties deterministically; callers
-	 * should not treat that result as evidence of a real migration.
-	 *
-	 * @return the successor scheme, or {@literal null} if there are no releases.
+	 * Return the highest-ranked scheme, or {@literal null} if this history is
+	 * empty.
 	 */
 	public @Nullable VersioningScheme successorScheme() {
 		return successorScheme;
 	}
 
 	/**
-	 * Return the release matching the given version within its
-	 * {@link VersioningScheme}.
-	 *
-	 * @param version the version to look up.
-	 * @return the matching release, or {@literal null} if no release matches.
+	 * Find a matching version within its scheme, or return {@literal null} if
+	 * absent.
 	 */
 	public @Nullable Release getRelease(ArtifactVersion version) {
 		for (Release release : inScheme(version.scheme())) {
@@ -289,72 +207,37 @@ public class Releases implements Sequence<Release> {
 		return null;
 	}
 
-	/**
-	 * Return whether this object contains no releases.
-	 *
-	 * @return {@literal true} if this object contains no releases; {@literal false}
-	 * otherwise.
-	 */
 	@Override
 	public boolean isEmpty() {
 		return ordered.isEmpty();
 	}
 
-	/**
-	 * Return whether this {@code Releases} instance contains the given release.
-	 *
-	 * @param release the release to look up.
-	 * @return {@literal true} if the release is contained; {@literal false}
-	 * otherwise.
-	 */
 	public boolean contains(Release release) {
 		return unique.contains(release);
 	}
 
-	/**
-	 * Return whether this {@code Releases} instance contains all the given release.
-	 * @return {@literal true} if all releases are contained; {@literal false}
-	 * otherwise.
-	 */
 	public boolean containsAll(Collection<Release> releases) {
 		return unique.containsAll(releases);
 	}
 
-	/**
-	 * Iterate over the releases in the same order as {@link #toList()}.
-	 */
 	@Override
 	public Iterator<Release> iterator() {
 		return ordered.iterator();
 	}
 
-	/**
-	 * Return a {@link Stream} of the {@link Release}s in the same order as
-	 * {@link #toList()}.
-	 *
-	 * @return a stream using the same order as {@link #toList()}.
-	 */
 	@Override
 	public Stream<Release> stream() {
 		return ordered.stream();
 	}
 
 	/**
-	 * Return the releases in artifact-level release order.
-	 *
-	 * @return the immutable list of ordered releases, or an empty list if
-	 * {@link #isEmpty()}.
+	 * Return the immutable releases in artifact-level order.
 	 */
 	@Override
 	public List<Release> toList() {
 		return ordered;
 	}
 
-	/**
-	 * Return the number of releases.
-	 *
-	 * @return the number of releases.
-	 */
 	public int size() {
 		return ordered.size();
 	}
@@ -374,33 +257,15 @@ public class Releases implements Sequence<Release> {
 		private Builder() {
 		}
 
-		/**
-		 * Add a release for the given {@link ArtifactVersion}.
-		 *
-		 * @param version the version to add.
-		 * @return this builder.
-		 */
 		public Builder add(ArtifactVersion version) {
 			return add(Release.of(version));
 		}
 
-		/**
-		 * Add the given release.
-		 *
-		 * @param release the release to add.
-		 * @return this builder.
-		 */
 		public Builder add(Release release) {
 			this.releases.add(release);
 			return this;
 		}
 
-		/**
-		 * Build the {@code Releases} instance from the collected releases.
-		 *
-		 * @return a new {@code Releases} instance; {@link Releases#empty() empty} when
-		 * no releases were added.
-		 */
 		public Releases build() {
 			return Releases.of(this.releases);
 		}

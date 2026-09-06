@@ -49,14 +49,9 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
 
 /**
- * Quick fix for a selected {@link DependencyUpdate}, anchored at the associated
- * dependency version literal.
- *
- * <p>Inspection invocation rewrites the anchored literal. Intention invocation
- * applies the selected update to every matching declaration in the file. The
- * intention preview delegates to {@link UpdateDependencyIntention}. Available
- * options expose {@link ApplyAllUpgradesIntention} and
- * {@link UpgradeDependenciesIntention}.
+ * A selected update anchored at a dependency version literal.
+ * <p>Inspection invocation updates the literal. Intention invocation updates
+ * all matching declarations in the file.
  *
  * @author Mark Paluch
  */

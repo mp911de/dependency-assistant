@@ -27,8 +27,7 @@ import com.intellij.openapi.project.Project;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * Quick-fix that inserts the Gradle Wrapper checksum supplied at construction
- * next to the distribution URL property.
+ * Insert a supplied checksum beside the distribution URL.
  *
  * @author Mark Paluch
  */

@@ -45,23 +45,16 @@ import org.springframework.util.Assert;
  */
 class GroovyDslUtils {
 
-	/**
-	 * Return whether the element is nested inside a Groovy {@code plugins} block.
-	 */
 	public static boolean isInsidePluginsBlock(PsiElement element) {
 		return isInsideGroovyBlock(element, GradleUtils::isPluginSection);
 	}
 
-	/**
-	 * Return whether the element is nested inside a Groovy {@code platform} block.
-	 */
 	public static boolean isInsidePlatformBlock(PsiElement element) {
 		return isInsideGroovyBlock(element, GradleUtils::isPlatformSection);
 	}
 
 	/**
-	 * Return whether the element is nested inside a Groovy block accepted by
-	 * {@code conditional}.
+	 * Return whether an enclosing block or call name matches the predicate.
 	 */
 	public static boolean isInsideGroovyBlock(PsiElement element, Predicate<String> predicate) {
 
@@ -78,22 +71,13 @@ class GroovyDslUtils {
 		}) != null;
 	}
 
-	/**
-	 * Return the name of the Groovy method call.
-	 *
-	 * @param call method call.
-	 * @return the name of the method call.
-	 */
 	public static String getGroovyMethodName(GrMethodCall call) {
 		return getRequiredText(call.getInvokedExpression()).trim();
 	}
 
 	/**
-	 * Return the required text associated with {@code expression}.
-	 *
-	 * @param expression the expression to inspect.
-	 * @return the required text.
-	 * @throws IllegalArgumentException if the expression is not supported.
+	 * Return expression text.
+	 * @throws IllegalArgumentException if no supported text is available.
 	 */
 	static String getRequiredText(GrExpression expression) {
 
@@ -107,15 +91,9 @@ class GroovyDslUtils {
 	}
 
 	/**
-	 * Return the text of a Groovy reference or literal expression.
-	 *
-	 * <p>A {@link GrReferenceExpression} resolves to its reference name and a
-	 * {@link GrLiteral} resolves to its literal text.
-	 *
-	 * @param expression the expression to extract the text from.
-	 * @return the reference name or literal text.
-	 * @throws IllegalArgumentException if {@code expression} is neither a reference
-	 * nor a literal expression.
+	 * Return a reference name or literal text.
+	 * @throws IllegalArgumentException if the expression is neither a reference nor
+	 * a literal.
 	 */
 	public static @Nullable String getText(GrExpression expression) {
 
@@ -132,12 +110,7 @@ class GroovyDslUtils {
 	}
 
 	/**
-	 * Check whether the given {@code GrExpression} contains actual <em>text</em>.
-	 *
-	 * @param expression the expression to check.
-	 * @return {@literal true} if the expression contains actual text;
-	 * {@literal false} otherwise.
-	 * @see StringUtils#hasText
+	 * Return whether the reference or string literal contains non-whitespace text.
 	 */
 	public static boolean hasText(@Nullable GrExpression expression) {
 
@@ -154,17 +127,15 @@ class GroovyDslUtils {
 	}
 
 	/**
-	 * Return whether the literal carries a constant string value, that is it is not
-	 * an interpolated {@code GString}.
+	 * Return whether the literal is a constant string rather than an interpolated
+	 * GString.
 	 */
 	public static boolean isConstantString(@Nullable GrLiteral literal) {
 		return literal != null && literal.getValue() instanceof String;
 	}
 
 	/**
-	 * Return the plain string content of a Groovy literal.
-	 * @param literal the literal to extract the text from.
-	 * @return the string value.
+	 * Return string content, preserving interpolation text.
 	 */
 	public static String getText(GrLiteral literal) {
 
@@ -180,11 +151,8 @@ class GroovyDslUtils {
 	}
 
 	/**
-	 * Return the given expression as version {@link Expression}: a property
-	 * reference for a reference expression, otherwise the literal text.
-	 * @param expression the version expression, or {@literal null}.
-	 * @return the version expression, or {@literal null} for unsupported shapes or
-	 * empty text.
+	 * Convert a version value to an {@link Expression}.
+	 * @return {@literal null} for unsupported shapes or empty text.
 	 */
 	static @Nullable Expression toExpression(@Nullable GrExpression expression) {
 
@@ -205,9 +173,6 @@ class GroovyDslUtils {
 	// Version catalog (Groovy accessor)
 	// -------------------------------------------------------------------------
 
-	/**
-	 * Return the operand after removing Groovy parentheses.
-	 */
 	public static @Nullable GrExpression unwrapGroovyParentheses(@Nullable GrExpression expr) {
 
 		GrExpression e = expr;
@@ -218,8 +183,7 @@ class GroovyDslUtils {
 	}
 
 	/**
-	 * Innermost {@code alias}, {@code id}, or dependency call whose first argument
-	 * is a version-catalog accessor chain and that contains {@code element}.
+	 * Find the enclosing catalog consumer call, or {@literal null} if absent.
 	 */
 	static @Nullable GrMethodCall findEnclosingGroovyCatalogAccessorCall(PsiElement element) {
 
@@ -277,12 +241,10 @@ class GroovyDslUtils {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Return the quoted coordinate of a command-style platform declaration owned by
-	 * the given call. Groovy parses {@code implementation platform 'g:a:1.0'} as a
-	 * property access on {@code implementation(platform)} whose name is the quoted
-	 * coordinate, so the coordinate is the reference name.
-	 * @param call the candidate {@code implementation(platform)} call.
-	 * @return the coordinate reference, or {@literal null}.
+	 * Find the coordinate in {@code implementation platform "g:a:1.0"}.
+	 * <p>Groovy represents the coordinate as a property name on
+	 * {@code implementation(platform)}.
+	 * @return {@literal null} if the call has no command-style platform coordinate.
 	 */
 	static @Nullable GrReferenceExpression getCommandPlatformString(GrMethodCall call) {
 
@@ -302,10 +264,8 @@ class GroovyDslUtils {
 	}
 
 	/**
-	 * Return the quoted coordinate of the command-style platform declaration at or
-	 * enclosing the given element.
-	 * @param element a call, the coordinate reference or an element inside it.
-	 * @return the coordinate reference, or {@literal null}.
+	 * Find the command-style platform coordinate containing the element, or
+	 * {@literal null}.
 	 */
 	static @Nullable GrReferenceExpression findCommandPlatformString(PsiElement element) {
 
@@ -318,11 +278,7 @@ class GroovyDslUtils {
 	}
 
 	/**
-	 * Return the dependency call owning the given command-style platform
-	 * coordinate.
-	 * @param string the coordinate reference.
-	 * @return the owning call, or {@literal null} if the reference is not a
-	 * command-style platform coordinate.
+	 * Find the call owning a command-style platform coordinate, or {@literal null}.
 	 */
 	static @Nullable GrMethodCall getCommandPlatformCall(GrReferenceExpression string) {
 		return string.getQualifierExpression() instanceof GrMethodCall call && getCommandPlatformString(call) == string

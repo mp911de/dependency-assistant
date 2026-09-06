@@ -45,10 +45,6 @@ public class BomAggregate extends Vulnerabilities {
 		this.artifactId = artifactId;
 	}
 
-	/**
-	 * Create a builder collecting member scan results for the BOM declaration line
-	 * identified by {@code artifactId}.
-	 */
 	static Builder builder(ArtifactId artifactId) {
 		return new Builder(artifactId);
 	}
@@ -63,12 +59,6 @@ public class BomAggregate extends Vulnerabilities {
 		return union.values();
 	}
 
-	/**
-	 * Return the BOM artifact coordinates of the declaration line this aggregate
-	 * was created for.
-	 *
-	 * @return the BOM artifact coordinates.
-	 */
 	public ArtifactId getArtifactId() {
 		return artifactId;
 	}
@@ -88,10 +78,6 @@ public class BomAggregate extends Vulnerabilities {
 			this.artifactId = artifactId;
 		}
 
-		/**
-		 * Register a member whose effective version is {@code managedVersion} along
-		 * with its scan result.
-		 */
 		Builder member(ArtifactId artifactId, ArtifactVersion managedVersion, Vulnerabilities vulnerabilities) {
 
 			if (vulnerabilities.isVulnerable()) {
@@ -101,10 +87,6 @@ public class BomAggregate extends Vulnerabilities {
 			return this;
 		}
 
-		/**
-		 * Register a member whose effective version is {@code managedVersion} along
-		 * with its scan result.
-		 */
 		Builder member(ArtifactId artifactId, ArtifactVersion managedVersion,
 				BiFunction<ArtifactId, ArtifactVersion, Vulnerabilities> vulnerabilitiesLookup) {
 

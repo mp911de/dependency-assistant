@@ -82,15 +82,10 @@ class VersionCatalogRegistry {
 	}
 
 	/**
-	 * Return the registry anchored at the project root of {@code file}.
-	 *
-	 * <p>The result is cached on {@code file} and invalidated by project PSI,
-	 * project-root, or imported Gradle model changes. A file without a backing
-	 * virtual file receives the default unanchored registry and cannot resolve a
-	 * catalog file.
-	 *
-	 * @param file the Gradle-related file that anchors the registry.
-	 * @return the version-catalog registry for the file.
+	 * Return the registry for the file's project root.
+	 * <p>Project PSI, root and imported-model changes invalidate the cache. Files
+	 * without a virtual file receive an unanchored registry that cannot resolve
+	 * entries.
 	 */
 	public static VersionCatalogRegistry from(PsiFile file) {
 
@@ -257,20 +252,13 @@ class VersionCatalogRegistry {
 		return catalogPaths.get(alias);
 	}
 
-	/**
-	 * Return {@literal true} if the given alias is registered in this registry.
-	 */
 	boolean containsAlias(String alias) {
 		return catalogPaths.containsKey(alias);
 	}
 
 	/**
-	 * Resolve the given TOML reference to the catalog artifact declaration. The
-	 * returned reference is anchored at the TOML catalog entry, not at a Gradle DSL
-	 * usage site.
-	 * @param reference the catalog accessor reference to resolve.
-	 * @return the catalog-backed artifact reference, or an unresolved reference if
-	 * the alias, catalog file, or entry cannot be resolved.
+	 * Resolve an accessor to its TOML declaration and editable version.
+	 * @return an unresolved reference if the alias, file or entry is unavailable.
 	 */
 	ArtifactReference resolve(TomlReference reference) {
 
@@ -324,16 +312,10 @@ class VersionCatalogRegistry {
 		return TomlParser.findCatalogFile(psiManager, projectRoot, path);
 	}
 
-	/**
-	 * Return the alias-to-path mappings for this registry.
-	 */
 	public Map<String, String> catalogPaths() {
 		return catalogPaths;
 	}
 
-	/**
-	 * Return the default catalog alias.
-	 */
 	public String defaultAlias() {
 		return defaultAlias;
 	}

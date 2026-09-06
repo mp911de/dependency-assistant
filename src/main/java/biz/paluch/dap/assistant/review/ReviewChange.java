@@ -19,16 +19,11 @@ package biz.paluch.dap.assistant.review;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A change to the {@link UpgradeReview} that the table must reflect.
- *
- * <p>Three shapes, distinguished so the table model can pick the cheapest
- * reaction: reload the visible row set, refresh a single row, or refresh every
- * row in place.
+ * Required table refresh after a review change.
  *
  * @author Mark Paluch
- * @param candidate the single row to refresh, or {@literal null} when the
- * change is a reload or spans all rows.
- * @param reload whether the visible candidate set must be reloaded.
+ * @param candidate the row to refresh, or {@literal null} for all rows.
+ * @param reload whether the visible row set must be reloaded.
  */
 record ReviewChange(@Nullable TableRow candidate, boolean reload) {
 
@@ -36,30 +31,14 @@ record ReviewChange(@Nullable TableRow candidate, boolean reload) {
 
 	private static final ReviewChange ALL_ROWS = new ReviewChange(null, false);
 
-	/**
-	 * The visible candidate set changed and must be reloaded.
-	 *
-	 * @return the shared reload change.
-	 */
 	static ReviewChange reloadVisible() {
 		return RELOAD_VISIBLE;
 	}
 
-	/**
-	 * A single candidate's selection changed; refresh its row.
-	 *
-	 * @param candidate the row to refresh.
-	 * @return a row-scoped change.
-	 */
 	static ReviewChange row(TableRow candidate) {
 		return new ReviewChange(candidate, false);
 	}
 
-	/**
-	 * Selections changed across many rows; refresh all rows without reloading.
-	 *
-	 * @return the shared all-rows change.
-	 */
 	static ReviewChange allRows() {
 		return ALL_ROWS;
 	}

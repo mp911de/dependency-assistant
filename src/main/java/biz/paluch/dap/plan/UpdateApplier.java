@@ -29,7 +29,7 @@ import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.vcs.VcsException;
 
 /**
- * Plain apply strategy.
+ * Apply plan items with platform undo and no VCS commit.
  *
  * @author Mark Paluch
  */
@@ -72,9 +72,6 @@ class UpdateApplier implements PlanUpdateApplier {
 		return appliedUpdates;
 	}
 
-	/**
-	 * Return the undoable command name for upgrading the given dependency.
-	 */
 	static String getCommandName(String displayName, ArtifactVersion version) {
 		return MessageBundle.message("plan.apply.upgrade", displayName, version);
 	}

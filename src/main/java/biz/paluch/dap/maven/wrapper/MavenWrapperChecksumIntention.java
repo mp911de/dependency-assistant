@@ -40,19 +40,10 @@ import com.intellij.util.IncorrectOperationException;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Intention that downloads the artifact referenced by a Maven Wrapper URL and
- * inserts its missing SHA-256 checksum property at the caret line.
- *
- * <p>The intention is available only in trusted projects for a supported,
- * browsable wrapper URL that has no URL problems and no sibling checksum
- * property. The download runs through {@link ChecksumDownloader} outside the
- * write action. Before inserting the result in a write command, the intention
- * verifies that the URL, caret marker, and checksum-property absence have not
- * changed.
- *
- * <p>Download failures are reported through a project notification.
- * Cancellation, disposal, stale results, and blank checksums leave the file
- * unchanged.
+ * Inserts a missing Maven Wrapper checksum near the caret.
+ * <p>Available for clean, browsable URLs in trusted projects. The download runs
+ * outside the write action. Stale results and cancellation leave the file
+ * unchanged. Download failures are reported by {@link ChecksumDownloader}.
  *
  * @author Mark Paluch
  */
@@ -200,9 +191,6 @@ public class MavenWrapperChecksumIntention implements IntentionAction, DumbAware
 		}
 	}
 
-	/**
-	 * Checksum intention for {@code distributionUrl}.
-	 */
 	public static class Distribution extends MavenWrapperChecksumIntention {
 
 		public Distribution() {
@@ -211,9 +199,6 @@ public class MavenWrapperChecksumIntention implements IntentionAction, DumbAware
 
 	}
 
-	/**
-	 * Checksum intention for {@code wrapperUrl}.
-	 */
 	public static class Wrapper extends MavenWrapperChecksumIntention {
 
 		public Wrapper() {

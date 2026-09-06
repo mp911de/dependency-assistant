@@ -43,35 +43,16 @@ public class ArtifactReference {
 		this.declaration = declaration;
 	}
 
-	/**
-	 * Return the shared unresolved lookup result.
-	 *
-	 * @return an artifact reference containing no declaration.
-	 */
 	public static ArtifactReference unresolved() {
 		return UNRESOLVED;
 	}
 
-	/**
-	 * Create a resolved reference by configuring an
-	 * {@link ArtifactDeclaration.Builder}.
-	 *
-	 * @param builderConsumer the declaration builder customizations.
-	 * @return a reference containing the built declaration.
-	 */
 	public static ArtifactReference from(Consumer<ArtifactDeclaration.Builder> builderConsumer) {
 		ArtifactDeclaration.Builder builder = ArtifactDeclaration.builder();
 		builderConsumer.accept(builder);
 		return new ArtifactReference(builder.build());
 	}
 
-	/**
-	 * Create an {@code ArtifactReference} from the given
-	 * {@link VersionedDependencySite}.
-	 *
-	 * @param dependencySite the versioned dependency site to adapt.
-	 * @return a reference containing the adapted declaration.
-	 */
 	public static ArtifactReference from(VersionedDependencySite dependencySite) {
 		return from(it -> {
 			it.artifact(dependencySite.getArtifactId())
@@ -84,30 +65,18 @@ public class ArtifactReference {
 		});
 	}
 
-	/**
-	 * Create an artifact reference from the given artifact declaration.
-	 * @param declaration the resolved artifact declaration.
-	 * @return the artifact reference.
-	 */
 	public static ArtifactReference from(ArtifactDeclaration declaration) {
 		return new ArtifactReference(declaration);
 	}
 
-	/**
-	 * Return whether this reference contains an artifact declaration.
-	 *
-	 * @return {@literal true} if this reference contains a declaration;
-	 * {@literal false} otherwise.
-	 */
 	public boolean isResolved() {
 		return declaration != null;
 	}
 
 	/**
-	 * Return the resolved {@link ArtifactDeclaration}.
+	 * Return the declaration.
 	 *
-	 * @return the resolved declaration.
-	 * @throws IllegalStateException if this reference is unresolved.
+	 * @throws IllegalStateException if unresolved.
 	 */
 	public ArtifactDeclaration getDeclaration() {
 
@@ -116,22 +85,20 @@ public class ArtifactReference {
 	}
 
 	/**
-	 * Return the artifact id of the resolved declaration.
+	 * Return the declaration's artifact id.
 	 *
-	 * @return the resolved declaration's artifact id.
-	 * @throws IllegalStateException if this reference is unresolved.
+	 * @throws IllegalStateException if unresolved.
 	 */
 	public ArtifactId getArtifactId() {
 		return getDeclaration().getArtifactId();
 	}
 
 	/**
-	 * Adapt this reference's resolved declaration into a single-source
-	 * {@link Dependency}.
+	 * Adapt the declaration into a dependency with its version and declaration
+	 * sources.
 	 *
-	 * @return the dependency derived from the resolved declaration.
-	 * @throws IllegalStateException if this reference is unresolved or its
-	 * declaration has no resolved version.
+	 * @throws IllegalStateException if unresolved or the declaration has no
+	 * version.
 	 */
 	public Dependency toDependency() {
 		return getDeclaration().toDependency();

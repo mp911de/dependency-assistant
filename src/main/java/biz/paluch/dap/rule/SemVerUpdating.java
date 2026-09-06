@@ -17,34 +17,27 @@
 package biz.paluch.dap.rule;
 
 /**
- * Controls whether semver-based upgrade strategy limits are derived from the
- * project version when resolving a branch rule.
- *
- * <p>The state is determined from the {@code semver} property in
- * {@code dependencyfile.json}: {@link #ENABLED} when {@code "semver": true},
- * {@link #DISABLED} when {@code "semver": false}, and {@link #INFERRED} when
- * the property is absent but a descriptor exists (the default behavior).
+ * Controls whether rule resolution infers strategy limits from the project
+ * version.
  *
  * @author Mark Paluch
+ * @see DependencyRules
  */
 enum SemVerUpdating {
 
 	/**
-	 * Semver-based upgrade strategy limits are inferred from the project version.
-	 * This is the default when {@code dependencyfile.json} is present but does not
-	 * declare a {@code semver} property.
+	 * Default inference when the descriptor omits {@code semver}.
 	 */
 	INFERRED,
 
 	/**
-	 * Semver-based upgrade strategy limits are explicitly enabled via
-	 * {@code "semver": true} in {@code dependencyfile.json}.
+	 * Explicitly enabled through {@code semver: true}. Behaves like default
+	 * inference.
 	 */
 	ENABLED,
 
 	/**
-	 * Semver-based upgrade strategy limits are disabled. Set via
-	 * {@code "semver": false} in {@code dependencyfile.json}.
+	 * Disables inference through {@code semver: false}.
 	 */
 	DISABLED
 

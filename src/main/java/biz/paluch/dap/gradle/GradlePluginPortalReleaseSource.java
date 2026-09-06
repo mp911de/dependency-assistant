@@ -38,9 +38,6 @@ import com.intellij.openapi.progress.ProgressIndicator;
  */
 public class GradlePluginPortalReleaseSource implements ReleaseSource {
 
-	/**
-	 * Shared Gradle Plugin Portal release source.
-	 */
 	public static GradlePluginPortalReleaseSource INSTANCE = new GradlePluginPortalReleaseSource();
 
 	private static final String PORTAL_URL = "https://plugins.gradle.org/m2/";

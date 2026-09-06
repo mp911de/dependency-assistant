@@ -30,7 +30,6 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.checker.VulnerabilitiesRepository;
-import com.intellij.openapi.components.PersistentStateComponent;
 import com.intellij.openapi.components.PersistentStateComponentWithModificationTracker;
 import com.intellij.openapi.components.State;
 import com.intellij.openapi.components.Storage;
@@ -42,17 +41,8 @@ import com.intellij.util.xmlb.annotations.Transient;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Project-level service exposing persistent cache state and runtime dependency
- * state.
- * <p>The service has two distinct responsibilities:
- * <ul>
- * <li>persisting the durable {@link Cache} through IntelliJ's
- * {@link PersistentStateComponent} contract, and</li>
- * <li>holding in-memory {@link DependencyCollector dependency collectors} for
- * the projects currently analyzed in this IDE session.</li>
- * </ul>
- * Runtime dependency information is intentionally not part of the persisted
- * state and is lost when the IDE process is restarted.
+ * Project service for persistent metadata and runtime dependencies. Dependency
+ * collectors last only for the current IDE session.
  *
  * @author Mark Paluch
  */
@@ -72,40 +62,21 @@ public class StateService
 		setCache(cache);
 	}
 
-	/**
-	 * Return the project-scoped service instance.
-	 *
-	 * @param project the IntelliJ project.
-	 * @return the corresponding service instance.
-	 */
 	public static StateService getInstance(Project project) {
 		return project.getService(StateService.class);
 	}
 
-	/**
-	 * Return the persistent cache backing this service.
-	 *
-	 * @return the current cache instance.
-	 */
 	public Cache getCache() {
 		return state.getCache();
 	}
 
-	/**
-	 * Replace the persistent cache backing this service.
-	 *
-	 * @param cache the cache to store.
-	 */
 	public void setCache(Cache cache) {
 		state.setCache(cache);
 	}
 
 	/**
-	 * Return the state object managed by IntelliJ persistence.
-	 * <p>The returned state is a snapshot that decouples platform serialization
-	 * from concurrent cache mutations performed by background tasks.
-	 *
-	 * @return the persistent service state.
+	 * Snapshot persistent state so serialization does not traverse live cache
+	 * collections.
 	 */
 	@Override
 	public DependencyAssistantState getState() {
@@ -116,11 +87,6 @@ public class StateService
 		return snapshot;
 	}
 
-	/**
-	 * Copy the persisted state into this service instance.
-	 *
-	 * @param state the state loaded by IntelliJ persistence.
-	 */
 	@Override
 	public void loadState(DependencyAssistantState state) {
 		XmlSerializerUtil.copyBean(state, this.state);
@@ -132,14 +98,6 @@ public class StateService
 		return getStateModificationCount();
 	}
 
-	/**
-	 * Return the modification count the platform compares to decide whether
-	 * {@link #getState()} needs to be called at all during a save cycle.
-	 * <p>Combines the cache's mutation counter with the one-time flip of the
-	 * used-once flag.
-	 *
-	 * @return the state modification count.
-	 */
 	@Override
 	public long getStateModificationCount() {
 		return state.getCache().getModificationCount();
@@ -156,12 +114,7 @@ public class StateService
 	}
 
 	/**
-	 * Return a project-state facade for the given project identity.
-	 * <p>The returned facade is backed by the current service instance and reflects
-	 * subsequent cache or dependency updates.
-	 *
-	 * @param identity the project identity to expose.
-	 * @return the corresponding project-state facade.
+	 * Return a view that reflects subsequent state updates.
 	 */
 	public ProjectState getProjectState(ProjectId identity) {
 		return new DefaultProjectState(identity);
@@ -173,19 +126,10 @@ public class StateService
 	}
 
 	/**
-	 * Return the {@link Vulnerabilities} for the given artifact and version.
-	 * <p>For a Bill of Materials with cached membership, the result is a
-	 * {@link BomAggregate} over the BOM itself and all used members whose effective
-	 * version is managed by the BOM. Without vulnerable members, the artifact's own
-	 * scan result is returned.
-	 * <p>For a BOM version without cached membership, the membership is predicted
-	 * through {@link CachedArtifact#predictBom}: members following the BOM's
-	 * release train are assumed at the requested version, members with independent
-	 * versioning are left out of the aggregate.
-	 *
-	 * @param artifactId the artifact to look up.
-	 * @param artifactVersion the exact version whose scan is requested.
-	 * @return the vulnerability scan.
+	 * Return cached vulnerabilities, aggregating BOM advisories with advisories for
+	 * used members at their managed versions. Missing memberships may be predicted
+	 * by {@link CachedArtifact#predictBom}. Without vulnerable members, retain the
+	 * artifact scan result.
 	 */
 	@Transient
 	public Vulnerabilities getVulnerabilities(ArtifactId artifactId, ArtifactVersion artifactVersion) {
@@ -231,40 +175,23 @@ public class StateService
 	}
 
 	/**
-	 * Return the {@link DependencyCollector dependency collectors} currently held
-	 * for the analyzed modules, keyed by project identity.
-	 * <p>The map is a snapshot taken at call time, while the collectors themselves
-	 * are the live instances and may still be mutated by an ongoing scan. Intended
-	 * to seed scan-wide completion so a pass that re-collects only some modules can
-	 * still see what the remaining modules declared.
-	 *
-	 * @return an immutable snapshot keyed by project identity. The snapshot is
-	 * empty when no module has been collected yet.
+	 * Return an immutable map containing live collectors. This allows partial
+	 * rescans to retain declarations from modules they did not visit.
 	 */
 	public Map<ProjectId, DependencyCollector> getCollectors() {
 		return Map.copyOf(dependencies);
 	}
 
 	/**
-	 * Perform the given action for every dependency declared across all modules
-	 * currently held in runtime dependency state.
-	 *
-	 * @param consumer the action invoked with each dependency declaration.
+	 * Visit runtime dependency usages across all modules.
 	 */
 	public void doWithDependencies(Consumer<Dependency> consumer) {
 		doWithDependencies(Predicates.alwaysTrue(), consumer);
 	}
 
 	/**
-	 * Perform the given action for every dependency declared across the modules
-	 * accepted by {@code projectFilter}.
-	 * <p>The consumer is invoked once for each dependency in each accepted module,
-	 * so an artifact declared by several modules is visited several times. Only the
-	 * in-memory runtime dependency state is traversed. The persisted cache is not
-	 * consulted.
-	 *
-	 * @param projectFilter selects which modules are traversed.
-	 * @param consumer the action invoked with each dependency declaration.
+	 * Visit runtime usages in selected modules. An artifact used in multiple
+	 * modules is visited for each module.
 	 */
 	public void doWithDependencies(Predicate<ProjectId> projectFilter, Consumer<Dependency> consumer) {
 		for (Map.Entry<ProjectId, DependencyCollector> entry : dependencies.entrySet()) {
@@ -277,17 +204,7 @@ public class StateService
 	}
 
 	/**
-	 * Perform the given action for each module's usage of the given artifact,
-	 * restricted to the modules accepted by {@code projectFilter}.
-	 * <p>Unlike {@link #doWithDependencies(Predicate, Consumer)}, this variant uses
-	 * the per-module usage index instead of scanning every dependency, so the cost
-	 * scales with the number of modules rather than the total dependency count.
-	 * Only the in-memory runtime dependency state is traversed. The persisted cache
-	 * is not consulted.
-	 *
-	 * @param artifactId the artifact whose usages are visited.
-	 * @param projectFilter selects which modules are traversed.
-	 * @param consumer the action invoked with each module's usage of the artifact.
+	 * Visit each selected module's runtime usage of the artifact.
 	 */
 	public void doWithDependencies(ArtifactId artifactId, Predicate<ProjectId> projectFilter,
 			Consumer<Dependency> consumer) {
@@ -303,24 +220,15 @@ public class StateService
 	}
 
 	/**
-	 * Perform the given action for every Bill of Materials resolved across all
-	 * modules currently held in runtime dependency state.
-	 *
-	 * @param consumer the action invoked with each Bill of Materials.
+	 * Visit resolved BOMs across runtime collectors.
 	 */
 	public void doWithBillOfMaterials(Consumer<BillOfMaterials> consumer) {
 		doWithBillOfMaterials(Predicates.alwaysTrue(), consumer);
 	}
 
 	/**
-	 * Perform the given action for every Bill of Materials resolved across the
-	 * modules accepted by {@code projectFilter}.
-	 * <p>The consumer is invoked once per module, so a BOM imported by several
-	 * modules is visited several times. Only the in-memory runtime dependency state
-	 * is traversed. The persisted cache is not consulted.
-	 *
-	 * @param projectFilter selects which modules are traversed.
-	 * @param consumer the action invoked with each Bill of Materials.
+	 * Visit resolved BOMs in selected runtime collectors. A BOM imported by
+	 * multiple modules is visited for each module.
 	 */
 	public void doWithBillOfMaterials(Predicate<ProjectId> projectFilter, Consumer<BillOfMaterials> consumer) {
 		for (Map.Entry<ProjectId, DependencyCollector> entry : dependencies.entrySet()) {
@@ -333,22 +241,13 @@ public class StateService
 	}
 
 	/**
-	 * Return whether this service currently knows dependencies or releases.
-	 *
-	 * <p>This check uses the persistent cache. A project entry counts even when no
-	 * runtime dependency collector is currently installed.
-	 *
-	 * @return {@code true} if the cache contains releases or project entries.
+	 * Whether the persistent cache contains projects or releases, regardless of
+	 * runtime collector availability.
 	 */
 	public boolean hasDependenciesOrReleases() {
 		return getCache().hasReleases() || getCache().hasDependencies();
 	}
 
-	/**
-	 * Return {@literal true} if Dependency Assistant has been used actively.
-	 *
-	 * @return {@code true} after the first call to {@link #markUsed()}.
-	 */
 	public boolean hasBeenUsed() {
 		return state.isUsedOnce();
 	}
@@ -357,11 +256,6 @@ public class StateService
 
 		private final ProjectId identity;
 
-		/**
-		 * Create a state facade for the given project identity.
-		 *
-		 * @param identity the project identity whose runtime dependencies are exposed.
-		 */
 		public DefaultProjectState(ProjectId identity) {
 			this.identity = identity;
 		}

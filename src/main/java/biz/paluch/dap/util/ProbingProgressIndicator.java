@@ -32,64 +32,23 @@ import com.intellij.openapi.progress.util.AbstractProgressIndicatorBase;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Diagnostic {@link ProgressIndicator} that records progress text, fractions,
- * step timings, named segments, fraction regressions, and cancellation
- * observations for later inspection or reporting.
+ * Diagnostic progress indicator with timing and cancellation observations. It
+ * can record silently or forward updates to a visible indicator.
  *
- * <p>The probe can run standalone or wrap an existing indicator. When a
- * delegate is supplied, every progress call is forwarded to the delegate while
- * the probe keeps its own monotonic timeline, so it can sit transparently
- * around a visible IntelliJ progress task without changing what the user sees.
- * Without a delegate it records a silent timeline that can be inspected
- * programmatically through {@link #snapshot()}.
+ * <p>Text changes open steps. Named segments time independent blocks of work.
+ * Use try-with-resources when wrapping a running indicator so the report is
+ * finished when work ends. Closing the probe does not stop its delegate.
  *
- * <p>A step is opened whenever {@link #setText(String)} or
- * {@link #setText2(String)} changes the current text pair. A fraction update
- * opens a step only when no step exists yet. Later fraction changes update the
- * current step. A block of work can instead be timed explicitly as a named
- * {@link Segment} through {@link #run(String, Runnable)} or
- * {@link #call(String, Supplier)}. Segments are independent of steps and may
- * span several of them.
- *
- * <p>Output is selected by factory: {@link #printingUpdates(ProgressIndicator)}
- * prints consolidated live updates,
- * {@link #reportingOnFinish(ProgressIndicator)} prints a final report,
- * {@link #printingUpdatesAndReporting(ProgressIndicator)} does both, and
- * {@link #traceReportingOnFinish(ProgressIndicator)} additionally captures the
- * originating call site of each step and renders it for the slowest steps as a
- * console-navigable line. The plain constructors record silently. When the
- * probe is the indicator started by the platform, {@link #stop()} prints the
- * report. When it wraps an already-running indicator, use try-with-resources so
- * {@link #close()} prints it.
- *
- * <p>Wrapping the indicator handed to a background task forwards every update
- * to the visible progress UI and prints the report when the block exits:
  * <pre class="code">
  * try (ProbingProgressIndicator probe = ProbingProgressIndicator.reportingOnFinish(indicator)) {
- *     probe.setText("Resolve releases");
  *     probe.run("resolve", () -> resolveReleases(probe));
  * }
  * </pre>
  *
- * <p>Standalone, with no delegate, the probe records a silent timeline that the
- * caller inspects directly instead of printing: <pre class="code">
- * ProbingProgressIndicator probe = new ProbingProgressIndicator();
- * probe.run("scan", () -> scan(probe));
- * Snapshot snapshot = probe.snapshot();
- * </pre>
- *
- * <p>Trace reporting captures where each step was started, so the report links
- * the slowest steps back to the calling code in the IntelliJ console:
- * <pre class="code">
- * try (ProbingProgressIndicator probe = ProbingProgressIndicator.traceReportingOnFinish(indicator)) {
- *     probe.setText("Collect dependencies");
- *     probe.setFraction(0.5);
- * }
- * </pre>
+ * <p>Trace reporting walks the stack for step origins and is intended for
+ * diagnostics.
  *
  * @author Mark Paluch
- * @see ProgressIndicator
- * @see WeightedStepsProgressIndicator
  * @see Snapshot
  */
 public class ProbingProgressIndicator extends AbstractProgressIndicatorBase implements AutoCloseable {
@@ -158,10 +117,8 @@ public class ProbingProgressIndicator extends AbstractProgressIndicatorBase impl
 	}
 
 	/**
-	 * Create a silent probing indicator that forwards progress calls to the given
-	 * delegate.
-	 * @param delegate the indicator to receive forwarded progress calls, or
-	 * {@literal null} for a standalone probe.
+	 * Create a silent probe forwarding updates to the delegate. A {@code null}
+	 * delegate records standalone.
 	 */
 	public ProbingProgressIndicator(@Nullable ProgressIndicator delegate) {
 		this(delegate, EnumSet.noneOf(OutputMode.class), DEFAULT_FRACTION_INCREMENT, System::nanoTime, DEFAULT_OUT);
@@ -186,95 +143,42 @@ public class ProbingProgressIndicator extends AbstractProgressIndicatorBase impl
 		this.baseNanos = ticker.getAsLong();
 	}
 
-	/**
-	 * Create a standalone probe that prints consolidated progress updates.
-	 * @return a new standalone probing indicator.
-	 */
 	public static ProbingProgressIndicator printingUpdates() {
 		return new ProbingProgressIndicator(null, EnumSet.of(OutputMode.PRINT_UPDATES), DEFAULT_FRACTION_INCREMENT,
 				System::nanoTime, DEFAULT_OUT);
 	}
 
-	/**
-	 * Create a probe that prints consolidated progress updates and forwards calls
-	 * to the given delegate.
-	 * @param delegate the indicator to receive forwarded progress calls.
-	 * @return a new probing indicator.
-	 */
 	public static ProbingProgressIndicator printingUpdates(ProgressIndicator delegate) {
 		return new ProbingProgressIndicator(delegate, EnumSet.of(OutputMode.PRINT_UPDATES), DEFAULT_FRACTION_INCREMENT,
 				System::nanoTime, DEFAULT_OUT);
 	}
 
-	/**
-	 * Create a standalone probe that prints a report when it is stopped or closed.
-	 * @return a new standalone probing indicator.
-	 */
 	public static ProbingProgressIndicator reportingOnFinish() {
 		return new ProbingProgressIndicator(null, EnumSet.of(OutputMode.REPORT_ON_FINISH), DEFAULT_FRACTION_INCREMENT,
 				System::nanoTime, DEFAULT_OUT);
 	}
 
-	/**
-	 * Create a probe that prints a report when it is stopped or closed and forwards
-	 * calls to the given delegate.
-	 * @param delegate the indicator to receive forwarded progress calls.
-	 * @return a new probing indicator.
-	 */
 	public static ProbingProgressIndicator reportingOnFinish(ProgressIndicator delegate) {
 		return new ProbingProgressIndicator(delegate, EnumSet.of(OutputMode.REPORT_ON_FINISH),
 				DEFAULT_FRACTION_INCREMENT,
 				System::nanoTime, DEFAULT_OUT);
 	}
 
-	/**
-	 * Create a standalone probe that captures the originating call site of each
-	 * step and prints a report when it is stopped or closed.
-	 *
-	 * <p>The report renders the call site of steps above the 99th percentile as a
-	 * stack-trace line that the IntelliJ console links to the source location.
-	 * Capturing call sites walks the stack on every step start and is meant for
-	 * diagnostics, not for production progress reporting.
-	 * @return a new standalone probing indicator.
-	 */
 	public static ProbingProgressIndicator traceReportingOnFinish() {
 		return new ProbingProgressIndicator(null, EnumSet.of(OutputMode.REPORT_ON_FINISH, OutputMode.CAPTURE_TRACE),
 				DEFAULT_FRACTION_INCREMENT, System::nanoTime, DEFAULT_OUT);
 	}
 
-	/**
-	 * Create a probe that captures the originating call site of each step, prints a
-	 * report when it is stopped or closed, and forwards calls to the given
-	 * delegate.
-	 *
-	 * <p>The report renders the call site of steps above the 99th percentile as a
-	 * stack-trace line that the IntelliJ console links to the source location.
-	 * Capturing call sites walks the stack on every step start and is meant for
-	 * diagnostics, not for production progress reporting.
-	 * @param delegate the indicator to receive forwarded progress calls.
-	 * @return a new probing indicator.
-	 */
 	public static ProbingProgressIndicator traceReportingOnFinish(ProgressIndicator delegate) {
 		return new ProbingProgressIndicator(delegate, EnumSet.of(OutputMode.REPORT_ON_FINISH, OutputMode.CAPTURE_TRACE),
 				DEFAULT_FRACTION_INCREMENT, System::nanoTime, DEFAULT_OUT);
 	}
 
-	/**
-	 * Create a standalone probe that prints consolidated updates and a final
-	 * report.
-	 * @return a new standalone probing indicator.
-	 */
 	public static ProbingProgressIndicator printingUpdatesAndReporting() {
 		return new ProbingProgressIndicator(null, EnumSet.of(OutputMode.PRINT_UPDATES, OutputMode.REPORT_ON_FINISH),
 				DEFAULT_FRACTION_INCREMENT, System::nanoTime, DEFAULT_OUT);
 	}
 
-	/**
-	 * Create a probe that prints consolidated updates and a final report while
-	 * forwarding calls to the given delegate.
-	 * @param delegate the indicator to receive forwarded progress calls.
-	 * @return a new probing indicator.
-	 */
 	public static ProbingProgressIndicator printingUpdatesAndReporting(ProgressIndicator delegate) {
 		return new ProbingProgressIndicator(delegate,
 				EnumSet.of(OutputMode.PRINT_UPDATES, OutputMode.REPORT_ON_FINISH), DEFAULT_FRACTION_INCREMENT,
@@ -419,13 +323,8 @@ public class ProbingProgressIndicator extends AbstractProgressIndicatorBase impl
 	}
 
 	/**
-	 * Run an action as a named {@link Segment}, recording how long it takes.
-	 *
-	 * <p>The segment is recorded even when the action throws. A failed segment is
-	 * flagged through {@link Segment#failed()} and the exception, including
-	 * {@link ProcessCanceledException}, is rethrown unchanged.
-	 * @param label the segment label.
-	 * @param action the work to time.
+	 * Time an action as a named segment. Failures are recorded and rethrown
+	 * unchanged, including cancellation.
 	 */
 	public void run(String label, Runnable action) {
 		call(label, () -> {
@@ -435,16 +334,8 @@ public class ProbingProgressIndicator extends AbstractProgressIndicatorBase impl
 	}
 
 	/**
-	 * Run a value-returning action as a named {@link Segment}, recording how long
-	 * it takes.
-	 *
-	 * <p>The segment is recorded even when the action throws. A failed segment is
-	 * flagged through {@link Segment#failed()} and the exception, including
-	 * {@link ProcessCanceledException}, is rethrown unchanged.
-	 * @param <T> the result type.
-	 * @param label the segment label.
-	 * @param action the work to time.
-	 * @return the value returned by the action.
+	 * Time an action as a named segment and return its result. Failures are
+	 * recorded and rethrown unchanged, including cancellation.
 	 */
 	public <T> T call(String label, Supplier<T> action) {
 
@@ -460,18 +351,15 @@ public class ProbingProgressIndicator extends AbstractProgressIndicatorBase impl
 	}
 
 	/**
-	 * Return the current immutable progress capture.
-	 * @return a snapshot containing closed steps and the current open step.
+	 * Return an immutable snapshot including the currently open step.
 	 */
 	public Snapshot snapshot() {
 		return snapshot(ticker.getAsLong());
 	}
 
 	/**
-	 * Print a report for the current capture to the configured output stream.
-	 *
-	 * <p>This method does not finish the capture. Later observations remain visible
-	 * to subsequent snapshots and reports.
+	 * Print the current capture without finishing it. Later observations remain
+	 * visible to subsequent snapshots and reports.
 	 */
 	public void printReport() {
 		printReport(snapshot());
@@ -523,12 +411,8 @@ public class ProbingProgressIndicator extends AbstractProgressIndicatorBase impl
 	}
 
 	/**
-	 * Finish the capture and print its report when report-on-finish output is
-	 * enabled.
-	 *
-	 * <p>The first invocation closes the current step and freezes the overall
-	 * duration. The configured final report is emitted at most once. Invoke this
-	 * method only after no further progress updates are expected.
+	 * Finish timing and emit the configured report at most once. Call only after no
+	 * further progress updates are expected.
 	 */
 	public void finishAndReport() {
 
@@ -966,8 +850,7 @@ public class ProbingProgressIndicator extends AbstractProgressIndicatorBase impl
 		REPORT_ON_FINISH,
 
 		/**
-		 * Capture the originating call site of each step, skipping platform and probing
-		 * frames, so the report can link slow steps back to the calling code.
+		 * Capture step origins for navigation from slow-step reports.
 		 */
 		CAPTURE_TRACE
 	}
@@ -977,86 +860,35 @@ public class ProbingProgressIndicator extends AbstractProgressIndicatorBase impl
 	 */
 	public enum ProgressMethod {
 
-		/**
-		 * The progress indicator was started.
-		 */
 		START,
 
-		/**
-		 * The progress indicator was stopped.
-		 */
 		STOP,
 
-		/**
-		 * Cancellation was requested through {@link ProbingProgressIndicator#cancel()}.
-		 */
 		CANCEL,
 
-		/**
-		 * Cancellation state was queried through
-		 * {@link ProbingProgressIndicator#isCanceled()}.
-		 */
 		IS_CANCELED,
 
-		/**
-		 * Cancellation was checked through
-		 * {@link ProbingProgressIndicator#checkCanceled()}.
-		 */
 		CHECK_CANCELED,
 
-		/**
-		 * Primary progress text was changed through
-		 * {@link ProbingProgressIndicator#setText(String)}.
-		 */
 		SET_TEXT,
 
-		/**
-		 * Secondary progress text was changed through
-		 * {@link ProbingProgressIndicator#setText2(String)}.
-		 */
 		SET_TEXT2,
 
-		/**
-		 * Progress fraction was changed through
-		 * {@link ProbingProgressIndicator#setFraction(double)}.
-		 */
 		SET_FRACTION,
 
-		/**
-		 * Determinate state was changed through
-		 * {@link ProbingProgressIndicator#setIndeterminate(boolean)}.
-		 */
 		SET_INDETERMINATE
 	}
 
 	/**
-	 * Immutable capture of one probing run.
+	 * Immutable capture with steps in call order and segments in completion order.
 	 *
-	 * @param duration the elapsed duration covered by this snapshot.
-	 * @param steps the captured progress steps in call order.
-	 * @param segments the named work segments in start order.
-	 * @param fractionRegressions the observed fraction decreases in observation
-	 * order.
-	 * @param cancellationRequest the first indication of cancellation, or
-	 * {@literal null} if none was observed.
-	 * @param cancellationObservations cancellation exceptions seen by the probe.
+	 * @param cancellationRequest the first observed cancellation, or {@code null}
+	 * if none.
 	 */
 	public record Snapshot(Duration duration, List<Step> steps, List<Segment> segments,
 			List<FractionRegression> fractionRegressions, @Nullable CancellationRequest cancellationRequest,
 			List<CancellationObservation> cancellationObservations) {
 
-		/**
-		 * Create a snapshot from captured steps, segments, fraction regressions, and
-		 * cancellation observations.
-		 * @param duration the elapsed duration covered by this snapshot.
-		 * @param steps the captured progress steps in call order.
-		 * @param segments the named work segments in start order.
-		 * @param fractionRegressions the observed fraction decreases in observation
-		 * order.
-		 * @param cancellationRequest the first indication of cancellation, or
-		 * {@literal null} if none was observed.
-		 * @param cancellationObservations cancellation exceptions seen by the probe.
-		 */
 		public Snapshot {
 			steps = List.copyOf(steps);
 			segments = List.copyOf(segments);
@@ -1064,18 +896,10 @@ public class ProbingProgressIndicator extends AbstractProgressIndicatorBase impl
 			cancellationObservations = List.copyOf(cancellationObservations);
 		}
 
-		/**
-		 * Return whether cancellation was requested or observed.
-		 * @return {@literal true} if cancellation was requested or observed.
-		 */
 		public boolean wasCancellationRequested() {
 			return cancellationRequest != null;
 		}
 
-		/**
-		 * Return whether a {@link ProcessCanceledException} was seen.
-		 * @return {@literal true} if a cancellation exception was captured.
-		 */
 		public boolean sawCancellationException() {
 			return !cancellationObservations.isEmpty();
 		}
@@ -1083,26 +907,13 @@ public class ProbingProgressIndicator extends AbstractProgressIndicatorBase impl
 	}
 
 	/**
-	 * Captured progress step opened by a text change or by the first fraction
-	 * update when no text step exists.
+	 * A step opened by a text change or an initial fraction update.
 	 *
-	 * @param index the one-based step index.
-	 * @param startedAfter the elapsed time at which the step started.
-	 * @param duration the step duration, or the current duration for an open step.
-	 * @param text the primary progress text for the step.
-	 * @param text2 the secondary progress text for the step.
-	 * @param startingFraction the fraction at step start.
-	 * @param endingFraction the latest fraction recorded for the step.
-	 * @param startingIndeterminate whether the indicator was indeterminate at step
-	 * start.
-	 * @param endingIndeterminate whether the indicator was indeterminate at the end
-	 * of the step.
-	 * @param threadName the thread that opened the step.
-	 * @param startedBy the progress method that opened the step.
-	 * @param updates the number of progress updates folded into the step.
-	 * @param callSite the originating call site captured under
-	 * {@link OutputMode#CAPTURE_TRACE}, or {@literal null} if tracing was disabled
-	 * or no qualifying frame was found.
+	 * @param index the one-based step number.
+	 * @param startedAfter elapsed time from the run start.
+	 * @param duration elapsed duration, including time so far for an open step.
+	 * @param callSite the origin, or {@code null} if tracing was disabled or no
+	 * frame qualified.
 	 */
 	public record Step(int index, Duration startedAfter, Duration duration, String text, String text2,
 			double startingFraction, double endingFraction, boolean startingIndeterminate, boolean endingIndeterminate,
@@ -1110,52 +921,29 @@ public class ProbingProgressIndicator extends AbstractProgressIndicatorBase impl
 	}
 
 	/**
-	 * Named block of work timed through
-	 * {@link ProbingProgressIndicator#run(String, Runnable)} or
-	 * {@link ProbingProgressIndicator#call(String, Supplier)}.
+	 * A named block timed independently of progress steps.
 	 *
-	 * @param label the segment label.
-	 * @param startedAfter the elapsed time at which the segment started.
-	 * @param duration the segment duration.
-	 * @param failed {@literal true} if the timed action threw; {@literal false}
-	 * otherwise.
+	 * @param failed whether the action threw, including cancellation.
 	 */
 	public record Segment(String label, Duration startedAfter, Duration duration, boolean failed) {
 	}
 
 	/**
-	 * Observed fraction decrease, captured when a fraction update reports a value
-	 * below the previously observed fraction.
-	 *
-	 * @param afterStart the elapsed time at which the decrease was observed.
-	 * @param previousFraction the fraction held before the decreasing update.
-	 * @param fraction the decreased fraction reported by the update.
-	 * @param threadName the thread that reported the decrease.
+	 * A decrease from the previously observed determinate fraction.
 	 */
 	public record FractionRegression(Duration afterStart, double previousFraction, double fraction,
 			String threadName) {
 	}
 
 	/**
-	 * First observed indication of cancellation.
-	 *
-	 * @param afterStart the elapsed time at which cancellation was requested or
-	 * observed.
-	 * @param method the progress method that observed cancellation.
-	 * @param threadName the thread that observed cancellation.
+	 * First indication of cancellation, whether requested locally or observed from
+	 * the delegate.
 	 */
 	public record CancellationRequest(Duration afterStart, ProgressMethod method, String threadName) {
 	}
 
 	/**
-	 * Captured {@link ProcessCanceledException}.
-	 *
-	 * @param afterStart the elapsed time at which the exception was observed.
-	 * @param method the progress method that observed the exception.
-	 * @param threadName the thread that observed the exception.
-	 * @param exceptionType the exception type name.
-	 * @param message the exception message, or {@literal null} if none was
-	 * provided.
+	 * A cancellation exception observed and propagated by the probe.
 	 */
 	public record CancellationObservation(Duration afterStart, ProgressMethod method, String threadName,
 			String exceptionType, @Nullable String message) {

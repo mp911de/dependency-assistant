@@ -19,14 +19,8 @@ package biz.paluch.dap.support;
 import org.jspecify.annotations.Nullable;
 
 /**
- * {@link PropertyResolver} implementation that delegates to a primary resolver
- * and then to a fallback resolver.
- *
- * <p>The primary resolver wins for both value lookups and declaration metadata.
- * The fallback resolver is consulted only if the primary resolver does not
- * resolve a property value or {@link Property} binding. This is typically used
- * to layer local script properties over broader project or global properties
- * without merging the underlying sources.
+ * Property resolution with a fallback. The primary resolver wins independently
+ * for values and declaration metadata.
  *
  * @author Mark Paluch
  */
@@ -36,11 +30,6 @@ class CompositePropertyResolver implements PropertyResolver {
 
 	private final PropertyResolver fallback;
 
-	/**
-	 * Create a new composite resolver.
-	 * @param primary the resolver to consult first.
-	 * @param fallback the resolver to consult if the primary resolver has no match.
-	 */
 	public CompositePropertyResolver(PropertyResolver primary, PropertyResolver fallback) {
 		this.primary = primary;
 		this.fallback = fallback;

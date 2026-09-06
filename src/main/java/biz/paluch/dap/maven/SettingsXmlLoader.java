@@ -77,17 +77,10 @@ class SettingsXmlLoader {
 	}
 
 	/**
-	 * Load the Maven settings applicable to the given project.
-	 *
-	 * <p>Untrusted projects and projects without a usable Maven installation yield
-	 * empty settings. Results returned for trusted projects, including handled
-	 * empty results, are cached until {@link #invalidate(Project)} is called.
-	 * Failures that escape loading are not cached.
-	 *
-	 * @param project the IntelliJ project.
-	 * @return the merged server credentials and mirrors, or
-	 * {@link MavenSettings#empty()} when no settings apply.
-	 * @see #invalidate(Project)
+	 * Load settings for repository access.
+	 * <p>Untrusted projects and unavailable Maven installations yield empty
+	 * settings. Results for trusted projects are cached until
+	 * {@link #invalidate(Project)}. Failures that escape loading are not cached.
 	 */
 	public static MavenSettings load(Project project) {
 
@@ -108,11 +101,6 @@ class SettingsXmlLoader {
 		return cached;
 	}
 
-	/**
-	 * Invalidate the cached settings for the given project.
-	 *
-	 * @param project the project whose cached settings are cleared.
-	 */
 	static void invalidate(Project project) {
 		project.putUserData(SETTINGS_KEY, null);
 	}
@@ -124,7 +112,6 @@ class SettingsXmlLoader {
 			return MavenSettings.empty();
 		}
 
-		// Resolve Maven home
 		StaticResolvedMavenHomeType homeType = MavenHomeKt
 				.staticOrBundled(mavenManager.getGeneralSettings().getMavenHomeType());
 		Path mavenHomePath = MavenUtil.getMavenHomePath(homeType);
@@ -137,10 +124,7 @@ class SettingsXmlLoader {
 		// Global settings (lower priority) <maven_home>/conf/settings.xml.
 		Path globalSettings = new File(mavenHome, "conf/settings.xml").toPath();
 
-		// User settings (higher priority) resolved via IntelliJ Maven API, which
-		// handles
-		// the configured override path, default ~/.m2/settings.xml, and remote EEL
-		// targets.
+		// Let IntelliJ resolve overrides and remote EEL paths for user settings.
 		String configuredUserSettings = mavenManager.getGeneralSettings().getUserSettingsFile();
 		Path userSettings = MavenUtil.resolveUserSettingsPath(configuredUserSettings, project);
 
@@ -166,9 +150,6 @@ class SettingsXmlLoader {
 		return loadWithMavenApi(mavenClassLoader, globalSettings, userSettings, securityFilePath);
 	}
 
-	// -------------------------------------------------------------------------
-	// Settings loading via Maven API
-	// -------------------------------------------------------------------------
 
 	private static MavenSettings loadWithMavenApi(URLClassLoader loader, Path globalSettings,
 			Path userSettings, String securityFilePath) {
@@ -185,11 +166,6 @@ class SettingsXmlLoader {
 		}
 	}
 
-	/**
-	 * Parses global and user {@code settings.xml} files using
-	 * {@code SettingsXpp3Reader} and merges them (user settings taking precedence)
-	 * using {@code MavenSettingsMerger}.
-	 */
 	private static Object mergeSettings(URLClassLoader loader, Path globalSettings, Path userSettings)
 			throws Exception {
 
@@ -197,17 +173,14 @@ class SettingsXmlLoader {
 		Object reader = readerClass.getConstructor().newInstance();
 		Method readMethod = readerClass.getMethod("read", InputStream.class);
 
-		// Read global settings
 		Object global = readSettingsFile(reader, readMethod, globalSettings);
 
-		// Read user settings
 		Object user = readSettingsFile(reader, readMethod, userSettings);
 
 		if (global == null && user == null) {
 			return null;
 		}
 
-		// If only one side exists, return it directly without merging.
 		if (global == null) {
 			return user;
 		}
@@ -222,7 +195,7 @@ class SettingsXmlLoader {
 		mergerClass.getMethod("merge", settingsClass, settingsClass, String.class).invoke(merger, user, global,
 				"user-level");
 
-		return user; // user now contains the merged result
+		return user;
 	}
 
 	private static Object readSettingsFile(Object reader, Method readMethod, Path path) {
@@ -237,12 +210,6 @@ class SettingsXmlLoader {
 		}
 	}
 
-	/**
-	 * Decrypts the server passwords in {@code settingsObj} using Maven's
-	 * {@code DefaultSettingsDecrypter} chain and returns a map of server-id to
-	 * {@link RepositoryCredentials}. Servers whose passwords remain encrypted after
-	 * the attempt (decryption failed) are silently omitted.
-	 */
 	private static MavenSettings extractCredentials(URLClassLoader loader, Object settingsObj,
 			String securityFilePath) throws Exception {
 
@@ -261,17 +228,14 @@ class SettingsXmlLoader {
 		Class<?> decrypterClass = loader.loadClass("org.apache.maven.settings.crypto.DefaultSettingsDecrypter");
 		Object decrypter = decrypterClass.getConstructor(secDispatcherIface).newInstance(dispatcher);
 
-		// Build decryption request from the merged Settings object.
 		Class<?> settingsClass = loader.loadClass("org.apache.maven.settings.Settings");
 		Class<?> requestClass = loader.loadClass("org.apache.maven.settings.crypto.DefaultSettingsDecryptionRequest");
 		Object request = requestClass.getConstructor(settingsClass).newInstance(settingsObj);
 
-		// Decrypt.
 		Class<?> requestIface = loader.loadClass("org.apache.maven.settings.crypto.SettingsDecryptionRequest");
 		Method decryptMethod = decrypterClass.getMethod("decrypt", requestIface);
 		Object result = decryptMethod.invoke(decrypter, request);
 
-		// Extract server credentials from the result.
 		Class<?> resultIface = loader.loadClass("org.apache.maven.settings.crypto.SettingsDecryptionResult");
 		@SuppressWarnings("unchecked")
 		List<Object> servers = (List<Object>) resultIface.getMethod("getServers").invoke(result);
@@ -311,11 +275,6 @@ class SettingsXmlLoader {
 		return new MavenSettings(credentials, extractMirrors(loader, settingsObj));
 	}
 
-	/**
-	 * Reflectively reads the {@code <mirrors>} from the merged settings, keeping
-	 * only fully populated entries (id, URL, and {@code mirrorOf}) in declaration
-	 * order so that the first matching mirror wins.
-	 */
 	private static List<Mirror> extractMirrors(URLClassLoader loader, Object settingsObj) throws Exception {
 
 		Class<?> settingsClass = loader.loadClass("org.apache.maven.settings.Settings");
@@ -416,9 +375,6 @@ class SettingsXmlLoader {
 		}
 	}
 
-	// -------------------------------------------------------------------------
-	// Utilities
-	// -------------------------------------------------------------------------
 
 	private static URL[] collectJars(File libDir) throws IOException {
 

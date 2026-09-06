@@ -71,13 +71,6 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 
 	private final boolean candidate;
 
-	/**
-	 * Create a resolver for a POM and its current imported Maven project context.
-	 *
-	 * @param project the IntelliJ project owning the POM.
-	 * @param pomFile the POM to resolve references in.
-	 * @param projectContext the Maven model and property context for the POM.
-	 */
 	MavenArtifactReferenceResolver(Project project, XmlFile pomFile,
 			MavenProjectContext projectContext) {
 		StateService service = StateService.getInstance(project);
@@ -117,7 +110,7 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 		hits.addAll(findVersionSites(pomFile, query));
 
 		// A property-backed artifact hit and a queried property definition can name
-		// the same tag; keep the first hit per element.
+		// the same tag. Keep the first hit per element.
 		List<DependencySiteSearchHit> deduplicated = new ArrayList<>(hits.size());
 		Set<PsiElement> seen = new HashSet<>();
 		for (DependencySiteSearchHit hit : hits) {
@@ -128,11 +121,6 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 		return DependencySearchResults.of(deduplicated);
 	}
 
-	/**
-	 * Collect every root and profile {@code <properties>} entry whose name is part
-	 * of the query, as a version-property definition. A property redefined in
-	 * several sections yields one hit per definition.
-	 */
 	private static List<DependencySiteSearchHit> findPropertyDefinitions(XmlFile pomFile, Set<String> properties) {
 
 		if (properties.isEmpty()) {
@@ -161,12 +149,6 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 		}
 	}
 
-	/**
-	 * Collect every dependency or plugin declaration that contributes to the query.
-	 * A property-backed declaration is a {@code ${property}} usage whether it is
-	 * matched by artifact or by property name; its in-file property definition is
-	 * reported for artifact matches as well. An inline version is a definition.
-	 */
 	private List<DependencySiteSearchHit> findVersionSites(XmlFile pomFile, DependencySiteQuery query) {
 
 		List<DependencySiteSearchHit> hits = new ArrayList<>();
@@ -202,13 +184,6 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 		return pom.getElement();
 	}
 
-	/**
-	 * Resolution is anchored to the {@link XmlText} value of a version or property
-	 * tag. Line markers and highlighting fire on every element of a tag (the angle
-	 * brackets, the tag name, the value text, and the surrounding text node).
-	 * Pinning to the single text node keeps the gutter from duplicating across
-	 * them. Completion and documentation resolve against this same text node.
-	 */
 	private boolean isResolvableElement(PsiElement element) {
 
 		if (!element.isValid()) {

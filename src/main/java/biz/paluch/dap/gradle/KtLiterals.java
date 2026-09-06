@@ -28,20 +28,11 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * Canonical representation of a Kotlin DSL string-template value, decomposed
- * into ordered {@link Segment fragments} of literal text and {@code $property}
- * references.
- *
- * <p>Supported inputs include plain string literals, interpolated fragments,
- * bare property references, {@code property(...)} lookups, and
- * {@code extra["..."]} access (also qualified as {@code project.extra["..."]}).
- * Unsupported PSI shapes are represented as an empty instance.
- *
- * <p>The value position is served by {@link #from(KtElement)} and
- * {@link #getText(KtElement)}, rendering property references as {@code ${name}}
- * placeholders. Name positions (property keys, {@code extra} indices) are
- * served by {@link #nameOf(KtElement)}, rendering property references as their
- * bare identifier.
+ * Kotlin string content with property references retained as {@code ${name}}.
+ * <p>Supports literals, interpolation, property references,
+ * {@code property(...)} and {@code extra["..."]}. Unsupported shapes contribute
+ * no content. Use {@link #nameOf(KtElement)} for keys without placeholder
+ * decoration.
  *
  * @author Mark Paluch
  */
@@ -76,13 +67,7 @@ class KtLiterals {
 	}
 
 	/**
-	 * Create a {@link KtLiterals} view for the supplied Kotlin PSI element in value
-	 * position: references, {@code property(...)} lookups, and {@code extra["..."]}
-	 * access contribute property fragments; string-template text contributes
-	 * literal fragments. Unsupported shapes yield an empty instance.
-	 * @param element the Kotlin PSI element to inspect.
-	 * @return a {@link KtLiterals} representing the supported fragments contained
-	 * in the element.
+	 * Read string content and property references, ignoring unsupported PSI shapes.
 	 */
 	public static KtLiterals from(@Nullable KtElement element) {
 
@@ -135,12 +120,9 @@ class KtLiterals {
 	}
 
 	/**
-	 * Extract text from supported Kotlin DSL literal forms in value position,
-	 * rendering property references as {@code ${name}} placeholders.
-	 * <p>Unsupported element shapes yield an empty string rather than an exception.
-	 * @param element the Kotlin PSI element to inspect.
-	 * @return the rendered text, or the empty string for unsupported shapes.
-	 * @throws IllegalArgumentException if {@code element} is {@literal null}.
+	 * Render value text with {@code ${name}} placeholders.
+	 * @return an empty string for unsupported shapes.
+	 * @throws IllegalArgumentException if the element is {@literal null}.
 	 */
 	public static String getText(KtElement element) {
 		Assert.notNull(element, "Element must not be null");
@@ -148,12 +130,8 @@ class KtLiterals {
 	}
 
 	/**
-	 * Extract a property name or key from a Kotlin DSL name position such as a
-	 * {@code property(...)} argument, an {@code extra["..."]} index, or an
-	 * assignment target. References render as their bare identifier instead of a
-	 * {@code ${name}} placeholder.
-	 * @param element the Kotlin PSI element to inspect.
-	 * @return the extracted name, or the empty string for unsupported shapes.
+	 * Read a property name or key without placeholder decoration.
+	 * @return an empty string for unsupported shapes.
 	 */
 	public static String nameOf(@Nullable KtElement element) {
 
@@ -206,34 +184,21 @@ class KtLiterals {
 		return StringUtils.hasText(propertyName) ? new KtLiterals(new PropertySegment(propertyName)) : EMPTY;
 	}
 
-	/**
-	 * Return whether any fragment resolves to a property reference.
-	 *
-	 * @return {@literal true} if at least one fragment is property-backed.
-	 */
 	public boolean hasProperty() {
 		return property != null;
 	}
 
 	/**
-	 * Return whether this instance contains any renderable content.
-	 * <p>Property references count as content because they participate in the
-	 * rendered form returned by {@link #toString()}.
-	 *
-	 * @return {@literal true} if at least one fragment contributes text or a
-	 * property placeholder.
+	 * Return whether the value contains non-whitespace text or a property
+	 * placeholder.
 	 */
 	public boolean hasText() {
 		return StringUtils.hasText(text);
 	}
 
 	/**
-	 * Return the first property reference represented by this instance.
-	 * <p>If multiple property fragments are present, the first fragment in
-	 * encounter order is returned.
-	 *
-	 * @return the referenced property name without decoration.
-	 * @throws IllegalStateException if {@link #hasProperty()} is {@literal false}.
+	 * Return the first referenced property name.
+	 * @throws IllegalStateException if no property is referenced.
 	 */
 	public String getProperty() {
 		if (property != null) {
@@ -242,45 +207,26 @@ class KtLiterals {
 		throw new IllegalStateException("No property found");
 	}
 
-	/**
-	 * Return the rendered content of all fragments in encounter order, with
-	 * property references rendered as {@code ${name}}. Equivalent to
-	 * {@link #toString()}.
-	 */
 	public String getText() {
 		return text;
 	}
 
 	/**
-	 * Return this value as a version {@link Expression}: a property reference when
-	 * a fragment is property-backed, otherwise the rendered text as literal value.
-	 *
-	 * @return the version expression.
+	 * Return the first property as an expression, or the literal text if none
+	 * exists.
 	 */
 	public Expression toExpression() {
 		return property != null ? Expression.property(property.name()) : Expression.from(text);
 	}
 
-	/**
-	 * Render the collected fragments in encounter order.
-	 * <p>Plain literals are concatenated as-is. Property fragments are rendered as
-	 * {@code ${property}}.
-	 *
-	 * @return the rendered literal content, or the empty string if no fragments are
-	 * present.
-	 */
 	@Override
 	public String toString() {
 		return text;
 	}
 
 	/**
-	 * Render the literals to {@code String} and resolve any property references.
-	 * <p>Property fragments that the resolver cannot resolve fall back to their
-	 * {@code ${name}} placeholder, so a property-only value still renders content.
-	 * @param propertyResolver the property resolver to use.
-	 * @return the rendered literal content, or the empty string only when no
-	 * fragments are present.
+	 * Resolve property references, leaving unknown values as {@code ${name}}
+	 * placeholders.
 	 */
 	public String toString(PropertyResolver propertyResolver) {
 
@@ -299,16 +245,8 @@ class KtLiterals {
 		return builder.toString();
 	}
 
-	/**
-	 * Single normalized fragment of a Kotlin DSL string-template value: either
-	 * concrete {@link TextSegment text} or a {@link PropertySegment property
-	 * reference}.
-	 */
 	private sealed interface Segment permits TextSegment, PropertySegment {
 
-		/**
-		 * Render this fragment as concrete text or a {@code ${property}} placeholder.
-		 */
 		String render();
 
 	}

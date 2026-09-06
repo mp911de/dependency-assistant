@@ -17,25 +17,12 @@
 package biz.paluch.dap.artifact;
 
 /**
- * Contract for domain objects that expose an {@link ArtifactVersion}.
- *
- * <p>
- * Use this interface when version comparison or presentation code can work
- * with releases and release candidates without depending on their concrete
- * container type.
+ * A domain object exposing an artifact version.
  *
  * @author Mark Paluch
- * @see ArtifactVersion
- * @see Release
- * @see ArtifactRelease
  */
 public interface VersionAware {
 
-	/**
-	 * Return the artifact version exposed by this object.
-	 *
-	 * @return the artifact version.
-	 */
 	ArtifactVersion getVersion();
 
 }

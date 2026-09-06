@@ -104,10 +104,6 @@ class MavenPomProperties implements PropertyResolver {
 		return PropertyResolver.fromMap(properties);
 	}
 
-	/**
-	 * Register every value-carrying leaf tag under its dot path. The first
-	 * occurrence of a path wins, matching document order.
-	 */
 	private static void registerProjectTags(XmlTag rootTag, Map<String, PropertyValue> properties) {
 
 		for (XmlTag tag : SyntaxTraverser.psiTraverser(rootTag).filter(XmlTag.class)) {
@@ -166,12 +162,9 @@ class MavenPomProperties implements PropertyResolver {
 	}
 
 	/**
-	 * Return the property view that applies to the given POM member. Properties of
-	 * the enclosing profile take precedence over the project and inherited POM
-	 * hierarchy, and properties from unrelated profiles are excluded.
-	 *
-	 * @param pomMember the declaration whose property scope is required.
-	 * @return the profile-aware property resolver for the declaration.
+	 * Resolve properties in the declaration's scope.
+	 * <p>Enclosing profile properties override project and inherited values.
+	 * Unrelated profiles do not contribute.
 	 */
 	PropertyResolver forDeclaration(XmlTag pomMember) {
 
@@ -191,14 +184,7 @@ class MavenPomProperties implements PropertyResolver {
 	}
 
 	/**
-	 * Return whether the profile enclosing the given POM member declares the named
-	 * property in its own {@code <properties>} section.
-	 *
-	 * @param propertyName the bare property name.
-	 * @param pomMember the declaration whose enclosing profile is inspected.
-	 * @return {@literal true} if the enclosing profile declares the property;
-	 * {@literal false} if there is no enclosing profile or the property is
-	 * inherited from the project or its ancestors.
+	 * Return whether the enclosing profile declares the property itself.
 	 */
 	static boolean isDeclaredInEnclosingProfile(String propertyName, XmlTag pomMember) {
 

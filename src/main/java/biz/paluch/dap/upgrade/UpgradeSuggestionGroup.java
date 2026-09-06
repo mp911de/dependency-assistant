@@ -20,8 +20,7 @@ import biz.paluch.dap.util.MessageBundle;
 import com.intellij.lang.annotation.ProblemGroup;
 
 /**
- * {@link ProblemGroup} that groups annotations reporting a rule-driven upgrade
- * suggestion, raised for dependencies governed by a {@code DependencyRule}.
+ * Annotation group for rule-driven upgrade suggestions.
  *
  * @author Mark Paluch
  */

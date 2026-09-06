@@ -33,8 +33,7 @@ import org.jspecify.annotations.Nullable;
 import static biz.paluch.dap.checker.Vulnerabilities.*;
 
 /**
- * Test fixtures for vulnerability scan results, acting as the registry of
- * well-known test vulnerabilities keyed by their identifier.
+ * Vulnerability fixtures with a shared registry of test identifiers.
  *
  * @author Mark Paluch
  */
@@ -81,9 +80,8 @@ public class TestVulnerabilities {
 	}
 
 	/**
-	 * Return the registered vulnerability for the given identifier.
-	 *
-	 * @throws IllegalArgumentException if the identifier is not registered.
+	 * Return a registered vulnerability.
+	 * @throws IllegalArgumentException if the identifier is unregistered.
 	 */
 	public static Vulnerability registered(String identifier) {
 
@@ -147,17 +145,12 @@ public class TestVulnerabilities {
 	}
 
 	/**
-	 * Create a repository from the given scan report. Each line associates a
-	 * version with its scan state: a comma-separated list of registered
-	 * vulnerability identifiers, {@code CLEAN} for scanned-clean, or {@code ABSENT}
-	 * for unscanned.
+	 * Create a repository from {@code <version> <scan state>} lines.
+	 * <p>A state is a comma-separated list of registered identifiers, {@code CLEAN}
+	 * for a clean scan, or {@code ABSENT} for an unscanned version.
 	 *
-	 * @param scanReport the scan report, one {@code <version> <scan state>} line
-	 * per version.
-	 * @return the repository over the given scan report.
-	 * @throws IllegalArgumentException if a line does not follow the
-	 * {@code <version> <scan state>} form or an identifier is not registered with
-	 * {@link TestVulnerabilities}.
+	 * @throws IllegalArgumentException for malformed lines or unregistered
+	 * identifiers.
 	 */
 	public static VulnerabilityRepository from(String scanReport) {
 

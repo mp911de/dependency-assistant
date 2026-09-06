@@ -31,17 +31,9 @@ import com.intellij.psi.PsiFile;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Parses NPM dependency entries declared in {@code dependencies} and
- * {@code devDependencies}.
- *
- * <p>Package names are normalized to {@link ArtifactId} values through
- * {@link NpmUtils#toArtifactId(String)}. NPM aliases use the aliased package
- * identity for release lookup. Entries that fail the NPM-name allowlist
- * ({@code @?[a-z0-9][a-z0-9._-]*(/[a-z0-9][a-z0-9._-]*)?}) are silently skipped
- * at this layer so no out-of-policy name reaches the registry source or any
- * cache key. Out-of-scope value shapes (or-ranges, {@code latest}, {@code *},
- * {@code file:}, {@code link:}, {@code workspace:}, non-Git URL protocols,
- * {@code npm:<name>} without an inner range) likewise produce no dependency.
+ * Parses dependencies from {@code dependencies} and {@code devDependencies}.
+ * <p>Malformed package names and expressions outside
+ * {@link NpmVersionExpression} are skipped.
  *
  * @author Mark Paluch
  */
@@ -53,12 +45,8 @@ class NpmPackageParser {
 	private static final List<String> DEPENDENCY_KEYS = List.of("dependencies", "devDependencies");
 
 	/**
-	 * Parse the {@code dependencies} and {@code devDependencies} entries from the
-	 * given JSON file. Files that are not {@link JsonFile JSON files} or whose root
-	 * is not a JSON object produce an empty result.
-	 *
-	 * @param file the PSI file to scan.
-	 * @return the discovered NPM dependencies, possibly empty.
+	 * Return supported dependency entries, or an empty list if the file has no JSON
+	 * object root.
 	 */
 	public List<NpmDependency> parse(PsiFile file) {
 

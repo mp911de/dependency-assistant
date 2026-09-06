@@ -44,11 +44,7 @@ class GroovyDslPropertyResolver implements PropertyResolver {
 	}
 
 	/**
-	 * Create a property resolver for the given Groovy DSL build file. The parsed
-	 * {@code ext} properties and script-level variables are cached per PSI
-	 * modification.
-	 * @param file the Groovy build script.
-	 * @return a resolver backed by the file's local property declarations.
+	 * Return the file-local resolver, cached until the file changes.
 	 */
 	static GroovyDslPropertyResolver from(PsiFile file) {
 

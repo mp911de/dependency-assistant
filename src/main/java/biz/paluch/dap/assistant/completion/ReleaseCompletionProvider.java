@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.ArtifactVersion;
@@ -34,7 +33,6 @@ import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.assistant.ArtifactReferenceContext;
-import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.util.MessageBundle;
@@ -62,50 +60,18 @@ import com.intellij.util.ProcessingContext;
 import org.jspecify.annotations.Nullable;
 
 /**
- * {@link CompletionProvider} that resolves a dependency declaration and turns
- * its cached release history into lookup elements.
- *
- * <p>The provider resolves the original completion position when available and
- * uses the original project file to locate the active
- * {@link ProjectDependencyContext}. An absent declaration contributes nothing;
- * an empty cached history contributes only a no-releases advertisement. It does
- * not refresh metadata or contact release sources.
- *
- * <p>The first completion stage contributes curated {@link ReleaseProposals};
- * repeated explicit invocation cycles to the full history. Both stages preserve
- * the history's canonical order rather than platform relevance order. Candidate
- * rows are rendered with release, rule, age, and vulnerability status.
- *
- * <p>Subclasses usually customize one of the protected hooks instead of
- * replacing the provider:
- * {@link #getPrefixMatcher(CompletionParameters, CompletionResultSet)} for
- * format-specific prefix handling,
- * {@link #postProcess(CompletionParameters, LookupElementBuilder, PsiElement, ArtifactRelease)}
- * for insert handlers, {@link #getRefStyle(PsiElement)} for version or SHA
- * insertion, and {@link #afterCompletion(CompletionResultSet, List)} for result
- * ownership. The overloads accepting {@link ProcessingContext} support
- * synchronous coordination of invocation-specific state. The context must not
- * be retained.
- *
- * <p>This provider does not decide completion locations. Register it from a
- * {@code CompletionContributor} at PSI positions that can be resolved by the
- * current dependency context. It retains no PSI or request-specific state and
- * can be reused between contributors.
+ * Completion provider backed by cached dependency releases.
+ * <p>Does not fetch release metadata. Register it at resolvable dependency
+ * positions through a completion contributor. Instances can be reused.
+ * <p>The first invocation shows curated proposals. Repeated invocation cycles
+ * between proposals and full history, preserving release order.
+ * <p>Processing contexts belong to synchronous hook invocation and must not be
+ * retained. Capture values needed by insert handlers separately.
  *
  * @author Mark Paluch
- * @see ArtifactReleaseRenderer
- * @see VersionUpgradeLookup
  */
 public class ReleaseCompletionProvider extends CompletionProvider<CompletionParameters> {
 
-	/**
-	 * Add release completions for the artifact resolved at the current completion
-	 * position.
-	 *
-	 * @param parameters the IntelliJ completion parameters.
-	 * @param context the processing context supplied by IntelliJ.
-	 * @param result the result set to receive release lookup elements.
-	 */
 	@Override
 	protected void addCompletions(CompletionParameters parameters, ProcessingContext context,
 			CompletionResultSet result) {
@@ -151,9 +117,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 			renderer.withVersion(release);
 		}
 
-		// Auto-inserting a single match is only safe when nothing is hidden;
-		// a curated selection must keep the lookup open so the advertisement can
-		// point at the full history.
+		// Keep curated results open so users can discover the full history.
 		AutoCompletionPolicy autoCompletionPolicy = proposals.size() < history.size()
 				? AutoCompletionPolicy.NEVER_AUTOCOMPLETE
 				: AutoCompletionPolicy.ALWAYS_AUTOCOMPLETE;
@@ -179,24 +143,14 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	}
 
 	/**
-	 * Publish the prepared lookup elements after release processing completes.
-	 *
-	 * <p>The default adds every element to {@code result}. An override that does
-	 * not delegate must publish the elements itself.
-	 *
-	 * @param result the result set configured with release ordering.
-	 * @param elements the prepared lookup elements in canonical release order.
+	 * Publish the prepared elements in canonical release order.
+	 * <p>The default adds all elements. Overrides that do not delegate must publish
+	 * them.
 	 */
 	protected void afterCompletion(CompletionResultSet result, List<LookupElement> elements) {
 		result.addAllElements(elements);
 	}
 
-	/**
-	 * Return the releases to contribute: the full history when
-	 * {@link #showsFullHistory(CompletionParameters)} applies, otherwise the
-	 * curated {@link ReleaseProposals} selection steered by the typed version
-	 * prefix and unioned with the governing rule's remediation target.
-	 */
 	private static List<ArtifactRelease> proposals(CompletionParameters parameters, Releases history,
 			@Nullable ArtifactVersion currentVersion, DependencyRule rule, PackageIdentity pkg) {
 
@@ -217,11 +171,6 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 		return proposals.stream().map(release -> new ArtifactRelease(pkg.getArtifactId(), release)).toList();
 	}
 
-	/**
-	 * Advertise repeated completion invocation as the way to see the full release
-	 * history regardless of the typed prefix, including the history size when the
-	 * curated first invocation hides releases.
-	 */
 	private static void advertiseShowAllReleases(CompletionParameters parameters,
 			CompletionResultSet result, int total, int shown) {
 
@@ -240,10 +189,6 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 				: MessageBundle.message("completion.advertisement.show-all", shortcut));
 	}
 
-	/**
-	 * Return a sorter that keeps the cached release order, the newest release
-	 * first, instead of letting platform relevance weighers reorder version items.
-	 */
 	private static CompletionSorter releaseOrderSorter(List<ArtifactRelease> releases) {
 
 		Map<ArtifactRelease, Integer> order = new IdentityHashMap<>();
@@ -287,34 +232,19 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	}
 
 	/**
-	 * Return the reference style to use when choosing the inserted lookup string.
-	 *
-	 * <p>The default inserts version text. Contributors for formats that preserve
-	 * SHA references can return {@link RefStyle#SHA}; in that case Git-backed
-	 * releases with SHA metadata insert the SHA while keeping version lookup
-	 * strings available for matching.
-	 *
-	 * @param element the PSI element used to resolve the artifact reference.
-	 * @return the reference style to use for insertion.
+	 * Choose the inserted reference form. The default uses version text.
+	 * <p>{@link RefStyle#SHA} inserts a known Git SHA while retaining version
+	 * strings for matching.
 	 */
 	protected RefStyle getRefStyle(PsiElement element) {
 		return RefStyle.VERSION;
 	}
 
 	/**
-	 * Customize the lookup element for a release option.
-	 *
-	 * <p>The builder already has the release renderer, lookup strings, and default
-	 * replacement handler applied when the declaration exposes a version literal.
-	 * An override may replace that handler when it owns the complete
-	 * format-specific insertion, or add lookup metadata while preserving the
-	 * existing behavior. The default returns {@code builder} unchanged.
-	 *
-	 * @param parameters the IntelliJ completion parameters.
-	 * @param builder the lookup element builder prepared by this provider.
-	 * @param element the PSI element used to resolve the artifact reference.
-	 * @param option the release option represented by the lookup element.
-	 * @return the lookup element builder to add to the result set.
+	 * Customize a prepared release item. The default leaves it unchanged.
+	 * <p>The builder already has rendering and matching. A default insert handler
+	 * is present when the declaration exposes a version literal. Override the
+	 * insert handler when the format requires a complete replacement.
 	 */
 	protected LookupElementBuilder postProcess(CompletionParameters parameters, LookupElementBuilder builder,
 			PsiElement element, ArtifactRelease option) {
@@ -322,21 +252,10 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	}
 
 	/**
-	 * Customize the lookup element for a release option using temporary state from
-	 * the current completion invocation.
-	 *
-	 * <p>The default implementation delegates to
-	 * {@link #postProcess(CompletionParameters, LookupElementBuilder, PsiElement, ArtifactRelease)}.
-	 * The {@code context} is available only during the synchronous provider
-	 * invocation and must not be retained. Values needed by an insert handler must
-	 * be captured separately.
-	 *
-	 * @param parameters the IntelliJ completion parameters.
-	 * @param context the processing context for the current provider invocation.
-	 * @param builder the lookup element builder prepared by this provider.
-	 * @param element the PSI element used to resolve the artifact reference.
-	 * @param option the release option represented by the lookup element.
-	 * @return the lookup element builder to add to the result set.
+	 * Customize an item with invocation-scoped state.
+	 * <p>Delegates to
+	 * {@link #postProcess(CompletionParameters, LookupElementBuilder, PsiElement, ArtifactRelease)}
+	 * by default. Do not retain the processing context.
 	 */
 	protected LookupElementBuilder postProcess(CompletionParameters parameters, ProcessingContext context,
 			LookupElementBuilder builder, PsiElement element, ArtifactRelease option) {
@@ -344,18 +263,9 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	}
 
 	/**
-	 * Return the result set with the prefix matcher used for release lookup
-	 * elements.
-	 *
-	 * <p>The default matcher uses an empty prefix on full-history invocations (see
-	 * {@link #showsFullHistory(CompletionParameters)}) and otherwise uses
-	 * {@link #getPrefix(CompletionParameters)}. Contributors with larger
-	 * surrounding syntaxes, such as URLs or dependency notations, can override this
-	 * method to calculate the prefix from a format-specific version range.
-	 *
-	 * @param parameters the IntelliJ completion parameters.
-	 * @param result the original completion result set.
-	 * @return the result set to receive release lookup elements.
+	 * Configure version-prefix matching.
+	 * <p>The default uses an empty prefix for full history and the typed version
+	 * prefix otherwise. Override for versions embedded in larger expressions.
 	 */
 	protected CompletionResultSet getPrefixMatcher(CompletionParameters parameters, CompletionResultSet result) {
 		return showsFullHistory(parameters) ? result.withPrefixMatcher("")
@@ -363,18 +273,10 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	}
 
 	/**
-	 * Return the result set with the prefix matcher for the current completion
-	 * invocation.
-	 *
-	 * <p>The default implementation delegates to
-	 * {@link #getPrefixMatcher(CompletionParameters, CompletionResultSet)}. The
-	 * {@code context} is available only during the synchronous provider invocation
-	 * and must not be retained.
-	 *
-	 * @param parameters the IntelliJ completion parameters.
-	 * @param context the processing context for the current provider invocation.
-	 * @param result the original completion result set.
-	 * @return the result set to receive release lookup elements.
+	 * Configure prefix matching with invocation-scoped state.
+	 * <p>Delegates to
+	 * {@link #getPrefixMatcher(CompletionParameters, CompletionResultSet)} by
+	 * default. Do not retain the processing context.
 	 */
 	protected CompletionResultSet getPrefixMatcher(CompletionParameters parameters, ProcessingContext context,
 			CompletionResultSet result) {
@@ -382,17 +284,9 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	}
 
 	/**
-	 * Return whether this invocation shows the full release history instead of the
-	 * curated proposals.
-	 *
-	 * <p>Repeated completion cycles between the two stages: autopopup and the first
-	 * explicit invocation show the curated proposals, every second explicit
-	 * invocation shows the full history, and one more invocation returns to the
+	 * Return whether this invocation shows full history.
+	 * <p>Every second explicit invocation does. Automatic completion uses
 	 * proposals.
-	 *
-	 * @param parameters the IntelliJ completion parameters.
-	 * @return {@literal true} if this invocation shows the full history;
-	 * {@literal false} if it shows the curated proposals.
 	 */
 	protected static boolean showsFullHistory(CompletionParameters parameters) {
 
@@ -401,38 +295,23 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	}
 
 	/**
-	 * Return whether the {@code typedChar} is a typical version character such as a
-	 * letter, digit or dot.
-	 *
-	 * @param typedChar the character to check.
-	 * @return {@literal true} if the character should trigger release completion;
-	 * {@literal false} otherwise.
+	 * Return whether the character triggers version completion.
 	 */
 	public static boolean isVersionCharacter(char typedChar) {
 		return Character.isLetterOrDigit(typedChar) || typedChar == '.';
 	}
 
 	/**
-	 * Return whether {@code c} can be part of a version token. Version tokens may
-	 * contain letters, digits, dots, hyphens, underscores, and plus signs.
-	 *
-	 * @param c the character to check.
-	 * @return {@literal true} if the character belongs to a version token;
-	 * {@literal false} otherwise.
+	 * Return whether the character belongs to a version token.
+	 * <p>Tokens accept letters, digits, dots, hyphens, underscores, and plus signs.
 	 */
 	public static boolean isVersionTokenCharacter(char c) {
 		return Character.isLetterOrDigit(c) || c == '.' || c == '-' || c == '_' || c == '+';
 	}
 
 	/**
-	 * Return the version-token prefix at the current completion position.
-	 *
-	 * <p>The original position is preferred when IntelliJ has inserted completion
-	 * placeholder PSI. If no original position is available, the live completion
-	 * position is used.
-	 *
-	 * @param parameters the IntelliJ completion parameters.
-	 * @return the version-token prefix before the caret.
+	 * Return the typed version prefix, preferring original PSI over completion
+	 * placeholders.
 	 */
 	protected static String getPrefix(CompletionParameters parameters) {
 
@@ -446,15 +325,8 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	}
 
 	/**
-	 * Return the version-token prefix inside the given literal.
-	 *
-	 * <p>Version tokens may contain letters, digits, dots, hyphens, underscores,
-	 * and plus signs. The returned prefix is the contiguous token fragment between
-	 * the token start and the caret offset.
-	 *
-	 * @param parameters the IntelliJ completion parameters.
-	 * @param literal the PSI element whose text contains the version token.
-	 * @return the version-token prefix before the caret.
+	 * Return the version-token fragment immediately before the caret in the
+	 * literal.
 	 */
 	protected static String getPrefix(CompletionParameters parameters, PsiElement literal) {
 
@@ -471,23 +343,14 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	}
 
 	/**
-	 * Default insert handler that replaces the manipulator value of a captured
-	 * version literal.
-	 *
-	 * <p>The literal is held through a smart pointer and resolved at insertion
-	 * time. An invalid pointer or missing element manipulator results in no
-	 * replacement. A successful replacement moves both the caret and completion
-	 * tail to the end of the new version text.
+	 * Replaces a version literal and moves the caret and completion tail to its
+	 * end.
+	 * <p>Invalid pointers and missing manipulators leave the document unchanged.
 	 */
 	public static class LookupElementInsertHandler implements InsertHandler<LookupElement> {
 
 		private final SmartPsiElementPointer<PsiElement> pointer;
 
-		/**
-		 * Create an insert handler for the given version literal.
-		 *
-		 * @param pointer the version literal whose manipulator value is replaced.
-		 */
 		public LookupElementInsertHandler(PsiElement pointer) {
 			this.pointer = SmartPointerManager.createPointer(pointer);
 		}
@@ -511,12 +374,8 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 		}
 
 		/**
-		 * Move the caret and completion tail to {@code offset} after an insert handler
-		 * rewrote the completed declaration, so completion always ends at the applied
-		 * version text.
-		 *
-		 * @param context the insertion context whose caret and tail are updated.
-		 * @param offset the file-absolute destination offset.
+		 * Move the caret and completion tail together after insertion.
+		 * @param offset the file-absolute destination.
 		 */
 		public static void moveCaretTo(InsertionContext context, int offset) {
 

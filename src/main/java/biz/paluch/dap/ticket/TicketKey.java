@@ -22,7 +22,7 @@ import org.springframework.util.Assert;
 /**
  * Portable identifier of a ticket.
  *
- * <p>A {@code TicketKey} holds the value users recognize inside the ticket
+ * <p>A {@code TicketKey} holds the value users identify inside the ticket
  * system, for example {@code 1234} on GitHub or {@code PROJ-123} on Jira. It
  * deliberately does not include display adornments such as {@code #} or commit
  * close keywords.

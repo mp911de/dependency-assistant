@@ -19,15 +19,11 @@ package biz.paluch.dap.artifact;
 import org.springframework.util.ObjectUtils;
 
 /**
- * A dependency package identified by artifact coordinates and the package
- * ecosystem that owns them.
- *
- * <p>Use this value when storing or looking up package-level state where the
- * same coordinates can belong to different package systems. Equality uses both
- * the {@link ArtifactId} and {@link PackageSystem}; instances are immutable.
+ * Artifact coordinates within a package ecosystem.
+ * <p>Equality includes both coordinates and ecosystem, so identical coordinates
+ * in different package systems remain distinct.
  *
  * @author Mark Paluch
- * @see PackageSystem
  */
 public class PackageIdentity implements HasArtifactId, HasPackageSystem {
 
@@ -40,32 +36,15 @@ public class PackageIdentity implements HasArtifactId, HasPackageSystem {
 		this.packageSystem = packageSystem;
 	}
 
-	/**
-	 * Create a package identity for the given coordinates and ecosystem.
-	 *
-	 * @param artifactId the artifact coordinates within the package ecosystem.
-	 * @param packageSystem the ecosystem that interprets the coordinates.
-	 * @return the package identity.
-	 */
 	public static PackageIdentity of(ArtifactId artifactId, PackageSystem packageSystem) {
 		return new PackageIdentity(artifactId, packageSystem);
 	}
 
-	/**
-	 * Return the artifact coordinates identifying the package within its ecosystem.
-	 *
-	 * @return the artifact coordinates.
-	 */
 	@Override
 	public ArtifactId getArtifactId() {
 		return artifactId;
 	}
 
-	/**
-	 * Return the ecosystem that interprets the artifact coordinates.
-	 *
-	 * @return the package ecosystem.
-	 */
 	@Override
 	public PackageSystem getPackageSystem() {
 		return packageSystem;

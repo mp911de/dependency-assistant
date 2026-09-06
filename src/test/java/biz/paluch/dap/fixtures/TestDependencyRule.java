@@ -25,9 +25,8 @@ import biz.paluch.dap.support.UpgradeStrategy;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Present {@link DependencyRule} fixture carrying a dependency name. The
- * default form accepts every version; a {@link #rejecting()} rule rejects every
- * version and reports semantic upgrading as disabled.
+ * Present rule fixture that accepts every version by default.
+ * <p>{@link #rejecting()} also disables semantic upgrading.
  *
  * @author Mark Paluch
  */
@@ -37,9 +36,6 @@ public record TestDependencyRule(String dependencyName, boolean accepting) imple
 		this(dependencyName, true);
 	}
 
-	/**
-	 * Create a rule that rejects every version.
-	 */
 	public static TestDependencyRule rejecting() {
 		return new TestDependencyRule("", false);
 	}

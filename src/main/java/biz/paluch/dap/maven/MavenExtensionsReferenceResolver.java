@@ -29,10 +29,7 @@ import com.intellij.psi.xml.XmlText;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Maven extensions implementation of {@link ArtifactReferenceResolver}.
- *
- * <p>Resolves version tags in {@code extensions.xml} files into an
- * {@link ArtifactReference}.
+ * Resolves version references in {@code extensions.xml}.
  *
  * @author Mark Paluch
  */
@@ -42,10 +39,6 @@ class MavenExtensionsReferenceResolver implements ArtifactReferenceResolver {
 
 	private final boolean candidate;
 
-	/**
-	 * Create a resolver for the given build file.
-	 * @param extensionsFile the {@code extensions.xml} file to inspect.
-	 */
 	MavenExtensionsReferenceResolver(PsiFile extensionsFile) {
 
 		this.extensionsFile = extensionsFile instanceof XmlFile xmlFile
@@ -73,10 +66,8 @@ class MavenExtensionsReferenceResolver implements ArtifactReferenceResolver {
 	}
 
 	/**
-	 * Resolution is anchored to the {@link XmlText} value of a version tag. Line
-	 * markers and highlighting fire on every element of a tag (the angle brackets,
-	 * the tag name, the value text, and the surrounding text node). Pinning to the
-	 * single text node keeps the gutter from duplicating across them.
+	 * Use only the value node so one declaration does not produce duplicate gutter
+	 * markers.
 	 */
 	private boolean isResolvableElement(PsiElement element) {
 		return element.isValid() && element instanceof XmlText;

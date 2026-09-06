@@ -23,8 +23,7 @@ import biz.paluch.dap.assistant.check.DeclarationSite;
 import biz.paluch.dap.assistant.check.DeclaredVersions;
 
 /**
- * Test factory for {@link DeclaredVersions} without git-ref resolution and
- * without a project for location rendering.
+ * Declaration fixtures with absolute file locations and no Git-ref resolution.
  *
  * @author Mark Paluch
  */
@@ -33,18 +32,10 @@ public class TestDeclaredVersions {
 	private TestDeclaredVersions() {
 	}
 
-	/**
-	 * Create {@link DeclaredVersions} from the given sites, resolving no git refs
-	 * and rendering absolute file locations.
-	 */
 	public static DeclaredVersions from(DeclarationSite... sites) {
 		return from(List.of(sites));
 	}
 
-	/**
-	 * Create {@link DeclaredVersions} from the given sites, resolving no git refs
-	 * and rendering absolute file locations.
-	 */
 	public static DeclaredVersions from(Collection<DeclarationSite> sites) {
 		return DeclaredVersions.from(sites, ref -> null, null);
 	}

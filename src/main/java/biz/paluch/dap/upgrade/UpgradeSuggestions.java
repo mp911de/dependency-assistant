@@ -31,15 +31,12 @@ import biz.paluch.dap.support.UpgradeStrategy;
 import biz.paluch.dap.util.Sequence;
 
 /**
- * Per-strategy upgrade targets for one dependency.
- *
- * <p>Creation preserves the input map's iteration order. {@link #iterator()},
- * {@link #stream()}, and {@link #getSuggestion()} use that order. The detached
- * list returned by {@link #getSuggestions()} groups remediation suggestions
- * before the remaining suggestions while retaining their relative order.
+ * Per-strategy targets in captured map order.
+ * <p>Iteration and first-suggestion lookup use that order.
+ * {@link #getSuggestions()} provides a separate remediation-first display
+ * order.
  *
  * @author Mark Paluch
- * @see UpgradeStrategy
  */
 public class UpgradeSuggestions implements Sequence<UpgradeSuggestion> {
 
@@ -47,38 +44,18 @@ public class UpgradeSuggestions implements Sequence<UpgradeSuggestion> {
 
 	private final Map<UpgradeStrategy, UpgradeSuggestion> suggestions;
 
-	/**
-	 * Create suggestions over the given per-strategy targets, copied defensively
-	 * into a {@link LinkedHashMap} that preserves the iteration order of the given
-	 * map.
-	 *
-	 * @param suggestions the target release per strategy, in the caller's iteration
-	 * order.
-	 */
 	UpgradeSuggestions(Map<UpgradeStrategy, UpgradeSuggestion> suggestions) {
 		this.suggestions = new LinkedHashMap<>(suggestions);
 	}
 
-	/**
-	 * Return suggestions carrying no target for any strategy.
-	 *
-	 * @return the shared empty suggestions.
-	 */
 	public static UpgradeSuggestions empty() {
 		return EMPTY;
 	}
 
 	/**
-	 * Determine the target selected by each non-remediation strategy for
-	 * {@code current}.
-	 *
-	 * <p>Each strategy selects only within the current version's versioning scheme.
-	 * Targets equal to or older than the current version are omitted. Remediation
-	 * targets are added by {@link UpgradeSuggestionsFactory}.
-	 *
-	 * @param current the version currently in use.
-	 * @param releases the analyzed release history.
-	 * @return the per-strategy targets, or {@link #empty()} when none apply.
+	 * Select non-remediation targets within the current versioning scheme. Equal or
+	 * older targets are omitted. Use {@link UpgradeSuggestionsFactory} for security
+	 * and rule remediation.
 	 */
 	public static UpgradeSuggestions from(ArtifactVersion current, Releases releases) {
 
@@ -92,24 +69,15 @@ public class UpgradeSuggestions implements Sequence<UpgradeSuggestion> {
 	}
 
 	/**
-	 * Create suggestions over the given per-strategy targets, copying the map
-	 * defensively and preserving its iteration order.
-	 *
-	 * @param suggestions the target suggestion per strategy, in the caller's
-	 * iteration order.
-	 * @return the suggestions backed by a defensive copy.
+	 * Copy the strategy map, preserving its iteration order.
 	 */
 	public static UpgradeSuggestions of(Map<UpgradeStrategy, UpgradeSuggestion> suggestions) {
 		return new UpgradeSuggestions(suggestions);
 	}
 
 	/**
-	 * Return the upgrade suggestions with remediation targets first.
-	 *
-	 * <p>The returned list is detached from this object. Within the remediation and
-	 * non-remediation groups, suggestions retain map iteration order.
-	 *
-	 * @return a detached list of suggestions in display priority order.
+	 * Return a detached list with remediation targets first. Relative order within
+	 * each group is preserved.
 	 */
 	public List<UpgradeSuggestion> getSuggestions() {
 
@@ -128,72 +96,39 @@ public class UpgradeSuggestions implements Sequence<UpgradeSuggestion> {
 		return suggestions;
 	}
 
-	/**
-	 * Iterate over suggestions in map iteration order.
-	 *
-	 * @return an iterator over the suggestions.
-	 */
 	@Override
 	public Iterator<UpgradeSuggestion> iterator() {
 		return suggestions.values().iterator();
 	}
 
-	/**
-	 * Stream over suggestions in map iteration order.
-	 *
-	 * @return a stream over the suggestions.
-	 */
 	@Override
 	public Stream<UpgradeSuggestion> stream() {
 		return suggestions.values().stream();
 	}
 
-	/**
-	 * Return whether no strategy carries an upgrade target.
-	 *
-	 * @return {@literal true} if no upgrade is offered; {@literal false} otherwise.
-	 */
 	@Override
 	public boolean isEmpty() {
 		return suggestions.isEmpty();
 	}
 
-	/**
-	 * Return the number of strategies carrying an upgrade target.
-	 *
-	 * @return the target count.
-	 */
 	public int size() {
 		return suggestions.size();
 	}
 
-	/**
-	 * Return whether the given strategy carries an upgrade target.
-	 *
-	 * @param strategy the strategy to test.
-	 * @return {@literal true} if a target exists for the strategy; {@literal false}
-	 * otherwise.
-	 */
 	public boolean contains(UpgradeStrategy strategy) {
 		return suggestions.containsKey(strategy);
 	}
 
 	/**
-	 * Return the upgrade suggestion for the given strategy.
-	 *
-	 * @param strategy the strategy to look up.
-	 * @return the suggestion for the strategy, or {@link UpgradeSuggestion#none()}
-	 * when the strategy carries no target.
+	 * Return the strategy target, or {@link UpgradeSuggestion#none()} if absent.
 	 */
 	public UpgradeSuggestion get(UpgradeStrategy strategy) {
 		return suggestions.getOrDefault(strategy, UpgradeSuggestion.none());
 	}
 
 	/**
-	 * Return the first suggestion in map iteration order.
-	 *
-	 * @return the first suggestion in map iteration order, or
-	 * {@link UpgradeSuggestion#none()} when no strategy carries a target.
+	 * Return the first target in map order, or {@link UpgradeSuggestion#none()} if
+	 * empty.
 	 */
 	public UpgradeSuggestion getSuggestion() {
 		if (suggestions.isEmpty()) {
@@ -203,10 +138,7 @@ public class UpgradeSuggestions implements Sequence<UpgradeSuggestion> {
 	}
 
 	/**
-	 * Return a copy retaining only the strategies accepted by the predicate.
-	 *
-	 * @param predicate tested against each strategy carrying a target.
-	 * @return the retained suggestions, or {@link #empty()} when none match.
+	 * Return a copy retaining accepted strategies in their existing order.
 	 */
 	public UpgradeSuggestions filter(Predicate<UpgradeStrategy> predicate) {
 
@@ -224,14 +156,8 @@ public class UpgradeSuggestions implements Sequence<UpgradeSuggestion> {
 	}
 
 	/**
-	 * Return a copy with the given suggestion added or replaced, reordered so the
-	 * remediation strategies ({@link UpgradeStrategy#SAFE},
-	 * {@link UpgradeStrategy#RULE}) lead, followed by the remaining strategies in
-	 * priority order.
-	 *
-	 * @param suggestion the suggestion to add; replaces any existing target for the
-	 * same strategy.
-	 * @return the combined suggestions.
+	 * Add or replace a strategy target in a copy. Order Safe and Rule targets
+	 * first, then ordinary strategies in priority order.
 	 */
 	public UpgradeSuggestions with(UpgradeSuggestion suggestion) {
 
@@ -278,22 +204,13 @@ public class UpgradeSuggestions implements Sequence<UpgradeSuggestion> {
 	}
 
 	/**
-	 * Return the live strategy-to-suggestion mapping in iteration order.
-	 *
-	 * <p>Changes to the returned map change this object, including its equality,
-	 * hash code, and iteration order.
-	 *
-	 * @return the live suggestion mapping.
+	 * Return the live strategy map. Mutations affect equality, hash code and
+	 * iteration order.
 	 */
 	public Map<UpgradeStrategy, UpgradeSuggestion> toMap() {
 		return this.suggestions;
 	}
 
-	/**
-	 * Accumulates the selected target per {@link UpgradeStrategy} for one current
-	 * version and release history, retaining only strategies whose target is newer
-	 * than the current version.
-	 */
 	static class SuggestionBuilder {
 
 		private final Map<UpgradeStrategy, UpgradeSuggestion> upgrades = new LinkedHashMap<>();
@@ -307,12 +224,6 @@ public class UpgradeSuggestions implements Sequence<UpgradeSuggestion> {
 			this.releases = releases;
 		}
 
-		/**
-		 * Select and record the upgrade target for the given strategy, skipping it when
-		 * the target is the current version or older.
-		 *
-		 * @param upgradeStrategy the strategy whose target should be selected.
-		 */
 		public void select(UpgradeStrategy upgradeStrategy) {
 
 			Release release = upgradeStrategy.select(current, releases);
@@ -330,11 +241,6 @@ public class UpgradeSuggestions implements Sequence<UpgradeSuggestion> {
 			}
 		}
 
-		/**
-		 * Return the accumulated suggestions in selection order.
-		 *
-		 * @return the suggestions for the strategies that selected a newer target.
-		 */
 		public UpgradeSuggestions build() {
 			return new UpgradeSuggestions(upgrades);
 		}

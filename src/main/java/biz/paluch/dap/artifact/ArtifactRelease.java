@@ -21,15 +21,9 @@ import java.time.LocalDateTime;
 import org.jspecify.annotations.Nullable;
 
 /**
- * An artifact release consisting of an {@link ArtifactId} and a
- * {@link Release}.
- *
- * <p>Natural ordering is newest-first by release and does not include the
- * artifact coordinates. Use an artifact-aware key when releases of different
- * artifacts must remain distinct in a sorted collection.
- *
- * @param artifactId the released artifact.
- * @param release the release metadata.
+ * An artifact and its release metadata.
+ * <p>Natural ordering is newest-first and ignores artifact coordinates. Use an
+ * artifact-aware key when sorting releases from different artifacts.
  */
 public record ArtifactRelease(ArtifactId artifactId,
 		Release release) implements Comparable<ArtifactRelease>, VersionAware {
@@ -41,22 +35,10 @@ public record ArtifactRelease(ArtifactId artifactId,
 		return o.release().compareTo(release);
 	}
 
-	/**
-	 * Return whether this release is newer than the given current version.
-	 *
-	 * @param currentVersion the version to compare with.
-	 * @return {@code true} if this release is newer.
-	 */
 	public boolean isNewer(ArtifactVersion currentVersion) {
 		return release.isNewer(currentVersion);
 	}
 
-	/**
-	 * Return whether this release is older than the given current version.
-	 *
-	 * @param currentVersion the version to compare with.
-	 * @return {@code true} if this release is older.
-	 */
 	public boolean isOlder(ArtifactVersion currentVersion) {
 		return release.isOlder(currentVersion);
 	}

@@ -70,17 +70,6 @@ public class FileUpdateEngine {
 	}
 
 	/**
-	 * Create an engine that routes source files through the given dependency
-	 * assistant.
-	 *
-	 * @param project the project whose build files are updated.
-	 * @param assistant the assistant used to recognize and update files.
-	 */
-	public FileUpdateEngine(Project project, DependencyAssistant assistant) {
-		this(project, new DependencyAssistantsUpdateFunction(assistant));
-	}
-
-	/**
 	 * Create an engine using the given update function.
 	 *
 	 * @param project the project whose build files are updated.
@@ -207,7 +196,7 @@ public class FileUpdateEngine {
 	 * methods pass the same PSI file as source and target. No document is committed
 	 * or saved by this method.
 	 *
-	 * @param source the source file used for assistant recognition and context
+	 * @param source the source file used for assistant detection and context
 	 * creation.
 	 * @param target the PSI file to mutate.
 	 * @param updates the dependency updates to apply.

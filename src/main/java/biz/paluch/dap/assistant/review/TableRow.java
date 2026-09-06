@@ -67,12 +67,6 @@ abstract class TableRow implements PlannedUpgrade, Comparable<TableRow> {
 		this.tableIcon = tableIcon;
 	}
 
-	/**
-	 * Create a table icon for the {@link DependencyUpgradeCandidate}.
-	 *
-	 * @param candidate the upgrade candidate.
-	 * @return the table icon for the row.
-	 */
 	static Icon createTableIcon(DependencyUpgradeCandidate candidate) {
 
 		Icon base = candidate.getPresentation().getTableIcon();
@@ -83,13 +77,6 @@ abstract class TableRow implements PlannedUpgrade, Comparable<TableRow> {
 		return DependencyAssistantIcons.PROPERTY;
 	}
 
-	/**
-	 * Compute the speed-search string containing the row name and presentation
-	 * items.
-	 *
-	 * @param presentation the dependency presentation used for the table row.
-	 * @return the speed-search text.
-	 */
 	protected String getSearchString(DependencyPresentation presentation) {
 
 		Set<String> searchString = new LinkedHashSet<>();
@@ -144,25 +131,19 @@ abstract class TableRow implements PlannedUpgrade, Comparable<TableRow> {
 	}
 
 	/**
-	 * The headline rendered above the section table, or {@link HtmlChunk#empty()}.
-	 *
-	 * @return the tooltip headline.
+	 * Return the tooltip headline, or {@link HtmlChunk#empty()}.
 	 */
 	protected abstract HtmlChunk getToolTipIntro();
 
 	/**
-	 * The label/value section rows of this row's tooltip, assembled and rendered by
+	 * Return tooltip sections for
 	 * {@link UpgradeReview#getCoordinateToolTip(TableRow)}.
-	 *
-	 * @return the tooltip section rows.
 	 */
 	public abstract List<HtmlChunk> getCoordinateToolTip();
 
 	/**
-	 * Current version column tool tip text.
-	 *
-	 * @return the rendered tooltip, or an empty string when the row has no version
-	 * drift or governing rule details.
+	 * Return current-version details, or an empty string without drift or rule
+	 * details.
 	 */
 	public String getCurrentVersionToolTipText() {
 
@@ -194,19 +175,13 @@ abstract class TableRow implements PlannedUpgrade, Comparable<TableRow> {
 	}
 
 	/**
-	 * Return whether this row stands for the given artifact, used to select the row
-	 * a gutter icon or documentation link points at.
-	 *
-	 * @param pkg the artifact to match.
-	 * @return {@literal true} if the row represents the artifact; {@literal false}
-	 * otherwise.
+	 * Return whether this row represents the package, including group members.
 	 */
 	public abstract boolean represents(PackageIdentity pkg);
 
 	/**
-	 * Create the {@link DependencySiteQuery} for this row's Dependency Site Find.
-	 *
-	 * @return a query covering the represented artifacts and version properties.
+	 * Create a dependency-site query covering member artifacts and version
+	 * properties.
 	 */
 	public DependencySiteQuery toQuery() {
 
@@ -223,18 +198,10 @@ abstract class TableRow implements PlannedUpgrade, Comparable<TableRow> {
 
 	public abstract void doWithUpgradeCandidates(Consumer<DependencyUpgradeCandidate> consumer);
 
-	/**
-	 * Render one label/value row in {@link DocumentationMarkup} section style.
-	 * Swing tooltips do not carry the documentation pane's stylesheet, so the
-	 * {@code section} class is inert and the label styling is inlined: context-help
-	 * gray plus a right padding separating the label column from the value column.
-	 *
-	 * @param labelKey the message key for the row label.
-	 * @param value the rendered row value.
-	 * @return the tooltip table row.
-	 */
 	static HtmlChunk section(String labelKey, HtmlChunk value) {
 
+		// Swing tooltips lack the documentation stylesheet, so label styling must be
+		// inline.
 		String labelStyle = "color: %s; padding-right: %dpx".formatted(
 				ColorUtil.toHtmlColor(UIUtil.getContextHelpForeground()), JBUI.scale(8));
 		return HtmlChunk.tag("tr").children(

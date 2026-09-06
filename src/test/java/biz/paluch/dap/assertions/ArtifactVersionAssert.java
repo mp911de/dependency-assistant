@@ -21,16 +21,7 @@ import org.assertj.core.api.AbstractComparableAssert;
 
 /**
  * AssertJ assertions for {@link ArtifactVersion}.
- *
- * <p>The string overloads parse expected values at the assertion boundary so
- * ordering tests can keep the version syntax visible without repeating
- * {@code ArtifactVersion.of(...)} or local parsing helpers.
- *
- * <p>Example: <pre class="code">
- * assertThatVersion("1.0.0-M2")
- *     .isLessThan("1.0.0-RC1")
- *     .isGreaterThan("1.0.0-M1");
- * </pre>
+ * <p>String overloads keep version syntax visible in ordering tests.
  *
  * @author Mark Paluch
  */
@@ -40,58 +31,26 @@ public class ArtifactVersionAssert extends AbstractComparableAssert<ArtifactVers
 		super(actual, ArtifactVersionAssert.class);
 	}
 
-	/**
-	 * Verifies that the actual version compares less than the given version string.
-	 * @param expected the expected upper bound.
-	 * @return this assertion object.
-	 */
 	public ArtifactVersionAssert isLessThan(String expected) {
 		return isLessThan(ArtifactVersion.of(expected));
 	}
 
-	/**
-	 * Verifies that the actual version compares greater than the given version
-	 * string.
-	 * @param expected the expected lower bound.
-	 * @return this assertion object.
-	 */
 	public ArtifactVersionAssert isGreaterThan(String expected) {
 		return isGreaterThan(ArtifactVersion.of(expected));
 	}
 
-	/**
-	 * Verifies that the actual version equals the version parsed from the given
-	 * string.
-	 * @param expected the expected version string.
-	 * @return this assertion object.
-	 */
 	public ArtifactVersionAssert isEqualTo(String expected) {
 		return isEqualTo(ArtifactVersion.of(expected));
 	}
 
-	/**
-	 * Verifies that the actual version compares equal to the given version string.
-	 * @param expected the expected comparable version.
-	 * @return this assertion object.
-	 */
 	public ArtifactVersionAssert isEqualByComparingTo(String expected) {
 		return isEqualByComparingTo(ArtifactVersion.of(expected));
 	}
 
-	/**
-	 * Verifies that the actual version does not compare equal to the given version
-	 * string.
-	 * @param expected the expected comparable version.
-	 * @return this assertion object.
-	 */
 	public ArtifactVersionAssert isNotEqualByComparingTo(String expected) {
 		return isNotEqualByComparingTo(ArtifactVersion.of(expected));
 	}
 
-	/**
-	 * Verifies that the actual version is a general-availability release.
-	 * @return this assertion object.
-	 */
 	public ArtifactVersionAssert isRelease() {
 		isNotNull();
 		if (!this.actual.isReleaseVersion()) {
@@ -100,10 +59,6 @@ public class ArtifactVersionAssert extends AbstractComparableAssert<ArtifactVers
 		return this;
 	}
 
-	/**
-	 * Verifies that the actual version is not a general-availability release.
-	 * @return this assertion object.
-	 */
 	public ArtifactVersionAssert isNotRelease() {
 		isNotNull();
 		if (this.actual.isReleaseVersion()) {
@@ -112,10 +67,6 @@ public class ArtifactVersionAssert extends AbstractComparableAssert<ArtifactVers
 		return this;
 	}
 
-	/**
-	 * Verifies that the actual version is a snapshot.
-	 * @return this assertion object.
-	 */
 	public ArtifactVersionAssert isSnapshot() {
 		isNotNull();
 		if (!this.actual.isSnapshotVersion()) {
@@ -124,10 +75,6 @@ public class ArtifactVersionAssert extends AbstractComparableAssert<ArtifactVers
 		return this;
 	}
 
-	/**
-	 * Verifies that the actual version is not a snapshot.
-	 * @return this assertion object.
-	 */
 	public ArtifactVersionAssert isNotSnapshot() {
 		isNotNull();
 		if (this.actual.isSnapshotVersion()) {
@@ -136,10 +83,6 @@ public class ArtifactVersionAssert extends AbstractComparableAssert<ArtifactVers
 		return this;
 	}
 
-	/**
-	 * Verifies that the actual version is a milestone-like pre-release.
-	 * @return this assertion object.
-	 */
 	public ArtifactVersionAssert isMilestone() {
 		isNotNull();
 		if (!this.actual.isMilestoneVersion()) {
@@ -148,10 +91,6 @@ public class ArtifactVersionAssert extends AbstractComparableAssert<ArtifactVers
 		return this;
 	}
 
-	/**
-	 * Verifies that the actual version is not a milestone-like pre-release.
-	 * @return this assertion object.
-	 */
 	public ArtifactVersionAssert isNotMilestone() {
 		isNotNull();
 		if (this.actual.isMilestoneVersion()) {
@@ -160,10 +99,6 @@ public class ArtifactVersionAssert extends AbstractComparableAssert<ArtifactVers
 		return this;
 	}
 
-	/**
-	 * Verifies that the actual version is a release candidate.
-	 * @return this assertion object.
-	 */
 	public ArtifactVersionAssert isReleaseCandidate() {
 		isNotNull();
 		if (!this.actual.isReleaseCandidateVersion()) {
@@ -172,10 +107,6 @@ public class ArtifactVersionAssert extends AbstractComparableAssert<ArtifactVers
 		return this;
 	}
 
-	/**
-	 * Verifies that the actual version is not a release candidate.
-	 * @return this assertion object.
-	 */
 	public ArtifactVersionAssert isNotReleaseCandidate() {
 		isNotNull();
 		if (this.actual.isReleaseCandidateVersion()) {
@@ -184,10 +115,6 @@ public class ArtifactVersionAssert extends AbstractComparableAssert<ArtifactVers
 		return this;
 	}
 
-	/**
-	 * Verifies that the actual version is a preview.
-	 * @return this assertion object.
-	 */
 	public ArtifactVersionAssert isPreview() {
 		isNotNull();
 		if (!this.actual.isPreview()) {
@@ -196,10 +123,6 @@ public class ArtifactVersionAssert extends AbstractComparableAssert<ArtifactVers
 		return this;
 	}
 
-	/**
-	 * Verifies that the actual version is not a preview.
-	 * @return this assertion object.
-	 */
 	public ArtifactVersionAssert isNotPreview() {
 		isNotNull();
 		if (this.actual.isPreview()) {

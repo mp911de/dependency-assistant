@@ -22,30 +22,16 @@ import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.util.Sequence;
 
 /**
- * Test factory for {@link Releases} built from plain versions.
+ * Release fixtures built from plain versions.
  *
  * @author Mark Paluch
  */
 public class TestReleases {
 
-	/**
-	 * Create {@link Releases} from the given version strings.
-	 *
-	 * @param versions the version strings, each parsed through
-	 * {@link Release#of(String)}.
-	 * @return the releases for the given versions.
-	 */
 	public static Releases from(String... versions) {
 		return Releases.of(Sequence.of(versions).map(Release::of));
 	}
 
-	/**
-	 * Create {@link Releases} from the given versions.
-	 *
-	 * @param versions the versions, each wrapped through
-	 * {@link Release#of(ArtifactVersion)}.
-	 * @return the releases for the given versions.
-	 */
 	public static Releases from(ArtifactVersion... versions) {
 		return Releases.of(Sequence.of(versions).map(Release::of));
 	}

@@ -38,7 +38,7 @@ import org.jspecify.annotations.Nullable;
 /**
  * File-scoped operational handle for a build-tool integration.
  *
- * <p>A context is created after a {@link DependencyAssistant} recognizes an
+ * <p>A context is created after a {@link DependencyAssistant} supports an
  * anchor file. It exposes the build-tool specific work needed by shared editor
  * features: dependency scanning, PSI lookup, dependency resolution, and update
  * application.
@@ -114,7 +114,7 @@ public interface ProjectDependencyContext extends ProjectBuildContext, HasPackag
 	VersionUpgradeLookup getLookup(PsiElement element, VirtualFile file);
 
 	/**
-	 * Apply a single dependency update at a version element recognized by
+	 * Apply a single dependency update at a version element supported by
 	 * {@link #isVersionElement(PsiElement)}.
 	 * <p>The element anchors the update. Use
 	 * {@link #applyUpdates(PsiFile, DependencyUpdates)} to match updates throughout
@@ -134,7 +134,6 @@ public interface ProjectDependencyContext extends ProjectBuildContext, HasPackag
 
 	/**
 	 * Return an absent {@link ProjectDependencyContext}.
-	 * @return the shared unavailable context sentinel.
 	 */
 	static ProjectDependencyContext absent() {
 		return AbsentDependencyContext.ABSENT;

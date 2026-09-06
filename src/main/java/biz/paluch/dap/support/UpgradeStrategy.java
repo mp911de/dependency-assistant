@@ -28,25 +28,17 @@ import org.jetbrains.annotations.Nls;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Determines which release to select as the upgrade target from a collection of
- * available releases.
- *
- * <p>Each constant represents a boundary within the version space.
- * {@link #select} filters the provided releases according to that boundary and
- * returns the best match, or {@literal null} if no suitable release exists. The
- * {@code options} passed to {@link #select} must be sorted newest-first.
+ * Selects a release within an upgrade boundary. Remediation targets are
+ * supplied by security or rule analysis instead.
  *
  * @author Mark Paluch
- * @see Release
  * @see Releases
  */
 public enum UpgradeStrategy {
 
 	/**
-	 * Remediation strategy whose target is the Safe Version, the lowest newer
-	 * release known free of vulnerabilities. The target is supplied by security
-	 * analysis rather than computed by {@link #select}, which returns
-	 * {@literal null}.
+	 * Security remediation supplied by analysis. {@link #select} returns
+	 * {@code null}.
 	 */
 	SAFE {
 
@@ -59,10 +51,8 @@ public enum UpgradeStrategy {
 	},
 
 	/**
-	 * Remediation strategy whose target aligns the version according to
-	 * {@link biz.paluch.dap.rule.DependencyRule}. The target is supplied by
-	 * governance analysis rather than computed by {@link #select}, which returns
-	 * {@literal null}.
+	 * Rule remediation supplied by governance analysis. {@link #select} returns
+	 * {@code null}.
 	 */
 	RULE {
 
@@ -75,14 +65,9 @@ public enum UpgradeStrategy {
 	},
 
 	/**
-	 * Select the newest non-preview release within the same major and minor version
-	 * as {@code current}, limited to general-availability releases (including
-	 * bug-fix releases).
-	 * <p>For release-train versions the same major.minor line is the same train, so
-	 * service releases of that train (e.g. {@code Dysprosium-SR25}) qualify as
-	 * patch-level upgrades while releases of a different train do not.
-	 * <p>Return {@literal null} when the current version is already the latest
-	 * within its major.minor line, or no qualifying release exists.
+	 * Newest general-availability or bugfix release newer than the current version
+	 * in the same major/minor line. For release trains, service releases within the
+	 * same train qualify.
 	 */
 	PATCH {
 
@@ -100,9 +85,7 @@ public enum UpgradeStrategy {
 	},
 
 	/**
-	 * Select the newest non-preview release with the same major version but a
-	 * higher minor version than {@code current}.
-	 * <p>Return {@literal null} when no qualifying minor upgrade exists.
+	 * Newest non-preview release in a higher minor of the same major line.
 	 */
 	MINOR {
 
@@ -119,9 +102,7 @@ public enum UpgradeStrategy {
 	},
 
 	/**
-	 * Select the newest non-preview release with a higher major version than
-	 * {@code current}.
-	 * <p>Return {@literal null} when no qualifying major upgrade exists.
+	 * Newest non-preview release in a higher major line.
 	 */
 	MAJOR {
 
@@ -137,10 +118,8 @@ public enum UpgradeStrategy {
 	},
 
 	/**
-	 * Select the newest non-preview release regardless of version boundaries.
-	 * <p>This strategy does not compare against {@code current}; it simply returns
-	 * the first non-preview entry from the sorted list, which may be the same as or
-	 * older than {@code current} if no newer stable release is available.
+	 * Newest non-preview release, even if equal to or older than the current
+	 * version.
 	 */
 	LATEST {
 
@@ -155,12 +134,8 @@ public enum UpgradeStrategy {
 	},
 
 	/**
-	 * Select the newest preview release (RC, milestone) that is newer than
-	 * {@code current}. If the current version is a snapshot, first select the
-	 * newest non-snapshot preview in the same major/minor line, without requiring
-	 * it to compare newer than the snapshot. If no such release exists, use the
-	 * normal newer-preview selection.
-	 * <p>Return {@literal null} when no qualifying preview release exists.
+	 * Newest preview newer than the current version. For snapshots, prefer a
+	 * non-snapshot preview in the same major/minor line even if it compares older.
 	 */
 	PREVIEW {
 
@@ -188,15 +163,9 @@ public enum UpgradeStrategy {
 	},
 
 	/**
-	 * Select the newest non-preview, non-snapshot release within the same major and
-	 * minor line as {@code current} if the current version is a snapshot or
-	 * preview.
-	 * <p>When {@code current} is a snapshot or preview, finalize it instead: select
-	 * the general-availability release with the same numeric version (e.g.
-	 * {@code 3.9.6-SNAPSHOT} or {@code 3.9.6-M1} resolves to {@code 3.9.6}). If
-	 * that release was never published, fall back to the newest stable release in
-	 * the same line that is newer than {@code current}.
-	 * <p>Return {@literal null} when no qualifying release exists.
+	 * Finalize a snapshot or preview, preferring the stable release with the same
+	 * base version. Otherwise, select a newer stable release in the same
+	 * major/minor line. A stable current version has no candidate.
 	 */
 	RELEASE {
 
@@ -241,44 +210,23 @@ public enum UpgradeStrategy {
 
 	};
 
-	/**
-	 * Return the localized display name of the given upgrade strategy.
-	 *
-	 * @param strategy the strategy to display.
-	 * @return the localized strategy name.
-	 */
 	public static @Nls String getDisplayName(UpgradeStrategy strategy) {
 		return MessageBundle.message("upgrade-strategy." + strategy.name());
 	}
 
 	/**
-	 * Select the best upgrade candidate from {@code options} according to this
-	 * strategy.
-	 * <p>The caller is responsible for providing {@code options} sorted
-	 * newest-first and belonging to a single {@link VersioningScheme}. Each
-	 * strategy applies its own filter and returns the first matching element.
-	 * Prefer {@link #select(ArtifactVersion, Releases)} which scopes the candidates
-	 * to the current version's scheme.
+	 * Select from releases sorted newest-first within one versioning scheme. Prefer
+	 * {@link #select(ArtifactVersion, Releases)} for automatic scheme scoping.
 	 *
-	 * @param current the version currently in use.
-	 * @param options the available releases sorted newest-first.
-	 * @return the selected release, or {@literal null} if no release satisfies this
-	 * strategy's criteria.
+	 * @return {@code null} if no candidate meets this strategy's criteria.
 	 */
 	public abstract @Nullable Release select(ArtifactVersion current, Collection<Release> options);
 
 	/**
-	 * Select the best upgrade candidate from the given release history according to
-	 * this strategy, considering only releases in the same {@link VersioningScheme}
-	 * as {@code current}.
-	 * <p>A {@link VersioningScheme#OPAQUE} current version yields no upgrade. Build
-	 * one {@link Releases} per operation and pass it to all strategies to avoid
-	 * repeating the scheme analysis.
+	 * Select within the current version's scheme. Reuse the analyzed history across
+	 * strategies.
 	 *
-	 * @param current the version currently in use.
-	 * @param releases the analyzed release history.
-	 * @return the selected release, or {@literal null} if no release satisfies this
-	 * strategy's criteria within the current version's scheme.
+	 * @return {@code null} for opaque versions or when no candidate qualifies.
 	 */
 	public @Nullable Release select(ArtifactVersion current, Releases releases) {
 
@@ -290,27 +238,12 @@ public enum UpgradeStrategy {
 	}
 
 	/**
-	 * Return whether this is a remediation strategy, whose target is supplied by
-	 * security or governance analysis rather than selected from the version space.
-	 *
-	 * <p>A remediation target ({@link #SAFE}, {@link #RULE}) is offered only when
-	 * the corresponding analysis produces a target. When present, it can be pinned
-	 * into the displayed release set even when it sits outside the normal
-	 * newer-release window. The version tiers are never remediation. Use this in
-	 * place of comparing against {@link #SAFE} and {@link #RULE} directly.
-	 *
-	 * @return {@literal true} for {@link #SAFE} and {@link #RULE}; {@literal false}
-	 * for the version tiers.
+	 * Return whether security or rule analysis supplies the target.
 	 */
 	public boolean isRemediation() {
 		return this == SAFE || this == RULE;
 	}
 
-	/**
-	 * Return the localized display name of this upgrade strategy.
-	 *
-	 * @return the localized strategy name.
-	 */
 	public @Nls String getDisplayName() {
 		return MessageBundle.message("upgrade-strategy." + name());
 	}

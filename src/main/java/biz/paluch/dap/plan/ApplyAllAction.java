@@ -43,10 +43,9 @@ import com.intellij.util.ui.UIUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Apply planned upgrades to the build files, guarded by a confirmation with a
- * "do not ask again" option as a last resort against accidental clicks. A plan
- * selection narrows the run to the selected items; without a selection the
- * whole plan is applied.
+ * Apply selected plan items, or the whole plan when nothing is selected.
+ * <p>Dirty files can be shelved before applying. Clean-scope confirmation can
+ * be disabled by the user.
  *
  * @author Mark Paluch
  */
@@ -170,9 +169,7 @@ public class ApplyAllAction extends UpgradePlanAction {
 	}
 
 	/**
-	 * Confirm before applying. Plain apply offers to shelve a dirty scope or to
-	 * apply on top of it, and falls back to the do-not-ask-again confirmation on a
-	 * clean scope.
+	 * Choose whether to apply over dirty files, shelve them first, or cancel.
 	 */
 	ApplyDecision confirm(Project project, int itemCount, FileScope dirty) {
 
@@ -185,9 +182,9 @@ public class ApplyAllAction extends UpgradePlanAction {
 	}
 
 	/**
-	 * Notify that the plan was applied.
-	 * @param unshelve restores the shelf created for the run; {@literal null} when
-	 * no shelf was created.
+	 * Report applied updates.
+	 * @param unshelve shelf recovery action, or {@literal null} if no shelf was
+	 * created.
 	 */
 	void notifyDone(UpgradePlanService service, AppliedUpdates applied,
 			@Nullable NotificationAction unshelve) {
@@ -211,10 +208,6 @@ public class ApplyAllAction extends UpgradePlanAction {
 		notification.notify(project);
 	}
 
-	/**
-	 * Last-resort confirmation for a clean scope, with the platform's
-	 * do-not-ask-again option persisted under the given property.
-	 */
 	boolean confirmClean(Project project, int itemCount, String doNotAskProperty, String titleKey, String messageKey) {
 
 		if (PropertiesComponent.getInstance().getBoolean(doNotAskProperty)) {
@@ -254,10 +247,6 @@ public class ApplyAllAction extends UpgradePlanAction {
 		return choice == MessageConstants.NO ? ApplyDecision.APPLY : ApplyDecision.CANCEL;
 	}
 
-	/**
-	 * Outcome of the pre-apply confirmation: proceed, shelve the dirty scope files
-	 * first and then proceed, or abort.
-	 */
 	enum ApplyDecision {
 		APPLY, SHELVE_AND_APPLY, CANCEL
 	}

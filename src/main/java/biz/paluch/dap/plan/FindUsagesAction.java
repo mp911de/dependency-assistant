@@ -25,10 +25,8 @@ import com.intellij.openapi.ui.popup.JBPopupFactory;
 import com.intellij.ui.awt.RelativePoint;
 
 /**
- * Find the build-file declaration sites of the first selected plan item and
- * hand them to the Find tool window, through the same Dependency Site search
- * the upgrade review dialog uses. Site resolution runs lazily on invocation;
- * enablement only requires a selection and an idle plan.
+ * Open declaration sites for the first selected plan item in the Find tool
+ * window.
  *
  * @author Mark Paluch
  */

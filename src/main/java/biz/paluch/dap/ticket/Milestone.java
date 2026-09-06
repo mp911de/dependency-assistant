@@ -22,60 +22,30 @@ import java.time.LocalDateTime;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Release bucket attached to tickets in a repository.
- *
- * <p>For GitHub and GitLab this maps to a milestone. Systems may expose a
- * release or fix-version concept through the same interface. Instances are
- * implementation-owned and obtained through
- * {@link TicketRepository#getMilestones(com.intellij.openapi.progress.ProgressIndicator)}
- * or {@link Ticket#getMilestones()}. They may be displayed or passed back to
- * the same repository for filtering and assignment.
+ * Repository-owned release milestone. Use instances from the repository when
+ * filtering or assigning tickets.
  *
  * @author Mark Paluch
- * @see TicketRepository#getMilestones(com.intellij.openapi.progress.ProgressIndicator)
  */
 public interface Milestone {
 
-	/**
-	 * Return the milestone title shown by the ticket system.
-	 *
-	 * @return the milestone title.
-	 */
 	String getTitle();
 
 	/**
-	 * Return whether the milestone is open.
-	 *
-	 * <p>{@link TicketRepository#getMilestones(com.intellij.openapi.progress.ProgressIndicator)}
-	 * lists open milestones only; milestones attached to found tickets can be
-	 * closed.
-	 *
-	 * @return {@literal true} if the milestone is open; {@literal false} otherwise.
+	 * Whether the milestone is open. Tickets may retain closed milestones even
+	 * though repository listings contain only open ones.
 	 */
 	boolean isOpen();
 
-	/**
-	 * Return the milestone description.
-	 *
-	 * @return the milestone description, or {@literal null} if none is available.
-	 */
 	@Nullable
 	String getDescription();
 
 	/**
-	 * Return the due or release date of this milestone.
-	 *
-	 * @return the due or release date, or {@literal null} if none is set.
+	 * Return the due or release date, or {@code null} if unscheduled.
 	 */
 	@Nullable
 	LocalDateTime getReleaseDate();
 
-	/**
-	 * Return the calendar day of the {@link #getReleaseDate() release date} used to
-	 * present and order milestone schedules.
-	 *
-	 * @return the release day, or {@literal null} if the milestone is unscheduled.
-	 */
 	@Nullable
 	default LocalDate getReleaseDay() {
 
@@ -84,11 +54,7 @@ public interface Milestone {
 	}
 
 	/**
-	 * Return whether the milestone {@link #isOpen()} and its
-	 * {@link #getReleaseDay() release day} lies in the past.
-	 *
-	 * @return {@literal true} if the milestone is open and overdue;
-	 * {@literal false} otherwise, including for an unscheduled milestone.
+	 * Whether an open milestone is due before today in the local time zone.
 	 */
 	default boolean isOverdue() {
 

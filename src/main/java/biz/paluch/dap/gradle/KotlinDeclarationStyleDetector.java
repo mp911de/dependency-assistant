@@ -121,11 +121,6 @@ class KotlinDeclarationStyleDetector implements DeclarationStyleDetector {
 		return call != null && KotlinDslUtils.isDependencyCall(call) ? call : null;
 	}
 
-	/**
-	 * Classify an argument of a constraint call inside a {@code version { ... }}
-	 * block: {@code prefer("1.0")}, {@code strictly(springVersion)},
-	 * {@code require("[1.0,2.0)")}.
-	 */
 	private @Nullable DeclarationStyle versionBlockStyle(PsiElement element) {
 
 		KtCallExpression constraintCall = PsiTreeUtil.getParentOfType(element, KtCallExpression.class);
@@ -145,10 +140,6 @@ class KotlinDeclarationStyleDetector implements DeclarationStyleDetector {
 		return binary != null ? findPluginIdCallForVersionBinary(binary) : null;
 	}
 
-	/**
-	 * Return whether the literal is the coordinate argument in a direct Kotlin DSL
-	 * dependency or platform notation call.
-	 */
 	private boolean isDirectDependencyNotationLiteral(KtStringTemplateExpression literal) {
 
 		KtValueArgument valueArgument = PsiTreeUtil.getParentOfType(literal, KtValueArgument.class);
@@ -162,10 +153,6 @@ class KotlinDeclarationStyleDetector implements DeclarationStyleDetector {
 				&& call.getLambdaArguments().isEmpty();
 	}
 
-	/**
-	 * Return whether the literal is a {@code version = "..."} value in map-style
-	 * dependency notation.
-	 */
 	private boolean isVersionNamedArgumentLiteral(KtStringTemplateExpression literal) {
 
 		KtValueArgument namedArgument = PsiTreeUtil.getParentOfType(literal, KtValueArgument.class);
@@ -174,10 +161,6 @@ class KotlinDeclarationStyleDetector implements DeclarationStyleDetector {
 				&& isNamedArgumentOfDependencyCall(namedArgument);
 	}
 
-	/**
-	 * Return whether the reference is a {@code version = property} value in
-	 * map-style dependency notation.
-	 */
 	private boolean isVersionNamedArgumentReference(KtNameReferenceExpression reference) {
 
 		KtValueArgument namedArgument = PsiTreeUtil.getParentOfType(reference, KtValueArgument.class);
@@ -186,10 +169,6 @@ class KotlinDeclarationStyleDetector implements DeclarationStyleDetector {
 				&& isNamedArgumentOfDependencyCall(namedArgument);
 	}
 
-	/**
-	 * Return whether the literal is the version operand in a Kotlin plugin
-	 * declaration.
-	 */
 	private boolean isPluginVersionLiteral(KtStringTemplateExpression literal) {
 
 		KtBinaryExpression binary = PsiTreeUtil.getParentOfType(literal, KtBinaryExpression.class);
@@ -223,10 +202,6 @@ class KotlinDeclarationStyleDetector implements DeclarationStyleDetector {
 		return null;
 	}
 
-	/**
-	 * Return whether the literal declares a Kotlin property or extra property that
-	 * backs a supported dependency version reference.
-	 */
 	private boolean isBackingVersionPropertyLiteral(KtStringTemplateExpression literal) {
 
 		String propertyName = findBackingVersionPropertyName(literal);
@@ -242,10 +217,6 @@ class KotlinDeclarationStyleDetector implements DeclarationStyleDetector {
 		return referencedVersionProperties(file).contains(propertyName);
 	}
 
-	/**
-	 * Walk up from a {@code prefer(...)} or {@code strictly(...)} call to the
-	 * enclosing dependency call.
-	 */
 	private @Nullable KtCallExpression findVersionBlockDependencyCall(KtCallExpression preferOrStrictlyCall) {
 
 		KtLambdaExpression versionLambda = PsiTreeUtil.getParentOfType(preferOrStrictlyCall,
@@ -304,10 +275,6 @@ class KotlinDeclarationStyleDetector implements DeclarationStyleDetector {
 		return null;
 	}
 
-	/**
-	 * Property names that declarations in the file reference as version. Derived
-	 * from the forward parse and cached until the file changes.
-	 */
 	private static Set<String> referencedVersionProperties(PsiFile file) {
 		return PsiFileCache.get(file, KotlinDeclarationStyleDetector::computeReferencedVersionProperties);
 	}

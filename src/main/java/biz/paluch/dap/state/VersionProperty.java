@@ -26,9 +26,8 @@ import com.intellij.util.xmlb.annotations.Tag;
 import com.intellij.util.xmlb.annotations.XCollection;
 
 /**
- * Persistent descriptor of a project property and the artifacts it governs.
- * <p>A property can be merely declared, actually used as a version source, or
- * both. Artifact associations are stored without duplicates.
+ * Persistent property correlations. A property may be declared, used as a
+ * version source, or both.
  *
  * @author Mark Paluch
  */
@@ -53,42 +52,22 @@ public class VersionProperty {
 	public VersionProperty() {
 	}
 
-	/**
-	 * Create a property entry with the given name and no artifact associations.
-	 *
-	 * @param name the property name.
-	 */
 	public VersionProperty(String name) {
 		this(name, new ArrayList<>());
 	}
 
-	/**
-	 * Create a property entry with the given name and artifact associations.
-	 *
-	 * @param name the property name.
-	 * @param artifacts the initial artifact associations.
-	 */
 	public VersionProperty(String name, CachedArtifact... artifacts) {
 		this.name = name;
 		this.artifacts.addAll(List.of(artifacts));
 	}
 
-	/**
-	 * Create a property entry with the given name and artifact associations.
-	 *
-	 * @param name the property name.
-	 * @param artifacts the initial artifact associations.
-	 */
 	public VersionProperty(String name, List<CachedArtifact> artifacts) {
 		this.name = name;
 		this.artifacts.addAll(artifacts);
 	}
 
 	/**
-	 * Associate this property with the given artifact unless such an association is
-	 * already present.
-	 *
-	 * @param artifactId the artifact to associate.
+	 * Add an association if its coordinates are not already present.
 	 */
 	public void addArtifact(ArtifactId artifactId) {
 
@@ -103,56 +82,31 @@ public class VersionProperty {
 	}
 
 	/**
-	 * Return whether this property is currently used as a version source.
-	 *
-	 * @return {@literal true} if the property is used.
+	 * Whether the property is used as a version source.
 	 */
 	public boolean isUsed() {
 		return used;
 	}
 
-	/**
-	 * Mark whether this property is used as a version source.
-	 *
-	 * @param used whether the property is used.
-	 */
 	public void setUsed(boolean used) {
 		this.used = used;
 	}
 
-	/**
-	 * Return whether this property is declared in the analyzed project.
-	 *
-	 * @return {@literal true} if the property is declared.
-	 */
 	public boolean isDeclared() {
 		return declared;
 	}
 
-	/**
-	 * Mark whether this property is declared in the analyzed project.
-	 *
-	 * @param declared whether the property is declared.
-	 */
 	public void setDeclared(boolean declared) {
 		this.declared = declared;
 	}
 
-	/**
-	 * Return the property name.
-	 *
-	 * @return the property name.
-	 */
 	@Tag
 	public String name() {
 		return name;
 	}
 
 	/**
-	 * Return the backing artifact associations.
-	 * <p>This is the live storage list used for persistence and in-place mutation.
-	 *
-	 * @return the mutable backing artifact associations.
+	 * Return the mutable backing list of artifact associations.
 	 */
 	public List<CachedArtifact> artifacts() {
 		return artifacts;
@@ -180,20 +134,12 @@ public class VersionProperty {
 		return "VersionProperty[" + "name=" + name + ", " + "artifacts=" + artifacts + ']';
 	}
 
-	/**
-	 * Return whether this property is associated with at least one artifact.
-	 *
-	 * @return {@literal true} if at least one artifact association is present.
-	 */
 	public boolean hasArtifacts() {
 		return !artifacts.isEmpty();
 	}
 
 	/**
-	 * Return a snapshot of this property safe to hand off to the platform
-	 * serializer while concurrent mutations may still be in progress.
-	 *
-	 * @return a snapshot with independent artifact list.
+	 * Copy for persistence with an independent association list.
 	 */
 	VersionProperty snapshot() {
 

@@ -57,13 +57,13 @@ class GradleArtifactIdUnitTests {
 
 	@ParameterizedTest(name = "{0}")
 	@ValueSource(strings = {"com.example:lib", "com.example:lib:1.0.0"})
-	void recognizesCompleteCoordinatesAsValid(String gav) {
+	void supportsCompleteCoordinatesAsValid(String gav) {
 		assertThat(GradleArtifactId.isValid(gav)).isTrue();
 	}
 
 	@ParameterizedTest(name = "{0}")
 	@ValueSource(strings = {"com.example:", ":lib", "com.example", ":", "  "})
-	void recognizesIncompleteCoordinatesAsInvalid(String gav) {
+	void supportsIncompleteCoordinatesAsInvalid(String gav) {
 		assertThat(GradleArtifactId.isValid(gav)).isFalse();
 	}
 

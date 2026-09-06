@@ -17,17 +17,10 @@
 package biz.paluch.dap.maven;
 
 /**
- * A {@code settings.xml} mirror that redirects repositories matching its
- * {@code mirrorOf} pattern to a single URL.
+ * Maven mirror declaration interpreted by {@code DefaultMirrorSelector}.
  *
- * <p>Matching follows Maven's own {@code DefaultMirrorSelector} semantics.
- *
- * @param id the mirror id used to look up matching {@code <server>}
- * credentials.
- * @param url the mirror URL that replaces the original repository URL.
- * @param mirrorOf the pattern declaring which repositories this mirror
- * replaces.
  * @author Mark Paluch
+ * @param id the mirror ID used to select server credentials.
  */
 record Mirror(String id, String url, String mirrorOf) {
 }

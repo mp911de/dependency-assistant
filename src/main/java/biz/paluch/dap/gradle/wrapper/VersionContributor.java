@@ -33,12 +33,6 @@ import com.intellij.psi.PsiElement;
  */
 class VersionContributor extends VersionContributorSupport {
 
-	/**
-	 * Matches a caret position inside a Gradle Wrapper version segment.
-	 * <pre class="code">
-	 * distributionUrl=https\://services.gradle.org/distributions/gradle-8.&lt;caret&gt;14.3-bin.zip
-	 * </pre>
-	 */
 	static final PsiElementPattern.Capture<PsiElement> WRAPPER_VERSION = PROPERTY_VALUE
 			.inside(PlatformPatterns.psiElement(Property.class).withName(WrapperProperty.propertyNames()));
 

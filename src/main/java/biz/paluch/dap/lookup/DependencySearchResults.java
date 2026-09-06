@@ -26,17 +26,9 @@ import java.util.stream.Stream;
 import biz.paluch.dap.util.Sequence;
 
 /**
- * Ordered collection of the {@link DependencySiteSearchHit hits} located by a
- * Dependency Site Find.
- *
- * <p>Results retain no query or input iterable. They can represent one
- * {@link ArtifactReferenceResolver#search(DependencySiteQuery) per-file
- * search}, a fallback PSI traversal performed by the site-find orchestration,
- * or the aggregation of several per-file results through
- * {@link #concat(Iterable)}.
+ * Ordered dependency sites found within a file or aggregated across files.
  *
  * @author Mark Paluch
- * @see DependencySiteSearchHit
  * @see ArtifactReferenceResolver#search(DependencySiteQuery)
  */
 public class DependencySearchResults implements Sequence<DependencySiteSearchHit> {
@@ -49,20 +41,12 @@ public class DependencySearchResults implements Sequence<DependencySiteSearchHit
 		this.hits = hits;
 	}
 
-	/**
-	 * Return the shared empty results instance.
-	 *
-	 * @return the empty results (shared, immutable).
-	 */
 	public static DependencySearchResults empty() {
 		return EMPTY;
 	}
 
 	/**
-	 * Create results from the given hits in iteration order.
-	 *
-	 * @param hits the located hits, may be empty.
-	 * @return the results holding a defensive copy of the hits.
+	 * Copy the given hits in iteration order.
 	 */
 	public static DependencySearchResults of(Iterable<DependencySiteSearchHit> hits) {
 
@@ -75,11 +59,8 @@ public class DependencySearchResults implements Sequence<DependencySiteSearchHit
 	}
 
 	/**
-	 * Combine several per-file results into one, retaining the first occurrence of
-	 * each equal hit.
-	 *
-	 * @param results the per-file results to aggregate in encounter order.
-	 * @return the deduplicated union of all hits in encounter order.
+	 * Combine results in encounter order, retaining the first occurrence of each
+	 * equal hit.
 	 */
 	public static DependencySearchResults concat(Iterable<DependencySearchResults> results) {
 

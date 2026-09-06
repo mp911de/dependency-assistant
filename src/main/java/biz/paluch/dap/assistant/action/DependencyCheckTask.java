@@ -38,17 +38,9 @@ import com.intellij.openapi.vfs.VirtualFile;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Cancellable background task that resolves an {@link UpgradeScope} from an
- * {@link UpgradeRequest} and runs a {@link DependencyCheck} over it.
- *
- * <p>Scope resolution waits for smart mode and runs in a non-blocking read
- * action. An empty scope produces an informational notification without running
- * the check. A completed check with no candidates reports that no updates are
- * available; otherwise the task opens a {@link DependencyCheckDialog} and
- * selects the requested focus artifact, if any.
- *
- * <p>The task does not modify build files. Direct updates occur only after the
- * user confirms them in the dialog.
+ * Background dependency check that opens an upgrade review.
+ * <p>Scope resolution waits for smart mode. The task does not modify build
+ * files.
  *
  * @author Mark Paluch
  */

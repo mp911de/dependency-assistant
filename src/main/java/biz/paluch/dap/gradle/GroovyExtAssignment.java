@@ -30,48 +30,22 @@ import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals
 import org.jspecify.annotations.Nullable;
 
 /**
- * Interface representing Groovy DSL {@code ext} property declarations.
- * <p>Captures the four supported declaration shapes behind one factory:
- * <ul>
- * <li>{@code ext { set('key', 'value') }} {@link SetCall set-call form}</li>
- * <li>{@code ext { key = 'value' }} {@link ExtAssignment plain assignment
- * inside an {@code ext} closure}</li>
- * <li>{@code ext.key = 'value'} {@link ExtAssignment dot-qualified
- * assignment}</li>
- * <li>{@code def key = 'value'} / {@code String key = 'value'} -
- * {@link ScriptVariable top-level script variable}</li>
- * </ul>
+ * Groovy {@code ext} assignment or top-level script variable.
  *
  * @author Mark Paluch
  */
 sealed interface GroovyExtAssignment extends ExtraDeclaration {
 
-	/**
-	 * Name of the Groovy {@code ext} property block/qualifier.
-	 */
 	String EXT = "ext";
 
-	/**
-	 * Name of the Groovy {@code set} property method.
-	 */
 	String SET = "set";
 
-	/**
-	 * Return the Groovy literal that holds the assigned value, serving as the
-	 * editable anchor when the property value is rewritten.
-	 *
-	 * @return the literal expression holding the value.
-	 */
 	@Override
 	GrLiteral getValueLiteral();
 
 	/**
-	 * Detect a Groovy {@code ext} property declaration anchored at {@code element}.
-	 * {@code element} is expected to be the value literal of the declaration.
-	 *
-	 * @param element the candidate value PSI element.
-	 * @return the resolved assignment, or {@literal null} if {@code element} is not
-	 * the value literal of a detected {@code ext} declaration shape.
+	 * Find the declaration whose value is this string literal.
+	 * @return {@literal null} for unsupported declaration shapes.
 	 */
 	static @Nullable GroovyExtAssignment from(@Nullable PsiElement element) {
 
@@ -153,11 +127,10 @@ sealed interface GroovyExtAssignment extends ExtraDeclaration {
 		}
 
 		/**
-		 * Extract the property key from an {@code ext} assignment LHS.
-		 * @param lhs the assignment left-hand side.
-		 * @param valueContext the right-hand side literal, used as anchor for the
-		 * {@code ext} closure check.
-		 * @return the resolved key, or {@literal null}.
+		 * Extract an {@code ext} key.
+		 * @param valueContext the value used to establish closure scope, or
+		 * {@literal null} to use the left-hand side.
+		 * @return {@literal null} if the assignment is not an {@code ext} property.
 		 */
 		static @Nullable String extractKey(@Nullable GrExpression lhs, @Nullable PsiElement valueContext) {
 

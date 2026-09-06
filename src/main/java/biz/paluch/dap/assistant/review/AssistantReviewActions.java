@@ -54,12 +54,8 @@ import com.intellij.psi.PsiFile;
 import com.intellij.util.Consumer;
 
 /**
- * Executes effects requested from the dependency review dialog.
- *
- * <p>Selected updates run as a globally undoable batch, and only writes that
- * change file text are recorded for the completion notification and its undo
- * action. Armed upgrades can instead be handed to the Upgrade Plan without
- * changing build files.
+ * Apply confirmed review selections or transfer them to the Upgrade Plan.
+ * <p>Only writes that change file text are recorded for notification and undo.
  *
  * @author Mark Paluch
  */
@@ -81,7 +77,7 @@ class AssistantReviewActions {
 		AppliedUpdates applied = new AppliedUpdates();
 
 		// the platform asks before undoing when the batch spans several files or
-		// the review was not opened from the editor; an editor-local single-file
+		// the review was not opened from the editor. An editor-local single-file
 		// apply undoes silently like any edit
 		UndoConfirmationPolicy undoConfirmationPolicy = files.size() > 1 || !fromEditor
 				? UndoConfirmationPolicy.REQUEST_CONFIRMATION
@@ -100,12 +96,6 @@ class AssistantReviewActions {
 		notifyApplied(applied);
 	}
 
-	/**
-	 * Notify about applied updates. The balloon describes flagged entries
-	 * (compliance or major crossing), offers to reverse only those when several
-	 * updates were applied (a single flagged update is fully reverted by Undo),
-	 * offers a commit under version control, and always offers Undo.
-	 */
 	private void notifyApplied(AppliedUpdates applied) {
 
 		UpgradeNotification wording = UpgradeNotification.applied(applied).withFlagged();

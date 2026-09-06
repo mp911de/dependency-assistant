@@ -32,26 +32,14 @@ import org.jspecify.annotations.Nullable;
 @Tag("projectMetadata")
 public class CachedMetadata {
 
-	/**
-	 * Human-readable project name, or {@literal null} when none was reported by the
-	 * metadata source.
-	 */
 	private @Nullable @Attribute String projectName;
 
-	/**
-	 * Human-readable project description, or {@literal null} when none was reported
-	 * by the metadata source.
-	 */
 	private @Nullable @Attribute String projectDescription;
 
 	private @Nullable @Attribute String repositoryUrl;
 
 	private @Nullable @Attribute String issueTrackerUrl;
 
-	/**
-	 * Epoch-millisecond timestamp at which the inspection producing this metadata
-	 * completed. Stamped by the cache write path.
-	 */
 	private @Attribute long retrievedAt;
 
 	/**
@@ -61,13 +49,7 @@ public class CachedMetadata {
 	}
 
 	/**
-	 * Create a metadata entry from an inspection result.
-	 *
-	 * @param repositoryUrl the source repository URL, or {@literal null}.
-	 * @param issueTrackerUrl the issue tracker URL, or {@literal null}.
-	 * @param projectName the project name, or {@literal null}.
-	 * @param projectDescription the project description, or {@literal null}.
-	 * @return the unstamped metadata entry.
+	 * Create metadata without a retrieval timestamp.
 	 */
 	public static CachedMetadata of(@Nullable String repositoryUrl, @Nullable String issueTrackerUrl,
 			@Nullable String projectName,
@@ -99,10 +81,8 @@ public class CachedMetadata {
 	}
 
 	/**
-	 * Return when metadata inspection completed.
-	 *
-	 * @return the epoch-millisecond retrieval timestamp, or a small legacy retry
-	 * counter for a nothing-found marker.
+	 * Return the retrieval time in epoch milliseconds, or a legacy retry counter
+	 * for a nothing-found result.
 	 */
 	public long getRetrievedAt() {
 		return retrievedAt;

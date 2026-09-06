@@ -25,23 +25,15 @@ import java.util.function.Predicate;
 import biz.paluch.dap.util.Sequence;
 
 /**
- * Release lookup inputs for one artifact: the artifact coordinates together
- * with the sources that can provide its versions.
+ * Package identity and sources to query for its releases.
  *
  * @author Mark Paluch
- * @param pkg the package identity whose releases should be resolved.
- * @param sources the release sources that can provide versions for the
- * artifact.
- * @see ReleaseSource
  */
 public record ReleaseSources(PackageIdentity pkg, Collection<ReleaseSource> sources)
 		implements Sequence<ReleaseSource> {
 
 	/**
-	 * Create a new {@link ReleaseSources} instance.
-	 * @param pkg the package associated with the release sources.
-	 * @param sources the release sources.
-	 * @return the release sources.
+	 * Resolve source registries for this package and copy the resulting sources.
 	 */
 	public static ReleaseSources of(PackageIdentity pkg, Collection<ReleaseSource> sources) {
 
@@ -55,32 +47,23 @@ public record ReleaseSources(PackageIdentity pkg, Collection<ReleaseSource> sour
 		return new ReleaseSources(pkg, list);
 	}
 
-	/**
-	 * Return the artifact coordinates of {@link #pkg()}.
-	 */
 	public ArtifactId artifactId() {
 		return pkg.getArtifactId();
 	}
 
-	/**
-	 * Return the package ecosystem of {@link #pkg()}.
-	 */
 	public PackageSystem packageSystem() {
 		return pkg.getPackageSystem();
 	}
 
 	/**
-	 * Retain only the sources accepted by the given predicate.
-	 * @param predicate the predicate selecting the sources to query.
-	 * @return release sources narrowed to the accepted sources, possibly empty.
+	 * Return a selection containing only sources accepted by the predicate.
 	 */
 	public ReleaseSources filter(Predicate<ReleaseSource> predicate) {
 		return ReleaseSources.of(pkg, sources.stream().filter(predicate).toList());
 	}
 
 	/**
-	 * Return the identifiers of the configured release sources in encounter order.
-	 * @return the source identifiers.
+	 * Return source identifiers in encounter order.
 	 */
 	public Collection<String> sourceIds() {
 		List<String> ids = new ArrayList<>(sources.size());
@@ -91,11 +74,8 @@ public record ReleaseSources(PackageIdentity pkg, Collection<ReleaseSource> sour
 	}
 
 	/**
-	 * Check whether the release sources contain only the given
-	 * {@link ReleaseSource#getId() identifiers}.
-	 * @param ids collection of release source identifiers.
-	 * @return {@code true} if the source count matches and every source identifier
-	 * is contained in {@code ids}.
+	 * Return whether the source count matches and every source identifier occurs in
+	 * {@code ids}.
 	 */
 	public boolean containsOnlyReleaseSourceIds(Collection<String> ids) {
 		if (ids.size() != sources.size()) {

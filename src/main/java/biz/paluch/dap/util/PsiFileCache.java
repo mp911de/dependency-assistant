@@ -32,18 +32,12 @@ import com.intellij.psi.util.PsiModificationTracker;
 
 /**
  * Per-file cache for PSI-based computations.
- *
- * <p>{@link #get(PsiFile, Function)} is invalidated only by edits to the owning
- * file. {@link #withProjectRoot(PsiFile, Function, ModificationTracker...)} is
- * invalidated by any project PSI edit or project-root change.
- *
- * <p>Each provider class identifies one cached computation per file. The first
- * provider instance for that class and file is retained for recomputation.
- * later instances of the same class do not replace it. Providers must therefore
- * derive current state from the supplied file and declared dependencies instead
- * of capturing request-specific or mutable project context. Use distinct
- * provider classes for computations with different values or invalidation
- * policies.
+ * <p>The provider class identifies the computation within each file. The first
+ * provider is retained for recomputation. Later instances of the same class do
+ * not replace it.
+ * <p>Providers must read current state from the file and declared dependencies
+ * instead of capturing request-specific state. Use distinct provider classes
+ * for different computations or invalidation policies.
  *
  * @author Mark Paluch
  * @see CachedValuesManager
@@ -51,14 +45,8 @@ import com.intellij.psi.util.PsiModificationTracker;
 public abstract class PsiFileCache {
 
 	/**
-	 * Return the value cached for {@code file}, computing it when absent or after
-	 * the file changes.
-	 * @param <F> the PSI file type.
-	 * @param <T> the value type.
-	 * @param file the file that owns and invalidates the cached value.
-	 * @param provider the file-derived computation. Its class identifies the cache
-	 * entry.
-	 * @return the value shared for the provider and file until that file changes.
+	 * Cache a computation that depends only on the owning file.
+	 * <p>Changes to other files do not invalidate the value.
 	 */
 	public static <F extends PsiFile, T> T get(F file,
 			Function<? super F, ? extends T> provider) {
@@ -69,16 +57,9 @@ public abstract class PsiFileCache {
 	}
 
 	/**
-	 * Return the value cached on {@code file}, computing it when absent, after any
-	 * project PSI edit, or after a project-root change.
-	 * @param <F> the PSI file type.
-	 * @param <T> the value type.
-	 * @param file the file that owns the cached value.
-	 * @param provider the computation based on the current file and project model.
-	 * Its class identifies the cache entry.
-	 * @param additionalDependencies additional project-model modification sources.
-	 * @return the value shared for the provider and file while project PSI and
-	 * roots, and the additional dependencies remain unchanged.
+	 * Cache a computation that depends on project PSI and roots.
+	 * <p>Any project PSI edit, root change, or additional dependency change
+	 * invalidates the value.
 	 */
 	public static <F extends PsiFile, T> T withProjectRoot(F file,
 			Function<? super F, ? extends T> provider, ModificationTracker... additionalDependencies) {

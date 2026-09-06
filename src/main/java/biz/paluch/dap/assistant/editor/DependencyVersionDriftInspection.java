@@ -71,19 +71,11 @@ import com.intellij.ui.awt.RelativePoint;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * {@link LocalInspectionTool} that flags dependency drift: an artifact declared
- * at more than one distinct version or through mixed declaration styles across
- * the project's modules.
- *
- * <p>The current file's declaration is read live from PSI; cross-module
- * versions come from the runtime dependency state. {@link StateRefresher} keeps
- * that state fresh on edits and saves of build files and restarts highlighting
- * afterwards, so open editors re-run this inspection against the latest
- * declarations.
- *
- * <p>Only declarations whose version literal is defined in the inspected file
- * are reported. Shared version-catalog definitions are reported on their
- * referencing aliases rather than on the {@code [versions]} entry itself.
+ * Reports differing dependency versions and mixed declaration styles across
+ * modules.
+ * <p>The current declaration comes from PSI. Other modules use indexed state.
+ * Only versions defined in the inspected file are reported. Shared catalog
+ * versions are reported at their referencing aliases.
  *
  * @author Mark Paluch
  */
@@ -118,10 +110,8 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool implem
 				boolean catalogProperty = versionSource instanceof VersionSource.VersionCatalog
 						&& versionSource.isProperty();
 
-				// A version-catalog [versions] entry is a shared version definition, not a
-				// declaration site. Skip the definition itself and report drift on the
-				// library aliases that reference it through version.ref, whose version
-				// literal points back into the [versions] table.
+				// Report shared catalog versions at aliases to identify the drifting
+				// dependency.
 				if (catalogProperty && element == versionLiteral) {
 					return;
 				}
@@ -213,9 +203,7 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool implem
 	}
 
 	/**
-	 * Quick fix that finds every site participating in the drifting artifact's
-	 * version across the project's build files and hands the results to the Find
-	 * tool window.
+	 * Shows the drifting dependency's sites in the Find tool window.
 	 */
 	static class ShowDriftingSitesAction implements LocalQuickFix {
 
@@ -289,8 +277,7 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool implem
 	}
 
 	/**
-	 * Quick fix that reconciles a drifting artifact to a chosen declared version by
-	 * rewriting every occurrence of that artifact in the file.
+	 * Aligns all matching occurrences in the file to a selected declared version.
 	 */
 	static class AlignVersionAction extends ModCommandQuickFix implements PriorityAction {
 

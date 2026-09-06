@@ -76,7 +76,7 @@ class GradleRichVersion {
 	 * @param raw the raw rich-version declaration.
 	 * @param newVersion the replacement version.
 	 * @return the rewritten declaration, or {@code raw} when no supported update
-	 * form is recognized.
+	 * form is supported.
 	 */
 	static String update(String raw, String newVersion) {
 		if (StringUtils.isEmpty(raw) || isDynamic(raw)) {

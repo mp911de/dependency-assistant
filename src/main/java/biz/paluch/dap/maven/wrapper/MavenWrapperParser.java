@@ -41,7 +41,7 @@ import org.jspecify.annotations.Nullable;
  * from the URL and project trust state.
  *
  * <p>Collection requires the path and file-name versions to agree. It registers
- * the declaration even when the shared version is not a recognized
+ * the declaration even when the shared version is not a supported
  * {@link ArtifactVersion}, but registers a dependency usage only for a parsed
  * version. Each distinct repository of a collectable entry is added as a
  * release source; {@link #parseRepositories(PropertiesFile)} exposes the same

@@ -20,11 +20,8 @@ import com.intellij.util.xmlb.annotations.Attribute;
 import com.intellij.util.xmlb.annotations.Tag;
 
 /**
- * Persistent root state for the project-scoped Dependency Assistant service.
- *
- * <p>The state contains the durable {@link Cache} and the marker recording
- * whether Dependency Assistant has been used actively. Runtime dependency
- * collectors remain owned by {@link StateService} and are not serialized.
+ * Persistent project state. Runtime dependency collectors belong to
+ * {@link StateService} and are not serialized.
  *
  * @author Mark Paluch
  */
@@ -32,45 +29,21 @@ public class DependencyAssistantState {
 
 	private @Tag Cache cache = new Cache();
 
-	/**
-	 * Flag whether Dependency Assistant has been used actively.
-	 */
 	@Attribute
 	private volatile boolean usedOnce = false;
 
-	/**
-	 * Return the persisted cache.
-	 *
-	 * @return the cache to be serialized with this state.
-	 */
 	public Cache getCache() {
 		return this.cache;
 	}
 
-	/**
-	 * Set the persisted cache.
-	 *
-	 * @param cache the cache to serialize with this state.
-	 */
 	public void setCache(Cache cache) {
 		this.cache = cache;
 	}
 
-	/**
-	 * Return whether Dependency Assistant has been used actively at least once.
-	 *
-	 * @return {@literal true} if Dependency Assistant has been used actively.
-	 */
 	public boolean isUsedOnce() {
 		return usedOnce;
 	}
 
-	/**
-	 * Set whether Dependency Assistant has been used actively.
-	 *
-	 * @param usedOnce {@literal true} if Dependency Assistant has been used
-	 * actively.
-	 */
 	public void setUsedOnce(boolean usedOnce) {
 		this.usedOnce = usedOnce;
 		this.cache.incrementModification();

@@ -51,10 +51,8 @@ class KtVersion {
 	}
 
 	/**
-	 * Determine the effective version declared within the given dependency call.
-	 * @param dependency the dependency declaration to inspect.
-	 * @return the effective version, or {@literal null} if the declaration carries
-	 * no usable version.
+	 * Find the effective version, or {@literal null} if no usable version is
+	 * declared.
 	 */
 	public static @Nullable KtVersion fromDependency(KtCallElement dependency) {
 
@@ -104,16 +102,10 @@ class KtVersion {
 		return constraints;
 	}
 
-	/**
-	 * @return the effective version as property reference or literal value.
-	 */
 	public Expression getExpression() {
 		return expression;
 	}
 
-	/**
-	 * @return the PSI element that contributes the effective version.
-	 */
 	public KtExpression getElement() {
 		return element;
 	}

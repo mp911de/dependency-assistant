@@ -27,19 +27,14 @@ import org.xmlbeam.annotation.XBRead;
 public interface MavenMetadataProjection {
 
 	/**
-	 * Return the release declared by the metadata document.
-	 *
-	 * @return the declared release, or {@literal null} when the release element is
-	 * absent.
+	 * Return the declared release, or {@code null} if absent.
 	 */
 	@XBRead("/metadata/versioning/release")
 	@Nullable
 	String getRelease();
 
 	/**
-	 * Return the version elements in document order.
-	 *
-	 * @return the declared versions, or an empty list when none are present.
+	 * Return versions in document order, or an empty list if absent.
 	 */
 	@XBRead("/metadata/versioning/versions/version")
 	List<String> getVersions();

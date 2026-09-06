@@ -44,8 +44,7 @@ import org.springframework.util.Assert;
  * can derive a single version-bearing segment for lookup, highlighting, and
  * safe replacement. Unsupported shapes such as {@code latest}, {@code *},
  * disjunctions using {@code ||}, malformed aliases, or unsupported URL schemes
- * return {@literal null} from {@link #parse(String)}; there is no sentinel
- * expression for skipped inputs.
+ * return {@literal null} from {@link #parse(String)}.
  *
  * <p>Each variant owns three related contracts:
  * <ul>

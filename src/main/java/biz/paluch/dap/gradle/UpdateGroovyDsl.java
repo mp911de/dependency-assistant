@@ -38,9 +38,7 @@ class UpdateGroovyDsl {
 	}
 
 	/**
-	 * Update {@code ext.propertyKey = 'newVersion'},
-	 * {@code set('propertyKey', 'newVersion')}, or a top-level
-	 * {@code def propertyKey = 'newVersion'} script variable.
+	 * Update an {@code ext} property or top-level script variable.
 	 */
 	void updateExtProperty(PsiFile file, String propertyKey, String newVersion) {
 

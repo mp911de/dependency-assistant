@@ -52,25 +52,15 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.util.ObjectUtils;
 
 /**
- * {@link ReleaseSource} that fetches release metadata from the public NPM
- * registry at {@code https://registry.npmjs.org/}.
- *
- * <p>The registry document also carries the package's {@code repository} and
- * {@code bugs} declarations. The fetch captures them as {@link CachedMetadata}
- * on the returned {@link NpmReleases} so the cache-write path can store them
- * without a second request.
- *
- * <p>Git-backed artifact identities are outside this source and yield no
- * releases. The strict {@link biz.paluch.dap.github.GitHubReleaseSourceRouter}
- * in {@link NpmProjectContext} owns those lookups instead.
+ * Release source for the public NPM registry.
+ * <p>Project metadata travels with {@link NpmReleases} so caching needs no
+ * second request. Git-backed identities are handled by a separate release
+ * source.
  *
  * @author Mark Paluch
  */
 public class NpmRegistry implements ReleaseSource {
 
-	/**
-	 * Singleton release source bound to the public NPM registry.
-	 */
 	public static final NpmRegistry NPM_REGISTRY = new NpmRegistry(
 			"https://registry.npmjs.org/");
 
@@ -78,10 +68,6 @@ public class NpmRegistry implements ReleaseSource {
 
 	private static final String ACCEPT_HEADER = "application/json";
 
-	/**
-	 * Accept header for the registry's abbreviated package document, which omits
-	 * everything but the version list and its install metadata.
-	 */
 	private static final String ABBREVIATED_ACCEPT_HEADER = "application/vnd.npm.install-v1+json";
 
 	private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -101,20 +87,12 @@ public class NpmRegistry implements ReleaseSource {
 	}
 
 	/**
-	 * Fetch the NPM Registry Package Document for the given artifact and parse its
-	 * versions and project metadata.
+	 * Fetch package releases and project metadata.
+	 * <p>Oversized documents are retried using the abbreviated registry response,
+	 * which omits release dates, commit hashes, and project metadata.
 	 *
-	 * <p>A package document exceeding
-	 * {@link HttpClientUtil#MAX_RESPONSE_BODY_BYTES} is retried against the
-	 * registry's abbreviated document, which yields the versions without release
-	 * dates, commit hashes, or project metadata.
-	 *
-	 * @param artifactId the normalized NPM package coordinate.
-	 * @param indicator the progress indicator used to honor cancellation.
-	 * @return the parsed releases, or an empty sequence when this source does not
-	 * own the artifact or the registry response is unusable.
 	 * @throws ArtifactNotFoundException if the registry returns HTTP 404.
-	 * @throws IOException if the registry document cannot be fetched or parsed.
+	 * @throws IOException if the document cannot be fetched or parsed.
 	 */
 	@Override
 	public Sequence<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException {
@@ -144,13 +122,8 @@ public class NpmRegistry implements ReleaseSource {
 	}
 
 	/**
-	 * Encode a validated NPM package name for inclusion in the registry URL path.
-	 * The leading {@code @} of a scoped name is percent-encoded, and the scope/name
-	 * separator slash is preserved. All other characters in the name allowlist are
-	 * URL-safe.
-	 *
-	 * @param packageName the validated package name.
-	 * @return the registry path representation of the package name.
+	 * Encode a validated package name for a registry path, retaining the scope/name
+	 * separator.
 	 */
 	static String encodePackageName(String packageName) {
 
@@ -220,11 +193,6 @@ public class NpmRegistry implements ReleaseSource {
 		return new NpmReleases(result, getProjectMetadata(root));
 	}
 
-	/**
-	 * Read the package document, keeping only the fields the parse consumes and
-	 * skipping the rest as it streams past. Fields are matched in whatever order
-	 * they arrive; absent ones stay absent.
-	 */
 	private static ObjectNode readRetainedFields(JsonParser parser) throws IOException {
 
 		ObjectNode root = MAPPER.createObjectNode();
@@ -291,15 +259,7 @@ public class NpmRegistry implements ReleaseSource {
 	}
 
 	/**
-	 * Capture {@link CachedMetadata} from the NPM Registry Package Document's
-	 * {@code repository} and {@code bugs} fields, reading the
-	 * {@code dist-tags.latest} version document first and falling back to the
-	 * top-level hoisted copies.
-	 *
-	 * <p>A repository candidate is selected only when it parses through
-	 * {@link RepositoryUrl#parse(String)}. A tracker candidate is selected only
-	 * when it is a valid absolute http/https URL. Unusable candidates count as
-	 * absent, so the result can be the nothing-found marker.
+	 * Prefer usable metadata from the latest version over package-level copies.
 	 */
 	private static CachedMetadata getProjectMetadata(JsonNode root) {
 
@@ -318,11 +278,6 @@ public class NpmRegistry implements ReleaseSource {
 		return selected != null ? selected : parseableRepositoryUrl(root.path("repository"));
 	}
 
-	/**
-	 * Extract the declared repository URL from a string or object shaped
-	 * {@code repository} field, trying the {@code url} and legacy {@code path}
-	 * keys, and return it as declared when it parses to a usable repository URL.
-	 */
 	private static @Nullable String parseableRepositoryUrl(JsonNode repository) {
 
 		String declared = repository.isTextual() ? repository.asText()
@@ -336,11 +291,6 @@ public class NpmRegistry implements ReleaseSource {
 		return selected != null ? selected : declaredTrackerUrl(root.path("bugs"));
 	}
 
-	/**
-	 * Extract the declared tracker URL from a string or object shaped {@code bugs}
-	 * field. Email-only objects carry no URL and count as absent, as do values that
-	 * are not valid absolute http/https URLs.
-	 */
 	private static @Nullable String declaredTrackerUrl(JsonNode bugs) {
 
 		String declared = bugs.isTextual() ? bugs.asText() : bugs.path("url").asText(null);

@@ -26,13 +26,7 @@ import biz.paluch.dap.state.CachedRelease;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Fluent builder for {@link CachedRelease} entries on a single
- * {@link CachedArtifact}.
- *
- * <p>A {@link CachedArtifact} is identified by a group and an artifact
- * identifier; these are generic artifact coordinates independent of any
- * specific build system. Use {@link #artifact(String, String, Consumer)} as the
- * primary entry point.
+ * Builds cached release fixtures for one artifact.
  *
  * @author Mark Paluch
  */
@@ -44,29 +38,11 @@ public class ReleaseBuilder {
 		this.releases = releases;
 	}
 
-	/**
-	 * Create a {@link CachedArtifact} populated through a configurer callback.
-	 *
-	 * @param groupId the group identifier of the artifact.
-	 * @param artifactId the artifact identifier.
-	 * @param configurer callback that populates releases via
-	 * {@code ReleaseBuilder}.
-	 * @return the configured {@link CachedArtifact}.
-	 */
 	public static CachedArtifact artifact(String groupId, String artifactId,
 			Consumer<ReleaseBuilder> configurer) {
 		return artifact(ArtifactId.of(groupId, artifactId), configurer);
 	}
 
-	/**
-	 * Create a {@link CachedArtifact} for the given coordinates populated through a
-	 * configurer callback.
-	 *
-	 * @param artifactId the artifact coordinates.
-	 * @param configurer callback that populates releases via
-	 * {@code ReleaseBuilder}.
-	 * @return the configured {@link CachedArtifact}.
-	 */
 	public static CachedArtifact artifact(ArtifactId artifactId, Consumer<ReleaseBuilder> configurer) {
 
 		CachedArtifact artifact = new CachedArtifact(artifactId);
@@ -76,53 +52,19 @@ public class ReleaseBuilder {
 		return artifact;
 	}
 
-	/**
-	 * Add a release with the given version.
-	 *
-	 * @param version the release version string.
-	 * @return this builder.
-	 * @see #add(String, String, String)
-	 * @see #addWithSha(String, String)
-	 */
 	public ReleaseBuilder add(String version) {
 		return add(version, null);
 	}
 
-	/**
-	 * Add a release with the given version and release date.
-	 *
-	 * @param version the release version string.
-	 * @param date the release date; can be {@literal null}.
-	 * @return this builder.
-	 * @see #add(String, String, String)
-	 * @see #addWithSha(String, String)
-	 */
 	public ReleaseBuilder add(String version, @Nullable String date) {
 		releases.add(new CachedRelease(version, date));
 		return this;
 	}
 
-	/**
-	 * Add a release with the given version and commit SHA, without release date
-	 * metadata.
-	 *
-	 * @param version the release version string.
-	 * @param sha the commit SHA associated with the release.
-	 * @return this builder.
-	 */
 	public ReleaseBuilder addWithSha(String version, String sha) {
 		return add(version, null, sha);
 	}
 
-	/**
-	 * Add a release with the given version, release date, and commit SHA.
-	 *
-	 * @param version the release version string.
-	 * @param date the release date; can be {@literal null}.
-	 * @param sha the commit SHA associated with the release; can be
-	 * {@literal null}.
-	 * @return this builder.
-	 */
 	public ReleaseBuilder add(String version, @Nullable String date, @Nullable String sha) {
 		releases.add(new CachedRelease(version, date, sha));
 		return this;

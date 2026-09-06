@@ -29,10 +29,8 @@ import com.intellij.openapi.project.Project;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Create a ticket for each planned upgrade that has none, through the project's
- * ticket system. A tree selection narrows the run to the selected items;
- * without a selection the whole plan is covered. Disabled when no ticket system
- * is bound or no covered item is missing a ticket.
+ * Find or create tickets for selected plan items that have none. Without a
+ * selection, the run covers the whole plan.
  *
  * @author Mark Paluch
  */
@@ -89,9 +87,8 @@ public class CreateTicketsAction extends UpgradePlanAction {
 	}
 
 	/**
-	 * Selection-less entry required by {@link UpgradePlanAction}: covers the whole
-	 * plan. Invocations that carry a data context go through
-	 * {@link #actionPerformed} instead, which honours the selection.
+	 * Create tickets for the whole plan. The action-event entry point honors
+	 * selection.
 	 */
 	@Override
 	public void perform(Project project) {

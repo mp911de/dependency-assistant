@@ -24,8 +24,7 @@ import java.util.Set;
 import biz.paluch.dap.artifact.PackageIdentity;
 
 /**
- * One-shot accumulator applying {@link GroupingPolicy grouping policies} to the
- * dependency-check candidates and assembling the name-sorted review rows.
+ * One-shot accumulator of grouping policies for name-sorted review rows.
  *
  * @author Mark Paluch
  */
@@ -39,22 +38,13 @@ class Grouper {
 		this.candidates = candidates;
 	}
 
-	/**
-	 * Apply the given policy and register the groups it forms.
-	 *
-	 * @param policy the policy to apply.
-	 * @return {@code this} for chaining.
-	 */
 	Grouper group(GroupingPolicy<SingleTableRow, GroupRow> policy) {
 		grouped.addAll(policy.group(candidates));
 		return this;
 	}
 
 	/**
-	 * Replace grouped candidates with their registered group, suppress the other
-	 * represented members, and sort the resulting rows by name.
-	 *
-	 * @return the rows in display order.
+	 * Consume the registered groups and return name-sorted rows.
 	 */
 	List<TableRow> toRows() {
 

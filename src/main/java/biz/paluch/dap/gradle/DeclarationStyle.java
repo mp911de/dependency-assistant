@@ -44,7 +44,7 @@ interface DeclarationStyle {
 
 	/**
 	 * Return whether this is a present style, that is the element sits in a
-	 * recognized version declaration.
+	 * supported version declaration.
 	 * @return {@literal true} for a present style; {@literal false} for
 	 * {@link #absent()}.
 	 */
@@ -83,7 +83,7 @@ interface DeclarationStyle {
 	PsiElement owningCall();
 
 	/**
-	 * Return the marker for an element that is not part of a recognized version
+	 * Return the marker for an element that is not part of a supported version
 	 * declaration.
 	 * @return the shared absent marker.
 	 */
@@ -244,7 +244,7 @@ interface DeclarationStyle {
 	}
 
 	/**
-	 * A present {@link DeclarationStyle}: a recognized version declaration.
+	 * A present {@link DeclarationStyle}: a supported version declaration.
 	 */
 	record Site(Kind kind, PsiElement versionElement, @Nullable PsiElement owningCall) implements DeclarationStyle {
 
@@ -256,7 +256,7 @@ interface DeclarationStyle {
 	}
 
 	/**
-	 * The marker returned when an element is not part of a recognized version
+	 * The marker returned when an element is not part of a supported version
 	 * declaration.
 	 */
 	enum Absent implements DeclarationStyle {

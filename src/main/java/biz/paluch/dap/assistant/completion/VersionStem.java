@@ -23,18 +23,11 @@ import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A partially typed version steering release proposals: the normalized stem of
- * a completion prefix such as {@code 3.}, {@code 3.0-}, or {@code Hox}.
- *
- * <p>Trailing separators are stripped ({@code 3.0-} yields the stem
- * {@code 3.0}); a stripped trailing hyphen additionally signals
- * {@linkplain #isSuffixIntent() suffix intent}, asking for the pre-releases of
- * the stem's base version. Numeric stems bind at component boundaries
- * ({@code 3} matches {@code 3.5.12}, never {@code 30.1}); name stems such as
- * train-name fragments match by plain case-insensitive prefix.
+ * A typed prefix that steers version completion.
+ * <p>Numeric stems match component boundaries: 3 matches 3.5, but not 30.1.
+ * Named stems match case-insensitive prefixes.
  *
  * @author Mark Paluch
- * @see ReleaseProposals
  */
 class VersionStem {
 
@@ -50,10 +43,7 @@ class VersionStem {
 	}
 
 	/**
-	 * Derive a stem from the given completion prefix on a best-effort basis.
-	 *
-	 * @param prefix the raw completion prefix, may be {@literal null} or empty.
-	 * @return the stem, or {@literal null} when the prefix carries no usable stem.
+	 * Derive a stem, or return {@literal null} if the prefix has none.
 	 */
 	public static @Nullable VersionStem from(@Nullable String prefix) {
 
@@ -80,24 +70,14 @@ class VersionStem {
 	}
 
 	/**
-	 * Return whether the prefix asked for pre-releases of the stem's base version
-	 * by ending with a hyphen (e.g. {@code 3.0-}).
-	 *
-	 * @return {@literal true} if the prefix signals suffix intent; {@literal false}
-	 * otherwise.
+	 * Return whether a trailing hyphen requests previews, as in {@code 3.0-}.
 	 */
 	public boolean isSuffixIntent() {
 		return suffixIntent;
 	}
 
 	/**
-	 * Return whether the given version matches this stem, testing the rendered form
-	 * and the unwrapped form so a numeric stem also steers prefixed or Git-wrapped
-	 * versions.
-	 *
-	 * @param version the version to test.
-	 * @return {@literal true} if the version starts with the stem, binding at a
-	 * component boundary for numeric stems; {@literal false} otherwise.
+	 * Match the rendered or unwrapped version against this stem.
 	 */
 	public boolean matches(ArtifactVersion version) {
 

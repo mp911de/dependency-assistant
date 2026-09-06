@@ -23,19 +23,9 @@ import org.assertj.core.api.AbstractAssert;
 import org.assertj.core.api.AssertProvider;
 
 /**
- * Test-oriented assertion fixture for an updated build file.
- *
- * <p>An updated file is represented by the dependency usages parsed after the
- * update and the properties resolved from the same file. This allows update
- * tests to assert semantic outcomes instead of repeating parser setup or
- * matching raw file text.
- *
- * <p>Example: <pre class="code">
- * UpdatedBuildFile.of(collector, properties, "build.gradle")
- *     .assertThat()
- *     .containsDependency("org.junit", "junit-bom", "6.0.3")
- *     .hasProperty("junit.version", "6.0.3");
- * </pre>
+ * Assertions on dependencies and properties parsed after a build-file update.
+ * <p>This lets tests check the resulting meaning without matching source
+ * layout.
  *
  * @author Mark Paluch
  */
@@ -54,33 +44,21 @@ public class UpdatedBuildFile implements AssertProvider<UpdatedBuildFile.Updated
 	}
 
 	/**
-	 * Creates a new updated build-file fixture backed by the given dependency
-	 * collector and property resolver.
-	 * @param collector the collector containing parsed dependency usages.
-	 * @param propertyResolver the resolver containing parsed properties.
-	 * @param fileName the file name used in assertion failure messages.
-	 * @return the created updated build-file fixture.
+	 * Create a fixture from the parsed update result.
+	 * @param fileName the name used in assertion failures.
 	 */
 	public static UpdatedBuildFile of(DependencyCollector collector, PropertyResolver propertyResolver,
 			String fileName) {
 		return new UpdatedBuildFile(fileName, collector, propertyResolver);
 	}
 
-	/**
-	 * Returns an AssertJ assertion object for this updated build-file fixture.
-	 * @return the created assertion object.
-	 */
 	@Override
 	public UpdatedBuildFileAssert assertThat() {
 		return new UpdatedBuildFileAssert(this);
 	}
 
 	/**
-	 * AssertJ assertions for an {@link UpdatedBuildFile}.
-	 *
-	 * <p>Dependency assertions delegate to {@link DependencyCollectorAssert} and
-	 * therefore return {@link DependencyUsageAssert} when further assertions should
-	 * apply to the matching dependency usage.
+	 * Assertions for updated build files. Dependency checks include plugin usages.
 	 */
 	public static class UpdatedBuildFileAssert
 			extends AbstractAssert<UpdatedBuildFileAssert, UpdatedBuildFile> {
@@ -89,74 +67,34 @@ public class UpdatedBuildFile implements AssertProvider<UpdatedBuildFile.Updated
 			super(actual, UpdatedBuildFileAssert.class);
 		}
 
-		/**
-		 * Verifies that the actual updated file exposes a dependency or plugin usage
-		 * for the given coordinates and returns an assertion object for that usage.
-		 * @param groupId the expected group id.
-		 * @param artifactId the expected artifact id.
-		 * @return an assertion object for the matching dependency usage.
-		 */
 		public DependencyUsageAssert containsDependency(String groupId, String artifactId) {
 			isNotNull();
 			return biz.paluch.dap.assertions.Assertions.assertThat(this.actual.collector)
 					.hasDependencyUsage(groupId, artifactId);
 		}
 
-		/**
-		 * Verifies that the actual updated file exposes a dependency or plugin usage
-		 * for the given coordinates with the expected version.
-		 * @param groupId the expected group id.
-		 * @param artifactId the expected artifact id.
-		 * @param version the expected dependency version.
-		 * @return this assertion object.
-		 */
 		public UpdatedBuildFileAssert containsDependency(String groupId, String artifactId, String version) {
 			containsDependency(groupId, artifactId).hasVersion(version);
 			return this;
 		}
 
-		/**
-		 * Verifies that the actual updated file exposes a dependency or plugin usage
-		 * for the given artifact id and returns an assertion object for that usage.
-		 * @param artifactId the expected artifact id.
-		 * @return an assertion object for the matching dependency usage.
-		 */
 		public DependencyUsageAssert hasDependency(String artifactId) {
 			isNotNull();
 			return biz.paluch.dap.assertions.Assertions.assertThat(this.actual.collector)
 					.hasDependencyUsage(artifactId);
 		}
 
-		/**
-		 * Verifies that the actual updated file does not expose any dependency or
-		 * plugin usage.
-		 * @return an assertion object for the matching dependency usage.
-		 */
 		public DependencyCollectorAssert hasNoDependencies() {
 			isNotNull();
 			return biz.paluch.dap.assertions.Assertions.assertThat(this.actual.collector)
 					.isEmpty();
 		}
 
-		/**
-		 * Verifies that the actual updated file exposes a dependency or plugin usage
-		 * for the given artifact id with the expected version.
-		 * @param artifactId the expected artifact id.
-		 * @param version the expected dependency version.
-		 * @return this assertion object.
-		 */
 		public UpdatedBuildFileAssert hasDependency(String artifactId, String version) {
 			hasDependency(artifactId).hasVersion(version);
 			return this;
 		}
 
-		/**
-		 * Verifies that the actual updated file declares the given property with the
-		 * expected value.
-		 * @param propertyName the expected property name.
-		 * @param expectedValue the expected property value.
-		 * @return this assertion object.
-		 */
 		public UpdatedBuildFileAssert hasProperty(String propertyName, String expectedValue) {
 			isNotNull();
 
@@ -174,11 +112,6 @@ public class UpdatedBuildFile implements AssertProvider<UpdatedBuildFile.Updated
 			return this;
 		}
 
-		/**
-		 * Verifies that the actual updated file does not declare the given property.
-		 * @param propertyName the property name expected to be absent.
-		 * @return this assertion object.
-		 */
 		public UpdatedBuildFileAssert hasNoProperty(String propertyName) {
 			isNotNull();
 

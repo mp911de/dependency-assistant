@@ -31,11 +31,6 @@ import com.intellij.openapi.util.text.StringUtil;
  */
 public class ResponseTooLargeException extends IOException {
 
-	/**
-	 * Create a new {@code ResponseTooLargeException} for the exceeded cap.
-	 *
-	 * @param maxBytes the number of bytes the fetch accepted.
-	 */
 	public ResponseTooLargeException(int maxBytes) {
 		super("Response body exceeds %s".formatted(StringUtil.formatFileSize(maxBytes)));
 	}

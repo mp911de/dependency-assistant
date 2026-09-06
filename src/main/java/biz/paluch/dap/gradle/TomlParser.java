@@ -67,29 +67,14 @@ import org.springframework.util.Assert;
  */
 class TomlParser {
 
-	/**
-	 * TOML table name for plugin aliases.
-	 */
 	public static final String PLUGINS = GradleUtils.PLUGINS;
 
-	/**
-	 * TOML table name for bundles.
-	 */
 	public static final String BUNDLES = "bundles";
 
-	/**
-	 * TOML key name for inline versions.
-	 */
 	public static final String VERSION = GradleUtils.VERSION;
 
-	/**
-	 * TOML key name for referenced versions.
-	 */
 	public static final String VERSION_REF = "version.ref";
 
-	/**
-	 * TOML table name for version aliases.
-	 */
 	public static final String VERSIONS = "versions";
 
 	/**
@@ -97,20 +82,13 @@ class TomlParser {
 	 */
 	public static final String LIBS = "libs";
 
-	/**
-	 * TOML table name for library aliases.
-	 */
 	public static final String LIBRARIES = "libraries";
 
-	/**
-	 * TOML key name for module coordinates.
-	 */
 	public static final String MODULE = "module";
 
 	/**
-	 * Parse a TOML version catalog into artifact declarations.
-	 * @param file the version catalog file.
-	 * @return the artifact declarations in catalog order.
+	 * Parse artifact declarations in catalog order.
+	 * @return an empty list for a non-TOML file.
 	 */
 	public static List<ArtifactDeclaration> parseVersionCatalog(PsiFile file) {
 
@@ -136,17 +114,10 @@ class TomlParser {
 	}
 
 	/**
-	 * Locate the version-catalog TOML file registered at {@code relativePath}
-	 * relative to {@code projectRoot}.
-	 * <p>Rejects unsafe paths (absolute, or containing a {@code ..} parent segment)
-	 * and files that resolve outside {@code projectRoot}, so a catalog path taken
-	 * from project configuration cannot escape the project sandbox.
-	 *
-	 * @param psiManager the PSI manager used to materialize the catalog file.
-	 * @param projectRoot the Gradle project root the path is resolved against.
-	 * @param relativePath the catalog path relative to {@code projectRoot}.
-	 * @return the catalog {@link PsiFile}, or {@literal null} when the path is
-	 * unsafe, absent, or escapes {@code projectRoot}.
+	 * Find a catalog relative to the Gradle project root.
+	 * <p>Absolute paths, parent segments and files outside the root are rejected.
+	 * @return {@literal null} if the catalog is unavailable or outside the allowed
+	 * scope.
 	 */
 	static @Nullable PsiFile findCatalogFile(BetterPsiManager psiManager, VirtualFile projectRoot,
 			String relativePath) {
@@ -181,12 +152,8 @@ class TomlParser {
 	}
 
 	/**
-	 * Return whether the given element can carry a catalog version such as a
-	 * literal inside a {@code [versions]}, {@code [libraries]} or {@code [plugins]}
+	 * Return whether the element is a literal in a version, library or plugin
 	 * table.
-	 *
-	 * @param element the PSI element to inspect.
-	 * @return {@literal true} if the element may resolve to an artifact reference.
 	 */
 	public static boolean isVersionElement(PsiElement element) {
 		return element instanceof TomlLiteral
@@ -194,10 +161,7 @@ class TomlParser {
 	}
 
 	/**
-	 * Return whether the given element is inside a TOML table matching the
-	 * conditional.
-	 * @param element the PSI element to inspect.
-	 * @param predicate table-name conditional.
+	 * Return whether an enclosing table name matches the predicate.
 	 */
 	public static boolean isInsideTable(PsiElement element, Predicate<String> predicate) {
 		return SyntaxTraverser.revPsiTraverser().api.parents(element).filter(TomlTable.class).filter(it -> {
@@ -207,10 +171,7 @@ class TomlParser {
 	}
 
 	/**
-	 * Parse the TOML {@code [versions]} table into a map of {@link PropertyValue}.
-	 * We treat versions semantically as properties.
-	 * @param tomlFile the file to parse.
-	 * @return a map of version keys to {@link PropertyValue} descriptors.
+	 * Read {@code [versions]} entries as editable properties.
 	 */
 	public static Map<String, Property> parseTomlVersions(PsiFile tomlFile) {
 
@@ -240,10 +201,7 @@ class TomlParser {
 	}
 
 	/**
-	 * Parse catalog entries in the given TOML table.
-	 * @param table the TOML table to parse.
-	 * @param propertyResolver the resolver for {@code version.ref} entries.
-	 * @param action callback invoked for each complete declaration.
+	 * Pass each complete catalog declaration to the action.
 	 */
 	public static void parseEntries(TomlTable table,
 			PropertyResolver propertyResolver, Consumer<TomlCatalogDeclaration> action) {
@@ -332,34 +290,22 @@ class TomlParser {
 				null, literal);
 	}
 
-	/**
-	 * Return the name of the given TOML table.
-	 */
 	public static String getTomlTableName(TomlTable table) {
 		TomlKey key = table.getHeader().getKey();
 		return getText(key);
 	}
 
-	/**
-	 * Return the text of the key of the given TOML key-value pair.
-	 */
 	public static String getTomlKeyName(TomlKeyValue keyValue) {
 		return getTomlKeyName(keyValue.getKey());
 	}
 
-	/**
-	 * Return the text of the given TOML key.
-	 */
 	public static String getTomlKeyName(TomlKey key) {
 		return key.getText().trim();
 	}
 
 	/**
-	 * Return the required text associated with {@code element}.
-	 *
-	 * @param element the PSI element to inspect.
-	 * @return the required text.
-	 * @throws IllegalArgumentException if {@code element} is {@literal null}.
+	 * Return element text.
+	 * @throws IllegalArgumentException if the element is {@literal null}.
 	 */
 	static String getRequiredText(PsiElement element) {
 
@@ -376,10 +322,8 @@ class TomlParser {
 	}
 
 	/**
-	 * Return the string content of a TOML literal.
-	 *
-	 * @param element the PSI element to extract the text from.
-	 * @return the string value.
+	 * Return element text, removing quotes from literals.
+	 * @return an empty string for {@literal null}.
 	 */
 	public static String getText(@Nullable PsiElement element) {
 
@@ -435,8 +379,7 @@ class TomlParser {
 		}
 
 		/**
-		 * Check whether the declaration is complete (having id and version information
-		 * or a parseable {@code group:artifact} module with version information).
+		 * Return whether identity and editable version information are available.
 		 */
 		public boolean isComplete() {
 
@@ -452,9 +395,7 @@ class TomlParser {
 		}
 
 		/**
-		 * Return the required module or throw {@link IllegalStateException} if the
-		 * module is not set.
-		 * @return the module value.
+		 * Return the module coordinates.
 		 * @throws IllegalStateException if no module is set.
 		 */
 		public String getRequiredModule() {
@@ -463,10 +404,8 @@ class TomlParser {
 		}
 
 		/**
-		 * Return the required version value.
-		 *
-		 * @return the version value.
-		 * @throws IllegalStateException if no version value is available.
+		 * Return the editable version value.
+		 * @throws IllegalStateException if no value is available.
 		 */
 		public TomlValue getRequiredVersionLiteral() {
 			Assert.state(versionLiteral != null, "No version literal set");
@@ -474,11 +413,8 @@ class TomlParser {
 		}
 
 		/**
-		 * Resolve a {@link GradleDependency} from this declaration.
-		 * <p>As declarations can be incomplete (for example, missing version
-		 * information), make sure to check {@link #isComplete()} before calling it.
-		 *
-		 * @return the resolved dependency.
+		 * Convert a complete entry to a dependency.
+		 * <p>Check {@link #isComplete()} before calling.
 		 */
 		public GradleDependency toDependency() {
 
@@ -496,11 +432,8 @@ class TomlParser {
 		}
 
 		/**
-		 * Resolve an {@link ArtifactDeclaration} from this catalog entry.
-		 * <p>As declarations can be incomplete (for example, missing version
-		 * information), make sure to check {@link #isComplete()} before calling it.
-		 *
-		 * @return the resolved artifact declaration.
+		 * Convert a complete entry to a declaration with the supplied PSI anchors.
+		 * <p>Check {@link #isComplete()} before calling.
 		 */
 		public ArtifactDeclaration toArtifactDeclaration(PsiElement declaration, PsiElement version) {
 
@@ -544,9 +477,6 @@ class TomlParser {
 					VersionSource.versionCatalog(versionExpression.toString()), DeclarationSource.managed());
 		}
 
-		/**
-		 * Check if the key matches the given {@link TomlReference}.
-		 */
 		public boolean hasKeyMatching(TomlReference tomlReference) {
 
 			if (StringUtils.hasText(id)) {

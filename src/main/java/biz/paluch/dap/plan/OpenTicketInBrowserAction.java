@@ -24,9 +24,7 @@ import com.intellij.openapi.project.DumbAwareAction;
 import com.intellij.openapi.project.Project;
 
 /**
- * Open the linked ticket of the first selected plan item in the browser.
- * Visible only when a ticket system is bound; enabled when the first selected
- * item carries a linked ticket and no plan run is in flight.
+ * Open the first selected plan item's linked ticket in the browser.
  *
  * @author Mark Paluch
  */

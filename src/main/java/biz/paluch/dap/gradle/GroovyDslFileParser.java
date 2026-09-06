@@ -29,10 +29,9 @@ import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrMethod
 import org.jspecify.annotations.Nullable;
 
 /**
- * Operation-scoped parser for declarations in one Groovy DSL Gradle file. Local
- * {@code ext} properties and script-level variables are parsed once and take
- * precedence over the inherited property resolver for every declaration in the
- * file.
+ * Parser for one Groovy Gradle file.
+ * <p>Local properties take precedence over inherited properties. Create a
+ * parser for each operation.
  *
  * @author Mark Paluch
  * @see GroovyDslParser

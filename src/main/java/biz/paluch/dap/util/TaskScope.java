@@ -38,46 +38,18 @@ import com.intellij.openapi.progress.util.ProgressIndicatorUtils;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Structured scope for forking subtasks onto virtual threads and joining them
- * under a {@link ProgressIndicator}.
+ * Virtual-thread subtasks owned by one thread and joined under a progress
+ * indicator. Use try-with-resources so outstanding tasks are cancelled when the
+ * scope closes. Cleanup waits only a bounded grace period. Tasks ignoring
+ * interruption may outlive it.
  *
- * <p>A scope is opened in a {@code try (TaskScope scope = TaskScope.open(...))}
- * block by one owner thread. The owner {@link #fork forks} subtasks, then
- * {@link Subtask#join() joins} them individually or {@link #joinAll() all at
- * once}. Every join polls the indicator, so user cancellation surfaces as
- * {@link ProcessCanceledException} within the poll interval regardless of how
- * long a subtask takes. A join with a timeout cancels its subtask on expiry.
- * {@link #close()} cancels whatever is still running and waits a bounded grace
- * period for the threads to wind down, so no subtask outlives the block
- * unnoticed.
+ * <p>Joins observe indicator cancellation. Task failures remain in their
+ * handles for the owner to inspect or propagate through
+ * {@link Subtask#getOrThrow()}. Direct or asynchronously wrapped cancellation
+ * is reported as {@link State#CANCELLED}.
  *
- * <p>Subtasks never throw into the owner. Each subtask carries its own
- * {@link Subtask#state() state} and either a result or an exception; the owner
- * decides per subtask whether a failure is fatal, recorded, or ignored. A
- * subtask that throws {@code ProcessCanceledException} reports as
- * {@link State#CANCELLED}, so indicator cancellation observed inside a task and
- * cancellation issued by the owner look alike.
- *
- * <p>When opened with a concurrency limit, at most that many subtasks run at
- * once; the others park until a permit frees up. Parked subtasks are
- * cancellable like running ones.
- *
- * <pre>{@code
- * try (TaskScope scope = TaskScope.open("ReleaseResolver", indicator, 8)) {
- *     Map<PackageIdentity, Subtask<Releases>> pending = new LinkedHashMap<>();
- *     for (ReleaseSources source : sources) {
- *         pending.put(source.pkg(), scope.fork(() -> resolver.getReleases(source)));
- *     }
- *     pending.forEach((pkg, subtask) -> {
- *         subtask.join(Duration.ofSeconds(60));
- *         results.put(pkg, switch (subtask.state()) {
- *             case SUCCESS -> ReleaseLookupResult.of(subtask.get());
- *             case CANCELLED -> throw new ProcessCanceledException();
- *             default -> ReleaseLookupResult.failed(pkg + ": " + subtask.exception().getMessage());
- *         });
- *     });
- * }
- * }</pre>
+ * <p>A bounded scope limits executing tasks. Tasks waiting for a permit remain
+ * cancellable.
  *
  * @author Mark Paluch
  */
@@ -109,24 +81,16 @@ public class TaskScope implements AutoCloseable {
 	}
 
 	/**
-	 * Open a scope without a concurrency limit.
-	 *
-	 * @param name the scope name, used for thread names and log output.
-	 * @param indicator the indicator polled while joining.
-	 * @return the scope. Must be closed by the opening thread.
+	 * Open an unbounded scope. The opening thread owns and must close it.
 	 */
 	public static TaskScope open(String name, ProgressIndicator indicator) {
 		return new TaskScope(name, indicator, null);
 	}
 
 	/**
-	 * Open a scope running at most {@code maxConcurrency} subtasks at a time.
+	 * Limit concurrent tasks. The opening thread owns and must close the scope.
 	 *
-	 * @param name the scope name, used for thread names and log output.
-	 * @param indicator the indicator polled while joining.
-	 * @param maxConcurrency the number of subtasks allowed to run at once, greater
-	 * than zero.
-	 * @return the scope. Must be closed by the opening thread.
+	 * @throws IllegalArgumentException if the concurrency limit is not positive.
 	 */
 	public static TaskScope open(String name, ProgressIndicator indicator, int maxConcurrency) {
 
@@ -137,12 +101,9 @@ public class TaskScope implements AutoCloseable {
 	}
 
 	/**
-	 * Fork a subtask. The subtask starts immediately, or as soon as a permit is
-	 * available when the scope is bounded.
+	 * Schedule a subtask. In a bounded scope, the subtask waits for a permit before
+	 * running.
 	 *
-	 * @param task the work to run.
-	 * @param <T> the result type.
-	 * @return the subtask handle.
 	 * @throws java.util.concurrent.RejectedExecutionException if the scope is
 	 * closed.
 	 */
@@ -167,7 +128,7 @@ public class TaskScope implements AutoCloseable {
 	}
 
 	/**
-	 * Return the forked subtasks in fork order.
+	 * Return an unmodifiable live view of subtasks in fork order.
 	 */
 	public List<Subtask<?>> getSubtasks() {
 		return Collections.unmodifiableList(subtasks);
@@ -273,10 +234,8 @@ public class TaskScope implements AutoCloseable {
 	}
 
 	/**
-	 * Handle for one forked task. Joining is cancel-aware; reading the outcome is
-	 * not blocking and requires a completed state.
-	 *
-	 * @param <T> the result type.
+	 * Handle for a forked task. Joins observe cancellation. Outcome access does not
+	 * block and requires a completed state.
 	 */
 	public static class Subtask<T> {
 
@@ -291,9 +250,6 @@ public class TaskScope implements AutoCloseable {
 			this.future = future;
 		}
 
-		/**
-		 * Return the completion state.
-		 */
 		public State state() {
 
 			if (timeout != null) {
@@ -309,11 +265,10 @@ public class TaskScope implements AutoCloseable {
 		}
 
 		/**
-		 * Wait for completion without a timeout.
+		 * Wait for completion without a timeout. Task failures remain in the handle.
 		 *
-		 * @return this subtask, completed.
-		 * @throws ProcessCanceledException if the indicator is cancelled or the owner
-		 * thread is interrupted while waiting.
+		 * @throws ProcessCanceledException if the indicator is cancelled or the waiting
+		 * thread interrupted.
 		 */
 		public Subtask<T> join() {
 			await(-1);
@@ -321,13 +276,11 @@ public class TaskScope implements AutoCloseable {
 		}
 
 		/**
-		 * Wait for completion, cancelling the subtask once {@code timeout} elapses.
+		 * Wait for completion, cancelling the task on timeout and reporting
+		 * {@link State#TIMED_OUT}.
 		 *
-		 * @param timeout the maximum time to wait.
-		 * @return this subtask, completed. The state is {@link State#TIMED_OUT} if the
-		 * timeout elapsed first.
-		 * @throws ProcessCanceledException if the indicator is cancelled or the owner
-		 * thread is interrupted while waiting.
+		 * @throws ProcessCanceledException if the indicator is cancelled or the waiting
+		 * thread interrupted.
 		 */
 		public Subtask<T> join(Duration timeout) {
 			await(timeout.toNanos());
@@ -436,13 +389,9 @@ public class TaskScope implements AutoCloseable {
 			}
 		}
 
-		/**
-		 * Whether the throwable is a cancellation, looking through the asynchronous
-		 * wrappers a task inherits from {@code CompletableFuture.join()} or
-		 * {@code Future.get()}.
-		 */
 		private static boolean isCancellation(Throwable throwable) {
 
+			// Async wrappers must not turn cancellation into an ordinary failure.
 			Throwable cause = throwable;
 			while ((cause instanceof CompletionException || cause instanceof ExecutionException)
 					&& cause.getCause() != null) {

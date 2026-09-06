@@ -29,7 +29,6 @@ import biz.paluch.dap.assistant.ArtifactReferenceContextVisitor;
 import biz.paluch.dap.assistant.presentation.DependencyPresentation;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
-import biz.paluch.dap.rule.DependencyfileService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.UpgradeStrategy;
@@ -44,14 +43,7 @@ import com.intellij.psi.PsiElementVisitor;
 import com.intellij.psi.PsiFile;
 
 /**
- * {@link LocalInspectionTool} that flags {@link DependencyRule} violations.
- *
- * <p>The governing rule is resolved through {@link DependencyfileService}. The
- * inspection stays silent for artifacts that no rule governs and produces
- * nothing when the project has no {@code dependencyfile.json} descriptor. When
- * the release cache holds a version matching the governing generation, it
- * offers a batchable quick fix that realigns the declaration to the newest
- * compliant release.
+ * Reports dependency-rule violations and offers cached remediation targets.
  *
  * @author Mark Paluch
  */
@@ -119,8 +111,7 @@ public class DependencyRuleInspection extends LocalInspectionTool implements Ico
 	}
 
 	/**
-	 * Quick fix that realigns a non-compliant version literal to the newest cached
-	 * release matching the governing generation.
+	 * Realigns the declaration to a cached release allowed by the governing rule.
 	 */
 	static class AlignGenerationQuickFix extends UpdateDependencyVersionQuickFix implements Iconable {
 

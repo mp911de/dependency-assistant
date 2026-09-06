@@ -79,10 +79,6 @@ class KnownPattern implements Predicate<String> {
 		return matchesSegments(s);
 	}
 
-	/**
-	 * Match by anchoring the first and last segments at the value boundaries and
-	 * locating the remaining segments greedily left to right.
-	 */
 	private boolean matchesSegments(String value) {
 
 		int position = 0;

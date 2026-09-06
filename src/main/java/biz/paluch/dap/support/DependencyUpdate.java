@@ -27,24 +27,15 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.VersionAware;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.upgrade.UpgradeSuggestion;
-import biz.paluch.dap.upgrade.UpgradeSuggestions;
 
 /**
- * Apply-ready version change for one dependency declaration.
+ * A selected dependency update with the sources needed by a file writer. Use
+ * {@link UpgradeSuggestion} for a target that has not yet been selected.
  *
- * <p>A {@code DependencyUpdate} extends an {@link ArtifactVersionChange} with
- * the declaration sources and version sources that an update writer needs to
- * rewrite a build file. It represents a chosen target, not a suggestion. Use
- * {@link UpgradeSuggestion} or {@link UpgradeSuggestions} for proposed targets
- * before the user or policy has selected one.
- *
- * <p>The collection constructor retains the supplied source collections and the
- * accessors expose those collections without copying. Callers that pass mutable
- * collections remain responsible for subsequent mutations.
+ * <p>Source collections are retained and exposed without copying. Callers
+ * remain responsible for changes to mutable collections.
  *
  * @author Mark Paluch
- * @see ArtifactVersionChange
- * @see UpgradeSuggestion
  */
 public class DependencyUpdate extends ArtifactVersionChange {
 
@@ -52,16 +43,6 @@ public class DependencyUpdate extends ArtifactVersionChange {
 
 	private final Collection<VersionSource> versionSources;
 
-	/**
-	 * Create an apply-ready update with explicit source locations.
-	 *
-	 * @param artifactId the dependency coordinate to update.
-	 * @param from the dependency version currently in use.
-	 * @param version the selected target version.
-	 * @param declarationSources the declaration sources participating in the
-	 * update.
-	 * @param versionSources the version sources that can be rewritten.
-	 */
 	public DependencyUpdate(ArtifactId artifactId, ArtifactVersion from, ArtifactVersion version,
 			Collection<DeclarationSource> declarationSources, Collection<VersionSource> versionSources) {
 		super(artifactId, from, version);
@@ -69,86 +50,46 @@ public class DependencyUpdate extends ArtifactVersionChange {
 		this.versionSources = versionSources;
 	}
 
-	/**
-	 * Create an apply-ready update for one declaration source and one version
-	 * source.
-	 *
-	 * @param artifactId the dependency coordinate to update.
-	 * @param from the dependency version currently in use.
-	 * @param version the selected target version.
-	 * @param declarationSource the declaration source participating in the update.
-	 * @param versionSource the version source that can be rewritten.
-	 */
 	public DependencyUpdate(ArtifactId artifactId, ArtifactVersion from, ArtifactVersion version,
 			DeclarationSource declarationSource, VersionSource versionSource) {
 		this(artifactId, from, version, List.of(declarationSource), List.of(versionSource));
 	}
 
 	/**
-	 * Create an update from a resolved artifact declaration and target version.
+	 * Create an update from the declaration.
 	 *
-	 * @param declaration the resolved artifact declaration to update.
-	 * @param version the selected target version.
-	 * @return the dependency update to apply.
+	 * @throws IllegalStateException if the declaration has no resolved version.
 	 */
 	public static DependencyUpdate from(ArtifactDeclaration declaration, VersionAware version) {
 		return from(declaration, version.getVersion());
 	}
 
 	/**
-	 * Create an update from a resolved artifact declaration and target version.
+	 * Create an update from the declaration.
 	 *
-	 * @param declaration the resolved artifact declaration to update.
-	 * @param version the selected target version.
-	 * @return the dependency update to apply.
+	 * @throws IllegalStateException if the declaration has no resolved version.
 	 */
 	public static DependencyUpdate from(ArtifactDeclaration declaration, ArtifactVersion version) {
 		return new DependencyUpdate(declaration.getArtifactId(), declaration.getVersion(), version,
 				declaration.getDeclarationSource(), declaration.getVersionSource());
 	}
 
-	/**
-	 * Create an update from a dependency and target version.
-	 *
-	 * @param dependency the dependency whose declarations should be updated.
-	 * @param release the selected target release.
-	 * @return the dependency update to apply.
-	 */
 	public static DependencyUpdate from(Dependency dependency, VersionAware release) {
 		return from(dependency, release.getVersion());
 	}
 
-	/**
-	 * Create an update from a dependency and target version.
-	 *
-	 * @param dependency the dependency whose declarations should be updated.
-	 * @param version the selected target version.
-	 * @return the dependency update to apply.
-	 */
 	public static DependencyUpdate from(Dependency dependency, ArtifactVersion version) {
 		return new DependencyUpdate(dependency.getArtifactId(), dependency.getCurrentVersion(), version,
 				dependency.getDeclarationSources(), dependency.getVersionSources());
 	}
 
-	/**
-	 * Create an update from a dependency while using a replacement artifact id.
-	 *
-	 * @param artifactId the artifact id to write into the update.
-	 * @param dependency the dependency whose declarations should be updated.
-	 * @param version the selected target version.
-	 * @return the dependency update to apply.
-	 */
 	public static DependencyUpdate from(ArtifactId artifactId, Dependency dependency, ArtifactVersion version) {
 		return new DependencyUpdate(artifactId, dependency.getCurrentVersion(), version,
 				dependency.getDeclarationSources(), dependency.getVersionSources());
 	}
 
 	/**
-	 * Create an update for a direct dependency declaration with an inline version.
-	 *
-	 * @param artifactId the dependency coordinate to update.
-	 * @param version the selected target version.
-	 * @return the dependency update to apply.
+	 * Create an inline dependency update using the target as its source version.
 	 */
 	public static DependencyUpdate create(ArtifactId artifactId, ArtifactVersion version) {
 		return create(artifactId, version, DeclarationSource.dependency(),
@@ -156,27 +97,13 @@ public class DependencyUpdate extends ArtifactVersionChange {
 	}
 
 	/**
-	 * Create an update with explicit declaration and version sources.
-	 *
-	 * @param artifactId the dependency coordinate to update.
-	 * @param version the selected target version.
-	 * @param declarationSource the declaration source participating in the update.
-	 * @param versionSource the version source that can be rewritten.
-	 * @return the dependency update to apply.
+	 * Create an update using the target as its source version.
 	 */
 	public static DependencyUpdate create(ArtifactId artifactId, ArtifactVersion version,
 			DeclarationSource declarationSource, VersionSource versionSource) {
 		return new DependencyUpdate(artifactId, version, version, List.of(declarationSource), List.of(versionSource));
 	}
 
-	/**
-	 * Evaluate the {@link Predicate} against the {@link VersionSource}s and return
-	 * {@literal true} if any match.
-	 *
-	 * @param versionSourcePredicate the predicate to apply to the version sources.
-	 * @return {@literal true} if any version source matches; {@literal false}
-	 * otherwise.
-	 */
 	public boolean hasVersionSource(Predicate<VersionSource> versionSourcePredicate) {
 		for (VersionSource versionSource : versionSources) {
 			if (versionSourcePredicate.test(versionSource)) {
@@ -186,22 +113,10 @@ public class DependencyUpdate extends ArtifactVersionChange {
 		return false;
 	}
 
-	/**
-	 * Return the declaration sources participating in this update.
-	 *
-	 * @return the retained declaration-source collection supplied when the update
-	 * was created.
-	 */
 	public Collection<DeclarationSource> declarationSources() {
 		return declarationSources;
 	}
 
-	/**
-	 * Return the version sources that can be rewritten by this update.
-	 *
-	 * @return the retained version-source collection supplied when the update was
-	 * created.
-	 */
 	public Collection<VersionSource> versionSources() {
 		return versionSources;
 	}

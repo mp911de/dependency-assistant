@@ -38,8 +38,9 @@ import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Capture-time normalization of Shared Version Properties into implicit group
- * members.
+ * Normalize shared version properties into implicit plan members.
+ * <p>One member owns each property write. Conflicting targets remain separate
+ * items.
  *
  * @author Mark Paluch
  */
@@ -51,9 +52,6 @@ class ImplicitGroups implements Sequence<Item> {
 		this.items = items;
 	}
 
-	/**
-	 * Normalize the reviewed upgrades into persisted items.
-	 */
 	static ImplicitGroups create(Map<? extends PlannedUpgrade, ArtifactVersion> upgrades,
 			ApplicationSettings settings) {
 
@@ -94,10 +92,6 @@ class ImplicitGroups implements Sequence<Item> {
 		return new ImplicitGroups(items);
 	}
 
-	/**
-	 * Version properties of the candidate in version-source order, keyed by the
-	 * owning assistant.
-	 */
 	private static List<VersionProperty> properties(DependencyUpgradeCandidate candidate) {
 
 		List<VersionProperty> properties = new ArrayList<>();
@@ -120,16 +114,11 @@ class ImplicitGroups implements Sequence<Item> {
 		return this.items;
 	}
 
-	/**
-	 * The owning capture of a shared property together with the property that
-	 * matched, used to name a newly formed implicit group.
-	 */
 	private record OwnerMatch(ReviewedUpgrade owner, VersionProperty property) {
 	}
 
 	/**
-	 * One armed capture under normalization: its display name, pinned target, and
-	 * the candidates it contributes, growing as peers fold in.
+	 * A reviewed upgrade that accumulates members sharing its target.
 	 */
 	private static class ReviewedUpgrade {
 
@@ -164,9 +153,8 @@ class ImplicitGroups implements Sequence<Item> {
 		}
 
 		/**
-		 * Find the first capture, in version-source order, owning one of this capture's
-		 * properties at the same pinned target. Diverging targets never match, keeping
-		 * the conflict visible as separate items.
+		 * Find a property owner with the same target. Keep diverging targets separate
+		 * so the conflict remains visible.
 		 */
 		@Nullable
 		OwnerMatch findOwner(Map<VersionProperty, ReviewedUpgrade> owners) {
@@ -183,12 +171,6 @@ class ImplicitGroups implements Sequence<Item> {
 			return null;
 		}
 
-		/**
-		 * Absorb the peer's candidates as members of this capture. A top-level capture
-		 * forming a group through its first fold is renamed to the bare property name;
-		 * the peer's remaining properties are claimed so later peers join the same
-		 * item.
-		 */
 		void fold(ReviewedUpgrade peer, VersionProperty property, Map<VersionProperty, ReviewedUpgrade> owners) {
 
 			if (!group && folded.isEmpty()) {
@@ -217,16 +199,13 @@ class ImplicitGroups implements Sequence<Item> {
 			}
 
 			String hint = null;
+			// A rule-defined name outranks remembered user hints.
 			if (!isRuleNamed()) {
 				hint = settings.findNameHint(packages);
 			}
 			return Item.from(hint != null ? hint : name, target, members, candidates);
 		}
 
-		/**
-		 * A capture governed by a rule carrying a dependency name keeps that name; the
-		 * rule outranks any remembered hint.
-		 */
 		private boolean isRuleNamed() {
 
 			for (DependencyUpgradeCandidate candidate : candidates) {

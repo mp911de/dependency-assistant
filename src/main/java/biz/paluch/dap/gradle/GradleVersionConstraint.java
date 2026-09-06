@@ -22,34 +22,16 @@ import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Contract for a Gradle version constraint such as {@code prefer} or
- * {@code strictly}.
- *
- * <p>Gradle allows dependency declarations to express version intent through
- * named constraint operators within a {@code version { ... }} block. This
- * interface models the extracted constraint value and exposes common helpers
- * used by parsers and lookup-site infrastructure.
- *
- * <p>Implementations provide the raw version text while the default methods
- * expose higher-level predicates for text presence and range detection.
+ * Extracted Gradle version constraint.
  *
  * @author Mark Paluch
  */
 interface GradleVersionConstraint {
 
-	/**
-	 * Constraint name for Gradle's {@code prefer(...)} version declaration.
-	 */
 	String PREFER = "prefer";
 
-	/**
-	 * Constraint name for Gradle's {@code strictly(...)} version declaration.
-	 */
 	String STRICTLY = "strictly";
 
-	/**
-	 * Constraint name for Gradle's {@code require(...)} version declaration.
-	 */
 	String REQUIRE = "require";
 
 	/**
@@ -58,39 +40,16 @@ interface GradleVersionConstraint {
 	 */
 	List<String> PRECEDENCE = List.of(STRICTLY, REQUIRE, PREFER);
 
-	/**
-	 * Return the declared version text for this constraint.
-	 *
-	 * @return the declared version text.
-	 */
 	String getVersion();
 
-	/**
-	 * Return whether this constraint declares non-empty version text.
-	 *
-	 * @return {@literal true} if {@link #getVersion()} contains text.
-	 */
 	default boolean hasText() {
 		return StringUtils.hasText(getVersion());
 	}
 
-	/**
-	 * Return whether this constraint declares a version range.
-	 *
-	 * @return {@literal true} if the declared version uses Gradle range syntax.
-	 * @see GradleUtils#isVersionRange(String)
-	 */
 	default boolean isRange() {
 		return GradleUtils.isVersionRange(getVersion());
 	}
 
-	/**
-	 * Return whether the given call name represents a supported Gradle version
-	 * constraint.
-	 *
-	 * @param call the call name to inspect.
-	 * @return {@literal true} if the call matches a supported constraint name.
-	 */
 	static boolean isConstraint(@Nullable String call) {
 		return call != null && PRECEDENCE.contains(call);
 	}

@@ -25,16 +25,10 @@ import org.jetbrains.plugins.github.util.GHGitRepositoryMapping;
 import org.jspecify.annotations.Nullable;
 
 /**
- * {@link TicketSystemProvider} contributing GitHub issue tracking.
- *
- * <p>A project is reported as supported when {@link GitHubAccountSelector} can
- * select a hosted repository and a server-compatible account. A valid
- * remembered Pull Requests selection takes precedence. Otherwise, a compatible
- * current pair is used even when several pairs exist.
- *
- * <p>Credential lookup is deferred until creation. Consequently, creation can
- * still fail after {@code supports(project)} succeeds if the selected account
- * has no usable credentials.
+ * Provides GitHub issue tracking for the selected repository and account.
+ * <p>{@link GitHubAccountSelector} owns selection. Credential lookup is
+ * deferred until creation, which can fail even after {@code supports(project)}
+ * succeeds.
  *
  * @author Mark Paluch
  */

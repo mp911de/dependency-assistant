@@ -33,23 +33,16 @@ import com.intellij.psi.PsiFile;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Package-local utilities for Maven Wrapper property files.
- *
- * <p>This class keeps Maven wrapper PSI concerns in one place, in particular
- * decoded property-value matching, range mapping, and wrapper-file checks.
+ * PSI ranges and file recognition for Maven Wrapper properties.
  *
  * @author Mark Paluch
  */
 class MavenWrapperUtils {
 
-	/**
-	 * Completion marker inserted by IntelliJ while calculating property-value
-	 * completions.
-	 */
 	public static final String COMPLETION_PLACEHOLDER = CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED;
 
 	/*
-	 * version1 is greedy because a literal "/" terminates it; version2 is reluctant
+	 * version1 is greedy because a literal "/" terminates it. version2 is reluctant
 	 * so the trailing tail (e.g. "-bin.zip") can absorb the classifier instead of
 	 * being eaten by the version. Possessive quantifiers on the optional version
 	 * fragments prevent super-linear backtracking on hostile input that mixes many
@@ -63,8 +56,7 @@ class MavenWrapperUtils {
 					+ "(?<tail>-(?!(?:SNAPSHOT|rc-\\d)[-.])[A-Za-z][\\w-]*(?:\\.[^/]*)?|\\.[A-Za-z][^/]*|(?=$))");
 
 	/**
-	 * Maximum decoded value length accepted by {@link #MAVEN_ARTIFACT_PATTERN}.
-	 * Longer values are treated as no match to bound regex evaluation cost.
+	 * Bounds regex evaluation cost for version-range lookup.
 	 */
 	private static final int MAX_MATCH_LENGTH = 2048;
 
@@ -73,15 +65,9 @@ class MavenWrapperUtils {
 	public static final String WRAPPER_FILENAME = "maven-wrapper.properties";
 
 	/**
-	 * Return file-absolute ranges for the two version segments in a Maven
-	 * coordinate-shaped URL value.
-	 *
-	 * <p>This method inspects only the property value. It does not require a
-	 * supported wrapper property key or a Maven Wrapper file.
-	 *
-	 * @param property the wrapper property to inspect.
-	 * @return the version ranges, or an empty list if the property value does not
-	 * match the bounded Maven artifact pattern.
+	 * Return document ranges for both versions in a Maven artifact URL.
+	 * <p>The property key and file need not belong to Maven Wrapper.
+	 * @return an empty list if the value is absent, too long, or unsupported.
 	 */
 	public static List<TextRange> getVersionRanges(Property property) {
 
@@ -114,11 +100,7 @@ class MavenWrapperUtils {
 	}
 
 	/**
-	 * Map a position from {@link #COMPLETION_PLACEHOLDER}-stripped text back to the
-	 * corresponding position in the original (placeholder-bearing) text.
-	 *
-	 * <p>A position that coincides with a stripped occurrence is treated as being
-	 * before that occurrence in the original text.
+	 * A position at a stripped placeholder maps to the position before it.
 	 */
 	private static int expandStrippedPosition(int strippedPos, String original) {
 

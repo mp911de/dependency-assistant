@@ -40,14 +40,7 @@ import org.apache.http.HttpHeaders;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Utility that downloads the artifact referenced by a URL and computes its
- * lowercase SHA-256 digest.
- *
- * <p>{@link #computeSha(Project, String)} runs a cancellable IntelliJ
- * background task and completes the returned future on the EDT: with the digest
- * on success, exceptionally on an invalid URL or download failure, and
- * cancelled when the task is cancelled or the project is disposed. Tests
- * replace the service to supply a checksum without network access.
+ * Background checksum downloads for dependency upgrades.
  *
  * @author Mark Paluch
  */
@@ -56,21 +49,16 @@ public class ChecksumDownloader {
 	protected ChecksumDownloader() {
 	}
 
-	/**
-	 * Return the checksum downloader service.
-	 */
 	public static ChecksumDownloader getInstance() {
 		return ApplicationManager.getApplication().getService(ChecksumDownloader.class);
 	}
 
 	/**
-	 * Queue a cancellable checksum download.
-	 *
-	 * @param project the project that owns the background task.
-	 * @param url the artifact URL.
-	 * @return a future completed on the EDT with the lowercase SHA-256 digest,
-	 * completed exceptionally with an {@link IOException} for an invalid URL or a
-	 * download failure, or cancelled on task cancellation or project disposal.
+	 * Queue a cancellable artifact download and compute its lowercase SHA-256
+	 * digest.
+	 * <p>Download task completion is delivered on the EDT. Invalid URLs fail
+	 * immediately. Failures complete the future exceptionally, including task
+	 * cancellation or project disposal.
 	 */
 	public CompletableFuture<String> computeSha(Project project, String url) {
 
@@ -135,14 +123,6 @@ public class ChecksumDownloader {
 		return future;
 	}
 
-	/**
-	 * Report a failed checksum computation through a project notification.
-	 * Cancellation and a disposed project are not reported.
-	 *
-	 * @param project the project to notify.
-	 * @param url the artifact URL whose checksum failed.
-	 * @param failure the failure from {@link #computeSha(Project, String)}.
-	 */
 	private static void notifyFailure(Project project, String url, Throwable failure) {
 
 		if (failure instanceof CancellationException || project.isDisposed()) {
@@ -154,11 +134,7 @@ public class ChecksumDownloader {
 	}
 
 	/**
-	 * Download the artifact and compute its lowercase SHA-256 digest.
-	 *
-	 * @param uri the artifact URI.
-	 * @param indicator the progress and cancellation indicator.
-	 * @return the lowercase hexadecimal SHA-256 digest.
+	 * Download the artifact and return its lowercase SHA-256 digest.
 	 * @throws IOException if the request or response stream fails.
 	 */
 	public static String downloadAndComputeSha(URI uri, ProgressIndicator indicator) throws IOException {

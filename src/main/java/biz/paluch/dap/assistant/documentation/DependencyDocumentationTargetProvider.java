@@ -27,16 +27,9 @@ import com.intellij.psi.PsiNamedElement;
 import com.intellij.psi.util.PsiTreeUtil;
 
 /**
- * Offset-based entry point for dependency Quick Documentation.
- *
- * <p>The platform consults
- * {@link com.intellij.platform.backend.documentation.PsiDocumentationTargetProvider}
- * only after it has found a target PSI element at the hover offset (a resolving
- * reference or a named declaration). Version literals and dependency
- * coordinates in build files are often plain values without either, so
- * {@link DependencyDocumentationProvider} is never reached there. This provider
- * runs before the target-element machinery and resolves the artifact
- * declaration directly from the file offset.
+ * Offset-based Quick Documentation for dependency literals.
+ * <p>Plain build-file values often have no named declaration or resolving
+ * reference, so the platform's PSI-target lookup does not reach them.
  *
  * @author Mark Paluch
  * @see DependencyDocumentationProvider

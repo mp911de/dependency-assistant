@@ -21,39 +21,21 @@ import java.awt.Color;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Categorization tag attached to tickets in a repository.
- *
- * <p>Instances are implementation-owned and obtained through
- * {@link TicketRepository#getLabels(com.intellij.openapi.progress.ProgressIndicator)}
- * or {@link Ticket#getLabels()}. They may be displayed or passed back to the
- * same repository for filtering and assignment.
+ * Repository-owned ticket label. Use instances from the repository when
+ * filtering or assigning tickets.
  *
  * @author Mark Paluch
- * @see TicketRepository#getLabels(com.intellij.openapi.progress.ProgressIndicator)
  */
 public interface Label {
 
-	/**
-	 * Return the label name shown by the ticket system.
-	 *
-	 * @return the label name.
-	 */
 	String getName();
 
-	/**
-	 * Return the label description.
-	 *
-	 * @return the label description.
-	 */
 	default String getDescription() {
 		return getName();
 	}
 
 	/**
-	 * Return the display color of this label.
-	 *
-	 * @return the normalized display color, or {@literal null} if the ticket system
-	 * does not assign label colors.
+	 * Return the display color, or {@code null} when unavailable.
 	 */
 	@Nullable
 	Color getColor();

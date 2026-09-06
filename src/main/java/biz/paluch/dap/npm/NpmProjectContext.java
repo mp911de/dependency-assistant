@@ -25,7 +25,6 @@ import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.github.GitHubReleaseSourceRouter;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.AbstractProjectBuildContext;
-import biz.paluch.dap.support.ProjectBuildContext;
 import com.intellij.json.psi.JsonFile;
 import com.intellij.json.psi.JsonObject;
 import com.intellij.json.psi.JsonProperty;
@@ -37,14 +36,9 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 
 /**
- * {@link ProjectBuildContext} for a single {@code package.json} file.
- *
- * <p>Each {@code package.json} file produces its own context so that dependent
- * declarations in different monorepo modules maintain independent dependency
- * state. The context reads the root {@code version} as the project version when
- * it is parseable. Release lookup always includes {@link NpmRegistry} and also
- * includes a strict {@link GitHubReleaseSourceRouter} when GitHub support is
- * available and the project is trusted.
+ * Build context for a single {@code package.json} file.
+ * <p>Separate contexts keep dependency state independent across monorepo
+ * modules.
  *
  * @author Mark Paluch
  */
@@ -65,16 +59,6 @@ class NpmProjectContext extends AbstractProjectBuildContext {
 		this.projectVersion = projectVersion;
 	}
 
-	/**
-	 * Return the release sources used for dependencies in an NPM context.
-	 *
-	 * <p>The strict GitHub router, when available for a trusted project, handles
-	 * only Git-backed coordinates. The public NPM registry handles regular package
-	 * coordinates.
-	 *
-	 * @param project the IntelliJ project used for GitHub account resolution.
-	 * @return the ordered release sources for NPM dependencies.
-	 */
 	public static List<ReleaseSource> getReleaseSources(Project project) {
 		if (NpmUtils.GITHUB_AVAILABLE) {
 			return List.of(new GitHubReleaseSourceRouter(project, true), NpmRegistry.NPM_REGISTRY);
@@ -83,23 +67,14 @@ class NpmProjectContext extends AbstractProjectBuildContext {
 	}
 
 	/**
-	 * Create a context for the given anchor file and read its declared project
-	 * version.
-	 *
-	 * @param anchor the {@code package.json} PSI file.
-	 * @return the build context for the anchor file's {@code package.json}.
+	 * Create a context using the project version declared in the anchor file.
 	 */
 	public static NpmProjectContext of(PsiFile anchor) {
 		return of(anchor.getProject(), anchor.getVirtualFile(), resolveProjectVersion(anchor));
 	}
 
 	/**
-	 * Create an unversioned context for the given project and anchor file without
-	 * reading PSI.
-	 *
-	 * @param project the IntelliJ project.
-	 * @param anchor the {@code package.json} virtual file.
-	 * @return the build context for the given {@code package.json} file.
+	 * Create an unversioned context without reading PSI.
 	 */
 	public static NpmProjectContext of(Project project, VirtualFile anchor) {
 		return of(project, anchor, Versioned.unversioned());

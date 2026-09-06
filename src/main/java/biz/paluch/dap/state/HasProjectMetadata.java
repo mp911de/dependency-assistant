@@ -30,11 +30,6 @@ package biz.paluch.dap.state;
  */
 public interface HasProjectMetadata {
 
-	/**
-	 * Return the project metadata captured during the fetch.
-	 *
-	 * @return the project metadata.
-	 */
 	CachedMetadata getProjectMetadata();
 
 }

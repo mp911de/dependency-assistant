@@ -51,20 +51,11 @@ import com.intellij.openapi.progress.ProgressIndicator;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Resolves available releases for an artifact by consulting the {@link Cache}
- * and, when needed, fetching {@link Release}s from its {@link ReleaseSource}s.
- *
- * <p>The resolver owns the full lookup decision for a single artifact: it
- * consults the cache according to the requested {@link Consistency}, asks the
- * cache for a {@link FetchPlan} to honor empty-lookup back-off, narrows the
- * sources accordingly, fetches the remaining sources in parallel, and writes a
- * successful fetch back. A single resolver is reused across artifacts.
- * Per-artifact inputs flow through
- * {@link #getReleases(ReleaseSources, Consistency)}.
+ * Resolves and caches releases across an artifact's sources.
+ * <p>A resolver can be reused across artifacts. {@link Consistency} controls
+ * cache reuse and empty-lookup back-off.
  *
  * @author Mark Paluch
- * @see ReleaseSource
- * @see FetchPlan
  */
 public class ReleaseResolver {
 
@@ -79,12 +70,8 @@ public class ReleaseResolver {
 	private final Duration sourceTimeout;
 
 	/**
-	 * Create a resolver honoring the given progress indicator for cancellation,
-	 * backed by the given cache. Sources are fetched on virtual threads scoped to
-	 * each lookup.
-	 *
+	 * Create a resolver backed by the given cache.
 	 * @param indicator the progress indicator used for cancellation.
-	 * @param cache the release cache consulted and updated by the resolver.
 	 */
 	public ReleaseResolver(ProgressIndicator indicator, Cache cache) {
 		this(indicator, cache, DEFAULT_SOURCE_TIMEOUT);
@@ -109,18 +96,10 @@ public class ReleaseResolver {
 	}
 
 	/**
-	 * Resolve releases for the given artifact, consulting and updating the cache.
-	 *
-	 * <p>Under {@link Consistency#CACHED} a sufficiently recent cached result is
-	 * served without fetching; otherwise the sources are fetched subject to the
-	 * cache's {@link FetchPlan}. Releases from completed sources are retained when
-	 * a sibling source fails or times out. A failure is returned only when no
-	 * source yields releases. {@link ProcessCanceledException} propagates.
-	 *
-	 * @param sources the artifact and its candidate release sources.
-	 * @param consistency the release-cache consistency to use.
-	 * @return the lookup result, carrying the resolved releases or a failure
-	 * message.
+	 * Resolve releases using the requested cache consistency.
+	 * <p>Completed sources are retained if another source fails or times out.
+	 * Failures become an error result only when no source supplies releases.
+	 * Cancellation propagates as {@link ProcessCanceledException}.
 	 */
 	public ReleaseLookupResult getReleases(ReleaseSources sources, Consistency consistency) {
 		indicator.checkCanceled();
@@ -168,11 +147,8 @@ public class ReleaseResolver {
 	}
 
 	/**
-	 * Fetch all sources concurrently, giving them {@link #sourceTimeout} together.
-	 * A source still pending at the deadline is cancelled and recorded as a
-	 * timeout; completed siblings are retained. Results keep the declared source
-	 * order, which decides precedence for the preferred source and project
-	 * metadata. Cancellation propagates as {@link ProcessCanceledException}.
+	 * Fetch sources within one shared deadline.
+	 * <p>Source order determines preferred-source and project-metadata precedence.
 	 */
 	private FetchResult fetch(ReleaseSources releaseSources) {
 
@@ -236,10 +212,6 @@ public class ReleaseResolver {
 		return new FetchResult(artifactId, results);
 	}
 
-	/**
-	 * Query one source. Not found and ordinary failures are captured in the result,
-	 * cancellation propagates.
-	 */
 	private SourceAwareReleases fetch(ReleaseSource source, ArtifactId artifactId) {
 
 		try {
@@ -275,15 +247,7 @@ public class ReleaseResolver {
 	}
 
 	/**
-	 * Fetch outcome for one artifact, retaining the source outcomes and the merged
-	 * {@link Releases} computed once on construction.
-	 *
-	 * <p>The merged releases are derived from the source results, so they are
-	 * computed eagerly and exposed through {@link #toReleases()}.
-	 * {@link #getPreferredSource()} reuses that instance rather than asking callers
-	 * to pass it back. The empty and producing source identifiers describe this
-	 * fetch alone. Combining them with any previously recorded state is the cache's
-	 * responsibility.
+	 * Results of this fetch only. The cache merges them with previous fetch state.
 	 */
 	private static class FetchResult {
 
@@ -308,19 +272,13 @@ public class ReleaseResolver {
 			return Releases.of(result);
 		}
 
-		/**
-		 * Return the merged releases across all sources, newest first.
-		 * @return the merged releases.
-		 */
 		public Releases toReleases() {
 			return releases;
 		}
 
 		/**
-		 * Return the identifier of the single source that already holds every merged
-		 * release, which lets later fetches narrow to it without losing versions.
-		 * @return the preferred source identifier, or {@literal null} if no single
-		 * source holds all releases.
+		 * Return a source containing every release, or {@literal null} if none.
+		 * <p>Later fetches can use this source alone without losing versions.
 		 */
 		public @Nullable String getPreferredSource() {
 
@@ -335,9 +293,8 @@ public class ReleaseResolver {
 		}
 
 		/**
-		 * Return the identifiers of sources that returned no releases without failing.
-		 * @return the empty source identifiers; transient failures are excluded so they
-		 * are not mistaken for permanent absence.
+		 * Return sources that were empty without failing.
+		 * <p>Exclude transient failures so they do not become permanent absence.
 		 */
 		public Set<String> emptySources() {
 
@@ -350,10 +307,6 @@ public class ReleaseResolver {
 			return ids;
 		}
 
-		/**
-		 * Return the project metadata captured by any of the sources during this fetch,
-		 * or {@literal null} if no source captured metadata.
-		 */
 		public @Nullable CachedMetadata getProjectMetadata() {
 
 			for (SourceAwareReleases entry : sources) {
@@ -385,15 +338,12 @@ public class ReleaseResolver {
 		CACHED,
 
 		/**
-		 * Do not serve an already-cached result, but still fetch through the cache's
-		 * incremental {@link FetchPlan}, which may skip sources that are already up to
-		 * date.
+		 * Refresh through the incremental {@link FetchPlan}, which may skip sources.
 		 */
 		REFRESH,
 
 		/**
-		 * Ignore cached releases and the incremental fetch plan, perform a full fetch,
-		 * and update the cache with the outcome.
+		 * Fetch all sources regardless of cache state and update the cache.
 		 */
 		RESET;
 	}

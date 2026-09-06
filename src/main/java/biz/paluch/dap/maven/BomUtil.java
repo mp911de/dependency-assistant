@@ -43,17 +43,9 @@ public class BomUtil {
 	}
 
 	/**
-	 * Resolve and register the managed members of the given BOM import.
-	 *
-	 * <p>Non-BOM declarations, unversioned declarations, and versions retaining a
-	 * property reference are ignored. If neither cached membership nor a local POM
-	 * is available, no BOM is registered. A located POM with no resolvable managed
-	 * entries produces a BOM with empty membership.
-	 *
-	 * @param cache the cache holding previously resolved memberships.
-	 * @param project the project providing repository configuration.
-	 * @param declaration the declaration to inspect.
-	 * @param collector the collector receiving the resolved Bill of Materials.
+	 * Register membership for a versioned BOM import.
+	 * <p>Unresolved property versions and unavailable POMs are ignored.
+	 * @see #resolveBillOfMaterials
 	 */
 	public static void registerBillOfMaterials(Cache cache, Project project, ArtifactDeclaration declaration,
 			DependencyCollector collector) {
@@ -74,17 +66,9 @@ public class BomUtil {
 	}
 
 	/**
-	 * Resolve the Bill of Materials for the given BOM version.
-	 *
-	 * <p>Cached membership takes precedence. Otherwise, the BOM POM is located
-	 * through the registered {@link PomLocator} extensions and parsed. A located
-	 * POM with no resolvable managed entries produces a BOM with empty membership.
-	 *
-	 * @param cache the cache holding previously resolved memberships.
-	 * @param project the project providing repository configuration.
-	 * @param bom the BOM identity and version to resolve members for.
-	 * @return the resolved Bill of Materials, or {@literal null} when no locator
-	 * finds its POM.
+	 * Resolve BOM membership, preferring cached results over a locally located POM.
+	 * @return the BOM, or {@literal null} if no POM is found. A POM without
+	 * resolvable managed entries produces empty membership.
 	 */
 	public static @Nullable BillOfMaterials resolveBillOfMaterials(Cache cache, Project project,
 			VersionedPackage bom) {

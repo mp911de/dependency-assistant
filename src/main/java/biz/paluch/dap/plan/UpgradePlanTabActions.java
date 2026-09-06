@@ -50,9 +50,7 @@ import com.intellij.util.ui.UIUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Milestone and label controls installed in the Upgrade Plan tool-window tab
- * row. Owns their models, actions, refresh action, and catalog rebinding as one
- * unit.
+ * Milestone and label controls with ticket-catalog rebinding.
  *
  * @author Mark Paluch
  */
@@ -248,11 +246,6 @@ class UpgradePlanTabActions {
 			service.setSelectedMilestone(selection);
 		}
 
-		/**
-		 * Render the date, widening the renderer's stock 6px title-date gap by
-		 * {@link #SECONDARY_TEXT_GAP} non-breaking spaces and coloring the date when a
-		 * color is given.
-		 */
 		private String secondary(String text, @Nullable Color color) {
 
 			HtmlChunk date = color != null

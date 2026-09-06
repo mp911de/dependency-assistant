@@ -52,7 +52,7 @@ import org.springframework.util.ClassUtils;
  * <p>Descriptors are discovered in a fixed order: the project root, the
  * project's {@code .idea/} directory, and, for trusted projects only, the
  * immediate parent directory and the user home directory. The first descriptor
- * wins; descriptors are never merged.
+ * wins. Descriptors are never merged.
  *
  * <p>Rules are loaded lazily and cached in memory. Changes to descriptors in
  * the project root or {@code .idea/} directory invalidate the cache and restart
@@ -87,22 +87,13 @@ public class DependencyfileService implements Disposable, DependencyRuleService 
 		}
 	}
 
-	/**
-	 * Return the rule service for the given project.
-	 *
-	 * @param project the project.
-	 * @return the project rule service.
-	 */
 	public static DependencyfileService getInstance(Project project) {
 		return project.getService(DependencyfileService.class);
 	}
 
 	/**
-	 * Return the active {@code dependencyfile.json} descriptor, the one rules are
-	 * resolved from, or {@literal null} when none is discovered (or JSON support is
-	 * absent).
-	 *
-	 * @return the discovered descriptor file, or {@literal null} if none exists.
+	 * Return the discovered descriptor, or {@code null} if none exists or JSON
+	 * support is unavailable.
 	 */
 	public @Nullable VirtualFile getDescriptor() {
 		return JSON_PRESENT ? findDescriptor() : null;
@@ -180,18 +171,6 @@ public class DependencyfileService implements Disposable, DependencyRuleService 
 		return null;
 	}
 
-	/**
-	 * Return the ordered descriptor candidate paths for the given project root.
-	 *
-	 * <p>In-project locations are always searched; the parent directory and the
-	 * user home directory are searched only when the project is trusted. The first
-	 * existing descriptor wins; candidates are never merged.
-	 *
-	 * @param projectRoot the project root directory.
-	 * @param userHome the user home directory.
-	 * @param trusted whether the project is trusted.
-	 * @return the ordered candidate paths.
-	 */
 	static List<Path> candidatePaths(Path projectRoot, Path userHome, boolean trusted) {
 		List<Path> paths = new ArrayList<>();
 		paths.add(projectRoot.resolve(FILE_NAME));
@@ -233,15 +212,6 @@ public class DependencyfileService implements Disposable, DependencyRuleService 
 		this.ruleOverride = null;
 	}
 
-	/**
-	 * Detect the active branch name for the supplied file, degrading to
-	 * {@literal null} when no repository governs the file or no DVCS integration is
-	 * present.
-	 *
-	 * @param project the project used for repository lookup.
-	 * @param file the branch lookup file, or {@literal null} when unavailable.
-	 * @return the active branch name, or {@literal null} when unavailable.
-	 */
 	private static @Nullable String currentBranchName(Project project, @Nullable VirtualFile file) {
 		if (file == null) {
 			return null;
@@ -251,11 +221,6 @@ public class DependencyfileService implements Disposable, DependencyRuleService 
 		return (repository != null ? repository.getCurrentBranchName() : null);
 	}
 
-	/**
-	 * Invalidates the cache when an in-project descriptor is created, edited,
-	 * deleted, moved, or renamed. Descriptors outside the project root are not
-	 * watched.
-	 */
 	static class DescriptorChangeListener implements BulkFileListener {
 
 		private final Set<Path> descriptorPaths;
@@ -295,7 +260,7 @@ public class DependencyfileService implements Disposable, DependencyRuleService 
 								|| FILE_NAME.equals(propertyChange.getNewValue()));
 			}
 
-			// A move event reports the new path; moving a descriptor out of a watched
+			// A move event reports the new path. Moving a descriptor out of a watched
 			// location is only visible through its old path.
 			if (event instanceof VFileMoveEvent move
 					&& this.descriptorPaths.contains(normalize(Path.of(move.getOldPath())))) {

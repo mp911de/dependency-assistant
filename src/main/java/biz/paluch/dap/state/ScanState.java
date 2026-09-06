@@ -17,13 +17,8 @@
 package biz.paluch.dap.state;
 
 /**
- * Lifecycle of one {@link CachedRelease}'s vulnerability check, derived from
- * its persisted scan field.
- *
- * <p>Only {@link #SCANNED} yields clean or vulnerable scan results. Every other
- * state reads as unknown. The state is the scan-side axis (how far we got
- * trying to obtain vulnerabilities), distinct from the result itself (what we
- * know).
+ * Vulnerability scan lifecycle. Only {@link #SCANNED} can yield a clean or
+ * vulnerable result. All other states remain unknown.
  *
  * @author Mark Paluch
  * @see CachedRelease#scanState()
@@ -36,20 +31,17 @@ public enum ScanState {
 	NEVER_SCANNED,
 
 	/**
-	 * Submitted, but the source has returned no data so far. The release remains
-	 * within the scan attempt budget and will be retried.
+	 * No data received yet. Further attempts are allowed.
 	 */
 	ATTEMPTED,
 
 	/**
-	 * The scan attempt budget is spent and the source never returned data. The
-	 * release reads as unknown and is no longer requested.
+	 * Retry budget exhausted without data. The result remains unknown.
 	 */
 	UNRESOLVABLE,
 
 	/**
-	 * Successfully scanned with a real scan timestamp and clean or vulnerable scan
-	 * results.
+	 * Completed with a clean or vulnerable result.
 	 */
 	SCANNED
 

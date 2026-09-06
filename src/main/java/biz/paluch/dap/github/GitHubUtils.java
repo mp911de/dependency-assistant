@@ -43,10 +43,7 @@ class GitHubUtils {
 	private static final Predicate<YAMLKeyValue> IS_USES_KEY = kv -> "uses".equals(kv.getKeyText());
 
 	/**
-	 * Render an artifact as GitHub {@code owner/repository} coordinates.
-	 *
-	 * @param artifactId the artifact to render.
-	 * @return the rendered repository coordinates.
+	 * Render an artifact as {@code owner/repository}.
 	 */
 	static String toString(ArtifactId artifactId) {
 		if (artifactId instanceof GitHubAction action) {
@@ -56,13 +53,8 @@ class GitHubUtils {
 	}
 
 	/**
-	 * Return whether the given file is supported by the GitHub Actions integration.
-	 *
-	 * <p>A supported file must be a YAML file and either live under
-	 * {@code .github/workflows/} or be named {@code action.yml} or
-	 * {@code action.yaml}.
-	 * @param file the PSI file to test.
-	 * @return {@literal true} if this file is supported.
+	 * Return whether the PSI file has a supported workflow file.
+	 * @see #isWorkflowFile(VirtualFile)
 	 */
 	static boolean isWorkflowFile(@Nullable PsiFile file) {
 		if (file == null) {
@@ -72,13 +64,8 @@ class GitHubUtils {
 	}
 
 	/**
-	 * Return whether the given file is supported by the GitHub Actions integration.
-	 *
-	 * <p>A supported file must be a YAML file and either live under
-	 * {@code .github/workflows/} or be named {@code action.yml} or
-	 * {@code action.yaml}.
-	 * @param file the file to test.
-	 * @return {@literal true} if this file is supported.
+	 * Recognize YAML files under {@code .github/workflows/} and files named
+	 * {@code action.yml} or {@code action.yaml}.
 	 */
 	static boolean isWorkflowFile(VirtualFile file) {
 		if (!isYamlFile(file)) {
@@ -97,17 +84,9 @@ class GitHubUtils {
 	}
 
 	/**
-	 * Compute the {@link TextRange} that covers only the ref portion (after
-	 * {@code @}) of the {@code uses:} scalar that owns the given element.
-	 *
-	 * <p>Used by both the GitHub annotator and line marker provider so they
-	 * highlight a consistent sub-range and don't include the
-	 * {@code owner/repository} prefix.
-	 *
-	 * @param element the PSI element that lives inside (or is) the {@code uses:}
-	 * value scalar.
-	 * @return the ref-only text range, or the element's own text range if no
-	 * {@code uses:} scalar can be located from the element.
+	 * Return the document range of a {@code uses:} ref after {@code @}.
+	 * <p>Falls back to the scalar range if no separator exists, or the element
+	 * range if no {@code uses:} scalar is found.
 	 */
 	public static TextRange getVersionRange(PsiElement element) {
 
@@ -136,10 +115,7 @@ class GitHubUtils {
 	}
 
 	/**
-	 * Return the {@link YAMLScalar} that is the value of a {@code uses:} key.
-	 *
-	 * @param element the element at the cursor position.
-	 * @return the scalar, or {@literal null} if it is not the value of such a key.
+	 * Find the owning {@code uses:} scalar, or return {@literal null} if absent.
 	 */
 	public static @Nullable YAMLScalar findUsesScalar(PsiElement element) {
 		YamlVersionSite site = YamlVersionSite.locate(element, IS_USES_KEY);

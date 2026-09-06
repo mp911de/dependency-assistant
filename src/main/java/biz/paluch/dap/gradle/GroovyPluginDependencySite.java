@@ -37,9 +37,6 @@ class GroovyPluginDependencySite {
 	private GroovyPluginDependencySite() {
 	}
 
-	/**
-	 * Parse a Groovy plugin declaration.
-	 */
 	static @Nullable DependencySite fromMethodCall(GrMethodCall call,
 			PropertyResolver propertyResolver) {
 
@@ -71,8 +68,7 @@ class GroovyPluginDependencySite {
 	}
 
 	/**
-	 * Return the version literal of {@code id 'x' version 'y'}, which Groovy parses
-	 * as the chained call {@code id('x').version('y')}.
+	 * Groovy represents {@code id "x" version "y"} as {@code id("x").version("y")}.
 	 */
 	private static @Nullable GrLiteral findChainedVersionLiteral(GrMethodCall call) {
 

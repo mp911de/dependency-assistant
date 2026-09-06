@@ -32,108 +32,55 @@ import com.intellij.openapi.project.Project;
 import com.intellij.util.text.DateFormatUtil;
 
 /**
- * Entry point for plugin notifications. Every method words a notification on a
- * {@link NotificationChannel channel} and returns a {@link NotificationBuilder}
- * that accepts follow-up {@link NotificationActions actions} before the balloon
- * is shown.
+ * Prepared plugin notifications. Add follow-up actions before calling
+ * {@link NotificationBuilder#notify(Project)}.
  *
  * @author Mark Paluch
- * @see NotificationChannel
  * @see NotificationActions
  * @see UpgradeNotification
  */
 public class Notifications {
 
 	/**
-	 * Word an informational notification on the general channel.
-	 *
-	 * @param title the balloon title.
-	 * @param content the balloon body text.
-	 * @return the builder.
+	 * Create an informational notification on the general channel.
 	 */
 	public static NotificationBuilder info(String title, String content) {
 		return info(NotificationChannel.GENERAL, title, content);
 	}
 
-	/**
-	 * Word an informational notification.
-	 *
-	 * @param channel the channel to notify on.
-	 * @param title the balloon title.
-	 * @param content the balloon body text.
-	 * @return the builder.
-	 */
 	public static NotificationBuilder info(NotificationChannel channel, String title, String content) {
 		return new Builder(channel.create(title, content, NotificationType.INFORMATION));
 	}
 
-	/**
-	 * Word a warning notification.
-	 *
-	 * @param channel the channel to notify on.
-	 * @param title the balloon title.
-	 * @param content the balloon body text.
-	 * @return the builder.
-	 */
 	public static NotificationBuilder warning(NotificationChannel channel, String title, String content) {
 		return new Builder(channel.create(title, content, NotificationType.WARNING));
 	}
 
 	/**
-	 * Word an error notification under the default error title on the general
-	 * channel.
-	 *
-	 * @param content the error content.
-	 * @return the builder.
+	 * Create an error notification with the default title on the general channel.
 	 */
 	public static NotificationBuilder error(String content) {
 		return error(MessageBundle.message("error.title"), content);
 	}
 
 	/**
-	 * Word an error notification on the general channel.
-	 *
-	 * @param title the error title.
-	 * @param content the error content.
-	 * @return the builder.
+	 * Create an error notification on the general channel.
 	 */
 	public static NotificationBuilder error(String title, String content) {
 		return error(NotificationChannel.GENERAL, title, content);
 	}
 
-	/**
-	 * Word an error notification.
-	 *
-	 * @param channel the channel to notify on.
-	 * @param title the error title.
-	 * @param content the error content.
-	 * @return the builder.
-	 */
 	public static NotificationBuilder error(NotificationChannel channel, String title, String content) {
 		return new Builder(channel.create(title, content, NotificationType.ERROR));
 	}
 
-	/**
-	 * Word a notification about applied dependency upgrades.
-	 *
-	 * @param channel the channel to notify on.
-	 * @param wording the applied-upgrade wording.
-	 * @return the builder.
-	 */
 	public static NotificationBuilder applied(NotificationChannel channel, UpgradeNotification wording) {
 		return new Builder(wording.create(channel));
 	}
 
 	/**
-	 * Return a displayable message for the given error.
-	 *
-	 * <p>Wrappers that add no message of their own, such as
-	 * {@code UncheckedIOException} or {@code RuntimeException(cause)}, are
-	 * unwrapped so the message describes the failure, not the wrapper.
-	 *
-	 * @param error the failure to describe.
-	 * @return the non-blank message of the innermost meaningful cause, or its class
-	 * name when no message is available.
+	 * Return a displayable failure message. Wrappers that add no message are
+	 * unwrapped. A blank or missing message falls back to the exception class name.
 	 */
 	public static String errorMessage(Throwable error) {
 
@@ -148,12 +95,9 @@ public class Notifications {
 	}
 
 	/**
-	 * Word the outcome of a release metadata refresh: how many artifacts were
-	 * updated and how long the refresh took. Users can opt out of this balloon.
+	 * Create a refresh summary that users can opt out of seeing.
 	 *
-	 * @param updates the artifacts whose release metadata was refreshed.
 	 * @param durationMs the refresh duration in milliseconds.
-	 * @return the builder.
 	 */
 	public static NotificationBuilder releaseMetadataRefreshed(List<ArtifactId> updates, long durationMs) {
 
@@ -174,11 +118,8 @@ public class Notifications {
 	}
 
 	/**
-	 * Word the prompt that release metadata is unavailable. Callers offer
-	 * {@link NotificationActions#refreshReleaseMetadata(Runnable) refresh} and
-	 * {@link NotificationActions#notNow(Runnable) not now}.
-	 *
-	 * @return the builder.
+	 * Create a prompt for missing release metadata. Callers supply the refresh and
+	 * dismissal actions.
 	 */
 	public static NotificationBuilder releaseMetadataUnavailable() {
 
@@ -196,12 +137,8 @@ public class Notifications {
 	}
 
 	/**
-	 * Word the prompt that release metadata is probably old. Callers offer
-	 * {@link NotificationActions#refreshReleaseMetadata(Runnable) refresh} and
-	 * {@link NotificationActions#notNow(Runnable) not now}.
-	 *
-	 * @param cacheUpdate when the release cache was last updated.
-	 * @return the builder.
+	 * Create a prompt for stale release metadata. Callers supply the refresh and
+	 * dismissal actions.
 	 */
 	public static NotificationBuilder releaseMetadataStale(Instant cacheUpdate) {
 

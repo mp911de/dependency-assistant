@@ -22,7 +22,6 @@ import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.DependencyAssistantIcons;
-import biz.paluch.dap.assistant.check.UpgradeScope;
 import biz.paluch.dap.util.FileUtils;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.openapi.actionSystem.ActionUpdateThread;
@@ -38,17 +37,9 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 
 /**
- * Tools menu and Project View action that launches a dependency check over an
- * {@link UpgradeScope}.
- *
- * <p>The action is visible and enabled when the project has an applicable
- * dependency integration or existing dependency or release state. Selected
- * directories are discarded before {@link UpgradeScopeResolver} applies its
- * precedence: selected files, the active editor's build file, then the whole
- * project.
- *
- * <p>The check opens an upgrade review. Build files are modified only after the
- * user confirms direct updates in that review.
+ * Opens an upgrade review from the Tools menu or Project View.
+ * <p>Selected directories are ignored. {@link UpgradeScopeResolver} determines
+ * the build files to check.
  *
  * @author Mark Paluch
  */

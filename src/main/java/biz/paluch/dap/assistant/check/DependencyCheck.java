@@ -46,14 +46,9 @@ import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 
 /**
- * Coordinates a dependency check for an IntelliJ project.
- *
- * <p>A check scans the selected build files, aggregates declarations by package
- * identity, resolves and caches release metadata, updates BOM membership and
- * project metadata, and performs a best-effort delta vulnerability scan for
- * newly fetched releases. Release resolution honors the requested
- * {@link ReleaseResolver.Consistency}. Cancellation is propagated through the
- * supplied progress indicator.
+ * Coordinates dependency checks and updates project metadata caches.
+ * <p>Release lookup honors {@link ReleaseResolver.Consistency}. Vulnerability
+ * scanning is best effort. Indicator cancellation propagates.
  *
  * @author Mark Paluch
  */
@@ -69,11 +64,6 @@ public class DependencyCheck {
 
 	private final ApplicationSettings settings;
 
-	/**
-	 * Create a dependency check bound to the given project.
-	 *
-	 * @param project the IntelliJ project whose dependency state should be used.
-	 */
 	public DependencyCheck(Project project) {
 		this.project = project;
 		this.stateService = StateService.getInstance(project);
@@ -82,13 +72,8 @@ public class DependencyCheck {
 	}
 
 	/**
-	 * Run the dependency update check over an {@link UpgradeScope upgrade scope} of
-	 * one or more build files.
-	 *
-	 * @param indicator the progress indicator.
-	 * @param scope the in-scope build files with their contexts.
-	 * @return the sorted upgrade candidates, checked file scope, and non-fatal
-	 * lookup errors.
+	 * Find upgrade candidates for the requested build files.
+	 * @return sorted candidates, the checked scope, and non-fatal lookup errors.
 	 */
 	public DependencyCheckResult findDependencyUpgrades(ProgressIndicator indicator,
 			UpgradeScope scope) {
@@ -96,7 +81,6 @@ public class DependencyCheck {
 		this.stateService.markUsed();
 		indicator.setIndeterminate(false);
 
-		// 🦄🔢
 		double scanWeight = scope.entries().size() > 50 ? 0.3 : 0.1;
 		WeightedStepsProgressIndicator steps = new WeightedStepsProgressIndicator(indicator, scanWeight, 0.9);
 		DependencyfileService ruleService = DependencyfileService.getInstance(project);
@@ -135,14 +119,7 @@ public class DependencyCheck {
 	}
 
 	/**
-	 * Scan all available project contexts for declared dependencies and release
-	 * sources.
-	 *
-	 * @param indicator the progress indicator used for cancellation and user
-	 * feedback.
-	 * @param assistant the dependency assistant that provides project entries.
-	 * @return the aggregated declarations, build files, contexts, and release
-	 * sources.
+	 * Collect dependencies from the integration's available project contexts.
 	 */
 	public DependencyCheckAggregator collectDependencies(ProgressIndicator indicator,
 			DependencyAssistant assistant) {
@@ -156,18 +133,8 @@ public class DependencyCheck {
 	}
 
 	/**
-	 * Resolve available releases for the given artifact groups.
-	 *
-	 * <p>Artifacts whose release lookup fails are omitted from the returned map.
-	 * Errors remain available only to the full dependency-check flow.
-	 *
-	 * @param indicator the progress indicator used for cancellation and user
-	 * feedback.
-	 * @param aggregators the aggregated scans whose release sources should be
-	 * queried.
-	 * @param consistency the release-cache consistency to use.
-	 * @return successfully resolved releases keyed by package identity, in
-	 * encounter order.
+	 * Resolve releases and update metadata for the aggregated scans.
+	 * <p>Failed lookups are omitted. Successful results retain encounter order.
 	 */
 	public Map<PackageIdentity, Releases> getReleases(ProgressIndicator indicator,
 			List<DependencyCheckAggregator> aggregators, ReleaseResolver.Consistency consistency) {
@@ -193,15 +160,8 @@ public class DependencyCheck {
 	}
 
 	/**
-	 * Resolve releases for each artifact in parallel, collecting one
-	 * {@link ReleaseLookupResult} per artifact.
-	 *
-	 * @param indicator the progress indicator.
-	 * @param artifactSources the release sources to query per artifact.
-	 * @param consistency the release-cache consistency to use.
-	 * @return the resolver result per artifact, in encounter order. A lookup
-	 * exceeding {@link #LOOKUP_TIMEOUT} or throwing is represented as a failed
-	 * result. Cancellation propagates as {@link ProcessCanceledException} and
+	 * Resolve releases in parallel, retaining encounter order.
+	 * <p>Failures and timeouts become failed results. Cancellation propagates and
 	 * cancels outstanding lookups.
 	 */
 	protected Map<PackageIdentity, ReleaseLookupResult> resolveReleases(ProgressIndicator indicator,

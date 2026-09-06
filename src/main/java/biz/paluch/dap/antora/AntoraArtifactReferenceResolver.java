@@ -30,17 +30,9 @@ import org.jetbrains.yaml.psi.YAMLScalar;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Resolves Antora playbook {@code ui.bundle.url} PSI into an
- * {@link ArtifactReference}.
- *
- * <p>Resolution applies only to a non-leaf PSI position within a parseable
- * bundle URL scalar and an available build context. All other inputs produce
- * {@link ArtifactReference#unresolved()}.
- *
- * <p>The declared ref is resolved through
- * {@link GitVersionResolver#resolveLenient(ArtifactId, String)}. That operation
- * consults cached releases, preserves unmatched SHA and opaque refs, and leaves
- * an empty ref unversioned. It does not contact a remote API.
+ * Resolve Antora {@code ui.bundle.url} references against cached Git releases.
+ * <p>Unmatched refs remain available without remote lookup. Leaf elements and
+ * unavailable playbook contexts produce unresolved references.
  *
  * @author Mark Paluch
  */
@@ -50,11 +42,6 @@ class AntoraArtifactReferenceResolver implements ArtifactReferenceResolver {
 
 	private final AntoraProjectContext buildContext;
 
-	/**
-	 * Create a resolver backed by the given cache resolver and playbook context.
-	 * @param versionResolver the cached Git-ref resolver.
-	 * @param buildContext the Antora playbook context.
-	 */
 	AntoraArtifactReferenceResolver(GitVersionResolver versionResolver, AntoraProjectContext buildContext) {
 		this.versionResolver = versionResolver;
 		this.buildContext = buildContext;
@@ -94,11 +81,8 @@ class AntoraArtifactReferenceResolver implements ArtifactReferenceResolver {
 	}
 
 	/**
-	 * Locate the {@link YAMLScalar} value of the {@code ui.bundle.url} key that
-	 * contains the given element.
-	 * @param element the element at the cursor position.
-	 * @return the containing scalar, or {@literal null} if the element is not
-	 * within such a value.
+	 * Find the containing {@code ui.bundle.url} scalar, or {@literal null} if
+	 * absent.
 	 */
 	static @Nullable YAMLScalar findBundleUrlScalar(PsiElement element) {
 		YamlVersionSite site = YamlVersionSite.locate(element, AntoraPlaybookParser::isBundleUrlKeyValue);

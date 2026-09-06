@@ -65,9 +65,6 @@ public class GitHubInitService implements ProjectActivity {
 		return null;
 	}
 
-	/**
-	 * Reorder the known completion-contributor representations when required.
-	 */
 	private void ɑΩ() {
 
 		ExtensionPoint<CompletionContributorEP> point = CompletionContributor.EP.getPoint();
@@ -151,14 +148,6 @@ public class GitHubInitService implements ProjectActivity {
 			this.myIndex = myIndex;
 		}
 
-		/**
-		 * Locate the bundled and Dependency Assistant contributors in a collection.
-		 *
-		 * @param <T> the collection element type.
-		 * @param collection the extension representation to inspect.
-		 * @param classNameExtractor function yielding each implementation class name.
-		 * @return the detected contributor positions.
-		 */
 		public static <T> MagicDetector from(Collection<T> collection, Function<T, String> classNameExtractor) {
 
 			int actionsIndex = -1;
@@ -189,11 +178,6 @@ public class GitHubInitService implements ProjectActivity {
 			return actionsIndex != -1 && myIndex != -1 && actionsIndex < myIndex;
 		}
 
-		/**
-		 * Swap the detected contributors when the bundled contributor comes first.
-		 *
-		 * @param consumer operation that swaps the two detected positions.
-		 */
 		public void swapIfNeeded(BiConsumer<Integer, Integer> consumer) {
 			if (requiresMagic()) {
 				consumer.accept(actionsIndex, myIndex);

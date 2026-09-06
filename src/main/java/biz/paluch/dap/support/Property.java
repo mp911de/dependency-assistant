@@ -30,36 +30,20 @@ import com.intellij.psi.PsiElement;
  */
 public interface Property {
 
-	/**
-	 * Return the property lookup key.
-	 *
-	 * @return the key used by a {@link PropertyResolver}.
-	 */
 	String getKey();
 
-	/**
-	 * Return the logical textual value declared for {@link #getKey()}.
-	 *
-	 * @return the declared property value.
-	 */
 	String getValue();
 
 	/**
-	 * Return whether the declaration this property points to is still valid.
-	 * <p>Cached properties can outlive their PSI. Callers that intend to use
-	 * {@link #getValueLiteral()} must skip invalid properties.
-	 * @return {@literal true} if the declaring PSI can still be used;
-	 * {@literal false} otherwise.
+	 * Return whether the PSI is still valid. Cached properties can outlive their
+	 * declarations, so check this before using {@link #getValueLiteral()}.
 	 */
 	default boolean isValid() {
 		return getValueLiteral().isValid();
 	}
 
 	/**
-	 * Return the PSI element that holds the declared value.
-	 *
-	 * @return the value's PSI anchor, which may be invalid when {@link #isValid()}
-	 * is {@literal false}.
+	 * Return the value's PSI anchor, which may be invalid.
 	 */
 	PsiElement getValueLiteral();
 

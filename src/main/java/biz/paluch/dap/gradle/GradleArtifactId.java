@@ -30,25 +30,10 @@ import org.springframework.util.Assert;
 import org.springframework.util.ObjectUtils;
 
 /**
- * {@link ArtifactId} variant used as an intermediate representation for Gradle
- * module coordinates.
- *
- * <p>Gradle dependency declarations can combine artifact identity and version
- * intent in a single notation such as {@code group:name:version}, while the
- * rest of the assistant operates primarily on ecosystem-neutral
- * {@link ArtifactId artifact identities}. This contract keeps those concerns
- * separated: {@link #groupId()} and {@link #artifactId()} form the dependency
- * identity, while {@link #version()} carries Gradle declaration metadata until
- * a parser decides how that version should be represented.
- *
- * <p>Property expressions are deliberately accepted as coordinate parts. They
- * are resolved at the boundary where Gradle-specific declarations are adapted
- * to the common dependency model so callers can keep parser extraction,
- * property lookup, and release lookup as separate responsibilities.
- *
- * <p>Equality follows the {@link ArtifactId} identity contract. Code that needs
- * version-sensitive comparison should include {@link #version()} explicitly in
- * its own key.
+ * Gradle module coordinates with version metadata separate from artifact
+ * identity.
+ * <p>Coordinate parts may contain unresolved property expressions. Equality
+ * ignores the version, following {@link ArtifactId}.
  *
  * @author Mark Paluch
  * @see GradleDependency
@@ -56,20 +41,14 @@ import org.springframework.util.ObjectUtils;
 interface GradleArtifactId extends ArtifactId, HasPackageIdentity, HasPackageSystem {
 
 	/**
-	 * Version segment associated with the Gradle declaration, or an empty string
-	 * when the declaration relies on dependency management or a separate version
-	 * block.
-	 * @return the declared version segment or an empty string.
+	 * Return the version segment, or an empty string when this notation has no
+	 * version.
 	 */
 	String version();
 
 	/**
-	 * Adapt this Gradle coordinate to the common artifact-identity model.
-	 * <p>Only the identity parts are materialized here. Version handling remains
-	 * with the Gradle dependency layer so property-backed versions can still be
-	 * associated with their declaration site and {@code VersionSource}.
-	 * @param propertyResolver property resolver to use for coordinate expressions.
-	 * @return the resolved artifact identity.
+	 * Resolve coordinate expressions to an artifact identity, excluding the
+	 * version.
 	 */
 	default ArtifactId resolve(PropertyResolver propertyResolver) {
 
@@ -81,15 +60,7 @@ interface GradleArtifactId extends ArtifactId, HasPackageIdentity, HasPackageSys
 	}
 
 	/**
-	 * Materialize the complete Gradle coordinate for use cases that intentionally
-	 * preserve the version as coordinate metadata.
-	 * <p>This variant is appropriate after parser code has established that the
-	 * version belongs with the dependency declaration itself. Use
-	 * {@link #resolve(PropertyResolver)} when crossing into release lookup,
-	 * caching, or other artifact-identity concerns.
-	 * @param propertyResolver property resolver to use for coordinate and version
-	 * expressions.
-	 * @return the resolved Gradle coordinate.
+	 * Resolve coordinate and version expressions while retaining version metadata.
 	 */
 	default GradleArtifactId resolveAll(PropertyResolver propertyResolver) {
 
@@ -102,16 +73,10 @@ interface GradleArtifactId extends ArtifactId, HasPackageIdentity, HasPackageSys
 	}
 
 	/**
-	 * Create a Gradle coordinate from compact Gradle module notation.
-	 * <p>This factory models the value shape used by Gradle's string notation. It
-	 * is not a full Gradle DSL validator. Parser code should use it only after it
-	 * has selected text that is meant to represent module coordinates.
-	 *
-	 * @param gav compact Gradle module notation, typically
-	 * {@code group:name:version} or {@code group:name}.
-	 * @return the Gradle coordinate.
-	 * @throws IllegalArgumentException if the notation is {@literal null}, empty,
-	 * or lacks group or artifact identity.
+	 * Parse compact {@code group:name[:version]} notation. This is not a full DSL
+	 * validator.
+	 * @throws IllegalArgumentException if the notation is absent or lacks group or
+	 * artifact identity.
 	 */
 	static GradleArtifactId from(String gav) {
 		Assert.hasLength(gav, "GAV must not be empty");
@@ -122,27 +87,13 @@ interface GradleArtifactId extends ArtifactId, HasPackageIdentity, HasPackageSys
 		return new DefaultGradleArtifactId(parts[0], parts[1], parts.length > 2 ? parts[2] : "");
 	}
 
-	/**
-	 * Attach Gradle version metadata to an existing artifact identity.
-	 * <p>Use this factory for structured Gradle declarations where group and name
-	 * were parsed independently but should still flow through the same coordinate
-	 * model as compact string notation.
-	 * @param artifactId the artifact identity.
-	 * @param version the Gradle version segment, if available.
-	 * @return the Gradle coordinate.
-	 */
 	static GradleArtifactId from(ArtifactId artifactId, String version) {
 		return new DefaultGradleArtifactId(artifactId.groupId(), artifactId.artifactId(), version);
 	}
 
 	/**
-	 * Lightweight parser-dispatch conditional for Gradle module notation.
-	 * <p>The check distinguishes compact coordinate strings from other Gradle
-	 * argument forms. It should not be used as a general-purpose validator for
-	 * dependency notation accepted by Gradle itself.
-	 * @param gav candidate text from a Gradle declaration.
-	 * @return {@literal true} if the text is eligible for compact-coordinate
-	 * parsing.
+	 * Return whether the text is a compact-coordinate candidate.
+	 * <p>This does not validate all Gradle dependency syntax.
 	 */
 	static boolean isValid(@Nullable String gav) {
 		if (!StringUtils.hasText(gav)) {

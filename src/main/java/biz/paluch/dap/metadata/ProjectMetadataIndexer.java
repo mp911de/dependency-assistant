@@ -32,17 +32,12 @@ import com.intellij.util.concurrency.annotations.RequiresBackgroundThread;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Post-resolution indexer that enriches cached artifacts with upstream project
- * metadata.
- *
- * <p>The indexer uses the first registered {@link ProjectMetadataInspector}
- * supporting each package system. Inspection results replace the cached
- * metadata for the same {@link PackageIdentity}. Missing cache entries and
- * packages without a supporting inspector are left unchanged.
+ * Enriches cached artifacts through the first applicable
+ * {@link ProjectMetadataInspector}.
+ * <p>Inspection results replace metadata for the same package identity.
+ * Uncached packages and unsupported ecosystems are skipped.
  *
  * @author Mark Paluch
- * @see ProjectMetadataInspector
- * @see ProjectMetadataService
  */
 public class ProjectMetadataIndexer {
 
@@ -64,16 +59,9 @@ public class ProjectMetadataIndexer {
 	}
 
 	/**
-	 * Inspect checked artifacts whose metadata is absent or stale according to the
-	 * cache refresh policy.
-	 *
-	 * <p>Each stored result advances the cache modification count used to
-	 * invalidate metadata facades. Entries that are not due, are no longer cached,
-	 * or cannot be inspected remain unchanged.
-	 *
-	 * @param indicator the progress indicator used for cancellation.
-	 * @param dependencyVersions the package identities and current versions from
-	 * the dependency check.
+	 * Refresh checked artifacts whose metadata is absent or stale.
+	 * @param dependencyVersions package identities and current versions from the
+	 * check.
 	 */
 	@RequiresBackgroundThread
 	public void update(ProgressIndicator indicator, Map<PackageIdentity, ArtifactVersion> dependencyVersions) {

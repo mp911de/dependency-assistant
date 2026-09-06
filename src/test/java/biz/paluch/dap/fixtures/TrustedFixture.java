@@ -21,12 +21,9 @@ import com.intellij.openapi.project.Project;
 import org.junit.function.ThrowingRunnable;
 
 /**
- * Test fixture that runs a block of code with the {@link TrustedProjects} state
- * of a project forced to trusted or untrusted.
- *
- * <p>Each run restores the trust state that was in effect before the call, also
- * when the block throws. Exceptions thrown by the block are rethrown wrapped in
- * a {@link RuntimeException}.
+ * Runs test code with a temporary project trust state.
+ * <p>The previous state is restored even on failure. Thrown exceptions and
+ * errors are wrapped in {@link RuntimeException}.
  *
  * @author Mark Paluch
  */
@@ -42,12 +39,6 @@ public class TrustedFixture {
 		return new TrustedFixture(project);
 	}
 
-	/**
-	 * Run the given block while the project is marked trusted.
-	 *
-	 * @param runnable the block to run with the project trusted.
-	 * @throws RuntimeException wrapping any exception thrown by the block.
-	 */
 	public void runTrusted(ThrowingRunnable runnable) {
 
 		boolean before = TrustedProjects.isProjectTrusted(project);
@@ -61,13 +52,6 @@ public class TrustedFixture {
 		}
 	}
 
-	/**
-	 * Run the given block while the project is marked untrusted, see
-	 * {@link #runTrusted(ThrowingRunnable)}.
-	 *
-	 * @param runnable the block to run with the project untrusted.
-	 * @throws RuntimeException wrapping any exception thrown by the block.
-	 */
 	public void runUntrusted(ThrowingRunnable runnable) {
 
 		boolean before = TrustedProjects.isProjectTrusted(project);

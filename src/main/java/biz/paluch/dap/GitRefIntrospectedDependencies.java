@@ -21,14 +21,8 @@ import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.GitVersionResolver;
 
 /**
- * Cache-backed {@link IntrospectedDependencies} that promotes git-ref
- * declarations to usages during completion.
- *
- * <p>Shared by the Antora and GitHub Actions integrations. During completion
- * the persistent {@link Cache} is consulted so declarations whose ref matches a
- * previously cached release are exposed as resolved dependency usages.
- * Declarations whose usages are already registered during phase-one collection
- * are not disturbed.
+ * Resolves Git-ref declarations against cached releases during completion.
+ * <p>Existing usages are retained.
  *
  * @author Mark Paluch
  */
@@ -36,10 +30,6 @@ public class GitRefIntrospectedDependencies implements IntrospectedDependencies 
 
 	private final Cache cache;
 
-	/**
-	 * Create a completion handle backed by the given persistent cache.
-	 * @param cache the cache to consult during completion.
-	 */
 	public GitRefIntrospectedDependencies(Cache cache) {
 		this.cache = cache;
 	}

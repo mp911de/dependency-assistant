@@ -38,7 +38,7 @@ interface DeclarationStyleDetector {
 	 * the enclosing candidate.
 	 * @param element the element to introspect.
 	 * @return the detected declaration style, or {@link DeclarationStyle#absent()}
-	 * if the element is not part of a recognized version declaration.
+	 * if the element is not part of a supported version declaration.
 	 */
 	DeclarationStyle detect(PsiElement element);
 

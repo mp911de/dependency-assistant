@@ -36,7 +36,7 @@ import com.intellij.util.Urls;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Recognizes {@code gitlab.com}, hosts following the {@code gitlab.*} naming
+ * supports {@code gitlab.com}, hosts following the {@code gitlab.*} naming
  * convention, and, hint-aided, self-hosted instances. Nested group paths are
  * real repository coordinates and are never truncated. Path segments from the
  * {@code /-/} web-path separator onward are discarded instead, healing cached

@@ -24,19 +24,11 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import org.springframework.util.Assert;
 
 /**
- * Value object representing a project development generation.
+ * A numeric version prefix identifying a development line. For example,
+ * {@code 6.0} and {@code 6.0.x} identify the same line. Matching requires a
+ * complete dot-separated prefix, so {@code 6} does not match {@code 60}.
  *
- * <p>A generation is expressed as a literal version prefix. Supported inputs
- * are:
- * <ul>
- * <li>major lines such as {@code 6}</li>
- * <li>minor lines such as {@code 6.0} or {@code 6.0.x}</li>
- * <li>exact versions such as {@code 6.0.1}</li>
- * </ul>
- *
- * <p>The {@code *} wildcard is not a generation; it is handled by
- * {@link Generations#from(String...)} collapsing to the
- * {@linkplain Generations#unconstrained() unconstrained} instance.
+ * <p>Use {@link Generations} for the unconstrained {@code *} wildcard.
  *
  * @author Mark Paluch
  */
@@ -51,15 +43,10 @@ public class Generation implements Predicate<String> {
 	}
 
 	/**
-	 * Create a generation from a project development line.
+	 * Parse a numeric development line with an optional trailing {@code .x}.
 	 *
-	 * <p>The supplied value is retained as a normalized prefix.
-	 *
-	 * @param generation the project development line.
-	 * @return a generation for the project development line.
 	 * @throws IllegalArgumentException if the value is empty or not a numeric
-	 * project generation such as {@code 6}, {@code 6.0}, {@code 6.0.x}, or
-	 * {@code 6.0.1}.
+	 * generation.
 	 */
 	public static Generation of(String generation) {
 		Assert.hasText(generation, "Generation must not be empty");
@@ -77,21 +64,14 @@ public class Generation implements Predicate<String> {
 	}
 
 	/**
-	 * Return this generation as an {@link ArtifactVersion} predicate.
-	 *
-	 * <p>The returned predicate unwraps prefixed versions before testing the
-	 * innermost version string.
-	 *
-	 * @return an {@link ArtifactVersion} predicate backed by this generation.
+	 * Return a predicate that tests the innermost version, ignoring wrappers.
 	 */
 	public Predicate<ArtifactVersion> asVersionPredicate() {
 		return version -> test(version.unwrap().toString());
 	}
 
 	/**
-	 * Return the generation in its {@code .x} display form, such as {@code 6.0.x}.
-	 *
-	 * @return the generation prefix suffixed with {@code .x}.
+	 * Return the {@code .x} display form, such as {@code 6.0.x}.
 	 */
 	public String value() {
 		return this.generation + ".x";

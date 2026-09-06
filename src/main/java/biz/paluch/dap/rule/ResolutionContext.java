@@ -56,13 +56,10 @@ public class ResolutionContext {
 	}
 
 	/**
-	 * Create a resolution context from a single resolved artifact declaration.
+	 * Create a context that suppresses semantic inference for a plugin declaration.
 	 *
-	 * @param declaration the artifact declaration.
-	 * @param branchFile the file used for branch lookup, or {@literal null}.
-	 * @param projectVersion the project version used for branch rule selection.
-	 * @return a resolution context that suppresses semver inference when the
-	 * declaration is a plugin.
+	 * @param branchFile the file used for branch lookup, or {@code null} if
+	 * unavailable.
 	 */
 	public static ResolutionContext forDeclaration(ArtifactDeclaration declaration,
 			@Nullable VirtualFile branchFile, Versioned projectVersion) {
@@ -73,13 +70,11 @@ public class ResolutionContext {
 	}
 
 	/**
-	 * Create a resolution context from an aggregate declared dependency.
+	 * Create a context that suppresses semantic inference only for a nonempty,
+	 * plugin-only set of declaration sources.
 	 *
-	 * @param dependency the aggregate dependency declaration.
-	 * @param branchFile the file used for branch lookup, or {@literal null}.
-	 * @param projectVersion the project version used for branch rule selection.
-	 * @return a resolution context that suppresses semver inference only when the
-	 * dependency has at least one declaration source and all sources are plugins.
+	 * @param branchFile the file used for branch lookup, or {@code null} if
+	 * unavailable.
 	 */
 	public static ResolutionContext forAggregate(DeclaredDependency dependency, @Nullable VirtualFile branchFile,
 			Versioned projectVersion) {
@@ -88,15 +83,11 @@ public class ResolutionContext {
 	}
 
 	/**
-	 * Create a resolution context from an artifact and its declaration sources
-	 * using aggregate plugin-only semantics.
+	 * Create a context that suppresses semantic inference only for a nonempty,
+	 * plugin-only set of declaration sources.
 	 *
-	 * @param artifactId the artifact to resolve.
-	 * @param declarationSources the declaration sources backing the artifact.
-	 * @param branchFile the file used for branch lookup, or {@literal null}.
-	 * @param projectVersion the project version used for branch rule selection.
-	 * @return a resolution context that suppresses semver inference only when the
-	 * source collection is non-empty and every source is a plugin.
+	 * @param branchFile the file used for branch lookup, or {@code null} if
+	 * unavailable.
 	 */
 	public static ResolutionContext forAggregate(ArtifactId artifactId,
 			Collection<DeclarationSource> declarationSources, @Nullable VirtualFile branchFile,

@@ -37,7 +37,7 @@ public class ArtifactReferenceContextVisitor extends PsiElementVisitor {
 	/**
 	 * Create a new {@code ArtifactReferenceContextVisitor}.
 	 *
-	 * @param dependencyContext the build-tool context used to recognize version
+	 * @param dependencyContext the build-tool context used to supported version
 	 * elements and resolve them to artifact references.
 	 */
 	public ArtifactReferenceContextVisitor(ProjectDependencyContext dependencyContext) {
@@ -48,7 +48,7 @@ public class ArtifactReferenceContextVisitor extends PsiElementVisitor {
 	 * Resolve the visited element and forward a successful resolution to
 	 * {@link #visitArtifactReference(PsiElement, ArtifactReferenceContext)}.
 	 *
-	 * <p>Elements that the context does not recognize as a version declaration, and
+	 * <p>Elements that the context does not support as a version declaration, and
 	 * references that do not resolve, are skipped without invoking the hook.
 	 *
 	 * @param element the element offered by the platform during the visit.
@@ -69,7 +69,7 @@ public class ArtifactReferenceContextVisitor extends PsiElementVisitor {
 	 *
 	 * <p>The default implementation does nothing. Subclasses override it to inspect
 	 * or report the declaration. It is invoked only for elements the context
-	 * recognizes as version declarations and whose {@link ArtifactReferenceContext}
+	 * supports as version declarations and whose {@link ArtifactReferenceContext}
 	 * resolved successfully.
 	 *
 	 * @param element the version element that produced the reference.

@@ -41,10 +41,9 @@ import com.intellij.util.TimeoutUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Offline, in-memory {@link TicketRepository} used to exercise the Upgrade Plan
- * ticket workflow without a live ticket system. Milestones and labels are fixed
- * catalogs; searches and creation add simulated network latency and keep
- * created tickets in memory for the IDE session only. Not for production use.
+ * Offline ticket repository for development. Tickets last for the IDE session.
+ * <p>Operations simulate latency and occasional failures. Not for production
+ * use.
  *
  * @author Mark Paluch
  */

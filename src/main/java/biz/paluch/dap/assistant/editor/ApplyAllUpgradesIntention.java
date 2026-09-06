@@ -51,21 +51,11 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Intention that applies all dependency upgrades of one {@link UpgradeStrategy}
- * within the current file in a single batch.
- *
- * <p>Counterpart to the platform's {@code FixAllHighlightingProblems} option
- * for {@link UpdateDependencyVersionQuickFix}: it first gathers registered
- * daemon fixes of the same strategy, falls back to recomputing the annotator's
- * upgrade contexts when no highlights are available, and applies each update at
- * its version literal through
- * {@link ProjectDependencyContext#applyUpdate(PsiElement, DependencyUpdate)}.
- *
- * <p>Preview gathers the updates from the physical file and replays them onto
- * the non-physical preview copy, rendering a whole-file diff.
+ * Applies one upgrade strategy throughout the current file.
+ * <p>Uses registered fixes, or resolves declarations if highlighting is
+ * unavailable. Preview applies the same updates to a copy of the file.
  *
  * @author Mark Paluch
- * @see UpdateDependencyVersionQuickFix#getOptions()
  */
 class ApplyAllUpgradesIntention implements IntentionAction, Iconable {
 

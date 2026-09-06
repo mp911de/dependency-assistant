@@ -44,16 +44,10 @@ import com.intellij.openapi.vfs.VirtualFile;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Version-control operations for applying the Upgrade Plan, built entirely on
- * the general IntelliJ VCS and DVCS abstractions: commits go through the VCS's
- * {@link CheckinEnvironment}, repositories and branches come from
- * {@link VcsRepositoryManager}, and push goes through the VCS's registered
- * {@link PushSupport}. No VCS-specific plugin classes are referenced, so this
- * class loads and degrades gracefully when a particular VCS plugin is absent.
- *
- * <p>File operations use the supplied plan scope. Repository-level branch and
- * push operations currently use the first repository known to the project;
- * multi-repository selection is not supported.
+ * Upgrade Plan version-control operations through platform VCS abstractions. No
+ * VCS-specific plugin is required.
+ * <p>File operations use the supplied scope. Branch and push operations use the
+ * first project repository. Multi-repository selection is not supported.
  *
  * @author Mark Paluch
  */
@@ -76,16 +70,12 @@ class PlanVcs {
 		this.repositoryManager = VcsRepositoryManager.getInstance(project);
 	}
 
-	/**
-	 * Return whether the project has any active version control.
-	 */
 	boolean hasVcs() {
 		return vcsManager.hasActiveVcss();
 	}
 
 	/**
-	 * Return whether the plan can be pushed, that is, the first project
-	 * repository's VCS contributes the platform push support.
+	 * Return whether the first repository provides push support.
 	 */
 	boolean canPush() {
 
@@ -94,8 +84,7 @@ class PlanVcs {
 	}
 
 	/**
-	 * Return the scope files that already carry uncommitted changes on any
-	 * changelist.
+	 * Return scope files with uncommitted changes on any changelist.
 	 */
 	FileScope dirtyInScope(FileScope scope) {
 
@@ -114,12 +103,10 @@ class PlanVcs {
 	}
 
 	/**
-	 * Shelve the uncommitted changes on the scope files and roll them back, leaving
-	 * the scope clean for the apply run. Must run on a background thread; reports
-	 * progress through the current indicator.
-	 *
-	 * @return the created shelf, or {@literal null} when the scope carries no
-	 * changes.
+	 * Shelve and roll back uncommitted scope changes. Call from a background
+	 * thread.
+	 * @return the shelf, or {@literal null} if there are no changes.
+	 * @throws VcsException if shelving fails.
 	 */
 	@Nullable
 	ShelvedChangeList shelve(FileScope scope, String message) throws VcsException {
@@ -137,8 +124,7 @@ class PlanVcs {
 	}
 
 	/**
-	 * Restore a shelf created by {@link #shelve}. Asynchronous: the shelf manager
-	 * runs its own background task and posts its own result notification.
+	 * Restore a shelf asynchronously. The shelf manager reports the outcome.
 	 */
 	void unshelve(ShelvedChangeList shelf) {
 		ShelveChangesManager.getInstance(project)
@@ -146,10 +132,9 @@ class PlanVcs {
 	}
 
 	/**
-	 * Commit the current changes to the scope files with the given message,
-	 * capturing only what changed since the previous commit.
-	 *
-	 * @return whether version control found and committed changes in the scope.
+	 * Commit current scope changes.
+	 * @return whether changes were found and committed.
+	 * @throws VcsException if commit is unsupported or fails.
 	 */
 	boolean commit(FileScope scope, String message) throws VcsException {
 
@@ -170,21 +155,14 @@ class PlanVcs {
 		return true;
 	}
 
-	/**
-	 * Return whether the scope still carries changes after a commit attempt.
-	 */
 	boolean hasChanges(FileScope scope) {
 		return !refreshedChanges(scope).isEmpty();
 	}
 
 	/**
-	 * Push the current branch of the first project repository through the VCS's
-	 * push support, targeting the tracked branch or a same-named new branch on the
-	 * default remote. Asynchronous: the push support runs its own background task
-	 * and posts its own result notification.
-	 *
-	 * @throws IllegalStateException when the repository has no push support or no
-	 * resolvable push target (fresh repository, no remotes).
+	 * Push the first repository using its VCS-provided source and default target.
+	 * @throws IllegalStateException if push support, source or target is
+	 * unavailable.
 	 */
 	@SuppressWarnings({"rawtypes", "unchecked"})
 	void push() {
@@ -205,9 +183,8 @@ class PlanVcs {
 	}
 
 	/**
-	 * Return the current branch name of the first project repository, used to
-	 * default the milestone, or {@literal null} when that repository is not on a
-	 * named branch. Must run on a background thread.
+	 * Return the first repository's branch name, or {@literal null} without a named
+	 * branch. Call from a background thread.
 	 */
 	@Nullable
 	String getCurrentBranch() {

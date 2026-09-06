@@ -22,36 +22,14 @@ import com.intellij.patterns.PatternCondition;
 import com.intellij.util.ProcessingContext;
 
 /**
- * Factory methods for named IntelliJ {@link PatternCondition PatternConditions}
- * backed by ordinary Java predicates.
- *
- * <p>Completion contributors use this adapter to combine IntelliJ's declarative
- * PSI patterns with existing parser predicates such as
- * {@code isVersionLiteral(...)}. The pattern retains a debug name while the
- * semantic test remains in the parser or PSI utility that owns the rule.
- *
- * <p>The adapter ignores {@link ProcessingContext}. Implement
- * {@link PatternCondition} directly when matching depends on the context or
- * contributes values to it.
+ * Adapt Java predicates to IntelliJ {@link PatternCondition PatternConditions}.
+ * <p>Implement {@code PatternCondition} directly when matching needs to read or
+ * update the {@link ProcessingContext}.
  *
  * @author Mark Paluch
  */
 public class PatternConditions {
 
-	/**
-	 * Create a named pattern condition from a stateless predicate.
-	 *
-	 * <p>The {@code debugName} should describe the semantic role of the condition
-	 * in the surrounding pattern, for example {@code "versionNamedArgumentLiteral"}
-	 * rather than the mechanics of the PSI traversal. Keeping these names stable
-	 * makes completion patterns easier to inspect and debug.
-	 *
-	 * @param <T> the matched value type.
-	 * @param debugName the name exposed by the IntelliJ pattern infrastructure.
-	 * @param predicate the element predicate that owns the matching rule.
-	 * @return a {@link PatternCondition} suitable for use with
-	 * {@code ElementPattern.with(...)}.
-	 */
 	public static <T> PatternCondition<T> conditional(
 			String debugName,
 			Predicate<? super T> predicate) {

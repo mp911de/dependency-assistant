@@ -25,30 +25,11 @@ import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Repository-backed GitHub Actions dependency declared by a workflow
- * {@code uses:} value.
- *
- * <p>This record is the boundary between YAML syntax and dependency metadata.
- * It retains the repository coordinates that identify the action release source
- * and the raw ref that determines how updates should be rendered back into the
- * source file.
- *
- * <p>Any path segment after the repository name is intentionally not part of
- * this contract. GitHub action releases are resolved at repository level, so
- * {@code owner/repository/path/to/action@ref} and {@code owner/repository@ref}
- * share the same dependency identity. The ref is kept as written, without
- * semantic normalization, because a workflow pinned to an SHA should continue
- * to be updated as an SHA while still allowing the user-facing version to be
- * shown as explanatory metadata.
- *
- * @param artifactId the GitHub repository owner and repository, used as the
- * dependency artifact.
- * @param version the version ref portion of the declaration, or {@literal null}
- * if the declaration has no usable version reference.
+ * Repository action with its raw ref retained for style-preserving updates.
  *
  * @author Mark Paluch
- * @see GitHubWorkflowParser
- * @see RefStyle
+ * @param version the ref after {@code @}, or {@literal null} if absent.
+ * @see GitHubAction
  */
 record UsesRepositoryAction(ArtifactId artifactId, @Nullable String version) implements GitHubAction, HasArtifactId {
 
@@ -72,30 +53,17 @@ record UsesRepositoryAction(ArtifactId artifactId, @Nullable String version) imp
 	}
 
 	/**
-	 * Return the declared version source for dependency analysis.
-	 *
-	 * <p>An action without a usable ref has repository identity but no declared
-	 * version. This distinction lets callers collect the action as a dependency
-	 * without manufacturing version metadata that was not present in the workflow.
-	 *
-	 * @return the declared version source, or an absent source when the ref is
-	 * absent.
+	 * Return the declared version source, or an absent source if the ref is
+	 * missing.
 	 */
 	public VersionSource toVersionSource() {
 		return VersionSource.from(version());
 	}
 
 	/**
-	 * Return the replacement text that preserves the workflow's ref style.
-	 *
-	 * <p>Version-style declarations are updated with the release version.
-	 * SHA-pinned declarations are updated with the release commit SHA when that
-	 * metadata is available and carry the resolved version as explanatory text. If
-	 * no SHA is available, the release version is returned as the safest available
-	 * replacement text.
-	 *
-	 * @param gitVersion the resolved release version to render.
-	 * @return the ref text and optional managed version comment.
+	 * Render an update in the declared ref style.
+	 * <p>SHA-pinned refs include a version comment. If the release has no SHA, the
+	 * update falls back to its version text.
 	 */
 	public VersionText getVersion(GitVersion gitVersion) {
 
@@ -109,36 +77,19 @@ record UsesRepositoryAction(ArtifactId artifactId, @Nullable String version) imp
 		return new VersionText(text, "");
 	}
 
-	/**
-	 * Return the rendering style implied by the declared ref.
-	 *
-	 * <p>Callers use the style to preserve the user's pinning model when offering
-	 * completions or applying updates.
-	 *
-	 * @return the rendering style of the declared ref.
-	 */
 	public RefStyle getStyle() {
 		return RefStyle.from(version());
 	}
 
 	/**
-	 * Version text prepared for insertion into a workflow scalar.
-	 * <p>The optional comment is managed metadata for SHA-pinned declarations and
-	 * is intentionally kept separate from the scalar replacement text.
-	 *
-	 * @param text the ref text to insert after {@code @}.
-	 * @param comment the managed version comment, or an empty string when no
-	 * comment should be written.
+	 * Ref text and an optional managed version comment.
+	 * @param comment an empty string when no comment should be written.
 	 */
 	record VersionText(String text, String comment) {
 
 		/**
-		 * Create a replacement that pins to the immutable commit SHA, regardless of the
-		 * declared ref style.
-		 *
-		 * @param gitVersion the resolved release version to pin.
-		 * @return the SHA replacement text with the version as managed comment.
-		 * @throws IllegalStateException if {@code gitVersion} carries no SHA.
+		 * Pin to the full commit SHA with the version as a managed comment.
+		 * @throws IllegalStateException if the release has no SHA.
 		 */
 		static VersionText create(GitVersion gitVersion) {
 			return new VersionText(gitVersion.getRequiredSha(), gitVersion.toString());

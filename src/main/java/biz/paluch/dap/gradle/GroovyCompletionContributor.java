@@ -84,10 +84,8 @@ public class GroovyCompletionContributor extends CompletionContributor {
 	private static final PatternCondition<PsiFile> IS_GRADLE_GROOVY_DSL_FILE = PatternConditions.conditional(
 			"isGradleGroovyDslFile", GradleUtils::isGroovyDsl);
 
-	// Any element that classifies as a Gradle version position: inline notation,
-	// command-platform string, map version argument, version-block constraint,
-	// plugin version, or a backing version property. Completion only applies to a
-	// constant version literal, so interpolated GString literals are excluded.
+	// Completion requires a constant version literal, excluding interpolated
+	// GStrings.
 	private static final PatternCondition<PsiElement> VERSION_POSITION_CONDITION = PatternConditions.conditional(
 			"versionPosition", GroovyCompletionContributor::isVersionCompletionPosition);
 

@@ -81,44 +81,20 @@ class GradleUtils {
 	 */
 	static final Set<String> PLATFORM_FUNCTIONS = Set.of("platform", "enforcedPlatform", "mavenBom");
 
-	/**
-	 * Name of the plugins section.
-	 */
 	static final String PLUGINS = "plugins";
 
-	/**
-	 * Name of the {@code id} plugin/catalog key.
-	 */
 	static final String ID = "id";
 
-	/**
-	 * Name of the Kotlin DSL {@code kotlin(...)} plugin helper.
-	 */
 	static final String KOTLIN = "kotlin";
 
-	/**
-	 * Name of the Kotlin DSL {@code embeddedKotlin(...)} plugin helper.
-	 */
 	static final String EMBEDDED_KOTLIN = "embeddedKotlin";
 
-	/**
-	 * Name of the {@code alias} catalog consumer call.
-	 */
 	private static final String ALIAS = "alias";
 
-	/**
-	 * Name of the {@code group} dependency key.
-	 */
 	static final String GROUP = "group";
 
-	/**
-	 * Name of the {@code name} dependency key.
-	 */
 	static final String NAME = "name";
 
-	/**
-	 * Name of the {@code version} dependency key/call.
-	 */
 	static final String VERSION = "version";
 
 	static final String GROOVY_SETTINGS = "settings.gradle";
@@ -138,16 +114,10 @@ class GradleUtils {
 	private GradleUtils() {
 	}
 
-	/**
-	 * Return whether the given {@link PsiFile} is a Gradle-related file.
-	 */
 	public static boolean isGradleFile(@Nullable PsiFile file) {
 		return isGradleScript(file) || isGradlePropertiesFile(file) || isVersionCatalog(file);
 	}
 
-	/**
-	 * Return whether the given {@link VirtualFile} is a Gradle-related file.
-	 */
 	public static boolean isGradleFile(@Nullable VirtualFile file) {
 		return isGradleScript(file) || isGradlePropertiesFile(file) || isVersionCatalog(file);
 	}
@@ -261,15 +231,8 @@ class GradleUtils {
 	}
 
 	/**
-	 * Return the physical file behind the given PSI file: the host file for an
-	 * injected fragment, the source file for a non-physical copy (such as a preview
-	 * copy), and the file's own {@link VirtualFile} otherwise.
-	 * <p>Use this for path-based lookups (project root, sibling scripts, version
-	 * catalogs) so they resolve against the real file tree regardless of how the
-	 * PSI was obtained.
-	 * @param file the PSI file to resolve.
-	 * @return the physical file, or {@literal null} for light files without a
-	 * physical origin.
+	 * Find the physical source of an injected fragment or preview copy.
+	 * @return {@literal null} for files without a physical origin.
 	 */
 	public static @Nullable VirtualFile getSourceFile(PsiFile file) {
 
@@ -295,16 +258,12 @@ class GradleUtils {
 	}
 
 	/**
-	 * Locate the Gradle project root for the given file by walking up from its
-	 * containing directory to the first directory holding a
-	 * {@link #GROOVY_SETTINGS} or {@link #KOTLIN_SETTINGS} file.
-	 * <p>The walk is bounded by the linked Gradle project root, or by the content
-	 * root containing the file when it is not part of a linked Gradle project, so a
-	 * stray settings file outside the project cannot expand resolution scope.
-	 *
-	 * @return the first directory containing a settings file. If none is found,
-	 * returns the linked Gradle project root or, for an unlinked file, its
-	 * containing directory.
+	 * Find the nearest settings directory within the linked project or content
+	 * root.
+	 * <p>The boundary prevents unrelated settings files from expanding lookup
+	 * scope.
+	 * @return the settings directory, or the linked root if no settings are found.
+	 * For unlinked files, falls back to the containing directory.
 	 * @throws IllegalStateException if the file has no parent directory.
 	 */
 	public static VirtualFile findProjectRoot(Project project, VirtualFile file) {
@@ -426,11 +385,8 @@ class GradleUtils {
 	}
 
 	/**
-	 * Walk the ancestor directories of {@code file} until one of them matches a
-	 * registered linked Gradle project root.
-	 *
-	 * @return the linked Gradle project root, or {@literal null} if the file is not
-	 * part of a linked Gradle project.
+	 * Find the containing linked Gradle root, or return {@literal null} if
+	 * unlinked.
 	 */
 	public static @Nullable VirtualFile findLinkedProjectRoot(Project project, VirtualFile file) {
 
@@ -453,9 +409,7 @@ class GradleUtils {
 	}
 
 	/**
-	 * Read repositories from already-imported external project data. This is the
-	 * direct consumer side of MavenRepositoriesProjectResolver: that resolver has
-	 * already written MavenRepositoryData nodes into the project node.
+	 * Read repositories from the already-imported Gradle model.
 	 */
 	public static List<RemoteRepository> getRepositoriesFromImportedProject(Project ideaProject,
 			String externalProjectPath) {
@@ -477,8 +431,7 @@ class GradleUtils {
 	}
 
 	/**
-	 * Read repositories from a ProjectData node. MavenRepositoriesProjectResolver
-	 * stores MavenRepositoryData as direct children of the project node.
+	 * Read HTTP(S) repositories from imported project data.
 	 */
 	public static List<RemoteRepository> getRepositories(DataNode<ProjectData> projectNode) {
 

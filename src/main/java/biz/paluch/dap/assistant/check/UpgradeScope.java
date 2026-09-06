@@ -25,64 +25,40 @@ import biz.paluch.dap.util.Sequence;
 import com.intellij.psi.PsiFile;
 
 /**
- * The outcome of resolving the build files a single {@link DependencyCheck}
- * runs over.
- *
- * <p>The entries list is retained and exposed directly. Callers must not modify
- * it after construction.
+ * Build files selected for a dependency check.
+ * <p>The entries are retained directly and must not be modified.
  *
  * @author Mark Paluch
- * @param entries the in-scope build files. Empty when nothing could be
- * resolved.
  * @param reason how the scope was resolved or why it is empty.
  */
 public record UpgradeScope(List<Entry> entries, Reason reason) implements Sequence<UpgradeScope.Entry> {
 
 	/**
-	 * Create a discovery scope from the given entries, gathered without an explicit
-	 * selection.
-	 *
-	 * @param entries the discovered build files and their contexts.
-	 * @return a scope classified as {@link Reason#DISCOVERY}.
+	 * Create a discovery scope without an explicit selection.
 	 */
 	public static UpgradeScope discover(List<Entry> entries) {
 		return new UpgradeScope(entries, Reason.DISCOVERY);
 	}
 
 	/**
-	 * Create a successfully resolved scope from the given entries.
-	 *
-	 * @param entries the resolved build files and their contexts.
-	 * @return a scope classified as {@link Reason#SUCCESS}.
+	 * Create a successfully resolved scope.
 	 */
 	public static UpgradeScope resolved(List<Entry> entries) {
 		return new UpgradeScope(entries, Reason.SUCCESS);
 	}
 
 	/**
-	 * Create an empty scope carrying why nothing was resolved.
-	 *
-	 * @param reason why no build file was resolved.
-	 * @return an empty scope carrying the given reason.
+	 * Create an empty scope with the supplied reason.
 	 */
 	public static UpgradeScope notFound(Reason reason) {
 		return new UpgradeScope(List.of(), reason);
 	}
 
-	/**
-	 * Return whether no build file is in scope.
-	 * @return {@literal true} if {@link #entries()} is empty; {@literal false}
-	 * otherwise.
-	 */
 	@Override
 	public boolean isEmpty() {
 		return entries.isEmpty();
 	}
 
-	/**
-	 * Return the number of build files in scope.
-	 * @return the number of build files in scope.
-	 */
 	public int size() {
 		return entries.size();
 	}
@@ -92,20 +68,13 @@ public record UpgradeScope(List<Entry> entries, Reason reason) implements Sequen
 		return entries().iterator();
 	}
 
-	/**
-	 * Return the in-scope build files as a stream.
-	 *
-	 * @return a stream over the in-scope entries.
-	 */
 	@Override
 	public Stream<Entry> stream() {
 		return entries.stream();
 	}
 
 	/**
-	 * Classification of how a scope was resolved, covering both populated scopes
-	 * ({@link #DISCOVERY}, {@link #SUCCESS}) and the reasons a scope is empty
-	 * ({@link #NO_BUILD_FILES}, {@link #NOT_IMPORTED}).
+	 * How scope resolution completed.
 	 */
 	public enum Reason {
 
@@ -132,12 +101,7 @@ public record UpgradeScope(List<Entry> entries, Reason reason) implements Sequen
 	}
 
 	/**
-	 * One in-scope build file paired with the {@link ProjectDependencyContext
-	 * context} that operates on it.
-	 *
-	 * @param context the dependency context for the file. The context is always
-	 * {@link ProjectDependencyContext#isAvailable() available}.
-	 * @param buildFile the build file to scan and write back to.
+	 * A build file and its available dependency context.
 	 */
 	public record Entry(ProjectDependencyContext context, PsiFile buildFile) {
 	}

@@ -17,11 +17,7 @@
 package biz.paluch.dap.artifact;
 
 /**
- * Thrown when a release source definitively cannot resolve the requested
- * artifact, for example because its coordinates are invalid or the upstream
- * repository reports that the artifact is absent.
- *
- * <p>The unresolved coordinates are available through {@link #getArtifactId()}.
+ * Thrown when a release source cannot find the requested artifact.
  *
  * @author Mark Paluch
  */
@@ -29,22 +25,11 @@ public class ArtifactNotFoundException extends RuntimeException {
 
 	private final ArtifactId artifactId;
 
-	/**
-	 * Create a new {@code ArtifactNotFoundException} for the missing artifact.
-	 *
-	 * @param message the failure detail.
-	 * @param artifactId the artifact that could not be resolved.
-	 */
 	public ArtifactNotFoundException(String message, ArtifactId artifactId) {
 		super(message);
 		this.artifactId = artifactId;
 	}
 
-	/**
-	 * Return the artifact that could not be resolved.
-	 *
-	 * @return the unresolved artifact coordinates.
-	 */
 	public ArtifactId getArtifactId() {
 		return artifactId;
 	}

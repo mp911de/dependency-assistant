@@ -27,10 +27,7 @@ import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.project.Project;
 
 /**
- * Menu action that queues a {@link RefreshReleaseMetadata} background task.
- *
- * <p>The action is visible and enabled when the project has an applicable
- * dependency integration or existing dependency or release state.
+ * Menu action for refreshing dependency release metadata.
  *
  * @author Mark Paluch
  */

@@ -7,10 +7,6 @@
  * Upgrade policy consumes this model without adding PSI or presentation
  * concerns to it.
  *
- * @see biz.paluch.dap.artifact.ArtifactId
- * @see biz.paluch.dap.artifact.ArtifactVersion
- * @see biz.paluch.dap.artifact.DependencyCollector
- * @see biz.paluch.dap.artifact.ReleaseSource
  */
 @org.jspecify.annotations.NullMarked
 package biz.paluch.dap.artifact;

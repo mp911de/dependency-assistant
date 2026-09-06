@@ -34,9 +34,7 @@ import com.intellij.psi.PsiFile;
 import com.intellij.util.IncorrectOperationException;
 
 /**
- * Intention action that launches a dependency check over the current build
- * file, opening the upgrade review for the resolved dependencies. Available
- * whenever the file is backed by a supported dependency context.
+ * Opens an upgrade review for the current supported build file.
  *
  * @author Mark Paluch
  */

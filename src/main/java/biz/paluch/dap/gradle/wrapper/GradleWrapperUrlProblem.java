@@ -23,30 +23,18 @@ import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.modcommand.PsiUpdateModCommandAction;
 
 /**
- * A specific way a Gradle Wrapper distribution declaration is malformed or
- * unsafe.
- *
- * <p>Problem variants supply their localized message and any repair specific to
- * that problem. The inspection separately adds the generic default-URL repair.
+ * Problem with a Gradle Wrapper distribution declaration.
+ * <p>The inspection supplies the generic default-URL repair separately.
  *
  * @author Mark Paluch
  */
 sealed interface GradleWrapperUrlProblem {
 
-	/**
-	 * Return the localized inspection message for this problem.
-	 *
-	 * @return the localized inspection message.
-	 */
 	String getMessage();
 
 	/**
-	 * Return repairs that preserve the supplied distribution version where
+	 * Return problem-specific repairs, preserving the supplied version where
 	 * possible.
-	 *
-	 * @param version the version to use when rewriting the distribution URL.
-	 * @return the specific quick-fixes offered for this problem, excluding the
-	 * generic "use default URL" fallback added by the inspection.
 	 */
 	List<PsiUpdateModCommandAction<PropertyImpl>> getFixes(String version);
 

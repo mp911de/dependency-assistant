@@ -24,11 +24,11 @@ import biz.paluch.dap.artifact.RemoteUrl;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Recognizes {@code sourceforge.net} project pages and {@code *.code.sf.net}
- * SCM hosts. SourceForge is project-based, not owner/repository-based: the
- * project name is extracted from {@code /projects/{project}} and
- * {@code /p/{project}} paths, and SCM URLs may be Git, Subversion, or Mercurial
- * alike, so detection does not gate on the repository type.
+ * supports {@code sourceforge.net} project pages and {@code *.code.sf.net} SCM
+ * hosts. SourceForge is project-based, not owner/repository-based: the project
+ * name is extracted from {@code /projects/{project}} and {@code /p/{project}}
+ * paths, and SCM URLs may be Git, Subversion, or Mercurial alike, so detection
+ * does not gate on the repository type.
  *
  * <p>File releases are the release concept, so the releases list is
  * {@code /projects/{project}/files/}. There is no generic per-tag page, and the

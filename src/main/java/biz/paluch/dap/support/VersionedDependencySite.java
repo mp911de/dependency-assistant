@@ -23,48 +23,20 @@ import biz.paluch.dap.artifact.VersionSource;
 import com.intellij.psi.PsiElement;
 
 /**
- * Extension of {@link DependencySite} for dependency sites with a resolved
- * version.
- * <p>In addition to the package identity, provenance, and declaration anchor
- * exposed through {@link DependencySite}, implementations provide the concrete
- * {@link #getVersion() dependency version} and its separate PSI anchor. The
- * declaration and version anchors may identify different elements.
+ * A dependency site with a resolved version and PSI anchor. The declaration and
+ * version anchors may point to different elements.
  *
  * @author Mark Paluch
- * @see ArtifactVersion
- * @see DependencySite
  */
 public interface VersionedDependencySite extends DependencySite {
 
-	/**
-	 * Return the resolved dependency version.
-	 *
-	 * @return the dependency version.
-	 */
 	ArtifactVersion getVersion();
 
 	/**
-	 * Return the PSI element that points to the {@link #getVersion() version
-	 * value}.
-	 * <p>The returned element typically represents the version literal or property
-	 * usage from which the dependency version was obtained.
-	 *
-	 * @return the PSI element representing the dependency version.
+	 * Return the PSI anchor for the version literal or property usage.
 	 */
 	PsiElement getVersionElement();
 
-	/**
-	 * Create a versioned dependency site from a complete package identity,
-	 * provenance, and PSI anchors.
-	 *
-	 * @param pkg the package identity.
-	 * @param version the artifact version.
-	 * @param versionSource the version source, an inline-version or a property.
-	 * @param declarationSource the declaration source.
-	 * @param declarationElement element that represents this dependency site.
-	 * @param versionElement element that represents the version literal.
-	 * @return the versioned dependency site.
-	 */
 	static VersionedDependencySite of(PackageIdentity pkg, ArtifactVersion version,
 			VersionSource versionSource, DeclarationSource declarationSource,
 			PsiElement declarationElement, PsiElement versionElement) {

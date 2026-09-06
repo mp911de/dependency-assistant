@@ -23,11 +23,9 @@ import com.intellij.openapi.project.Project;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Base for Upgrade Plan toolbar actions registered in {@code plugin.xml}. Operates
- * on the {@link UpgradePlanService} resolved from the action's project; enabled
- * while the plan has items and no run is in flight. The tool window reflects any
- * resulting change through the {@link UpgradePlanListener} topic, so actions never
- * reach into the panel.
+ * Base for project-scoped Upgrade Plan actions.
+ * <p>Actions are enabled when the plan has items and is idle. Changes reach the
+ * tool window through {@link UpgradePlanListener}.
  *
  * @author Mark Paluch
  */
@@ -41,11 +39,8 @@ abstract class UpgradePlanAction extends DumbAwareAction {
 	}
 
 	/**
-	 * Update the presentation from the resolved plan service, muted during an apply
-	 * run to prevent double-actions.
-	 *
-	 * @param service the plan service; {@literal null} when the event carries no
-	 * project.
+	 * Update action availability for the resolved plan.
+	 * @param service the plan service, or {@literal null} without a project.
 	 */
 	public void update(AnActionEvent e, @Nullable UpgradePlanService service) {
 		e.getPresentation().setEnabled(service != null && service.hasItems() && !service.isBusy());

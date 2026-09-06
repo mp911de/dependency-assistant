@@ -37,10 +37,8 @@ import com.intellij.util.ui.UIUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Apply planned upgrades and create one commit per changed plan item. A plan
- * selection narrows the run to the selected items; without a selection the
- * whole plan is applied. When touched files already carry uncommitted changes,
- * the run offers to shelve them and continue on the clean scope.
+ * Apply plan items with one commit per changed item.
+ * <p>Selection narrows the run. Dirty files must be shelved before proceeding.
  *
  * @author Mark Paluch
  */
@@ -48,9 +46,6 @@ public class ApplyAllAndCommitAction extends ApplyAllAction {
 
 	private static final Logger LOG = Logger.getInstance(ApplyAllAndCommitAction.class);
 
-	/**
-	 * Disabled when the project has no version control to commit into.
-	 */
 	@Override
 	public void update(AnActionEvent e, @Nullable UpgradePlanService service) {
 

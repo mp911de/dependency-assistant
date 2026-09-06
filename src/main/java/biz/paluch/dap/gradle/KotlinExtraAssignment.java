@@ -36,16 +36,9 @@ import org.jetbrains.kotlin.psi.ValueArgument;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Interface representing Kotlin DSL {@code extra} property declarations.
- * <p>Captures the supported declaration shapes behind one factory:
- * <ul>
- * <li>{@code extra["key"] = "value"} / {@code extra["key"] = """value"""} -
- * {@link StringLiteralAssignment plain string assignment}</li>
- * <li>{@code "value".also { extra["key"] = it }} -
- * {@link AlsoReceiverAssignment also-receiver assignment}</li>
- * <li>{@code extra["key"] = buildString { append("value") }} -
- * {@link BuildStringAssignment buildString assignment}</li>
- * </ul>
+ * Kotlin {@code extra} assignment with its editable value.
+ * <p>The value may live outside the assignment, as in {@code "value".also {
+ * extra["key"] = it }}.
  *
  * @author Mark Paluch
  */
@@ -118,25 +111,14 @@ sealed interface KotlinExtraAssignment extends ExtraDeclaration {
 		return null;
 	}
 
-	/**
-	 * @return the string template literal that represents the declared value.
-	 */
 	@Override
 	KtStringTemplateExpression getValueLiteral();
 
-	/**
-	 * @return the binary assignment expression declaring the property.
-	 */
 	@Override
 	KtBinaryExpression getDeclaration();
 
 	/**
-	 * Detect a Kotlin {@code extra} property declaration anchored at the assignment
-	 * expression.
-	 *
-	 * @param expression the candidate assignment element.
-	 * @return the resolved declaration, or {@literal null} if {@code expression} is
-	 * not a supported {@code extra["key"] = value} shape.
+	 * Find the extra declaration, or {@literal null} for an unsupported assignment.
 	 */
 	@Contract("null -> null")
 	static @Nullable KotlinExtraAssignment from(@Nullable KtBinaryExpression expression) {
@@ -164,13 +146,8 @@ sealed interface KotlinExtraAssignment extends ExtraDeclaration {
 	}
 
 	/**
-	 * Detect the indirect {@code "value".also { extra["key"] = it }} form by
-	 * locating the enclosing {@code also} call from a PSI element living inside the
-	 * receiver string template.
-	 *
-	 * @param valuePsi the PSI element inside the {@code also} receiver.
-	 * @return the resolved declaration, or {@literal null} if no matching
-	 * {@code also { extra[...] = it }} declaration is found.
+	 * Find the {@code extra} assignment from its {@code also} receiver.
+	 * @return {@literal null} if no matching assignment exists.
 	 */
 	static @Nullable KotlinExtraAssignment fromAlsoReceiver(PsiElement valuePsi) {
 
@@ -234,11 +211,7 @@ sealed interface KotlinExtraAssignment extends ExtraDeclaration {
 	}
 
 	/**
-	 * {@code extra["key"] = "value"} or {@code extra["key"] = """value"""}
-	 * declaration.
-	 * <p>Example: <pre class="code">
-	 * extra["springVersion"] = "6.2.0"
-	 * </pre>
+	 * A literal {@code extra["key"] = "value"} assignment.
 	 */
 	record StringLiteralAssignment(String getKey, KtStringTemplateExpression getValueLiteral,
 			KtBinaryExpression getDeclaration) implements KotlinExtraAssignment {
@@ -258,10 +231,7 @@ sealed interface KotlinExtraAssignment extends ExtraDeclaration {
 	}
 
 	/**
-	 * {@code "value".also { extra["key"] = it }} declaration.
-	 * <p>Example: <pre class="code">
-	 * "6.2.0".also { extra["springVersion"] = it }
-	 * </pre>
+	 * An {@code "value".also { extra["key"] = it }} assignment.
 	 */
 	record AlsoReceiverAssignment(String getKey, KtStringTemplateExpression getValueLiteral,
 			KtBinaryExpression getDeclaration, KtNameReferenceExpression itReference) implements KotlinExtraAssignment {
@@ -293,12 +263,7 @@ sealed interface KotlinExtraAssignment extends ExtraDeclaration {
 	}
 
 	/**
-	 * {@code extra["key"] = buildString { append("value") }} declaration.
-	 * <p>Example: <pre class="code">
-	 * extra["springVersion"] = buildString {
-	 *     append("6.2.0")
-	 * }
-	 * </pre>
+	 * An {@code extra["key"] = buildString { append("value") }} assignment.
 	 */
 	record BuildStringAssignment(String getKey, KtStringTemplateExpression getValueLiteral,
 			KtBinaryExpression getDeclaration, KtCallExpression buildStringCall) implements KotlinExtraAssignment {

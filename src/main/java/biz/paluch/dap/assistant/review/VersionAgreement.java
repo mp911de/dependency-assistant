@@ -25,25 +25,17 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
 /**
- * The largest subset of a candidate bucket agreeing on one effective current
- * version, paired with that version.
- *
- * <p>A drifting candidate agrees with every version one of its occurrences is
- * declared at.
+ * Largest candidate cohort agreeing on a current version.
+ * <p>A drifting candidate can agree with any of its declared versions.
  *
  * @author Mark Paluch
- * @param version the effective current version shared by the members.
- * @param members the agreeing candidates in bucket order.
+ * @param members agreeing candidates in input order.
  */
 record VersionAgreement(ArtifactVersion version, List<SingleTableRow> members) {
 
 	/**
-	 * Select the largest version-agreeing subset within the bucket, tie-breaking
-	 * equal sizes to the higher version.
-	 *
-	 * @param bucket the candidates to select from.
-	 * @return the agreement, or {@literal null} when the bucket declares no
-	 * version.
+	 * Select the largest agreeing cohort, preferring the higher version on ties.
+	 * @return the agreement, or {@literal null} if no version is declared.
 	 */
 	static @Nullable VersionAgreement select(List<SingleTableRow> bucket) {
 
@@ -68,14 +60,6 @@ record VersionAgreement(ArtifactVersion version, List<SingleTableRow> members) {
 		return selected;
 	}
 
-	/**
-	 * Return whether this agreement is a better fit than the given one: it carries
-	 * more agreeing members, or equally many at a higher version.
-	 *
-	 * @param other the agreement to compare against.
-	 * @return {@literal true} if this agreement supersedes {@code other};
-	 * {@literal false} otherwise.
-	 */
 	boolean isBetterFit(VersionAgreement other) {
 
 		if (size() != other.size()) {

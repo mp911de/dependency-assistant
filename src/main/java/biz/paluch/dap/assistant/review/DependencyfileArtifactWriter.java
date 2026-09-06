@@ -28,7 +28,6 @@ import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
 import biz.paluch.dap.metadata.ProjectMetadata;
 import biz.paluch.dap.metadata.ProjectMetadataService;
 import biz.paluch.dap.notify.Notifications;
-import biz.paluch.dap.rule.ArtifactPattern;
 import biz.paluch.dap.rule.DependencyfileArtifacts;
 import biz.paluch.dap.rule.DependencyfileArtifacts.ArtifactEntry;
 import biz.paluch.dap.rule.DependencyfileService;
@@ -51,14 +50,9 @@ import com.intellij.util.IncorrectOperationException;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Adds review-row display names to the {@code artifacts} section of a
- * {@code dependencyfile.json}, creating the descriptor when none exists.
- *
- * <p>A single coordinate uses its narrowest
- * {@link ArtifactPattern#keyFor(ArtifactId) pattern key}. A grouped row passes
- * all member coordinates to {@link DependencyfileArtifacts}, which selects a
- * shared wildcard when possible and otherwise writes exact entries. Existing
- * entries have their names replaced.
+ * Write dependency display names to {@code dependencyfile.json}.
+ * <p>Existing names are replaced. Grouped rows use a shared pattern where
+ * possible.
  *
  * @author Mark Paluch
  */
@@ -80,9 +74,8 @@ class DependencyfileArtifactWriter {
 	}
 
 	/**
-	 * Write the row's name into the active descriptor (creating it if absent), then
-	 * open it in the editor with the caret selecting the first entry's {@code name}
-	 * value.
+	 * Write the row's name to the active descriptor and open it for editing. Create
+	 * a descriptor if none exists.
 	 */
 	public void add(TableRow row) {
 
@@ -120,10 +113,8 @@ class DependencyfileArtifactWriter {
 	}
 
 	/**
-	 * Open the project-local descriptor when it already exists, otherwise create a
-	 * starter {@code .idea/dependencyfile.json} populated with the used artifact
-	 * ids as unconstrained rules.
-	 *
+	 * Open the project-local descriptor, creating it from known artifacts if
+	 * absent.
 	 * @throws IOException when the descriptor cannot be created.
 	 */
 	void createOrOpen() throws IOException {
@@ -134,12 +125,8 @@ class DependencyfileArtifactWriter {
 	}
 
 	/**
-	 * Open the project-local descriptor when it already exists, otherwise create a
-	 * starter {@code .idea/dependencyfile.json} populated with the given artifact
-	 * ids as unconstrained rules.
-	 *
-	 * @param artifactIds the project's known artifact ids to seed the descriptor
-	 * with.
+	 * Open the project-local descriptor, creating {@code .idea/dependencyfile.json}
+	 * with unconstrained entries for the supplied artifacts if absent.
 	 * @throws IOException when the descriptor cannot be created.
 	 */
 	void createOrOpen(Collection<? extends ArtifactId> artifactIds) throws IOException {
@@ -170,9 +157,8 @@ class DependencyfileArtifactWriter {
 	}
 
 	/**
-	 * Search the project-local descriptor locations (project root then
-	 * {@code .idea/}); the broader trusted-project discovery used for "add" does
-	 * not apply when seeding a fresh project-local descriptor.
+	 * Restrict discovery to this project. Seeding must not alter a descriptor from
+	 * another trusted project.
 	 */
 	private @Nullable VirtualFile findProjectDescriptor() {
 

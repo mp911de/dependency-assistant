@@ -23,27 +23,16 @@ import java.util.function.Consumer;
 import com.intellij.openapi.progress.ProgressIndicator;
 
 /**
- * Repository-like container of tickets inside a ticket system.
+ * Tickets within one bound target, such as a repository or project.
  *
- * <p>A repository represents one system target, for example a GitHub
- * repository, a GitLab project, or a Jira project. It is obtained from a
- * {@link TicketSystem} and supplies the ticket objects, milestones, labels, and
- * states accepted by query and creation operations.
+ * <p>Returned tickets, milestones, labels, and states belong to this
+ * repository. Use these instances for filtering and assignment. Do not supply
+ * foreign values.
  *
- * <p>{@link Ticket}, {@link Milestone}, {@link Label}, and {@link TicketState}
- * instances returned here are implementation-owned. Callers may display their
- * user-facing data and pass them back to the same repository, but must not
- * synthesize foreign instances for filtering or assignment.
- *
- * <p>Search and create are separate operations by design. Reuse-by-title,
- * default milestone or label selection, and open-state filtering are caller
- * policy. The repository never closes or mutates existing tickets. Closing is
- * expressed later through commit messages via
- * {@link TicketSystem#getCloseReference(TicketKey)}.
- *
- * <p>Operations may perform blocking network IO and should be invoked from
- * cancelable background work. Ticket-reference rendering is local and must not
- * perform network IO.
+ * <p>Callers decide whether to reuse existing tickets and which defaults to
+ * apply. This API does not modify existing tickets. Operations may block and
+ * belong in cancelable background work, except reference rendering, which must
+ * remain local.
  *
  * @author Mark Paluch
  * @see TicketSystem#getRepository()
@@ -51,101 +40,58 @@ import com.intellij.openapi.progress.ProgressIndicator;
 public interface TicketRepository {
 
 	/**
-	 * Find tickets matching the configured query.
+	 * Find tickets using {@link TicketQuery} criteria. An empty list means no
+	 * matches.
 	 *
-	 * <p>Criteria combine as AND; values within one criterion combine as OR. An
-	 * empty criterion is unconstrained.
-	 *
-	 * @param indicator progress indicator used to observe cancellation.
-	 * @param query callback that configures titles, states, milestones, and labels
-	 * before the search.
-	 * @return all matching tickets, or an empty list if none match.
-	 * @throws IOException if the ticket system cannot be reached or rejects the
-	 * search.
+	 * @throws IOException if the search fails.
 	 */
 	List<? extends Ticket> findTickets(ProgressIndicator indicator, Consumer<TicketQuery> query) throws IOException;
 
 	/**
-	 * Create a ticket with the given title and specification.
+	 * Create a ticket with the supplied optional specification.
 	 *
-	 * <p>The title is positional so ticket creation cannot proceed without it.
-	 * Description, milestone, and labels are optional parts of the
-	 * {@link TicketSpec}.
-	 *
-	 * @param indicator progress indicator used to observe cancellation.
-	 * @param title the ticket title.
-	 * @param spec callback that configures the description, milestone, and labels
-	 * before creation.
-	 * @return the newly created ticket.
-	 * @throws IOException if the ticket system cannot be reached or rejects the
-	 * creation.
+	 * @throws IOException if creation fails.
 	 */
 	Ticket createTicket(ProgressIndicator indicator, String title, Consumer<TicketSpec> spec) throws IOException;
 
 	/**
-	 * Return the states that can be used to filter this repository's tickets.
+	 * Return states available for filtering.
 	 *
-	 * @param indicator progress indicator used to observe cancellation.
-	 * @return the materialized ticket states known to this repository.
-	 * @throws IOException if the states are server-defined and the ticket system
-	 * cannot be reached.
+	 * @throws IOException if server-defined states cannot be retrieved.
 	 */
 	List<? extends TicketState> getTicketStates(ProgressIndicator indicator) throws IOException;
 
 	/**
-	 * Return the open milestones of this repository.
+	 * Return open milestones, or an empty list if none.
 	 *
-	 * @param indicator progress indicator used to observe cancellation.
-	 * @return the materialized open milestones, or an empty list if the repository
-	 * has none.
-	 * @throws IOException if the ticket system cannot be reached and no fallback
-	 * data is available.
+	 * @throws IOException if retrieval fails and no fallback is available.
 	 */
 	List<? extends Milestone> getMilestones(ProgressIndicator indicator) throws IOException;
 
 	/**
-	 * Return the labels of this repository.
+	 * Return labels, or an empty list if none.
 	 *
-	 * @param indicator progress indicator used to observe cancellation.
-	 * @return the materialized labels, or an empty list if the repository has none.
-	 * @throws IOException if the ticket system cannot be reached and no fallback
-	 * data is available.
+	 * @throws IOException if retrieval fails and no fallback is available.
 	 */
 	List<? extends Label> getLabels(ProgressIndicator indicator) throws IOException;
 
 	/**
-	 * Return a thread-safe repository view for non-refreshing reads.
-	 *
-	 * <p>Milestone and label listings from this view must not refresh remote data.
-	 * An empty cached listing means no cached entries are available, not that the
-	 * remote repository has none. Search and creation are outside the portable
-	 * cached contract and may be unsupported.
-	 *
-	 * @return a repository view backed by already available data.
+	 * Return a thread-safe view whose milestone and label listings never refresh
+	 * remote data. Empty lists mean no cached data, not necessarily no remote
+	 * entries. Search and creation may be unsupported.
 	 */
 	TicketRepository cached();
 
 
 	/**
-	 * Return the display reference for the given ticket key.
-	 *
-	 * <p>Examples include {@code #1234} on GitHub and {@code PROJ-123} on Jira.
-	 *
-	 * @param key the persisted or live ticket key to render.
-	 * @return the user-facing ticket reference for IDE presentation.
+	 * Render a ticket key for IDE display without network access.
 	 */
 	String getDisplayReference(TicketKey key);
 
 	/**
-	 * Return the commit-message reference for the given ticket key.
-	 *
-	 * <p>Systems with close keywords may return a closing phrase, for example
-	 * {@code Closes #1234}. Systems without commit-based closing can return a plain
-	 * display reference. An empty string means that no meaningful commit reference
-	 * exists for the key.
-	 *
-	 * @param key the persisted or live ticket key to render.
-	 * @return the commit-message fragment for referencing the ticket.
+	 * Render a commit reference without network access. A closing phrase may be
+	 * used where supported, otherwise a plain reference. Return an empty string
+	 * when no meaningful reference exists.
 	 */
 	String getCloseReference(TicketKey key);
 

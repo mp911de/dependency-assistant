@@ -24,10 +24,7 @@ import com.intellij.util.xmlb.annotations.Tag;
 import com.intellij.util.xmlb.annotations.XCollection;
 
 /**
- * Persistent cache entry for a single repository and its known tags.
- * <p>The entry is keyed by an opaque repository key and stores the browsable
- * repository URL along with the tag names in a serializer-friendly
- * representation.
+ * Persistent repository tags, identified by an opaque repository key.
  *
  * @author Mark Paluch
  */
@@ -38,10 +35,6 @@ public class CachedRepository {
 
 	private @Attribute String url;
 
-	/**
-	 * Epoch-millisecond timestamp of the last write to this entry, or {@code 0} if
-	 * the entry pre-dates expiry tracking and should never be expired.
-	 */
 	@Attribute
 	private long lastSeen = 0L;
 
@@ -108,9 +101,7 @@ public class CachedRepository {
 	}
 
 	/**
-	 * Return a snapshot of the known tag names.
-	 *
-	 * @return an immutable snapshot of the tags.
+	 * Return an immutable snapshot of known tags.
 	 */
 	public List<String> getTags() {
 		synchronized (this.tags) {
@@ -126,9 +117,7 @@ public class CachedRepository {
 	}
 
 	/**
-	 * Return a detached copy for persistence.
-	 *
-	 * @return a copy with an independent tag list.
+	 * Copy for persistence with an independent tag list.
 	 */
 	public CachedRepository snapshot() {
 

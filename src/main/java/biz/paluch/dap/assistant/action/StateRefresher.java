@@ -50,7 +50,7 @@ import org.jspecify.annotations.Nullable;
  * <p>Scheduled refreshes are debounced for {@link #REFRESH_DELAY_MS}
  * milliseconds. Re-collection runs in a non-blocking read action after all
  * documents are committed and indexes are available. Files are grouped under
- * every integration that recognizes them. Groups of at most ten files are
+ * every integration that supports them. Groups of at most ten files are
  * invalidated file by file; larger groups trigger a full integration scan.
  * Highlighting restarts on the UI thread after a completed batch contains at
  * least one supported file.
@@ -155,12 +155,12 @@ public final class StateRefresher implements Disposable {
 	 * Re-collect dependency state for the given files immediately.
 	 *
 	 * <p>The caller must hold a read action. Files are grouped under every
-	 * integration that recognizes them. Groups of at most ten files are invalidated
+	 * integration that supports them. Groups of at most ten files are invalidated
 	 * individually; larger groups trigger a full integration scan.
 	 *
 	 * @param files the files whose owning state should be refreshed.
-	 * @return the supplied files when at least one resolves to a PSI file
-	 * recognized by an integration, or an empty collection otherwise.
+	 * @return the supplied files when at least one resolves to a PSI file supported
+	 * by an integration, or an empty collection otherwise.
 	 */
 	public Collection<VirtualFile> refreshNow(Collection<VirtualFile> files) {
 

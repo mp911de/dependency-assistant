@@ -22,40 +22,34 @@ import com.intellij.notification.NotificationGroupManager;
 import com.intellij.notification.NotificationType;
 
 /**
- * Notification channels of the plugin, one per registered notification group.
- *
- * <p>A channel is the user-facing address of a bounded context: it names the
- * group listed under Settings | Notifications and fixes the display type
- * (balloon or sticky balloon) and logging behaviour declared in
- * {@code plugin.xml}. Callers create notifications through a channel instead of
- * repeating group ids.
+ * Plugin notification groups configured in {@code plugin.xml}.
  *
  * @author Mark Paluch
  */
 public enum NotificationChannel {
 
 	/**
-	 * Outcomes of release metadata refreshes. Transient balloon.
+	 * Outcomes of release metadata refreshes.
 	 */
 	RELEASE_METADATA("biz.paluch.dependency-assistant.release-metadata"),
 
 	/**
-	 * Release metadata prompts awaiting a decision. Sticky balloon.
+	 * Release metadata prompts awaiting a decision.
 	 */
 	RELEASE_METADATA_PROMPT("biz.paluch.dependency-assistant.release-metadata-sticky"),
 
 	/**
-	 * Dependency upgrades applied from the editor or the dependency check. Logged.
+	 * Dependency upgrades applied from the editor or dependency check.
 	 */
 	UPGRADES("biz.paluch.dependency-assistant.upgrades"),
 
 	/**
-	 * Upgrade plan runs: apply, commit, push, and their failures.
+	 * Upgrade plan outcomes.
 	 */
 	PLAN("biz.paluch.dependency-assistant.plan"),
 
 	/**
-	 * Plugin release notes after a plugin update. Sticky balloon, logged.
+	 * Release notes after a plugin update.
 	 */
 	PLUGIN_UPDATE("biz.paluch.dependency-assistant.plugin-update"),
 
@@ -70,20 +64,14 @@ public enum NotificationChannel {
 		this.groupId = groupId;
 	}
 
-	/**
-	 * Return the registered notification group id.
-	 */
 	public String getGroupId() {
 		return groupId;
 	}
 
 	/**
-	 * Create a notification with title and content on this channel.
+	 * Create a notification without showing it.
 	 *
-	 * @param title the notification title.
-	 * @param content the notification content; HTML is rendered.
-	 * @param type the notification type.
-	 * @return the notification, not yet shown.
+	 * @param content the notification content, which may contain HTML.
 	 */
 	public Notification create(String title, String content, NotificationType type) {
 		return getGroup().createNotification(title, content, type);

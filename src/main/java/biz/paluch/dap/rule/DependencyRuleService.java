@@ -27,31 +27,19 @@ import com.intellij.openapi.project.Project;
 public interface DependencyRuleService {
 
 	/**
-	 * Return a resolver that resolves every artifact to
-	 * {@link DependencyRule#absent()}.
-	 *
-	 * @return the absent rule resolver.
+	 * Return a resolver that always returns {@link DependencyRule#absent()}.
 	 */
 	static DependencyRuleService absent() {
 		return AbsentDependencyRuleService.INSTANCE;
 	}
 
-	/**
-	 * Return the rule service for the given project.
-	 *
-	 * @param project the project.
-	 * @return the project rule service.
-	 */
 	static DependencyRuleService getInstance(Project project) {
 		return project.getService(DependencyfileService.class);
 	}
 
 	/**
-	 * Resolve an effective {@link DependencyRule} for the given resolution context.
-	 *
-	 * @param context the resolution input.
-	 * @return the governing dependency rule, or {@link DependencyRule#absent()}
-	 * when no rule applies.
+	 * Resolve the governing rule, or {@link DependencyRule#absent()} if none
+	 * applies.
 	 */
 	DependencyRule resolve(ResolutionContext context);
 

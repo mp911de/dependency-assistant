@@ -37,20 +37,12 @@ import com.intellij.psi.codeStyle.CodeStyleManager;
 import org.jspecify.annotations.Nullable;
 
 /**
- * PSI edits on the {@code artifacts} section of a {@code dependencyfile.json}
- * descriptor: setting entry names and inserting entries that do not exist yet.
- * Existing object-valued entries have their {@code name} replaced so that "Add
- * to dependencyfile.json" and an Upgrade Plan rename behave alike. Existing
- * scalar and array rules are left unchanged. Callers run these operations
- * inside a write command on a JSON {@link PsiFile}; an {@code artifacts} object
- * is created when no object-valued section exists.
+ * Shared name edits for dependencyfile actions and Upgrade Plan renames.
+ * Callers must hold a write command. Existing scalar and array rules are left
+ * unchanged.
  *
- * <p>Entry keys are the narrowest {@link ArtifactPattern#keyFor(ArtifactId)
- * pattern key}, or a {@code groupId:prefix*} wildcard for members sharing a
- * groupId and a word-boundary prefix (see {@link #wildcardKey}). A new key is
- * inserted before the first existing key that sorts after it
- * (case-insensitive), so the descriptor stays loosely ordered without a full
- * rewrite.
+ * <p>New entries follow the descriptor's key order without reordering existing
+ * entries.
  *
  * @author Mark Paluch
  */
@@ -60,19 +52,12 @@ public class DependencyfileArtifacts {
 	}
 
 	/**
-	 * Set {@code name} on the entries covering the coordinates (see
-	 * {@link #entries(List, String)}). When that is a wildcard entry, existing
-	 * exact entries of the coordinates are renamed as well: an exact key outranks
-	 * the wildcard and would otherwise keep the old name in effect. Only
-	 * object-valued exact entries can be renamed.
+	 * Name the entries covering these coordinates. Existing exact entries are
+	 * renamed alongside a wildcard because they would otherwise override its name.
 	 *
-	 * @param project the project owning the file.
-	 * @param psiFile the descriptor file; can be {@literal null}.
-	 * @param artifactIds the coordinates to name, possibly empty.
-	 * @param name the name to write.
-	 * @return the {@code name}-value range of the first entry for the caret, or
-	 * {@literal null} when the file is not a JSON object, no coordinates are given,
-	 * or the first entry remains non-object-valued.
+	 * @return the first entry's name range for caret placement, or {@code null} if
+	 * the file or first entry cannot be named.
+	 * @see #entries(List, String)
 	 */
 	public static @Nullable TextRange setName(Project project, @Nullable PsiFile psiFile,
 			List<? extends ArtifactId> artifactIds, String name) {
@@ -98,17 +83,11 @@ public class DependencyfileArtifacts {
 	}
 
 	/**
-	 * Set each entry's {@code name} in the descriptor's {@code artifacts} object:
-	 * an existing entry gets its {@code name} value replaced (or added), a missing
-	 * entry is inserted sorted. Entries whose value is not an object are left
-	 * alone. The file is reformatted when anything changed.
+	 * Set entry names, creating missing entries and leaving scalar or array rules
+	 * unchanged. Changes reformat the file.
 	 *
-	 * @param project the project owning the file.
-	 * @param psiFile the descriptor file; can be {@literal null}.
-	 * @param entries the entries whose names to set.
-	 * @return the {@code name}-value range of the first entry for the caret, or
-	 * {@literal null} when the file is not a JSON object, no entry was given, or
-	 * the first entry has no string-valued {@code name} after editing.
+	 * @return the first entry's name range for caret placement, or {@code null} if
+	 * there are no entries or the file or first entry cannot be named.
 	 */
 	public static @Nullable TextRange setNames(Project project, @Nullable PsiFile psiFile,
 			Collection<ArtifactEntry> entries) {
@@ -163,13 +142,11 @@ public class DependencyfileArtifacts {
 	}
 
 	/**
-	 * Compute the entries naming the given coordinates {@code name}: one wildcard
-	 * entry when the coordinates share a groupId and word-boundary prefix,
-	 * otherwise one entry per coordinate.
+	 * Use one wildcard entry for multiple coordinates sharing a group and
+	 * word-boundary prefix. Otherwise, return one entry per coordinate in input
+	 * order.
 	 *
-	 * @param artifactIds the coordinates to name.
-	 * @param name the name to write.
-	 * @return the entries, in coordinate order.
+	 * @see #wildcardKey(List)
 	 */
 	public static List<ArtifactEntry> entries(List<? extends ArtifactId> artifactIds, String name) {
 
@@ -188,13 +165,10 @@ public class DependencyfileArtifacts {
 	}
 
 	/**
-	 * Return the {@code groupId:prefix*} wildcard key for the coordinates, or
-	 * {@literal null} when they do not share a groupId or their artifactIds have no
-	 * common prefix ending on a {@code -} or {@code .} word boundary.
+	 * Return a {@code groupId:prefix*} key, or {@code null} if the coordinates
+	 * share no group or no prefix ending at a {@code -} or {@code .} boundary.
 	 *
-	 * @param artifactIds the member coordinates. The list must not be empty.
-	 * @return the wildcard key, or {@literal null}.
-	 * @throws java.util.NoSuchElementException if {@code artifactIds} is empty.
+	 * @throws java.util.NoSuchElementException if the list is empty.
 	 */
 	public static @Nullable String wildcardKey(List<? extends ArtifactId> artifactIds) {
 
@@ -216,10 +190,6 @@ public class DependencyfileArtifacts {
 		return groupId + ":" + commonPrefix.substring(0, separator + 1) + "*";
 	}
 
-	/**
-	 * Return the descriptor object's {@code artifacts} value, creating an empty
-	 * {@code artifacts} object when no object-valued property exists.
-	 */
 	private static JsonObject artifactsObject(JsonObject root, JsonElementGenerator generator) {
 
 		JsonProperty artifacts = root.findProperty("artifacts");
@@ -247,12 +217,6 @@ public class DependencyfileArtifacts {
 		insertProperty(artifacts, property, anchor, generator);
 	}
 
-	/**
-	 * Insert {@code property} into {@code object}: before {@code anchor} when
-	 * given, otherwise appended after the last property; an empty object receives
-	 * it directly after the opening brace. The required comma is added on the side
-	 * that borders an existing property.
-	 */
 	private static PsiElement insertProperty(JsonObject object, JsonProperty property, @Nullable JsonProperty anchor,
 			JsonElementGenerator generator) {
 
@@ -293,21 +257,13 @@ public class DependencyfileArtifacts {
 	}
 
 	/**
-	 * One {@code artifacts} entry: its key and display name.
-	 *
-	 * @param key the artifact pattern key.
-	 * @param name the display name.
+	 * An artifact pattern key and display name for the descriptor.
 	 */
 	public record ArtifactEntry(String key, String name) implements Comparable<ArtifactEntry> {
 
 		/**
-		 * Create an entry for the coordinate, named after {@code projectName} when
-		 * present, else after the key without a leading {@code @}.
-		 *
-		 * @param artifactId the artifact coordinates.
-		 * @param projectName the project name, or {@literal null} or blank when
-		 * unavailable.
-		 * @return the descriptor entry.
+		 * Create an entry using the project name, falling back to the key without a
+		 * leading {@code @} when the name is absent or blank.
 		 */
 		public static ArtifactEntry create(ArtifactId artifactId, @Nullable String projectName) {
 

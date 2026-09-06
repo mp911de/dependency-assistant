@@ -62,7 +62,7 @@ import org.springframework.util.Assert;
  * Antora playbook UI implementation of {@link DependencyAssistant}.
  *
  * <p>This integration claims YAML files named {@code antora-playbook.yml} by
- * file shape. Within those files, it recognizes parseable {@code ui.bundle.url}
+ * file shape. Within those files, it supports parseable {@code ui.bundle.url}
  * values that use the GitHub release asset URL shape. Both the YAML and GitHub
  * plugins must be installed and enabled for the integration to be available.
  *

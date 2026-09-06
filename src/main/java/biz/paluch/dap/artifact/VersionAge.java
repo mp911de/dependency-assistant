@@ -19,16 +19,10 @@ package biz.paluch.dap.artifact;
 import biz.paluch.dap.support.UpgradeStrategy;
 
 /**
- * Coarse relationship category for a candidate artifact version.
- *
- * <p>{@code VersionAge} intentionally sits after version parsing and upgrade
- * selection: callers use {@link ArtifactVersion} to compare concrete versions
- * and {@link UpgradeStrategy} to select an update target, then use this type to
- * classify the candidate's relationship to the declared version.
- *
- * <p>The categories are not an ordering contract. They describe the
- * relationship useful to a user reviewing an update: older, neutral, patch,
- * minor, major, or preview.
+ * Presentation category for a candidate version relative to the current
+ * version.
+ * <p>Use {@link UpgradeStrategy} to select an upgrade. These categories do not
+ * establish version ordering.
  *
  * @author Mark Paluch
  */
@@ -69,29 +63,18 @@ public enum VersionAge {
 	PREVIEW;
 
 	/**
-	 * Return how the candidate version relates to the current version.
-	 * <p>The result is meant for presentation and should not be used to select an
-	 * upgrade candidate. Selection belongs to {@link UpgradeStrategy}; the returned
-	 * category classifies an already-known candidate according to the comparison
-	 * and version boundary contract of {@link ArtifactVersion}.
-	 * @param start the start version (or currently used version).
-	 * @param end the end version (or upgrade candidate version).
-	 * @return the end candidate version age category.
-	 * @see VersionAware
+	 * Classify the candidate relative to the current version for presentation.
+	 * @param start the current version.
+	 * @param end the candidate version.
 	 */
 	public static VersionAge between(VersionAware start, VersionAware end) {
 		return between(start.getVersion(), end.getVersion());
 	}
 
 	/**
-	 * Return how the candidate version relates to the current version.
-	 * <p>The result is meant for presentation and should not be used to select an
-	 * upgrade candidate. Selection belongs to {@link UpgradeStrategy}; the returned
-	 * category classifies an already-known candidate according to the comparison
-	 * and version boundary contract of {@link ArtifactVersion}.
-	 * @param start the start version (or currently used version).
-	 * @param end the end version (or upgrade candidate version).
-	 * @return the end candidate version age category.
+	 * Classify the candidate relative to the current version for presentation.
+	 * @param start the current version.
+	 * @param end the candidate version.
 	 */
 	public static VersionAge between(ArtifactVersion start, ArtifactVersion end) {
 

@@ -22,19 +22,14 @@ import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.AbstractProjectBuildContext;
-import biz.paluch.dap.support.ProjectBuildContext;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jspecify.annotations.Nullable;
 
 /**
- * {@link ProjectBuildContext} for a single supported GitHub Actions YAML file.
- *
- * <p>The project identity contains the absolute file path. Production contexts
- * obtain a GitHub API executor each time release sources are requested and
- * expose no source when executor resolution fails. Injected contexts expose
- * their supplied release source directly.
+ * Build context for a single GitHub Actions file.
+ * <p>Release sources are unavailable when no API executor can be resolved.
  *
  * @author Mark Paluch
  */
@@ -46,13 +41,6 @@ class GitHubProjectContext extends AbstractProjectBuildContext {
 
 	private final List<ReleaseSource> releaseSources;
 
-	/**
-	 * Create a context that resolves GitHub release sources through the project
-	 * service.
-	 *
-	 * @param project the IntelliJ project used for account resolution.
-	 * @param projectId the file-scoped project identity.
-	 */
 	GitHubProjectContext(Project project, ProjectId projectId) {
 		super(projectId);
 		this.factory = GithubApiRequestExecutorFactory.getInstance(project);
@@ -65,13 +53,6 @@ class GitHubProjectContext extends AbstractProjectBuildContext {
 		this.releaseSources = List.of(releaseSource);
 	}
 
-	/**
-	 * Create a context for the given project and anchor file.
-	 *
-	 * @param project the IntelliJ project.
-	 * @param anchor the supported GitHub Actions file.
-	 * @return a context scoped to the anchor file.
-	 */
 	public static GitHubProjectContext of(Project project, VirtualFile anchor) {
 
 		GitHubProjectContext cached = anchor.getUserData(KEY);

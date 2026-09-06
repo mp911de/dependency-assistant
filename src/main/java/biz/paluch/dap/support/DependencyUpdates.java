@@ -24,14 +24,7 @@ import com.intellij.psi.PsiFile;
 import com.intellij.util.Consumer;
 
 /**
- * Ordered sequence of dependency updates passed to a build-file writer.
- *
- * <p>The default {@link #update(PsiFile, DependencyUpdate, Consumer)}
- * implementation invokes the writer task and then the
- * {@link #afterDependencyUpdate(PsiFile, DependencyUpdate)} hook, even when the
- * writer task makes no file-text change. Subclasses may override that
- * orchestration. {@link #updateAll(PsiFile, Consumer)} delegates each update in
- * sequence order to {@code update}.
+ * Ordered dependency updates with an overridable writer hook.
  *
  * @author Mark Paluch
  */
@@ -39,32 +32,17 @@ public class DependencyUpdates implements Sequence<DependencyUpdate> {
 
 	private final List<DependencyUpdate> updates;
 
-	/**
-	 * Create a sequence containing one dependency update.
-	 *
-	 * @param updates the dependency update to expose.
-	 */
 	public DependencyUpdates(DependencyUpdate updates) {
 		this(List.of(updates));
 	}
 
 	/**
-	 * Create a sequence backed by the given update list.
-	 *
-	 * <p>The list is retained without copying.
-	 *
-	 * @param updates the updates in traversal order.
+	 * Retain the update list without copying.
 	 */
 	public DependencyUpdates(List<DependencyUpdate> updates) {
 		this.updates = updates;
 	}
 
-	/**
-	 * Create a sequence containing one dependency update.
-	 *
-	 * @param update the dependency update to expose.
-	 * @return a single-update sequence.
-	 */
 	public static DependencyUpdates of(DependencyUpdate update) {
 		return new DependencyUpdates(update);
 	}
@@ -75,10 +53,8 @@ public class DependencyUpdates implements Sequence<DependencyUpdate> {
 	}
 
 	/**
-	 * Apply the given task to every dependency update in sequence order.
-	 *
-	 * @param file the file being updated.
-	 * @param updateTask task to apply to each dependency update.
+	 * Apply updates in sequence order through
+	 * {@link #update(PsiFile, DependencyUpdate, Consumer)}.
 	 */
 	public final void updateAll(PsiFile file, Consumer<DependencyUpdate> updateTask) {
 		for (DependencyUpdate update : updates) {
@@ -87,15 +63,8 @@ public class DependencyUpdates implements Sequence<DependencyUpdate> {
 	}
 
 	/**
-	 * Apply one update and invoke the post-update hook.
-	 *
-	 * <p>Subclasses may override this template method to change orchestration. The
-	 * default always invokes {@code updateTask} before
-	 * {@link #afterDependencyUpdate(PsiFile, DependencyUpdate)}.
-	 *
-	 * @param file the file being updated.
-	 * @param update the dependency update.
-	 * @param updateTask update task to apply to the dependency update.
+	 * Invoke the writer task, then the post-update hook. Subclasses may override
+	 * this orchestration. The hook runs even if the task makes no file change.
 	 */
 	public void update(PsiFile file, DependencyUpdate update, Consumer<DependencyUpdate> updateTask) {
 		updateTask.consume(update);
@@ -103,14 +72,9 @@ public class DependencyUpdates implements Sequence<DependencyUpdate> {
 	}
 
 	/**
-	 * Hook invoked after the writer task has processed a dependency update.
-	 *
-	 * <p>The writer task may have made no change. Implementations that report or
-	 * record applied updates must compare file state before treating the update as
-	 * applied.
-	 *
-	 * @param file the file that was passed to the writer task.
-	 * @param update the dependency update.
+	 * Called after the writer task returns. This does not establish that a change
+	 * was applied. Implementations recording applied updates must compare file
+	 * state.
 	 */
 	protected void afterDependencyUpdate(PsiFile file, DependencyUpdate update) {
 

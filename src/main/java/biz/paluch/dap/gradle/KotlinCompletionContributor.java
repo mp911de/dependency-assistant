@@ -82,9 +82,6 @@ public class KotlinCompletionContributor extends CompletionContributor {
 			"isGradleKotlinDslFile",
 			psiFile -> GradleUtils.isGradleScript(psiFile) && GradleUtils.isKotlinDsl(psiFile));
 
-	// Any element that classifies as a Gradle version position: inline notation,
-	// map version argument, version-block constraint, plugin version, or a backing
-	// version property.
 	private static final PatternCondition<PsiElement> VERSION_POSITION_CONDITION = PatternConditions.conditional(
 			"versionPosition", position -> KotlinDeclarationStyleDetector.getInstance().detect(position).isPresent());
 

@@ -43,12 +43,8 @@ import org.jspecify.annotations.Nullable;
 class GroovyDslSettingsParser {
 
 	/**
-	 * Parse the given {@code settings.gradle} file into a catalog registry.
-	 *
-	 * <p>The configured default alias is always registered. If it has no explicit
-	 * catalog declaration, it uses {@code gradle/libs.versions.toml}.
-	 * @param file the Groovy DSL settings file to parse.
-	 * @return the configured catalogs and default alias.
+	 * Read catalog declarations, supplying {@code gradle/libs.versions.toml} for
+	 * the default alias when it has no explicit declaration.
 	 */
 	public static VersionCatalogRegistry parseRegistry(PsiFile file) {
 

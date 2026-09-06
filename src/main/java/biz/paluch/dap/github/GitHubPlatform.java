@@ -81,8 +81,7 @@ public class GitHubPlatform implements Platform {
 
 	static Url createBaseUrl(GitRepositoryMetadata metadata) {
 
-		// an empty root path renders with the leading slash; a bare owner path would
-		// concatenate host and owner without a separator
+		// An empty root keeps the separator between host and owner.
 		return Urls.newUrl("https", metadata.host(), "")
 				.resolve(metadata.owner()).resolve(metadata.repository());
 	}

@@ -35,9 +35,6 @@ public interface TicketSystemInvalidationListener extends EventListener {
 	Topic<TicketSystemInvalidationListener> TOPIC = new Topic<>(TicketSystemInvalidationListener.class,
 			Topic.BroadcastDirection.NONE);
 
-	/**
-	 * Notified after inputs to the current ticket-system binding are invalidated.
-	 */
 	void ticketSystemInvalidated();
 
 }

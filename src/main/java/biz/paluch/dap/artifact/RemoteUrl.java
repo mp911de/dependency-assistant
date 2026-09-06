@@ -22,21 +22,11 @@ import java.util.Locale;
 import java.util.Objects;
 
 /**
- * Syntactic view of a remote repository URL: the host and the slash-separated
- * path segments, without any forge semantics.
- *
- * <p>Both scheme forms ({@code https://host/a/b}, {@code ssh://git@host/a/b},
- * {@code git+ssh://git@host:a/b}) and the scp-like form
- * ({@code git@host:a/b.git}) parse; userinfo components are tolerated, a
- * non-default port of an http(s) URL stays part of {@link #host()} while ssh
- * and git transport ports are dropped, {@code #commit-ish} fragments are
- * ignored, and trailing slashes and the {@code .git} suffix are stripped. URLs
- * carrying a query string (e.g. gitweb {@code ?p=repo.git} views) are rejected:
- * a query never denotes a forge-style repository URL.
- *
- * <p>The segments are uninterpreted: which of them form owner and repository
- * coordinates is a per-platform decision made by the {@code Platform}
- * implementations, never by this type.
+ * Host and path of a remote repository URL, without hosting-platform semantics.
+ * <p>Accepts scheme URLs and scp-style Git addresses. Revision fragments and
+ * trailing {@code .git} suffixes are ignored. Query-based repository views are
+ * unsupported.
+ * <p>Hosting platforms interpret the path segments as repository coordinates.
  *
  * @author Mark Paluch
  * @see GitRepositoryMetadata
@@ -53,9 +43,7 @@ public class RemoteUrl {
 	}
 
 	/**
-	 * Parse a remote URL into its syntactic form.
-	 * @param url the remote URL to parse.
-	 * @return the parsed URL.
+	 * Parse a remote repository URL.
 	 * @throws IllegalArgumentException if the value is blank, malformed, carries a
 	 * query string, or has no host.
 	 */
@@ -79,10 +67,8 @@ public class RemoteUrl {
 	}
 
 	/**
-	 * Return the authority to address the remote over https: the host, retaining an
-	 * explicit non-default port of http(s) URLs so self-hosted instances on a
-	 * custom port stay reachable. Ports of ssh, git, and scp-like URLs are
-	 * transport ports and do not carry over to https addressing.
+	 * Keep non-default HTTP ports so self-hosted instances remain reachable. SSH
+	 * and Git ports do not apply to HTTPS browsing.
 	 */
 	private static String httpAuthority(URI uri) {
 
@@ -97,27 +83,19 @@ public class RemoteUrl {
 	}
 
 	/**
-	 * Return the host component, including an explicit non-default port for http(s)
-	 * URLs.
-	 * @return the host.
+	 * Return the host, including a non-default HTTP(S) port if declared.
 	 */
 	public String host() {
 		return host;
 	}
 
 	/**
-	 * Return the slash-separated path segments without leading or trailing slashes.
-	 * @return the path segments. The list is empty for a bare host URL.
+	 * Return path segments, or an empty list for a bare host.
 	 */
 	public List<String> pathSegments() {
 		return pathSegments;
 	}
 
-	/**
-	 * Read the URL as a URI, rewriting the scp-like {@code git@host:path} form and
-	 * the scp-colon-after-scheme form ({@code git+ssh://git@host:path}) into
-	 * slash-separated URIs first.
-	 */
 	private static URI toUri(String url) {
 
 		if (url.contains("://")) {
@@ -126,10 +104,6 @@ public class RemoteUrl {
 		return URI.create("ssh://" + removeUserInfo(url).replace(":/", "/").replace(':', '/'));
 	}
 
-	/**
-	 * Replace a colon that separates host and path in a scheme URL with a slash,
-	 * leaving numeric port declarations intact.
-	 */
 	private static String rewriteScpColon(String url) {
 
 		int authorityStart = url.indexOf("://") + 3;

@@ -36,10 +36,9 @@ import org.jspecify.annotations.Nullable;
 class Clipboard {
 
 	/**
-	 * Flavor carrying the XML-serialized {@link Content} fragment. The mime type
-	 * must be plugin-private: {@code DataFlavor(Class, String)} would produce the
-	 * serialized-object mime and collapse into {@link DataFlavor#stringFlavor},
-	 * hijacking plain-text paste with the XML payload.
+	 * Plugin-private plan fragment flavor. A serialized-object string flavor would
+	 * collide with {@link DataFlavor#stringFlavor} and expose XML on plain-text
+	 * paste.
 	 */
 	static final DataFlavor PLAN_FLAVOR = new DataFlavor(
 			"application/x-dependency-assistant-upgrade-plan;class=java.lang.String",
@@ -56,21 +55,16 @@ class Clipboard {
 	}
 
 	/**
-	 * Create the clipboard payload for the given plan: the copy text plus the plan
-	 * fragment (item states and scope paths), both rendered at copy time so later
-	 * plan mutations do not leak into the clipboard. Callers narrow to a selection
-	 * through {@link UpgradePlan#withItems}; the fragment always carries the plan's
-	 * scope.
+	 * Snapshot the plan as text and a transferable fragment. Later mutations do not
+	 * affect the payload. Use {@link UpgradePlan#withItems} to copy a selection.
+	 * The fragment retains the plan scope.
 	 */
 	Transferable copy(UpgradePlan plan) {
 		return new PlanTransferable(plan, service);
 	}
 
 	/**
-	 * Read a copied plan fragment from the clipboard.
-	 *
-	 * @return the plan fragment, or {@literal null} when the clipboard carries none
-	 * or an unreadable one.
+	 * Read a plan fragment, or return {@literal null} if absent or unreadable.
 	 */
 	@Nullable
 	Content paste() {
@@ -88,9 +82,6 @@ class Clipboard {
 		}
 	}
 
-	/**
-	 * Return whether the clipboard carries a copied plan fragment.
-	 */
 	boolean isPlanInClipboard() {
 		return copyPasteManager.areDataFlavorsAvailable(PLAN_FLAVOR);
 	}

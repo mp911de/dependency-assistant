@@ -31,32 +31,16 @@ import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.util.StringUtils;
 
 /**
- * {@link IntrospectedDependencies} that promotes a declaration backed by a
- * version property to a usage in build ecosystems where the property and the
- * declaration it versions can live in different build files.
- *
- * <p>A declaration whose version comes from a property is registered without a
- * usage during collection, because the version literal is not available in the
- * declaring file. This handle closes that gap: it indexes every property-backed
- * declaration seen anywhere in the scan and registers a managed usage on each
- * collector that resolves the corresponding property.
- *
- * <p>Instances are seeded with the collectors already held by
- * {@link biz.paluch.dap.state.StateService#getCollectors() the runtime
- * dependency state} and are updated through
- * {@link #register(ProjectId, DependencyCollector)} as the current pass
- * proceeds, so a pass that re-collects only a single build file still sees what
- * the remaining modules declared. A collector registered for a project identity
- * replaces the seeded one, which keeps the current pass authoritative over
- * previously stored state.
- *
- * <p>Promotion never overwrites an existing usage and never reads the
- * persistent cache, so the result does not depend on a previous pass having
- * been stored.
+ * Connects property-backed declarations to usages across build files.
+ * <p>A declaration can refer to a version property in another file. Completion
+ * adds a usage where that property is resolved, without replacing existing
+ * usages.
+ * <p>Seeded runtime collectors supply declarations from files outside the
+ * current scan. Collectors registered during the scan replace seeded collectors
+ * with the same project identity. Persistent cache contents are not consulted.
  *
  * @author Mark Paluch
  * @see IntrospectedDependencies
- * @see DependencyCollector#getPropertyValues()
  */
 public class VersionPropertyIntrospectedDependencies implements IntrospectedDependencies {
 
@@ -73,11 +57,7 @@ public class VersionPropertyIntrospectedDependencies implements IntrospectedDepe
 	}
 
 	/**
-	 * Register a collector of the current pass, replacing any collector previously
-	 * known for the same project identity.
-	 *
-	 * @param projectId the identity of the module the collector belongs to.
-	 * @param collector the collector to track.
+	 * Register a collector, replacing the one known for the same project identity.
 	 */
 	public void register(ProjectId projectId, DependencyCollector collector) {
 		collectors.put(projectId, collector);

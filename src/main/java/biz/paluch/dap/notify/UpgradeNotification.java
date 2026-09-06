@@ -29,16 +29,7 @@ import com.intellij.openapi.util.text.HtmlChunk;
 import org.jetbrains.annotations.PropertyKey;
 
 /**
- * Wording of a notification about applied dependency upgrades.
- *
- * <p>The wording follows the platform notification policy for none, one, and
- * many. No update yields a one-line "nothing changed" balloon. A single update
- * names dependency and target version in the title and keeps the content for
- * follow-up detail. Several updates carry a counted summary title and list the
- * updates as the first content paragraph. {@link #withFlagged() Flagged
- * entries} add detail paragraphs and turn the notification into a warning.
- *
- * <p>Instances are immutable. Modifiers return a new wording.
+ * Immutable wording for applied dependency upgrades.
  *
  * @author Mark Paluch
  * @see AppliedUpdates
@@ -62,31 +53,17 @@ public class UpgradeNotification {
 		this.type = type;
 	}
 
-	/**
-	 * Create the wording for applied updates.
-	 *
-	 * @param updates the applied updates.
-	 * @return the wording.
-	 */
 	public static UpgradeNotification applied(AppliedUpdates updates) {
 		return new UpgradeNotification(updates, Wording.APPLIED, List.of(), NotificationType.INFORMATION);
 	}
 
-	/**
-	 * Create the wording for updates that were applied and committed.
-	 *
-	 * @param updates the applied updates.
-	 * @return the wording.
-	 */
 	public static UpgradeNotification committed(AppliedUpdates updates) {
 		return new UpgradeNotification(updates, Wording.COMMITTED, List.of(), NotificationType.INFORMATION);
 	}
 
 	/**
-	 * Return the wording extended by the flagged entries: out-of-bounds updates and
-	 * major version crossings. A single flagged update is described by a sentence,
-	 * several by a heading followed by the affected entries. Any flagged entry
-	 * turns the notification into a warning.
+	 * Return wording with warnings for out-of-bounds updates and major version
+	 * crossings. The notification becomes a warning if any such entries exist.
 	 */
 	public UpgradeNotification withFlagged() {
 
@@ -100,24 +77,14 @@ public class UpgradeNotification {
 		return new UpgradeNotification(updates, wording, List.copyOf(extended), extendedType);
 	}
 
-	/**
-	 * Return whether the wording describes no update.
-	 */
 	public boolean isEmpty() {
 		return updates.isEmpty();
 	}
 
-	/**
-	 * Return whether the wording describes a single update.
-	 */
 	public boolean isSingle() {
 		return updates.size() == 1;
 	}
 
-	/**
-	 * Return the notification type: a warning when flagged entries are described,
-	 * information otherwise.
-	 */
 	public NotificationType getType() {
 		return type;
 	}
@@ -167,11 +134,8 @@ public class UpgradeNotification {
 	}
 
 	/**
-	 * Create the platform notification on the given channel. Warnings are marked
-	 * important so they stay visible until dismissed.
-	 *
-	 * @param channel the channel to create the notification on.
-	 * @return the notification, not yet shown.
+	 * Create a notification without showing it. Warnings remain visible until
+	 * dismissed.
 	 */
 	Notification create(NotificationChannel channel) {
 
@@ -207,10 +171,6 @@ public class UpgradeNotification {
 				.toFragment());
 	}
 
-	/**
-	 * Message keys per wording: single-update titles by direction and the counted
-	 * summary title.
-	 */
 	enum Wording {
 
 		APPLIED("notification.applied.upgraded", "notification.applied.downgraded",

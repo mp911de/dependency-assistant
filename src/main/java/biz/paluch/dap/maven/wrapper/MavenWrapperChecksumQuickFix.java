@@ -29,17 +29,12 @@ import com.intellij.psi.SmartPointerManager;
 import com.intellij.psi.SmartPsiElementPointer;
 
 /**
- * Inspection quick fix that downloads the artifact referenced by a Maven
- * Wrapper URL and inserts its missing SHA-256 checksum property after the URL
- * property.
- *
- * <p>The download runs through {@link ChecksumDownloader} outside the write
- * action. The resulting write command inserts the checksum only while the URL
- * property is unchanged and the checksum property is still absent. Failures are
- * reported through a project notification. Cancellation and stale results make
- * no PSI change.
+ * Inserts a missing checksum after its Maven Wrapper URL property.
+ * <p>The download runs outside the write action. A changed URL or an existing
+ * checksum prevents insertion of the result.
  *
  * @author Mark Paluch
+ * @see ChecksumDownloader
  */
 class MavenWrapperChecksumQuickFix implements LocalQuickFix {
 

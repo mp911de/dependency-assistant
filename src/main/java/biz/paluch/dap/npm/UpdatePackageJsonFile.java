@@ -34,17 +34,12 @@ import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.PsiTreeUtil;
 
 /**
- * PSI updater for NPM {@code package.json} dependency entries.
- *
- * <p>The updater delegates safe replacement rendering to the parsed
- * {@link NpmVersionExpression}. Prefix ranges and unsupported expressions are
- * not rewritten. Git declarations require a {@link GitVersion} target and
- * preserve the declared tag or SHA ref style. The surrounding property layout
- * and trailing comma remain unchanged. The writer does not append explanatory
- * comments because NPM package descriptors use JSON syntax.
+ * Updates NPM dependency literals while preserving surrounding JSON layout.
+ * <p>Prefix ranges and unsupported expressions remain unchanged. Git
+ * declarations require a {@link GitVersion} target and retain their tag or SHA
+ * ref style.
  *
  * @author Mark Paluch
- * @see NpmVersionExpression
  */
 class UpdatePackageJsonFile implements FileDependencyUpdater {
 
@@ -54,14 +49,6 @@ class UpdatePackageJsonFile implements FileDependencyUpdater {
 		this.factory = new JsonElementGenerator(project);
 	}
 
-	/**
-	 * Apply matching dependency updates to the given {@code package.json} PSI file.
-	 * Files with another PSI shape and entries outside the supported expression
-	 * model remain unchanged.
-	 *
-	 * @param psiFile the {@code package.json} PSI file.
-	 * @param updates the dependency updates to apply.
-	 */
 	@Override
 	public void applyUpdates(PsiFile psiFile, DependencyUpdates updates) {
 
@@ -83,13 +70,9 @@ class UpdatePackageJsonFile implements FileDependencyUpdater {
 	}
 
 	/**
-	 * Apply a single update at the given anchor element.
-	 * @param literal the anchor element, either the {@link JsonProperty} of a
-	 * {@code dependencies} or {@code devDependencies} entry or an element nested
-	 * within such a property.
-	 * @param update the update to apply.
-	 * @throws IllegalStateException when the anchor does not resolve to an
-	 * enclosing {@link JsonProperty}.
+	 * Update a dependency anchored at a property or one of its children.
+	 * @throws IllegalStateException if the anchor has no enclosing
+	 * {@link JsonProperty}.
 	 */
 	public void applyUpdate(PsiElement literal, DependencyUpdate update) {
 

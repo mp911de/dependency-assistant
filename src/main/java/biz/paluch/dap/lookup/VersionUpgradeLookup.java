@@ -30,14 +30,8 @@ import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Per-file facade for artifact-reference resolution, Dependency Site Find, and
- * current project-state lookup.
- *
- * <p>PSI resolution and search are delegated to the configured
- * {@link ArtifactReferenceResolver}. Current-version lookup uses runtime
- * project state and declaration data. Property lookup follows
- * {@link ProjectState} correlation semantics. These operations never fetch
- * remote release metadata.
+ * Per-file dependency lookup backed by PSI and project state. These operations
+ * do not fetch remote release metadata.
  *
  * @author Mark Paluch
  * @see ArtifactReferenceResolver
@@ -50,13 +44,6 @@ public class VersionUpgradeLookup {
 
 	private final ArtifactReferenceResolver resolver;
 
-	/**
-	 * Create a {@code VersionUpgradeLookup} backed by the given state and resolver.
-	 *
-	 * @param stateService the state service exposing cached release data.
-	 * @param projectState the project dependency state.
-	 * @param resolver the build-tool-specific reference resolver.
-	 */
 	public VersionUpgradeLookup(StateService stateService, ProjectState projectState,
 			ArtifactReferenceResolver resolver) {
 		this.stateService = stateService;
@@ -65,12 +52,7 @@ public class VersionUpgradeLookup {
 	}
 
 	/**
-	 * Create a lookup from the state associated with the given project identity.
-	 *
-	 * @param project the IntelliJ project owning the file.
-	 * @param projectId the project-state identity.
-	 * @param referenceResolver the build-tool-specific resolver for the file.
-	 * @return the configured lookup.
+	 * Create a lookup for the given project-state identity.
 	 */
 	public static VersionUpgradeLookup of(Project project, ProjectId projectId,
 			ArtifactReferenceResolver referenceResolver) {
@@ -86,38 +68,29 @@ public class VersionUpgradeLookup {
 	}
 
 	/**
-	 * Resolve the given PSI element into artifact declaration metadata through the
-	 * configured resolver.
+	 * Resolve a dependency reference through the configured resolver.
 	 *
-	 * @param element the PSI element under inspection.
-	 * @return the resolved artifact reference, or
-	 * {@link ArtifactReference#unresolved()} if no declaration can be resolved.
+	 * @see ArtifactReferenceResolver#resolveArtifactReference(PsiElement)
 	 */
 	public ArtifactReference resolveArtifactReference(PsiElement element) {
 		return resolver.resolveArtifactReference(element);
 	}
 
 	/**
-	 * Locate the dependency sites in this lookup's file that match the given query.
+	 * Find matching sites in this lookup's file.
 	 *
-	 * @param query the Dependency Site Find criteria.
-	 * @return the matching hits in this lookup's file, possibly empty.
+	 * @see ArtifactReferenceResolver#search(DependencySiteQuery)
 	 */
 	public DependencySearchResults search(DependencySiteQuery query) {
 		return resolver.search(query);
 	}
 
 	/**
-	 * Return the current version of the dependency with the given artifact
-	 * reference.
+	 * Return the project-state version, falling back to the declared version. This
+	 * also supports references resolved before the dependency is scanned.
 	 *
-	 * <p>The {@link ProjectState} version wins when present; on a project-state
-	 * miss the reference's own declared version is returned, so versions resolved
-	 * by the resolver are reported even before the dependency is scanned into
-	 * project state.
-	 * @param reference the artifact to locate.
-	 * @return the current artifact version, or {@literal null} if the reference is
-	 * unresolved or carries no defined version and project state has no entry.
+	 * @return {@code null} for an unresolved reference or if neither source has a
+	 * version.
 	 */
 	public @Nullable ArtifactVersion getCurrentVersion(ArtifactReference reference) {
 
@@ -135,26 +108,21 @@ public class VersionUpgradeLookup {
 	}
 
 	/**
-	 * Find an artifact-associated version property by its bare name.
+	 * Find a correlated version property by its bare name. The correlation may come
+	 * from another project entry in the persisted cache.
 	 *
-	 * <p>The matching correlation may come from another project entry in the
-	 * persisted project cache.
-	 *
-	 * @param property the property name to locate.
-	 * @return the matching property, or {@literal null} if no correlated property
-	 * is known.
+	 * @return {@code null} if no correlated property is known.
 	 */
 	public @Nullable VersionProperty findProperty(String property) {
 		return projectState.findProperty(property);
 	}
 
 	/**
-	 * Return the current version of the first artifact associated with the given
+	 * Return the current version of the first artifact associated with the
 	 * property.
 	 *
-	 * @param property the property whose artifact association should be inspected.
-	 * @return the current artifact version, or {@literal null} if the property has
-	 * no artifact association or project state does not contain the dependency.
+	 * @return {@code null} if there is no artifact association or the dependency is
+	 * absent from project state.
 	 */
 	public @Nullable ArtifactVersion getCurrentVersion(VersionProperty property) {
 

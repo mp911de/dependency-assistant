@@ -18,7 +18,6 @@ package biz.paluch.dap.github;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.GitVersion;
-import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.github.UsesRepositoryAction.VersionText;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.DependencyUpdates;
@@ -39,22 +38,12 @@ import org.jetbrains.yaml.psi.YAMLScalar;
 import org.jspecify.annotations.Nullable;
 
 /**
- * PSI updater for GitHub Actions workflow {@code uses:} declarations.
- *
- * <p>This updater changes the ref while preserving the scalar's quote style.
- * The existing pinning style is part of the contract. Version refs are rendered
- * as version refs. SHA-pinned refs are rendered as SHAs when the selected
- * release has SHA metadata, with a managed explanatory version comment. This
- * keeps workflows reproducible while still exposing semantic release
- * information to the user.
- *
- * <p>For SHA-pinned refs, the first same-line YAML comment is treated as the
- * managed version comment and replaced. Content following a second {@code #} is
- * retained as unmanaged trailing content.
+ * Updates GitHub Actions refs while preserving quotes and pinning style.
+ * <p>SHA updates include a managed version comment. The first same-line comment
+ * is replaced. Content after a second {@code #} is retained.
  *
  * @author Mark Paluch
  * @see UsesRepositoryAction
- * @see RefStyle
  */
 class UpdateGitHubWorkflowFile implements FileDependencyUpdater {
 
@@ -65,13 +54,7 @@ class UpdateGitHubWorkflowFile implements FileDependencyUpdater {
 	}
 
 	/**
-	 * Apply matching GitHub Action updates to the given GitHub Actions YAML file.
-	 *
-	 * <p>Only the {@code uses:} value and its managed version comment are changed.
-	 * Declarations without a matching update are left as-is.
-	 *
-	 * @param psiFile the GitHub Actions YAML PSI file.
-	 * @param updates the dependency updates to apply.
+	 * Apply matching updates to {@code uses:} values and managed version comments.
 	 */
 	@Override
 	public void applyUpdates(PsiFile psiFile, DependencyUpdates updates) {
@@ -103,10 +86,7 @@ class UpdateGitHubWorkflowFile implements FileDependencyUpdater {
 	}
 
 	/**
-	 * Apply a single update at the given YAML scalar anchor of a {@code uses:} key.
-	 *
-	 * @param scalar the scalar containing the ref to update.
-	 * @param update the dependency update to apply.
+	 * Apply an update at the given {@code uses:} scalar.
 	 */
 	public void applyUpdate(YAMLScalar scalar, DependencyUpdate update) {
 
@@ -123,17 +103,9 @@ class UpdateGitHubWorkflowFile implements FileDependencyUpdater {
 	}
 
 	/**
-	 * Update a workflow {@code uses:} scalar with the given rendered version text.
-	 *
-	 * <p>The method returns the replacement scalar so callers can continue PSI
-	 * operations, for example to position the editor caret after completion
-	 * insertion. A {@literal null} result indicates that the scalar is not in a
-	 * writable {@code uses:} key-value context.
-	 *
-	 * @param scalar the scalar containing a repository-backed {@code uses:} value.
-	 * @param versionText the ref text and optional managed comment to render.
-	 * @return the updated scalar, or {@literal null} if no safe update could be
-	 * made.
+	 * Replace a {@code uses:} ref and its managed comment.
+	 * @return the replacement scalar for further PSI operations, or {@literal null}
+	 * if no writable {@code uses:} site with a ref separator is found.
 	 */
 	public @Nullable YAMLScalar updateVersionAndComment(YAMLScalar scalar, VersionText versionText) {
 
@@ -165,10 +137,6 @@ class UpdateGitHubWorkflowFile implements FileDependencyUpdater {
 		return updatedScalar;
 	}
 
-	/**
-	 * Insert the managed version comment behind the given key-value, adding the
-	 * separating whitespace and the comment as a single sibling range.
-	 */
 	private void insertManagedComment(YAMLKeyValue keyValue, VersionText versionText) {
 
 		PsiFile dummy = factory.createDummyYamlWithText("key: value # " + versionText.comment());
@@ -182,10 +150,6 @@ class UpdateGitHubWorkflowFile implements FileDependencyUpdater {
 		keyValue.getParent().addRangeAfter(first, comment, keyValue);
 	}
 
-	/**
-	 * Render the managed version comment, retaining any second {@code #} segment of
-	 * the existing comment as unmanaged trailing content.
-	 */
 	private PsiElement createManagedComment(VersionText versionText, String existingComment) {
 
 		int trailingComment = existingComment.indexOf('#', 1);

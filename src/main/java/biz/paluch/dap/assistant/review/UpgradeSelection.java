@@ -17,18 +17,12 @@
 package biz.paluch.dap.assistant.review;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The user's in-progress pick for one {@link TableRow} in the review dialog:
- * the chosen target version and whether to apply it.
- *
- * <p>Owned by {@link UpgradeReview}, keyed by candidate. Sits between the
- * {@link DependencyUpgradeCandidate} (what can be chosen) and the
- * {@code DependencyUpdate} written on confirm (what was chosen). Selecting a
- * target other than the current version arms the apply flag; reselecting the
- * current version clears it.
+ * Mutable target and apply flag owned by {@link UpgradeReview}.
+ * <p>Selecting a version other than the current version sets the apply flag.
+ * Selecting the current version clears it.
  *
  * @author Mark Paluch
  */
@@ -47,9 +41,7 @@ class UpgradeSelection {
 	}
 
 	/**
-	 * Return the selected target version, or {@literal null} if cleared.
-	 *
-	 * @return the selected target version, or {@literal null}.
+	 * Return the target version, or {@literal null} if cleared.
 	 */
 	@Nullable
 	ArtifactVersion getTargetVersion() {
@@ -57,30 +49,19 @@ class UpgradeSelection {
 	}
 
 	/**
-	 * Select the given target version and arm the apply flag when it differs from
-	 * the current version.
-	 *
-	 * @param targetVersion the selected target, or {@literal null} to clear it.
+	 * Set the target and update the apply flag by comparison with the current
+	 * version.
+	 * @param targetVersion the target, or {@literal null} to clear it.
 	 */
 	void setTargetVersion(@Nullable ArtifactVersion targetVersion) {
 		this.targetVersion = targetVersion;
 		this.applyUpdate = !currentVersion.equals(targetVersion);
 	}
 
-	/**
-	 * Return whether this selection should be applied.
-	 *
-	 * @return {@code true} if the row is armed.
-	 */
 	boolean isApplyUpdate() {
 		return applyUpdate;
 	}
 
-	/**
-	 * Set whether this selection should be applied.
-	 *
-	 * @param applyUpdate whether the row is armed.
-	 */
 	void setApplyUpdate(boolean applyUpdate) {
 		this.applyUpdate = applyUpdate;
 	}

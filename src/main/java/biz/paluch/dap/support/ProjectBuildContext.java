@@ -54,10 +54,6 @@ public interface ProjectBuildContext {
 	/**
 	 * Return whether this context is backed by a supported project model.
 	 *
-	 * <p>Unavailable contexts are sentinels used by integrations that inspect files
-	 * before a build model, package descriptor, or repository context can be
-	 * established.
-	 *
 	 * @return {@literal true} if project metadata can be accessed; {@literal false}
 	 * otherwise.
 	 */

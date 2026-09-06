@@ -20,8 +20,7 @@ import com.intellij.notification.NotificationAction;
 import com.intellij.openapi.project.Project;
 
 /**
- * Builder for a notification whose wording and channel are fixed. Follow-up
- * actions are added one at a time; {@link #notify(Project)} shows the balloon.
+ * A prepared notification that can receive actions before it is shown.
  *
  * @author Mark Paluch
  * @see Notifications
@@ -30,18 +29,10 @@ import com.intellij.openapi.project.Project;
 public interface NotificationBuilder {
 
 	/**
-	 * Offer a follow-up action on the notification.
-	 *
-	 * @param action the action to offer.
-	 * @return {@code this} builder.
+	 * @return this builder.
 	 */
 	NotificationBuilder action(NotificationAction action);
 
-	/**
-	 * Show the notification in the given project.
-	 *
-	 * @param project the project to notify.
-	 */
 	void notify(Project project);
 
 }

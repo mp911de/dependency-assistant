@@ -33,13 +33,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * {@link IntentionAction} that applies one selected {@link DependencyUpdate}
- * throughout its target build file through the owning
- * {@link ProjectDependencyContext}.
- *
- * <p>Also implements {@link FileModifier} so the platform can render an
- * intention preview by binding the same update to a copied file through
- * {@link #getFileModifierForPreview(PsiFile)}.
+ * Applies a selected update throughout a build file, including preview copies.
  *
  * @author Mark Paluch
  */

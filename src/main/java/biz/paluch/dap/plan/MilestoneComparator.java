@@ -26,18 +26,11 @@ import biz.paluch.dap.ticket.Milestone;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Canonical milestone ordering, used by the milestone selector and the
- * default-milestone choice: scheduled milestones sort by
- * {@link Milestone#getReleaseDay() release day}, scheduled before unscheduled;
- * same-day and unscheduled milestones sort by their {@link MilestoneVersion};
- * titles the version step cannot tell apart fall back to case-insensitive title
- * order.
- *
- * <p>This enum owns the scheduled-before-unscheduled rule. Views that visualize
- * the resulting order ask {@link #startsNewGroup} rather than re-deriving it.
+ * Order milestones by release day, with unscheduled milestones last.
+ * <p>Ties use the version in the title, then case-insensitive title order. Use
+ * {@link #startsNewGroup} for the scheduled-to-unscheduled boundary.
  *
  * @author Mark Paluch
- * @see MilestoneVersion
  */
 enum MilestoneComparator implements Comparator<Milestone> {
 
@@ -63,14 +56,7 @@ enum MilestoneComparator implements Comparator<Milestone> {
 	}
 
 	/**
-	 * Return whether this ordering crosses the scheduled-to-unscheduled boundary
-	 * between two milestones adjacent in a sorted list, the one discontinuity a
-	 * view can render as a group separator.
-	 *
-	 * @param previous the milestone preceding {@code next} in the sorted list.
-	 * @param next the milestone following {@code previous} in the sorted list.
-	 * @return {@literal true} if {@code next} opens the unscheduled group;
-	 * {@literal false} otherwise.
+	 * Return whether adjacent sorted milestones cross into the unscheduled group.
 	 */
 	static boolean startsNewGroup(Milestone previous, Milestone next) {
 		return previous.getReleaseDay() != null && next.getReleaseDay() == null;
@@ -95,11 +81,7 @@ enum MilestoneComparator implements Comparator<Milestone> {
 		}
 
 		/**
-		 * Read the version out of the given milestone's title.
-		 *
-		 * @param title the milestone title to read.
-		 * @return the extracted version; one that compares equal to everything when the
-		 * title carries none or carries one that does not parse.
+		 * Extract a title version, or an absent value if unreadable.
 		 */
 		static MilestoneVersion of(String title) {
 
@@ -112,18 +94,10 @@ enum MilestoneComparator implements Comparator<Milestone> {
 		}
 
 		/**
-		 * Compare this version to another, ordering older before newer.
-		 *
-		 * <p>The order is partial: {@code 0} means the two cannot be told apart by
-		 * version, either because they are equal, because either title carries no
-		 * readable version, or because they follow version schemes that do not compare
-		 * (a calendar version against a semantic one). Callers must break a {@code 0}
-		 * with a total fallback of their own; this type intentionally does not
-		 * implement {@link Comparable}, because its order is not one.
-		 *
-		 * @param other the version to compare against.
-		 * @return a negative value if this version is older, a positive value if it is
-		 * newer, {@code 0} if the two are indistinguishable by version.
+		 * Compare older versions before newer ones.
+		 * <p>Return zero for equal, absent or incomparable versions. Callers must
+		 * supply a fallback order. This partial comparison does not implement
+		 * {@link Comparable}.
 		 */
 		int compareTo(MilestoneVersion other) {
 

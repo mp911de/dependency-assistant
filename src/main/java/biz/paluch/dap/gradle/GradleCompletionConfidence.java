@@ -24,13 +24,7 @@ import com.intellij.psi.PsiFile;
 import com.intellij.util.ThreeState;
 
 /**
- * {@link CompletionConfidence} implementation that prevents autopopup
- * suppression in Gradle-related files (Groovy and Kotlin DSL scripts, version
- * catalogs, and {@code gradle.properties}) when the context is supported by the
- * {@link DependencyAssistantDispatcher}.
- *
- * <p>Registered once per language. The file type decides which contributor's
- * completion-site check applies.
+ * Enable completion autopopup at supported Gradle version sites.
  *
  * @author Mark Paluch
  */

@@ -73,12 +73,9 @@ import com.intellij.util.ui.tree.TreeUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Upgrade Plan tree showing plan items with groups and badges for linked
- * tickets and the upgrade attention level.
- *
- * <p>Sorting derives Plan View Order without changing Plan Order. Selections
- * are returned in Plan Order so apply, preview, copy, and ticket actions remain
- * independent of the current view sorting.
+ * Upgrade Plan tree with display sorting independent of plan order.
+ * <p>Selections use plan order so actions do not depend on display sorting.
+ * Selecting a member selects its whole group for actions.
  *
  * @author Mark Paluch
  */
@@ -174,8 +171,7 @@ class UpgradePlanTree {
 	}
 
 	/**
-	 * Return the component that takes focus for the tree, anchoring the plan action
-	 * context in the tool window even while the plan is empty.
+	 * Return the focus target that retains plan action context when empty.
 	 */
 	JTree focusTarget() {
 		return tree;
@@ -219,10 +215,8 @@ class UpgradePlanTree {
 	}
 
 	/**
-	 * Replace the item values held by the existing tree nodes after an item-scoped
-	 * change such as linking a ticket. Keeping the nodes preserves expansion and
-	 * selection while every renderer, hit test, and action sees the current item
-	 * state.
+	 * Refresh item values, preserving expansion and selection where the row
+	 * structure permits.
 	 */
 	void refreshItems(List<UpgradePlanItem> planItems) {
 
@@ -287,10 +281,8 @@ class UpgradePlanTree {
 	}
 
 	/**
-	 * Return the rename target: the plan item of the single selected top-level row.
-	 * Unlike {@link #getSelection()}, a selected member row does not resolve to its
-	 * parent group; a multi-selection, a member row, or an empty selection yields
-	 * {@literal null}.
+	 * Return the single selected top-level item, or {@literal null}. Member rows do
+	 * not provide rename targets.
 	 */
 	@Nullable
 	UpgradePlanItem getRenameTarget() {
@@ -449,10 +441,6 @@ class UpgradePlanTree {
 		return path != null ? itemOf((DefaultMutableTreeNode) path.getLastPathComponent()) : null;
 	}
 
-	/**
-	 * Resolve the plan item a node belongs to: the node itself when it is a plan
-	 * item, or its parent group when it is a member row.
-	 */
 	private static @Nullable UpgradePlanItem itemOf(DefaultMutableTreeNode node) {
 
 		if (node.getUserObject() instanceof UpgradePlanItem item) {
@@ -492,10 +480,6 @@ class UpgradePlanTree {
 		return "";
 	}
 
-	/**
-	 * {@link Tree} with per-badge tooltips; the plan panel owns the action data
-	 * context.
-	 */
 	private class PlanTree extends Tree {
 
 		PlanTree(DefaultTreeModel model) {
@@ -574,9 +558,6 @@ class UpgradePlanTree {
 
 	}
 
-	/**
-	 * Tree node for a plan item and its row-local badge presentation.
-	 */
 	private static class PlanTreeNode extends DefaultMutableTreeNode {
 
 		private final BadgeGutter badgeGutter;
@@ -601,10 +582,6 @@ class UpgradePlanTree {
 
 	}
 
-	/**
-	 * Measured-width right gutter of a plan row: the ticket badge, the attention
-	 * badge, and a trailing margin.
-	 */
 	private static class BadgeGutter extends JComponent {
 
 		private BadgeColumns badgeColumns;
@@ -633,10 +610,6 @@ class UpgradePlanTree {
 			return new Dimension(badgeColumns.width(), 0);
 		}
 
-		/**
-		 * Return the badge drawn under the given gutter-local point, or {@literal null}
-		 * where the row draws none.
-		 */
 		@Nullable
 		Badge badgeAt(int rowHeight, Point point) {
 
@@ -663,9 +636,7 @@ class UpgradePlanTree {
 	}
 
 	/**
-	 * Measured badge columns shared by every displayed plan row. Ticket badges
-	 * align towards the attention column and attention badges align towards the
-	 * ticket column, keeping exactly one deliberate gap between their inner edges.
+	 * Shared badge widths align all displayed plan rows.
 	 */
 	private static class BadgeColumns {
 
@@ -712,10 +683,6 @@ class UpgradePlanTree {
 
 	}
 
-	/**
-	 * One badge, hugging its label down to {@link #MIN_WIDTH} so short labels keep
-	 * a consistent size. Without a badge it measures empty and paints nothing.
-	 */
 	static class BadgeComponent extends JComponent {
 
 		private static final int MIN_WIDTH = 50;
@@ -782,7 +749,7 @@ class UpgradePlanTree {
 	}
 
 	/**
-	 * View-only ordering and positional selection of Upgrade Plan items.
+	 * Display ordering and positional selection without changing plan order.
 	 *
 	 * @author Mark Paluch
 	 */

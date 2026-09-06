@@ -76,8 +76,7 @@ import com.intellij.util.ui.NamedColorUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Upgrade Plan tool window content: left all-mode action toolbar, top
- * milestone/label selector bar, the plan tree, and a bottom summary line.
+ * Upgrade Plan tool window content and action context.
  *
  * @author Mark Paluch
  */
@@ -183,7 +182,7 @@ class UpgradePlanPanel extends SimpleToolWindowPanel implements Disposable, Upgr
 				viewProperties.getBoolean(SORT_BY_ATTENTION_PROPERTY, true),
 				viewProperties.getBoolean(SORT_ALPHABETICALLY_PROPERTY, true));
 
-		// the empty state offers pasting a copied plan; track IDE-internal
+		// The empty state offers pasting a copied plan. Track IDE-internal
 		// clipboard changes, and re-check on application activation because
 		// copies made in other applications fire no content event
 		updatePasteAvailable();
@@ -271,7 +270,7 @@ class UpgradePlanPanel extends SimpleToolWindowPanel implements Disposable, Upgr
 		}
 
 		// jump-to-source target (EditSource/F4): a single selected item while the
-		// plan is idle; withheld otherwise so the platform action disables itself
+		// plan is idle. Withhold it otherwise so the platform action disables itself
 		if (selection.items().size() == 1 && !service.isBusy()) {
 			Navigatable navigatable = new PlanItemNavigatable(selection.items().getFirst());
 			sink.set(CommonDataKeys.NAVIGATABLE, navigatable);
@@ -279,7 +278,7 @@ class UpgradePlanPanel extends SimpleToolWindowPanel implements Disposable, Upgr
 		}
 
 		// rename target (Shift+F6): a single selected top-level item while the plan
-		// is idle; withheld otherwise so the platform rename disables itself
+		// is idle. Withhold it otherwise so the platform rename disables itself
 		UpgradePlanItem renameTarget = tree.getRenameTarget();
 		if (renameTarget != null && !service.isBusy()) {
 			sink.set(UpgradePlanItem.RENAME_TARGET, renameTarget);
@@ -290,9 +289,6 @@ class UpgradePlanPanel extends SimpleToolWindowPanel implements Disposable, Upgr
 	public void dispose() {
 	}
 
-	/**
-	 * Restore (or create) the initial UI state.
-	 */
 	public void restore() {
 		reload(service::reloadPlan);
 		tabActions.restore();
@@ -475,21 +471,13 @@ class UpgradePlanPanel extends SimpleToolWindowPanel implements Disposable, Upgr
 	}
 
 	/**
-	 * Return the component that should take focus when the tool window activates,
-	 * keeping the platform action context (copy, paste, delete) anchored in the
-	 * panel even while the plan is empty.
+	 * Return a focus target that retains plan action context even when the plan is
+	 * empty.
 	 */
 	JComponent getPreferredFocusableComponent() {
 		return tree.focusTarget();
 	}
 
-	/**
-	 * Actions for the tool window tab row, next to the title: the milestone and
-	 * label selectors (tab-like popup combos with a filterable chooser), their
-	 * clear actions, and the list refresh. The actions control their visibility
-	 * from the currently bound ticket system; milestone and label options are
-	 * loaded from that system in the background.
-	 */
 	AnAction[] createTabActions() {
 		return tabActions.getActions();
 	}
@@ -578,10 +566,7 @@ class UpgradePlanPanel extends SimpleToolWindowPanel implements Disposable, Upgr
 	}
 
 	/**
-	 * Jump-to-source target for a single selected plan item. Navigation resolves
-	 * the item's declaration sites lazily through the shared Dependency Sites
-	 * search: a single site opens directly in the editor, several present through
-	 * the sites popup anchored at the tree.
+	 * Resolve declaration sites only when navigation is invoked.
 	 */
 	private class PlanItemNavigatable implements Navigatable {
 

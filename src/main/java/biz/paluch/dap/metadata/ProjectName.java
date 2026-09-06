@@ -24,12 +24,11 @@ import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Display policy for a project name captured from upstream metadata.
+ * An upstream project name with an optional name for display.
  *
- * <p>The captured value remains available when it is non-blank. The optional
- * display name is normalized, length-limited, stripped of common aggregate role
- * and version suffixes, and suppressed when it merely repeats the artifact
- * coordinates.
+ * <p>A non-blank captured name remains available even when unsuitable for
+ * display. Display names omit common suffixes and must add information beyond
+ * the artifact coordinates.
  *
  * @author Mark Paluch
  */
@@ -40,9 +39,7 @@ public class ProjectName {
 	private static final String ROLE_WORD = "(?:bom|bill[\\s-]of[\\s-]materials|release[\\s-]train)";
 
 	/**
-	 * Trailing role word, either preceded by start, whitespace or {@code /} (not by
-	 * {@code -}: hyphenated identifiers stay intact) or wrapped in parentheses or
-	 * brackets.
+	 * Keep hyphenated identifiers intact when removing trailing role words.
 	 */
 	private static final Pattern TRAILING_ROLE_WORD = Pattern.compile(
 			"(?:(?<![^\\s/])" + ROLE_WORD + "|[(\\[]\\s*" + ROLE_WORD + "\\s*[)\\]])\\s*$", Pattern.CASE_INSENSITIVE);
@@ -70,24 +67,13 @@ public class ProjectName {
 				: displayName;
 	}
 
-	/**
-	 * Create an empty project-name policy for the given coordinates.
-	 *
-	 * @param artifactId the coordinates the name must add information over.
-	 * @return an empty project-name policy.
-	 */
 	public static ProjectName empty(ArtifactId artifactId) {
 		return of(artifactId, null);
 	}
 
 	/**
-	 * Create a project-name policy for the given coordinates and captured project
-	 * name.
-	 *
-	 * @param artifactId the coordinates the name must add information over.
-	 * @param projectName the captured project name, or {@literal null} for an empty
-	 * policy.
-	 * @return the project-name policy.
+	 * Create a project name for display alongside the given artifact coordinates.
+	 * @param projectName the captured name, or {@literal null} if absent.
 	 */
 	public static ProjectName of(ArtifactId artifactId, @Nullable String projectName) {
 		String normalized = normalize(projectName);
@@ -96,21 +82,13 @@ public class ProjectName {
 		return new ProjectName(artifactId, projectName, normalized, displayName);
 	}
 
-	/**
-	 * Return whether an accepted display name is available.
-	 *
-	 * @return {@literal true} if an accepted, non-redundant display name is
-	 * available.
-	 */
 	public boolean hasDisplayName() {
 		return StringUtils.hasText(displayName);
 	}
 
 	/**
-	 * Return the accepted display name.
-	 *
-	 * @return the normalized, display-trimmed name.
-	 * @throws IllegalStateException if no accepted display name is available.
+	 * Return the name accepted for display.
+	 * @throws IllegalStateException if no display name is available.
 	 */
 	public String getDisplayName() {
 		if (StringUtils.isEmpty(displayName)) {
@@ -120,18 +98,14 @@ public class ProjectName {
 	}
 
 	/**
-	 * Return whether captured metadata supplied a project name.
-	 *
-	 * @return {@literal true} if a non-blank captured project name is available.
+	 * Return whether the captured name contains non-whitespace text.
 	 */
 	public boolean hasProjectName() {
 		return StringUtils.hasText(projectName);
 	}
 
 	/**
-	 * Return the captured project name without display normalization.
-	 *
-	 * @return the captured project name.
+	 * Return the captured name without display normalization.
 	 * @throws IllegalStateException if the captured name is absent or blank.
 	 */
 	public String getProjectName() {
@@ -159,16 +133,6 @@ public class ProjectName {
 		return name;
 	}
 
-	/**
-	 * Trim a normalized project name for display.
-	 *
-	 * <ul>
-	 * <li>Remove text starting at {@code (}.</li>
-	 * <li>Preserve module-style names containing {@code ::}.</li>
-	 * <li>Otherwise remove trailing role words and separators until stable.</li>
-	 * <li>Remove a trailing numeric version token.</li>
-	 * </ul>
-	 */
 	private static String trimForDisplay(String name) {
 
 		int parenthesis = name.indexOf('(');

@@ -52,19 +52,10 @@ class UpdateGradleFile implements FileDependencyUpdater {
 
 	private final Project project;
 
-	/**
-	 * Create an updater for Gradle-related files in the given project.
-	 */
 	public UpdateGradleFile(Project project) {
 		this.project = project;
 	}
 
-	/**
-	 * Apply the selected version updates to the Gradle-related file.
-	 *
-	 * @param buildFile the Gradle file to update.
-	 * @param updates dependency updates to apply.
-	 */
 	@Override
 	public void applyUpdates(PsiFile buildFile, DependencyUpdates updates) {
 
@@ -93,11 +84,8 @@ class UpdateGradleFile implements FileDependencyUpdater {
 	}
 
 	/**
-	 * Apply a single update at the given Gradle version literal. The literal must
-	 * be one of the supported PSI shapes (Properties value, TOML literal, Groovy
-	 * literal, or Kotlin string template).
-	 * @param literal the version PSI element to rewrite.
-	 * @param update the update to apply.
+	 * Update a supported Gradle version literal. Unsupported PSI shapes are
+	 * ignored.
 	 */
 	public void applyUpdate(PsiElement literal, DependencyUpdate update) {
 
@@ -127,10 +115,6 @@ class UpdateGradleFile implements FileDependencyUpdater {
 		}
 	}
 
-	/**
-	 * Updates a property value in a properties file or Groovy/Kotlin ext/extra
-	 * block.
-	 */
 	public void updateProperty(PsiFile file, String propertyKey, String newVersion) {
 
 		// gradle.properties
@@ -190,10 +174,6 @@ class UpdateGradleFile implements FileDependencyUpdater {
 		literal.replace(newLiteral);
 	}
 
-	/**
-	 * Updates the version in a dependency GAV string literal or map-notation
-	 * {@code version:} argument.
-	 */
 	private void updateDeclaration(PsiFile file, GradlePropertyResolver propertyResolver, ArtifactId artifactId,
 			String newVersion) {
 
@@ -215,11 +195,6 @@ class UpdateGradleFile implements FileDependencyUpdater {
 		}
 	}
 
-	/**
-	 * Update {@code version = "..."} inside a {@code [libraries]} or
-	 * {@code [plugins]} inline table when the entry matches {@code artifactId} and
-	 * uses a literal version (not {@code version.ref}).
-	 */
 	private void updateDeclaration(TomlFile file, ArtifactId artifactId, String newVersion) {
 
 		Map<String, Property> properties = TomlParser.parseTomlVersions(file);

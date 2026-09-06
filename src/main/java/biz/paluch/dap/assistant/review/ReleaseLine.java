@@ -25,26 +25,14 @@ import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 
 /**
- * A candidate's release line: its release versions at or above the agreed
- * current version, capped at the ten most recent releases, release dates
- * ignored.
- *
- * <p>Two candidates satisfy release-line agreement precisely when their lines
- * are equal; {@link InferredGrouping} partitions agreeing cohorts by this
- * equality.
+ * Recent versions at or above the agreed current version.
+ * <p>Equality ignores release dates and determines whether candidates can share
+ * an inferred upgrade group.
  *
  * @author Mark Paluch
  */
 record ReleaseLine(Set<ArtifactVersion> versions) {
 
-	/**
-	 * Compute the release line of the given member relative to the agreed current
-	 * version.
-	 *
-	 * @param member the candidate whose releases form the line.
-	 * @param currentVersion the agreed current version acting as the lower bound.
-	 * @return the member's release line.
-	 */
 	static ReleaseLine of(TableRow member, ArtifactVersion currentVersion) {
 
 		Set<ArtifactVersion> line = new HashSet<>();

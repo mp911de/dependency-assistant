@@ -22,7 +22,6 @@ import java.util.List;
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.assistant.check.DependencyCheck;
 import biz.paluch.dap.assistant.check.UpgradeScope;
 import biz.paluch.dap.util.BetterPsiManager;
 import com.intellij.openapi.project.Project;
@@ -30,25 +29,12 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 
 /**
- * Resolves the {@link UpgradeScope}: the set of build files a single
- * {@link DependencyCheck} runs over.
- *
- * <p>Resolution follows a fixed precedence:
- * <ol>
- * <li>an explicit Project View selection of supported build files,</li>
- * <li>else the active editor's build file when its context is available,</li>
- * <li>else every supported and applicable build file in the project.</li>
- * </ol>
- *
- * <p>Directories contribute nothing (files only, no recursion). When an
- * explicit selection yields no usable build file the result carries an
- * {@link UpgradeScope#reason() empty reason}:
- * {@link UpgradeScope.Reason#NO_BUILD_FILES} when nothing selected was
- * supported by an integration, or {@link UpgradeScope.Reason#NOT_IMPORTED} when
- * a supported build file's project model is not imported.
+ * Selects the build files for a dependency check.
+ * <p>Explicit selection takes precedence over an available editor context, then
+ * project-wide discovery. Directories are ignored without recursion. An
+ * unusable explicit selection yields an empty scope instead of falling back.
  *
  * @author Mark Paluch
- * @see UpgradeScope
  */
 class UpgradeScopeResolver {
 
@@ -56,13 +42,9 @@ class UpgradeScopeResolver {
 	}
 
 	/**
-	 * Resolve the {@link UpgradeScope} for the given inputs.
-	 *
-	 * @param project the project containing the requested files.
-	 * @param request the selection and editor context to resolve.
-	 * @return the resolved scope. An explicit selection with no usable build file
-	 * returns an empty scope carrying the reason; project-wide discovery may return
-	 * a successful empty scope.
+	 * Resolve the requested scope.
+	 * @return the empty scope and its reason if an explicit selection is unusable.
+	 * Project-wide discovery may return a successful empty scope.
 	 */
 	public static UpgradeScope resolve(Project project, UpgradeRequest request) {
 

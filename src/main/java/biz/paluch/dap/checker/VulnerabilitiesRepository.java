@@ -35,8 +35,6 @@ public interface VulnerabilitiesRepository {
 	/**
 	 * Return the known vulnerabilities for the given artifact version.
 	 *
-	 * @param artifactId the artifact to look up.
-	 * @param version the version to look up.
 	 * @return the known vulnerabilities, or {@link Vulnerabilities#absent()} when
 	 * nothing is recorded for the version.
 	 */
@@ -45,8 +43,6 @@ public interface VulnerabilitiesRepository {
 	/**
 	 * Return the known vulnerabilities for the given package version.
 	 *
-	 * @param pkg the package to look up.
-	 * @param version the version to look up.
 	 * @return the known vulnerabilities, or {@link Vulnerabilities#absent()} when
 	 * nothing is recorded for the version.
 	 */

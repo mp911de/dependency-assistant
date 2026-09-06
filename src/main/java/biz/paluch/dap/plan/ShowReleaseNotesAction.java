@@ -28,10 +28,8 @@ import com.intellij.openapi.project.Project;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Open the release notes of the first selected plan item's target version in
- * the browser. Enabled when the cache-only {@link ProjectMetadataService}
- * facade resolves a release-notes URL for the item's target version; no fetch
- * runs on update or click.
+ * Open release notes for the first selected item's target version. URL lookup
+ * uses cached metadata without fetching.
  *
  * @author Mark Paluch
  */
@@ -67,10 +65,6 @@ public class ShowReleaseNotesAction extends DumbAwareAction {
 		});
 	}
 
-	/**
-	 * Resolve the release-notes URL for the item's target version through the
-	 * metadata facade of its first member.
-	 */
 	private static @Nullable URI releaseNotesUrl(Project project, UpgradePlanItem item) {
 
 		ProjectMetadata metadata = ProjectMetadataService.getInstance(project)

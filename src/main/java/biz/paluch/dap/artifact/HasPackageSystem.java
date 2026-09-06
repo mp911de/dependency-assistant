@@ -25,11 +25,6 @@ package biz.paluch.dap.artifact;
  */
 public interface HasPackageSystem {
 
-	/**
-	 * Return the package system.
-	 *
-	 * @return the package system.
-	 */
 	PackageSystem getPackageSystem();
 
 }

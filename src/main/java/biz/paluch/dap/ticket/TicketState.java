@@ -17,34 +17,18 @@
 package biz.paluch.dap.ticket;
 
 /**
- * Lifecycle state used for tickets and query filters.
- *
- * <p>Instances are implementation-owned and obtained through
- * {@link TicketRepository#getTicketStates(com.intellij.openapi.progress.ProgressIndicator)}
- * or {@link Ticket#getState()}. Implementations may map these values to static
- * states, such as open and closed, or to server-defined workflow states. The
- * portable contract only asks whether the state counts as open or closed.
+ * Repository-owned ticket lifecycle state. Implementations may represent fixed
+ * states or server-defined workflows.
  *
  * @author Mark Paluch
- * @see TicketRepository#getTicketStates(com.intellij.openapi.progress.ProgressIndicator)
  */
 public interface TicketState {
 
-	/**
-	 * Return whether a ticket in this state counts as open.
-	 *
-	 * @return {@literal true} if the state counts as open; {@literal false}
-	 * otherwise.
-	 */
 	boolean isOpen();
 
 	/**
-	 * Return whether a ticket in this state counts as closed.
-	 *
-	 * <p>The default implementation treats every non-open state as closed.
-	 *
-	 * @return {@literal true} if the state counts as closed; {@literal false}
-	 * otherwise.
+	 * Whether this state is closed. By default, all non-open states count as
+	 * closed.
 	 */
 	default boolean isClosed() {
 		return !isOpen();

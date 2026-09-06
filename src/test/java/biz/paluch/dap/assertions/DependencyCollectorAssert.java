@@ -30,33 +30,8 @@ import org.assertj.core.api.AssertProvider;
 import org.jspecify.annotations.Nullable;
 
 /**
- * AssertJ assertions for {@link DependencyCollector}.
- *
- * <p>The collector keeps versioned dependency usages separate from managed
- * version-constraint declarations. Methods that find a usage navigate to
- * {@link DependencyUsageAssert}; methods that find a declaration navigate to
- * {@link DependencyDeclarationAssert}. Both share the declaration-source and
- * version-source checks defined on {@link AbstractDeclaredDependencyAssert},
- * and only a usage additionally exposes a current version.
- *
- * <p>Example: <pre class="code">
- * assertThat(collector).hasUsageCount(2);
- *
- * assertThat(collector)
- *     .hasDependencyUsage("org.junit", "junit-bom")
- *     .hasVersion("6.0.3")
- *     .hasDeclaration(DeclarationSource.dependency())
- *     .hasVersionSource(VersionSource.literal());
- *
- * assertThat(collector)
- *     .hasDependencyDeclaration("org.junit", "junit-bom")
- *     .hasVersionSource(VersionSource.literal());
- *
- * assertThat(collector)
- *     .hasDependencyUsage("org.springframework.boot", "org.springframework.boot")
- *     .hasVersion("4.0.3")
- *     .hasDeclaration(DeclarationSource.Plugin.class);
- * </pre>
+ * Assertions for collected usages and managed declarations.
+ * <p>Overloads taking only a name match the artifact ID without the group ID.
  *
  * @author Mark Paluch
  */
@@ -68,20 +43,11 @@ public class DependencyCollectorAssert
 		super(collector, DependencyCollectorAssert.class);
 	}
 
-	/**
-	 * Returns this assertion object for AssertJ {@link AssertProvider} integration.
-	 */
 	@Override
 	public DependencyCollectorAssert assertThat() {
 		return this;
 	}
 
-	/**
-	 * Verifies that the actual collector contains exactly the given number of
-	 * dependency usages.
-	 * @param expected the expected number of dependency usages.
-	 * @return this assertion object.
-	 */
 	public DependencyCollectorAssert hasUsageCount(int expected) {
 		isNotNull();
 		Collection<Dependency> usages = this.actual.getUsages();
@@ -92,12 +58,6 @@ public class DependencyCollectorAssert
 		return this;
 	}
 
-	/**
-	 * Verifies that the actual collector contains exactly the given number of
-	 * dependency declarations.
-	 * @param expected the expected number of dependency declarations.
-	 * @return this assertion object.
-	 */
 	public DependencyCollectorAssert hasDeclarationCount(int expected) {
 		isNotNull();
 		Collection<DeclaredDependency> declarations = this.actual.getDeclarations();
@@ -109,19 +69,12 @@ public class DependencyCollectorAssert
 	}
 
 	/**
-	 * Verifies that the actual collector contains no dependency usages.
-	 * @return this assertion object.
+	 * Require no dependency usages. Managed declarations may still be present.
 	 */
 	public DependencyCollectorAssert isEmpty() {
 		return hasUsageCount(0);
 	}
 
-	/**
-	 * Verifies that no dependency usage is registered for the given coordinates.
-	 * @param groupId the expected group id to be absent.
-	 * @param artifactId the expected artifact id to be absent.
-	 * @return this assertion object.
-	 */
 	public DependencyCollectorAssert hasNoDependencyUsage(String groupId, String artifactId) {
 		isNotNull();
 		Dependency usage = this.actual.getUsage(groupId, artifactId);
@@ -133,11 +86,6 @@ public class DependencyCollectorAssert
 		return this;
 	}
 
-	/**
-	 * Verifies that no dependency usage is registered for the given artifact id.
-	 * @param name the artifact id expected to be absent.
-	 * @return this assertion object.
-	 */
 	public DependencyCollectorAssert hasNoDependencyUsage(String name) {
 		isNotNull();
 		Dependency usage = getDependency(name);
@@ -148,13 +96,6 @@ public class DependencyCollectorAssert
 		return this;
 	}
 
-	/**
-	 * Verifies that no dependency declaration is registered for the given
-	 * coordinates.
-	 * @param groupId the expected group id to be absent.
-	 * @param artifactId the expected artifact id to be absent.
-	 * @return this assertion object.
-	 */
 	public DependencyCollectorAssert hasNoDependencyDeclaration(String groupId, String artifactId) {
 		isNotNull();
 		DeclaredDependency declaration = this.actual.getDeclaration(ArtifactId.of(groupId, artifactId));
@@ -166,12 +107,6 @@ public class DependencyCollectorAssert
 		return this;
 	}
 
-	/**
-	 * Verifies that no dependency declaration is registered for the given artifact
-	 * id.
-	 * @param name the artifact id expected to be absent.
-	 * @return this assertion object.
-	 */
 	public DependencyCollectorAssert hasNoDependencyDeclaration(String name) {
 		isNotNull();
 		DeclaredDependency declaration = getDeclaration(name);
@@ -182,13 +117,6 @@ public class DependencyCollectorAssert
 		return this;
 	}
 
-	/**
-	 * Verifies that a dependency usage is registered for the given coordinates and
-	 * returns an assertion object for that usage.
-	 * @param groupId the expected group id.
-	 * @param artifactId the expected artifact id.
-	 * @return an assertion object for the matching dependency usage.
-	 */
 	public DependencyUsageAssert hasDependencyUsage(String groupId, String artifactId) {
 		isNotNull();
 		Dependency usage = this.actual.getUsage(groupId, artifactId);
@@ -201,12 +129,6 @@ public class DependencyCollectorAssert
 		return new DependencyUsageAssert(usage);
 	}
 
-	/**
-	 * Verifies that a dependency usage is registered for the given artifact id and
-	 * returns an assertion object for that usage.
-	 * @param name the expected artifact id.
-	 * @return an assertion object for the matching dependency usage.
-	 */
 	public DependencyUsageAssert hasDependencyUsage(String name) {
 		isNotNull();
 
@@ -220,13 +142,6 @@ public class DependencyCollectorAssert
 		return new DependencyUsageAssert(usage);
 	}
 
-	/**
-	 * Verifies that a dependency declaration is registered for the given
-	 * coordinates and returns an assertion object for that declaration.
-	 * @param groupId the expected group id.
-	 * @param artifactId the expected artifact id.
-	 * @return an assertion object for the matching dependency declaration.
-	 */
 	public DependencyDeclarationAssert hasDependencyDeclaration(String groupId, String artifactId) {
 		isNotNull();
 		DeclaredDependency declaration = this.actual.getDeclaration(ArtifactId.of(groupId, artifactId));
@@ -239,12 +154,6 @@ public class DependencyCollectorAssert
 		return new DependencyDeclarationAssert(declaration);
 	}
 
-	/**
-	 * Verifies that a dependency declaration is registered for the given artifact
-	 * id and returns an assertion object for that declaration.
-	 * @param name the expected artifact id.
-	 * @return an assertion object for the matching dependency declaration.
-	 */
 	public DependencyDeclarationAssert hasDependencyDeclaration(String name) {
 		isNotNull();
 
@@ -269,16 +178,7 @@ public class DependencyCollectorAssert
 	}
 
 	/**
-	 * Base assertions shared by managed declarations and dependency usages.
-	 *
-	 * <p>Covers the {@link DeclarationSource declaration sources} and
-	 * {@link VersionSource version sources} captured on a
-	 * {@link DeclaredDependency}. Concrete subtypes specialise the actual type and
-	 * add checks that only apply to that variant, such as the current version on a
-	 * {@link DependencyUsageAssert usage}.
-	 *
-	 * @param <SELF> the concrete assertion type returned for fluent chaining.
-	 * @param <ACTUAL> the declared dependency type under assertion.
+	 * Source assertions shared by managed declarations and dependency usages.
 	 */
 	public abstract static class AbstractDeclaredDependencyAssert<SELF extends AbstractDeclaredDependencyAssert<SELF, ACTUAL>, ACTUAL extends DeclaredDependency>
 			extends AbstractAssert<SELF, ACTUAL> {
@@ -288,12 +188,7 @@ public class DependencyCollectorAssert
 		}
 
 		/**
-		 * Verifies that at least one {@link DeclarationSource} in the actual dependency
-		 * is an instance of the given type. Accepts concrete source types and marker
-		 * interfaces such as {@link DeclarationSource.Managed} or
-		 * {@link DeclarationSource.Bom}.
-		 * @param type the declaration source type or marker expected to be present.
-		 * @return this assertion object.
+		 * Require a declaration matching a concrete type or marker interface.
 		 */
 		public SELF hasDeclaration(Class<?> type) {
 			isNotNull();
@@ -310,11 +205,7 @@ public class DependencyCollectorAssert
 		}
 
 		/**
-		 * Verifies that no {@link DeclarationSource} in the actual dependency is an
-		 * instance of the given type. Accepts concrete source types and marker
-		 * interfaces such as {@link DeclarationSource.Bom}.
-		 * @param type the declaration source type or marker expected to be absent.
-		 * @return this assertion object.
+		 * Require no declaration matching the given type or marker interface.
 		 */
 		public SELF hasNoDeclaration(Class<?> type) {
 			isNotNull();
@@ -330,12 +221,6 @@ public class DependencyCollectorAssert
 			return myself;
 		}
 
-		/**
-		 * Verifies that at least one {@link DeclarationSource} in the actual dependency
-		 * equals the given value.
-		 * @param expected the declaration source expected to be present.
-		 * @return this assertion object.
-		 */
 		public SELF hasDeclaration(DeclarationSource expected) {
 			isNotNull();
 			boolean found = this.actual.getDeclarationSources().stream()
@@ -350,23 +235,10 @@ public class DependencyCollectorAssert
 			return myself;
 		}
 
-		/**
-		 * Verifies that the actual dependency version is sourced from a Gradle property
-		 * with the given name.
-		 * <p>This is convenience syntax for {@link #hasVersionSource(VersionSource)}
-		 * with {@link VersionSource#property(String)}.
-		 * @param propertyName the expected property name.
-		 * @return this assertion object.
-		 */
 		public SELF hasPropertyVersion(String propertyName) {
 			return hasVersionSource(VersionSource.property(propertyName));
 		}
 
-		/**
-		 * Verifies that the actual dependency version is not sourced from a Gradle
-		 * property reference.
-		 * @return this assertion object.
-		 */
 		public SELF hasNoPropertyVersion() {
 			isNotNull();
 			if (this.actual.findPropertyVersion() != null) {
@@ -377,12 +249,6 @@ public class DependencyCollectorAssert
 			return myself;
 		}
 
-		/**
-		 * Verifies that at least one {@link VersionSource} in the actual dependency
-		 * equals the given value.
-		 * @param expected the version source expected to be present.
-		 * @return this assertion object.
-		 */
 		public SELF hasVersionSource(VersionSource expected) {
 			isNotNull();
 			boolean found = this.actual.getVersionSources().stream()
@@ -397,12 +263,6 @@ public class DependencyCollectorAssert
 			return myself;
 		}
 
-		/**
-		 * Verifies that no {@link VersionSource} in the actual dependency equals the
-		 * given value.
-		 * @param unexpected the version source expected to be absent.
-		 * @return this assertion object.
-		 */
 		public SELF hasNoVersionSource(VersionSource unexpected) {
 			isNotNull();
 			boolean found = this.actual.getVersionSources().stream()
@@ -417,12 +277,6 @@ public class DependencyCollectorAssert
 			return myself;
 		}
 
-		/**
-		 * Verifies that at least one {@link VersionSource} in the actual dependency is
-		 * an instance of the given type.
-		 * @param type the version source type expected to be present.
-		 * @return this assertion object.
-		 */
 		public SELF hasVersionSource(Class<? extends VersionSource> type) {
 			isNotNull();
 			boolean found = this.actual.getVersionSources().stream()
@@ -437,11 +291,6 @@ public class DependencyCollectorAssert
 			return myself;
 		}
 
-		/**
-		 * Verifies that the actual dependency artifact id equals the given value.
-		 * @param expected the expected artifact id.
-		 * @return this assertion object.
-		 */
 		public SELF hasArtifactId(ArtifactId expected) {
 			isNotNull();
 			if (!expected.equals(this.actual.getArtifactId())) {
@@ -455,14 +304,7 @@ public class DependencyCollectorAssert
 	}
 
 	/**
-	 * AssertJ assertions for a single {@link Dependency} usage.
-	 *
-	 * <p>Instances are obtained from
-	 * {@link DependencyCollectorAssert#hasDependencyUsage(String, String)} or
-	 * {@link DependencyCollectorAssert#hasDependencyUsage(String)} after the
-	 * collector assertion has established that the requested usage exists. Beyond
-	 * the shared declaration and version-source checks, a usage carries an
-	 * effective {@link Dependency#getCurrentVersion() current version}.
+	 * Assertions for a dependency usage, including its effective current version.
 	 */
 	public static class DependencyUsageAssert
 			extends AbstractDeclaredDependencyAssert<DependencyUsageAssert, Dependency> {
@@ -471,12 +313,6 @@ public class DependencyCollectorAssert
 			super(dependency, DependencyUsageAssert.class);
 		}
 
-		/**
-		 * Verifies that the actual dependency's current version string equals the given
-		 * value.
-		 * @param expectedVersion the expected version string.
-		 * @return this assertion object.
-		 */
 		public DependencyUsageAssert hasVersion(String expectedVersion) {
 			isNotNull();
 			ArtifactVersion current = this.actual.getCurrentVersion();
@@ -492,15 +328,7 @@ public class DependencyCollectorAssert
 	}
 
 	/**
-	 * AssertJ assertions for a single managed {@link DeclaredDependency}.
-	 *
-	 * <p>Instances are obtained from
-	 * {@link DependencyCollectorAssert#hasDependencyDeclaration(String, String)} or
-	 * {@link DependencyCollectorAssert#hasDependencyDeclaration(String)} after the
-	 * collector assertion has established that the requested declaration exists. A
-	 * declaration constrains a version without using the artifact, so it exposes
-	 * only the shared declaration and version-source checks and has no current
-	 * version.
+	 * Assertions for a managed declaration, which has no current version.
 	 */
 	public static class DependencyDeclarationAssert
 			extends AbstractDeclaredDependencyAssert<DependencyDeclarationAssert, DeclaredDependency> {

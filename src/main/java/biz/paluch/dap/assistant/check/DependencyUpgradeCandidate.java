@@ -44,21 +44,10 @@ import biz.paluch.dap.upgrade.UpgradeSuggestionsFactory;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A collected dependency's complete upgrade picture: the dependency, its
- * release universe, governing rule, vulnerabilities, computed suggestions,
- * declared versions, presentation, and associated build-tool integration,
- * gathered in one consistent release universe.
- *
- * <p>The aggregate is the basis for an upgrade decision, not the decision
- * itself: it owns everything needed to offer and apply an upgrade, while the
- * user's actual pick lives in {@code UpgradeSelection}. Strategy targets are
- * resolved through the matching release view so callers cannot select a
- * suggestion whose release is no longer available.
- *
- * <p>The candidate is a transient snapshot created for dependency review or
- * reconstructed from an Upgrade Plan. Suggestions and display views are
- * computed during creation and retained with the supplied dependency, rule,
- * vulnerability repository, declared versions, and assistant.
+ * Upgrade options for a collected dependency.
+ * <p>This transient snapshot supplies the facts for review and application. The
+ * user's choice is kept separately in the review selection. Targets must remain
+ * available in the corresponding release view.
  *
  * @author Mark Paluch
  */
@@ -111,18 +100,6 @@ public class DependencyUpgradeCandidate implements HasArtifactId, HasPackageIden
 		}
 	}
 
-	/**
-	 * Create an upgrade candidate and compute its suggestions and display views.
-	 *
-	 * @param dependency the collected dependency to analyze.
-	 * @param assistant the build-tool integration associated with the dependency.
-	 * @param releases the known release universe.
-	 * @param vulnerabilities the vulnerability facts used for remediation.
-	 * @param rule the governing dependency rule.
-	 * @param presentation the user-facing dependency presentation.
-	 * @param declaredVersions the declaration-version and drift facts.
-	 * @return the computed upgrade candidate.
-	 */
 	public static DependencyUpgradeCandidate create(Dependency dependency,
 			DependencyAssistant assistant, Releases releases, VulnerabilityRepository vulnerabilities,
 			DependencyRule rule, IconDependencyPresentation presentation, DeclaredVersions declaredVersions) {
@@ -159,159 +136,95 @@ public class DependencyUpgradeCandidate implements HasArtifactId, HasPackageIden
 		return dependency.getArtifactId();
 	}
 
-	/**
-	 * Return the collected dependency represented by this upgrade.
-	 *
-	 * @return the dependency retained by this upgrade.
-	 */
 	public Dependency getDependency() {
 		return dependency;
 	}
 
-	/**
-	 * Return the associated dependency assistant.
-	 *
-	 * @return the associated dependency assistant.
-	 */
 	public DependencyAssistant getAssistant() {
 		return assistant;
 	}
 
 	/**
-	 * Return the dependency version in use when this upgrade was created.
-	 *
-	 * @return the current dependency version.
+	 * Return the version in use when this candidate was created.
 	 */
 	public ArtifactVersion getCurrentVersion() {
 		return dependency.getCurrentVersion();
 	}
 
 	/**
-	 * Return the supplied release universe with the current dependency version
-	 * included.
-	 *
-	 * @return the release universe used to compute suggestions.
+	 * Return the known releases, including the current version.
 	 */
 	public Releases getReleases() {
 		return releases;
 	}
 
 	/**
-	 * Return releases suitable for the dependency check dialog.
-	 *
-	 * <p>The result omits preview noise for a stable current version while
-	 * retaining the current release and remediation targets.
-	 *
-	 * @return the display release view.
+	 * Return releases suitable for review.
+	 * <p>Previews are omitted for stable current versions, except remediation
+	 * targets. The current release is retained.
 	 */
 	public Releases getDisplayReleases() {
 		return displayReleases;
 	}
 
 	/**
-	 * Return all policy suggestions in strategy priority order.
-	 *
-	 * @return the computed upgrade suggestions.
+	 * Return policy suggestions in strategy priority order.
 	 */
 	public UpgradeSuggestions getSuggestions() {
 		return suggestions;
 	}
 
 	/**
-	 * Return version properties associated with this upgrade candidate, in
-	 * version-source order.
-	 *
-	 * @return the version properties in version-source order.
+	 * Return the mutable version-property set in version-source order.
 	 */
 	public Set<VersionProperty> getVersionProperties() {
 		return versionProperties;
 	}
 
-	/**
-	 * Return the rule governing this upgrade.
-	 *
-	 * @return the resolved dependency rule.
-	 */
 	public DependencyRule getRule() {
 		return rule;
 	}
 
-	/**
-	 * Return the dependency presentation.
-	 *
-	 * @return the dependency presentation.
-	 */
 	public IconDependencyPresentation getPresentation() {
 		return presentation;
 	}
 
-	/**
-	 * Return the versions the dependency is declared at across its declaration
-	 * sites.
-	 *
-	 * @return the declared-version facts, used for drift reporting and grouping.
-	 */
 	public DeclaredVersions getDeclaredVersions() {
 		return declaredVersions;
 	}
 
-	/**
-	 * Return the vulnerability repository used by this upgrade.
-	 *
-	 * @return the supplied vulnerability repository.
-	 */
 	public VulnerabilityRepository getVulnerabilities() {
 		return vulnerabilities;
 	}
 
 	/**
-	 * Return the known vulnerability state for the given version, sampled from the
-	 * repository on first request and cached for the aggregate's lifetime.
-	 *
-	 * @param version the version to inspect.
-	 * @return the known vulnerabilities for the version.
+	 * Return vulnerabilities sampled on first access and retained for this
+	 * candidate.
 	 */
 	public Vulnerabilities getVulnerabilities(ArtifactVersion version) {
 		return vulnerabilitiesByVersion.computeIfAbsent(version, vulnerabilities::getVulnerabilities);
 	}
 
-	/**
-	 * Return whether the current dependency version is known to be vulnerable.
-	 *
-	 * @return {@literal true} if the current version is vulnerable;
-	 * {@literal false} otherwise.
-	 */
 	public boolean isVulnerable() {
 		return getVulnerabilities(getCurrentVersion()).isVulnerable();
 	}
 
 	/**
-	 * Return whether the display view contains an automatic upgrade target.
-	 *
-	 * @return {@literal true} if at least one display suggestion is available;
-	 * {@literal false} otherwise.
+	 * Return whether an automatic target is available in the display view.
 	 */
 	public boolean hasUpgradeTargets() {
 		return !displaySuggestions.isEmpty();
 	}
 
 	/**
-	 * Resolve an unfiltered strategy target through the upgrade's releases.
-	 *
-	 * @param strategy the strategy whose target should be resolved.
-	 * @return the target release, or {@literal null} if the strategy has no valid
-	 * target.
+	 * Return the strategy target, or {@literal null} if none is available.
 	 */
 	public @Nullable Release findRelease(UpgradeStrategy strategy) {
 		return resolveRelease(strategy, suggestions, releases);
 	}
 
 	/**
-	 * Resolve a display strategy target through the display releases.
-	 *
-	 * @param strategy the strategy whose visible target should be resolved.
-	 * @return the target release, or {@literal null} if the strategy has no visible
-	 * target.
+	 * Return the strategy target offered for display, or {@literal null} if none.
 	 */
 	public @Nullable Release findCuratedRelease(UpgradeStrategy strategy) {
 		return resolveRelease(strategy, displaySuggestions, displayReleases);
@@ -328,10 +241,7 @@ public class DependencyUpgradeCandidate implements HasArtifactId, HasPackageIden
 	}
 
 	/**
-	 * Create the apply-ready update for the selected target.
-	 *
-	 * @param target the selected target version.
-	 * @return an update carrying the dependency's declaration and version sources.
+	 * Create an update retaining the dependency's declaration and version sources.
 	 */
 	public DependencyUpdate createUpdate(ArtifactVersion target) {
 		return DependencyUpdate.from(dependency, target);

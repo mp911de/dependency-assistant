@@ -33,25 +33,14 @@ import com.intellij.util.ThrowableConsumer;
 interface PlanUpdateApplier {
 
 	/**
-	 * Apply the given plan items using this implementation's transaction semantics.
-	 *
-	 * @param plan the plan items to apply in plan order.
-	 * @param indicator the progress and cancellation indicator for the run.
-	 * @return the applied updates.
+	 * Apply items using this implementation's transaction semantics.
+	 * <p>The caller supplies a background thread. Implementations own the write
+	 * boundary.
+	 * @return updates that changed files.
 	 * @throws VcsException if a required version-control operation fails.
-	 * @implNote Implementations run on the invoking background thread and own their
-	 * transaction-specific write boundary. They do not schedule UI work.
 	 */
 	AppliedUpdates apply(UpgradePlan plan, ProgressIndicator indicator) throws VcsException;
 
-	/**
-	 * Run the given consumer on each item in the given collection.
-	 *
-	 * @param items the collection of items to process.
-	 * @param indicator the progress and cancellation indicator for the run.
-	 * @param consumer the function to apply to each item.
-	 * @throws VcsException if a required version-control operation fails.
-	 */
 	default void doWithItems(Collection<UpgradePlanItem> items, ProgressIndicator indicator,
 			ThrowableConsumer<UpgradePlanItem, VcsException> consumer) throws VcsException {
 

@@ -60,7 +60,7 @@ class CvssSeverityUnitTests {
 	}
 
 	@Test
-	void mapsUnrecognizedLabelToUnknown() {
+	void mapsUnsupportedLabelToUnknown() {
 
 		assertThat(CvssSeverity.fromLabel("severe")).isEqualTo(CvssSeverity.UNKNOWN);
 		assertThat(CvssSeverity.fromLabel("")).isEqualTo(CvssSeverity.UNKNOWN);

@@ -26,13 +26,9 @@ import com.intellij.psi.util.PsiTreeUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Locates NPM dependency literals and their version-bearing text ranges.
- *
- * <p>The IDE annotator and line marker use
- * {@link NpmVersionExpression#replaceableRange(String)} for highlighting.
- * Updatable variants expose the same sub-range to
- * {@link UpdatePackageJsonFile}; prefix ranges are highlighted but not updated
- * by that writer.
+ * Locates NPM dependency literals and their version-bearing ranges.
+ * <p>Prefix ranges can be highlighted even though the updater cannot rewrite
+ * them.
  *
  * @author Mark Paluch
  */
@@ -42,14 +38,9 @@ class NpmPsiUtils {
 	}
 
 	/**
-	 * Return the text range that covers the variant-defined replaceable range of
-	 * the NPM dependency value containing the given element. Returns the element's
-	 * own range when no enclosing dependency value can be located, so the IDE
-	 * extensions degrade gracefully outside dependency contexts.
-	 *
-	 * @param element the PSI element at or within a dependency value.
-	 * @return the version-bearing range, or a fallback PSI range when no supported
-	 * expression is found.
+	 * Return the version-bearing range in absolute file offsets.
+	 * <p>Fall back to the enclosing literal or element range when no supported
+	 * expression is available.
 	 */
 	static TextRange getVersionRange(PsiElement element) {
 
@@ -70,15 +61,6 @@ class NpmPsiUtils {
 		return new TextRange(literalStart + replaceable.getStartOffset(), literalStart + replaceable.getEndOffset());
 	}
 
-	/**
-	 * Return whether the given JSON string literal ends with a double quote that is
-	 * not immediately preceded by a backslash. An unterminated literal arises when
-	 * the user is mid-typing and the parser has not yet observed the closing quote.
-	 *
-	 * @param literal the literal to inspect.
-	 * @return {@literal true} if the literal text ends with an unescaped {@code "};
-	 * {@literal false} otherwise.
-	 */
 	static boolean isClosed(JsonStringLiteral literal) {
 		String text = literal.getText();
 		return text.length() >= 2 && text.charAt(text.length() - 1) == '"'

@@ -56,12 +56,9 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.util.ObjectUtils;
 
 /**
- * Project-level service persisting the Upgrade Plan across IDE restarts.
- *
- * <p>The plan is stored in {@code .idea/dependency-assistant-plan.xml}. Whether
- * it is shared follows the project's version-control ignore rules. A team can
- * track that file to share and review the plan, or ignore it to keep the plan
- * local.
+ * Persist the Upgrade Plan across IDE restarts.
+ * <p>The file {@code .idea/dependency-assistant-plan.xml} can be versioned to
+ * share the plan or ignored to keep it local.
  *
  * @author Mark Paluch
  */
@@ -135,20 +132,12 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 
 	}
 
-	/**
-	 * Return the project-scoped service instance.
-	 *
-	 * @param project the IntelliJ project.
-	 * @return the corresponding service instance.
-	 */
 	public static UpgradePlanState getInstance(Project project) {
 		return project.getService(UpgradePlanState.class);
 	}
 
 	/**
-	 * Return a detached snapshot for platform persistence.
-	 *
-	 * @return a detached snapshot of the current plan.
+	 * Return a persistence snapshot with copied member facts.
 	 */
 	@Override
 	public synchronized Plan getState() {
@@ -156,20 +145,16 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 	}
 
 	/**
-	 * Return the live plan owned by this service. Structural content changes are
-	 * coordinated by {@link UpgradePlanService}.
-	 *
-	 * @return the live plan.
+	 * Return the live plan. {@link UpgradePlanService} coordinates structural
+	 * changes.
 	 */
 	public Plan getPlan() {
 		return state;
 	}
 
 	/**
-	 * Replace the live plan from persisted state, advance its generation, and
-	 * notify listeners that prior materialization and undo history are stale.
-	 *
-	 * @param state the persisted plan to install.
+	 * Replace persisted state and invalidate prior materialization through a new
+	 * generation.
 	 */
 	@Override
 	public synchronized void loadState(Plan state) {
@@ -287,11 +272,9 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 	}
 
 	/**
-	 * The persisted and optionally materialized content of an Upgrade Plan: its
-	 * ordered items and captured build-file scope paths.
-	 *
-	 * <p>Items that cannot currently be materialized remain in this content but are
-	 * omitted from the live {@link UpgradePlan} until they resolve again.
+	 * Persisted plan items and captured file paths.
+	 * <p>Unresolvable items remain here but are omitted from the live plan until
+	 * reload succeeds.
 	 */
 	@Tag("content")
 	static class Content implements Iterable<Item> {
@@ -368,10 +351,8 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 	}
 
 	/**
-	 * XML-serialized state of one planned upgrade unit.
-	 *
-	 * <p>Equality is member-derived {@link ItemId} identity. The display name,
-	 * target version, vulnerability facts, and ticket do not participate.
+	 * Persisted upgrade unit with member-derived {@link ItemId} equality. Target,
+	 * name, vulnerability facts and ticket do not participate in identity.
 	 *
 	 * @author Mark Paluch
 	 */
@@ -412,9 +393,6 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 					plannedUpgrade.getUpgradeCandidates());
 		}
 
-		/**
-		 * Create a persisted item from a planned upgrade.
-		 */
 		static Item from(String displayName, ArtifactVersion targetVersion, List<Member> members,
 				List<DependencyUpgradeCandidate> upgrades) {
 
@@ -844,11 +822,9 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 	}
 
 	/**
-	 * Member artifact of a plan item, carrying its coordinate, current version, the
-	 * integration that owns it, and its declaration and version-source structure.
-	 *
-	 * <p>An implicit member joined its item through a shared version property; it
-	 * emits no update of its own because another member owns the property write.
+	 * Persisted member facts for reconstructing a dependency.
+	 * <p>An implicit member emits no update because another member owns its shared
+	 * version-property write.
 	 */
 	@Tag("member")
 	public static class Member implements HasPackageIdentity {

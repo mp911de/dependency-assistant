@@ -31,14 +31,12 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * Transient representation of one dependency site discovered in a build file.
+ * A transient dependency declaration with PSI anchors. The version literal may
+ * belong to another file, such as a version catalog.
  *
- * <p>A declaration carries package identity, declaration and version sources,
- * and the PSI anchors for the declaration and version literal. The version
- * literal may belong to another file, such as a version catalog. The resolved
- * version and version literal are independently optional. Callers must check
- * {@link #isVersioned()} before {@link #getVersion()} and
- * {@link #getVersionLiteral()} before requiring an editable version anchor.
+ * <p>The resolved version and editable literal are independently optional.
+ * Check {@link #isVersioned()} before accessing the version and
+ * {@link #getVersionLiteral()} before requiring an editable anchor.
  *
  * @author Mark Paluch
  */
@@ -74,27 +72,14 @@ public class ArtifactDeclaration implements DependencySite, VersionedPackage {
 		this.versionLiteral = versionLiteral;
 	}
 
-	/**
-	 * Create a new {@link ArtifactDeclaration.Builder}.
-	 *
-	 * @return a new builder.
-	 */
 	public static Builder builder() {
 		return new Builder();
 	}
 
 	/**
-	 * Return a copy of this declaration with the given customizations applied.
-	 * <p>The {@link Builder} is pre-populated with this declaration's state; the
-	 * customizer overrides individual aspects, such as re-anchoring the
-	 * {@linkplain Builder#declarationElement(PsiElement) declaration element} when
-	 * a Gradle script consumes an artifact defined in a version catalog, or
-	 * refining the {@linkplain Builder#declarationSource(DeclarationSource)
-	 * declaration source} at the consuming call site. Whether the version is
-	 * defined in the same file is re-derived from the resulting declaration element
-	 * and version literal, see {@link Builder#build()}.
-	 * @param customizer the customizations to apply to the pre-populated builder.
-	 * @return a new declaration carrying the customized state.
+	 * Copy this declaration with customizations, for example to re-anchor a catalog
+	 * declaration at its usage. Same-file ownership is recomputed from the
+	 * resulting anchors.
 	 */
 	public ArtifactDeclaration mutate(Consumer<Builder> customizer) {
 
@@ -112,11 +97,6 @@ public class ArtifactDeclaration implements DependencySite, VersionedPackage {
 		return builder.build();
 	}
 
-	/**
-	 * Return the artifact identifier.
-	 *
-	 * @return the artifact identifier.
-	 */
 	@Override
 	public ArtifactId getArtifactId() {
 		return artifactId;
@@ -127,50 +107,25 @@ public class ArtifactDeclaration implements DependencySite, VersionedPackage {
 		return packageSystem;
 	}
 
-	/**
-	 * Return whether this declaration has a concrete version source.
-	 *
-	 * @return {@literal true} if the version source is defined; {@literal false}
-	 * otherwise.
-	 */
 	public boolean hasVersionSource() {
 		return getVersionSource().isDefined();
 	}
 
-	/**
-	 * Return the source from which the version is obtained.
-	 *
-	 * @return the version source.
-	 */
 	public VersionSource getVersionSource() {
 		return versionSource;
 	}
 
-	/**
-	 * Return the source from which the declaration is obtained.
-	 *
-	 * @return the declaration source.
-	 */
 	public DeclarationSource getDeclarationSource() {
 		return declarationSource;
 	}
 
 	/**
-	 * Return whether the version is defined in the same file as the declaration.
-	 *
-	 * @return {@literal true} if the version is defined in the same file;
-	 * {@literal false} otherwise.
+	 * Return whether an editable version literal belongs to the declaration's file.
 	 */
 	public boolean isVersionDefinedInSameFile() {
 		return versionDefinedInSameFile;
 	}
 
-	/**
-	 * Return whether a resolved version is available.
-	 *
-	 * @return {@literal true} if {@link #getVersion()} is available;
-	 * {@literal false} otherwise.
-	 */
 	@Override
 	public boolean isVersioned() {
 		return version != null;
@@ -179,7 +134,6 @@ public class ArtifactDeclaration implements DependencySite, VersionedPackage {
 	/**
 	 * Return the resolved version.
 	 *
-	 * @return the resolved version.
 	 * @throws IllegalStateException if no version is available.
 	 */
 	@Override
@@ -188,28 +142,20 @@ public class ArtifactDeclaration implements DependencySite, VersionedPackage {
 		return version;
 	}
 
-	/**
-	 * Return the PSI element representing the declaration.
-	 *
-	 * @return the declaration element.
-	 */
 	public PsiElement getDeclarationElement() {
 		return declarationElement;
 	}
 
 	/**
-	 * Return the PSI element representing the version, if available.
-	 *
-	 * @return the version element, or {@literal null} if not available.
+	 * Return the editable version anchor, or {@code null} if unavailable.
 	 */
 	public @Nullable PsiElement getVersionLiteral() {
 		return versionLiteral;
 	}
 
 	/**
-	 * Return the PSI element representing the version, failing if none is present.
+	 * Require an editable version anchor.
 	 *
-	 * @return the version element.
 	 * @throws IllegalStateException if no version literal is present.
 	 */
 	public PsiElement getRequiredVersionLiteral() {
@@ -218,11 +164,10 @@ public class ArtifactDeclaration implements DependencySite, VersionedPackage {
 	}
 
 	/**
-	 * Adapt this declaration into a single-source {@link Dependency}.
+	 * Adapt this declaration into a dependency with its version and declaration
+	 * sources.
 	 *
-	 * @return a dependency carrying this declaration's artifact, version, version
-	 * source, and declaration source.
-	 * @throws IllegalStateException if this declaration has no resolved version.
+	 * @throws IllegalStateException if no resolved version is available.
 	 */
 	public Dependency toDependency() {
 
@@ -242,12 +187,6 @@ public class ArtifactDeclaration implements DependencySite, VersionedPackage {
 				'}';
 	}
 
-	/**
-	 * Builder for a transient {@link ArtifactDeclaration}.
-	 *
-	 * <p>{@link #build()} derives same-file ownership from the containing files of
-	 * the declaration element and optional version literal.
-	 */
 	public static class Builder {
 
 		private @Nullable ArtifactId id;
@@ -267,90 +206,46 @@ public class ArtifactDeclaration implements DependencySite, VersionedPackage {
 		private Builder() {
 		}
 
-		/**
-		 * Configure the artifact identifier.
-		 *
-		 * @param id the artifact identifier.
-		 * @return {@code this} builder.
-		 */
 		public Builder artifact(ArtifactId id) {
 			this.id = id;
 			return this;
 		}
 
-		/**
-		 * Configure the package system.
-		 *
-		 * @param packageSystem the package system.
-		 * @return {@code this} builder.
-		 */
 		public Builder packageSystem(PackageSystem packageSystem) {
 			this.packageSystem = packageSystem;
 			return this;
 		}
 
-		/**
-		 * Configure the source from which the version was obtained.
-		 *
-		 * @param versionSource the version source.
-		 * @return {@code this} builder.
-		 */
 		public Builder versionSource(VersionSource versionSource) {
 			this.versionSource = versionSource;
 			return this;
 		}
 
-		/**
-		 * Configure the source from which the declaration was obtained.
-		 *
-		 * @param declarationSource the declaration source.
-		 * @return {@code this} builder.
-		 */
 		public Builder declarationSource(DeclarationSource declarationSource) {
 			this.declarationSource = declarationSource;
 			return this;
 		}
 
-		/**
-		 * Configure the artifact version.
-		 *
-		 * @param version the artifact version.
-		 * @return {@code this} builder.
-		 */
 		public Builder version(@Nullable ArtifactVersion version) {
 			this.version = version;
 			return this;
 		}
 
-		/**
-		 * Configure the PSI element representing the declaration.
-		 *
-		 * @param declarationElement the declaration element.
-		 * @return {@code this} builder.
-		 */
 		public Builder declarationElement(PsiElement declarationElement) {
 			this.declarationElement = declarationElement;
 			return this;
 		}
 
-		/**
-		 * Configure the PSI element representing the version literal, e.g. the value of
-		 * a version property or literal.
-		 *
-		 * @param versionLiteral the version element.
-		 * @return {@code this} builder.
-		 */
 		public Builder versionLiteral(PsiElement versionLiteral) {
 			this.versionLiteral = versionLiteral;
 			return this;
 		}
 
 		/**
-		 * Build a new {@link ArtifactDeclaration}.
+		 * Build a declaration. Version and version literal are optional.
 		 *
-		 * @return a new declaration.
-		 * @throws IllegalArgumentException if the package system, artifact id, version
-		 * source, declaration source, or declaration element is not configured.
+		 * @throws IllegalArgumentException if identity, sources, or the declaration
+		 * anchor are missing.
 		 */
 		public ArtifactDeclaration build() {
 

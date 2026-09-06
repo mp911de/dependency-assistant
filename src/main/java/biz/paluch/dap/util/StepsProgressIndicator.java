@@ -19,17 +19,8 @@ package biz.paluch.dap.util;
 import com.intellij.openapi.progress.ProgressIndicator;
 
 /**
- * {@link ProgressIndicator} that advances a parent indicator through a sequence
- * of steps.
- *
- * <p>A child fraction in {@code [0, 1]} reflects progress within the current
- * step. {@link #nextStep()} commits the current step and moves to the next one.
- * The mapping from steps to the parent fraction is left to the implementation,
- * which may weight steps equally or individually.
- *
- * <p>{@link WeightedStepsProgressIndicator} supports per-step weights and
- * atomic step advancement. {@link #forSteps(ProgressIndicator, int)} creates
- * the same implementation with equal weights.
+ * Progress within a sequence of steps. A child fraction describes progress in
+ * the current step. Implementations determine each step's share of the parent.
  *
  * @author Mark Paluch
  * @see WeightedStepsProgressIndicator
@@ -43,15 +34,9 @@ public interface StepsProgressIndicator extends ProgressIndicator {
 	void nextStep();
 
 	/**
-	 * Create a new {@code StepsProgressIndicator} for the number of
-	 * {@code totalSteps}.
+	 * Create equally weighted steps with atomic advancement.
 	 *
-	 * <p>Step advancement on the returned indicator is atomic.
-	 *
-	 * @param indicator the indicator to forward to.
-	 * @param totalSteps the number of equally sized steps.
-	 * @return an indicator with equally weighted steps.
-	 * @throws IllegalArgumentException if {@code totalSteps} is not positive.
+	 * @throws IllegalArgumentException if the step count is not positive.
 	 */
 	static StepsProgressIndicator forSteps(ProgressIndicator indicator, int totalSteps) {
 		return WeightedStepsProgressIndicator.forTasks(indicator, totalSteps);

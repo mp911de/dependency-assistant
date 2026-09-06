@@ -43,7 +43,7 @@ public class XmlUtil {
 	 * property is a tracked version property is decided by the resolver.
 	 *
 	 * @param element the PSI element to classify, or {@literal null}.
-	 * @return {@code true} if the element is recognized as a Maven version
+	 * @return {@code true} if the element is supported as a Maven version
 	 * candidate.
 	 */
 	@Contract("null -> false")

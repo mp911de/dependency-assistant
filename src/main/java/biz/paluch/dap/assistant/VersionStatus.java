@@ -28,14 +28,8 @@ import biz.paluch.dap.util.ResolvableIcon;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Consolidated presentation status of one candidate artifact version.
- *
- * <p>The status combines its relationship to the current version, the evaluated
- * dependency rule, and known vulnerabilities. Icon resolution applies one
- * precedence across surfaces: a vulnerability shield, a rule-violation warning,
- * a compliant lock fallback for an older or unknown-current candidate, then the
- * candidate's version-age icon. The requested {@link SecurityShieldIcons shield
- * style} changes only a vulnerability shield's visual weight.
+ * Presentation status of a candidate version, combining age, rule compliance,
+ * and known vulnerabilities.
  *
  * @author Mark Paluch
  */
@@ -58,14 +52,8 @@ public class VersionStatus {
 	}
 
 	/**
-	 * Create the status of one candidate version.
-	 *
-	 * @param evaluator the governing rule evaluated against the current version.
-	 * @param currentVersion the current version, or {@literal null} when it cannot
-	 * be resolved.
-	 * @param candidate the candidate version to classify.
-	 * @param vulnerabilities the checked vulnerability result for the candidate.
-	 * @return the candidate's consolidated status.
+	 * @param evaluator the rule evaluated against the current version.
+	 * @param currentVersion the current version, or {@literal null} if unresolved.
 	 */
 	public static VersionStatus of(DependencyRuleEvaluator evaluator, @Nullable ArtifactVersion currentVersion,
 			ArtifactVersion candidate, Vulnerabilities vulnerabilities) {
@@ -84,55 +72,33 @@ public class VersionStatus {
 		return vulnerabilities;
 	}
 
-	/**
-	 * @return {@literal true} when the candidate is the declared current version;
-	 * {@literal false} otherwise.
-	 */
 	public boolean isCurrent() {
 		return candidate.equals(currentVersion);
 	}
 
 	/**
-	 * @return {@literal true} when the candidate is older than the declared current
-	 * version; {@literal false} when no current version is known or the candidate
-	 * is same-or-newer.
+	 * Return whether a non-preview candidate is older than a known current version.
 	 */
 	public boolean isOlder() {
 		return currentVersion != null && getVersionAge() == VersionAge.OLDER;
 	}
 
-	/**
-	 * @return {@literal true} when the candidate is a preview version.
-	 */
 	public boolean isPreview() {
 		return candidate.isPreview();
 	}
 
-	/**
-	 * @return {@literal true} when the candidate violates the governing dependency
-	 * rule; {@literal false} otherwise.
-	 */
 	public boolean isRuleViolation() {
 		return !evaluator.test(candidate);
 	}
 
-	/**
-	 * @return {@literal true} when the candidate carries a known vulnerability;
-	 * {@literal false} otherwise.
-	 */
 	public boolean isVulnerable() {
 		return vulnerabilities.isVulnerable();
 	}
 
 	/**
-	 * Return the version-age category for callers that deliberately present age
-	 * semantics.
-	 *
-	 * <p>A preview candidate remains in the preview category even when no current
-	 * version is known. Rule and vulnerability precedence applies only to icon
-	 * selection and does not erase the age category.
-	 *
-	 * @return the version-age category.
+	 * Return the version age independently of rule compliance and vulnerabilities.
+	 * <p>Preview candidates remain previews even when the current version is
+	 * unknown.
 	 */
 	public VersionAge getVersionAge() {
 
@@ -146,26 +112,16 @@ public class VersionStatus {
 		return VersionAge.between(currentVersion, candidate);
 	}
 
-	/**
-	 * Return the Swing icon for a surface using the requested vulnerability-shield
-	 * style.
-	 *
-	 * @param style the shield weight to use when the candidate is vulnerable.
-	 * @return the resolved Swing icon.
-	 */
 	public Icon getIcon(SecurityShieldIcons style) {
 		return resolveIcon(style).getIcon();
 	}
 
 	/**
-	 * Return the presentation icon and documentation reference for this status.
-	 *
-	 * <p>Vulnerability, rule violation, compliant locked fallback, and version age
-	 * are considered in that order. The supplied style affects only a vulnerability
-	 * shield.
-	 *
-	 * @param style the shield weight to use when the candidate is vulnerable.
-	 * @return the resolvable icon.
+	 * Resolve the status icon.
+	 * <p>Known vulnerabilities take precedence over rule violations, then a
+	 * compliant lock fallback, then version age. The lock applies to older
+	 * candidates or an unknown current version.
+	 * @param style the style used only for vulnerability shields.
 	 */
 	public ResolvableIcon resolveIcon(SecurityShieldIcons style) {
 
@@ -187,33 +143,21 @@ public class VersionStatus {
 	}
 
 	/**
-	 * Return the Swing icon for an emphasis surface using the filled vulnerability
-	 * shield.
-	 *
-	 * @return the Swing icon.
+	 * Return the status icon with a filled vulnerability shield.
 	 */
 	public Icon getFilledIcon() {
 		return resolveFilledIcon().getIcon();
 	}
 
 	/**
-	 * Return the documentation icon: the Swing icon paired with the reflective path
-	 * the {@code <icon src>} resolver re-resolves, always the filled shield weight.
-	 *
-	 * @return the resolvable documentation icon.
+	 * Return the status icon and documentation reference with a filled shield.
 	 */
 	public ResolvableIcon resolveFilledIcon() {
 		return resolveIcon(SecurityShieldIcons.FILLED);
 	}
 
 	/**
-	 * Return the compact vulnerability label used by completion tails.
-	 *
-	 * <p>The label starts with the most severe advisory's identifier and appends
-	 * the number of remaining advisories.
-	 *
-	 * @return the compact label, or {@literal null} when the candidate is not
-	 * vulnerable.
+	 * Return a compact vulnerability label, or {@literal null} if not vulnerable.
 	 */
 	@Nullable
 	public String getVulnerabilityTailLabel() {

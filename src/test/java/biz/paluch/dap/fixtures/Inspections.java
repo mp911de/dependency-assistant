@@ -48,24 +48,20 @@ import org.jspecify.annotations.Nullable;
 import static org.assertj.core.api.Assertions.*;
 
 /**
- * Test support for local inspection integration tests across Maven and Gradle
- * build files.
+ * Support for inspection and quick-fix tests.
+ * <p>Quick-fix helpers apply the first matching name and fail if none matches.
  *
  * @author Mark Paluch
  */
 public class Inspections {
 
 	/**
-	 * Run the {@link DependencyVersionDriftInspection} over the given file and
-	 * collect its problems.
+	 * Run the dependency version drift inspection.
 	 */
 	public static List<ProblemDescriptor> inspect(Project project, PsiFile file) {
 		return inspect(project, file, new DependencyVersionDriftInspection());
 	}
 
-	/**
-	 * Run the given inspection over the given file and collect its problems.
-	 */
 	public static List<ProblemDescriptor> inspect(Project project, PsiFile file, LocalInspectionTool inspection) {
 
 			InspectionManager manager = InspectionManager.getInstance(project);
@@ -75,35 +71,16 @@ public class Inspections {
 			return holder.getResults();
 	}
 
-	/**
-	 * Run the quick fix with the given name, considering fixes of all given
-	 * problems. Applies the first fix that matches the given {@code name}.
-	 * @param file the file to inspect.
-	 * @param name the quick fix name.
-	 */
 	public static void applyFix(PsiFile file, String name) {
 		applyFix(file.getProject(), null, Inspections.inspect(file.getProject(), file), name);
 	}
 
-	/**
-	 * Run the quick fix with the given name, considering fixes of all given
-	 * problems. Applies the first fix that matches the given {@code name}.
-	 * @param project the project owning the inspected file.
-	 * @param problems the problems to search for a matching fix.
-	 * @param name the quick fix name.
-	 */
 	public static void applyFix(Project project, List<ProblemDescriptor> problems, String name) {
 		applyFix(project, null, problems, name);
 	}
 
 	/**
-	 * Run the quick fix with the given name in the context of the given editor so
-	 * caret placement of the fix takes effect.
-	 *
-	 * @param project the project owning the inspected file.
-	 * @param editor the editor the fix runs in.
-	 * @param problems the problems to search for a matching fix.
-	 * @param name the quick fix name.
+	 * Apply the matching fix with an editor so caret placement takes effect.
 	 */
 	public static void applyFix(Project project, @Nullable Editor editor, List<ProblemDescriptor> problems,
 			String name) {
@@ -128,12 +105,8 @@ public class Inspections {
 	}
 
 	/**
-	 * Run a quick fix the way the platform would: {@link ModCommandQuickFix}es
-	 * execute themselves without a surrounding write action, while classic fixes
-	 * run inside one. With an editor, the {@link ModCommand} is executed
-	 * interactively against it so navigation applies; per the
-	 * {@link ModCommandExecutor} contract this happens inside a command but without
-	 * a write lock.
+	 * Mod commands must run without a write lock. Interactive execution needs a
+	 * command so navigation can take effect.
 	 */
 	private static void invoke(Project project, ProblemDescriptor problem, LocalQuickFix fix,
 			@Nullable Editor editor) {
@@ -155,12 +128,7 @@ public class Inspections {
 	}
 
 	/**
-	 * Register a declared dependency usage for the given module in the project
-	 * state, using coordinates in {@code group:artifact:version} form.
-	 *
-	 * @param project the project whose state receives the dependency.
-	 * @param moduleId the module identifier within the test project.
-	 * @param coordinates the dependency coordinates.
+	 * Register {@code group:artifact:version} coordinates as a declared usage.
 	 */
 	public static void registerDependency(Project project, String moduleId, String coordinates) {
 
@@ -169,14 +137,8 @@ public class Inspections {
 	}
 
 	/**
-	 * Register a dependency usage with an explicit version source for the given
-	 * module in the project state, using coordinates in
-	 * {@code group:artifact:version} form.
-	 *
-	 * @param project the project whose state receives the dependency.
-	 * @param projectId the module identifier within the test project.
-	 * @param coordinates the dependency coordinates.
-	 * @param versionSource the declaration source of the dependency version.
+	 * Register {@code group:artifact:version} coordinates with an explicit version
+	 * source.
 	 */
 	public static void registerDependency(Project project, String projectId, String coordinates,
 			VersionSource versionSource) {

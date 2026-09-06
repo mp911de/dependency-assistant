@@ -34,13 +34,7 @@ import com.intellij.util.xmlb.annotations.XCollection;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Persistent representation of an artifact release and its vulnerability scan.
- *
- * <p>The serialized form stores the release version, optional ISO-8601 date and
- * source-provided hash, vulnerability advisories, and the overloaded scan field
- * interpreted by {@link #scanState()}. Conversion to {@link Release} and
- * {@link Vulnerabilities} is lazy and memoized for repeated access within the
- * same JVM instance.
+ * Persistent release information and vulnerability scan state.
  *
  * @author Mark Paluch
  */
@@ -70,11 +64,8 @@ public class CachedRelease {
 	private @Nullable String sha;
 
 	/**
-	 * Overloaded scan field, read through {@link #scanState()} rather than by raw
-	 * value. A value of {@code 0..}{@link #MAX_SCAN_ATTEMPTS} is the scan-attempt
-	 * counter ({@code 0} never scanned, {@link #MAX_SCAN_ATTEMPTS} unresolvable). A
-	 * larger value is the epoch-millisecond timestamp of a completed scan, from
-	 * which the scan is derived.
+	 * Persisted scan state. Use {@link #scanState()} to distinguish retry counts
+	 * from successful-scan timestamps.
 	 */
 	@Attribute
 	private long lastScanned;
@@ -92,33 +83,29 @@ public class CachedRelease {
 	}
 
 	/**
-	 * Create a release entry parsing the given version string.
+	 * Create a release entry.
 	 *
-	 * @param version the release version string.
-	 * @param date the optional release date in ISO-8601 local date-time form.
+	 * @param date the ISO-8601 local date-time, if known.
 	 */
 	public CachedRelease(String version, @Nullable String date) {
 		this(ArtifactVersion.of(version), date, null);
 	}
 
 	/**
-	 * Create a release entry parsing the given version string, including a content
-	 * hash.
+	 * Create a release entry.
 	 *
-	 * @param version the release version string.
-	 * @param date the optional release date in ISO-8601 local date-time form.
-	 * @param sha the opaque content hash, or {@literal null}.
+	 * @param date the ISO-8601 local date-time, if known.
+	 * @param sha the opaque source-provided content hash, if known.
 	 */
 	public CachedRelease(String version, @Nullable String date, @Nullable String sha) {
 		this(ArtifactVersion.of(version), date, sha);
 	}
 
 	/**
-	 * Create a release entry with the given values.
+	 * Create a release entry.
 	 *
-	 * @param version the release version.
-	 * @param date the optional release date in ISO-8601 local date-time form.
-	 * @param sha the opaque content hash, or {@literal null}.
+	 * @param date the ISO-8601 local date-time, if known.
+	 * @param sha the opaque source-provided content hash, if known.
 	 */
 	public CachedRelease(@Nullable ArtifactVersion version, @Nullable String date, @Nullable String sha) {
 		this.version = version;
@@ -126,12 +113,6 @@ public class CachedRelease {
 		this.sha = sha;
 	}
 
-	/**
-	 * Create a cached representation of the given release.
-	 *
-	 * @param release the domain release to convert.
-	 * @return the corresponding cached release representation.
-	 */
 	public static CachedRelease from(Release release) {
 		if (release.version() instanceof GitVersion gitVersion) {
 			return CachedRelease.from(gitVersion.getVersion(), release.releaseDate(), gitVersion.getSha());
@@ -139,78 +120,46 @@ public class CachedRelease {
 		return from(release.version(), release.releaseDate());
 	}
 
-	/**
-	 * Create a cached representation of the given release.
-	 *
-	 * @param version the release version.
-	 * @param releaseDate the release date, or {@literal null} if unknown.
-	 * @return the corresponding cached release representation.
-	 */
 	public static CachedRelease from(ArtifactVersion version, @Nullable LocalDateTime releaseDate) {
 		return from(version, releaseDate, null);
 	}
 
-	/**
-	 * Create a cached release representation.
-	 *
-	 * @param version the release version.
-	 * @param releaseDate the release date, or {@literal null} if unknown.
-	 * @param sha the source-provided content hash, or {@literal null} if unknown.
-	 * @return the corresponding cached release representation.
-	 */
 	public static CachedRelease from(ArtifactVersion version, @Nullable LocalDateTime releaseDate,
 			@Nullable String sha) {
 		return new CachedRelease(version, releaseDate != null ? releaseDate.toString() : null, sha);
 	}
 
 	/**
-	 * Return the release version materialized when the state was loaded.
-	 *
-	 * @return the release version, or {@literal null} if the persisted value was
-	 * unparseable.
+	 * Return the persisted version, or {@code null} if it could not be parsed.
 	 */
 	public ArtifactVersion version() {
 		return version;
 	}
 
 	/**
-	 * Return the serialized release date.
-	 *
-	 * @return the optional ISO-8601 local date-time string.
+	 * Return the ISO-8601 local date-time, if known.
 	 */
 	public @Nullable String date() {
 		return date;
 	}
 
 	/**
-	 * Return the opaque content hash for this version, or {@literal null} if not
-	 * stored.
-	 *
-	 * @return the content hash, or {@literal null}.
+	 * Return the opaque source-provided content hash, if known.
 	 */
 	public @Nullable String sha() {
 		return sha;
 	}
 
 	/**
-	 * Return the raw persisted vulnerability-scan field.
+	 * Return the persisted attempt counter or scan timestamp. Values above
+	 * {@link #MAX_SCAN_ATTEMPTS} are epoch-millisecond timestamps.
 	 *
-	 * <p>Values through {@link #MAX_SCAN_ATTEMPTS} are attempt counters. Larger
-	 * values are epoch-millisecond timestamps of successful scans. Use
-	 * {@link #scanState()} when the lifecycle state is required.
-	 *
-	 * @return the attempt counter or successful-scan timestamp.
+	 * @see #scanState()
 	 */
 	public long getLastScanned() {
 		return lastScanned;
 	}
 
-	/**
-	 * Return the {@link ScanState} of this release, derived from
-	 * {@link #lastScanned} by magnitude.
-	 *
-	 * @return the scan state.
-	 */
 	@Transient
 	public ScanState scanState() {
 
@@ -227,11 +176,9 @@ public class CachedRelease {
 	}
 
 	/**
-	 * Store the vulnerabilities found by a completed scan, stamping the scan time.
+	 * Record a completed scan. An empty result means clean.
 	 *
-	 * @param scannedAt the time the scan completed.
-	 * @param vulnerabilities the vulnerabilities found, possibly empty for a clean
-	 * scan.
+	 * @param scannedAt the completion time in epoch milliseconds.
 	 */
 	public void setVulnerabilities(long scannedAt, Iterable<Vulnerability> vulnerabilities) {
 
@@ -258,22 +205,15 @@ public class CachedRelease {
 		}
 	}
 
-	/**
-	 * Return whether there are known vulnerabilities for this version.
-	 *
-	 * @return {@code true} if there are known vulnerabilities.
-	 */
 	@Transient
 	public boolean hasVulnerabilities() {
 		return !vulnerabilities.isEmpty();
 	}
 
 	/**
-	 * Return this entry as a domain {@link Release}.
-	 * <p>The returned instance is memoized after the first conversion.
+	 * Convert to a release.
 	 *
-	 * @return the corresponding release.
-	 * @throws IllegalStateException if the persisted version was unparseable.
+	 * @throws IllegalStateException if the persisted version could not be parsed.
 	 */
 	@Transient
 	public Release toRelease() {
@@ -296,13 +236,8 @@ public class CachedRelease {
 	}
 
 	/**
-	 * Return the {@link Vulnerabilities} derived from the stored scan timestamp and
-	 * vulnerability list.
-	 * <p>Any release without a successful scan is absent. A successful scan with no
-	 * advisories is clean, and one with advisories is vulnerable. The returned
-	 * instance is memoized after the first derivation.
-	 *
-	 * @return the vulnerabilities object.
+	 * Return the scan result. An unsuccessful scan remains absent, distinct from a
+	 * completed scan with no advisories.
 	 */
 	@Transient
 	public Vulnerabilities toVulnerabilities() {
@@ -328,10 +263,7 @@ public class CachedRelease {
 	}
 
 	/**
-	 * Return an isolated copy safe to serialize while the original may still be
-	 * mutated by a concurrent vulnerability scan.
-	 *
-	 * @return an independent copy of this release.
+	 * Copy for persistence without sharing the mutable advisory list.
 	 */
 	CachedRelease snapshot() {
 

@@ -23,14 +23,14 @@ import java.util.concurrent.Executor;
 
 import kotlinx.coroutines.Dispatchers;
 import kotlinx.coroutines.ExecutorsKt;
+import org.jspecify.annotations.Nullable;
 
 /**
- * Creates virtual-thread builders backed by IntelliJ's coroutine scheduler when
- * the running JDK permits that integration.
- *
- * <p>The integration uses a non-public JDK constructor. If reflective access is
- * unavailable or invocation fails, builders fall back to
- * {@link Thread#ofVirtual()}.
+ * Virtual-thread builders with optional IntelliJ coroutine scheduling.
+ * <p>Use the JDK default scheduler when the integration is unavailable or
+ * fails.
+ * <p>Mirrors IntelliJ's experimental {@code IntelliJVirtualThreads.ofVirtual()}
+ * API.
  */
 public final class VirtualThreads {
 
@@ -38,11 +38,10 @@ public final class VirtualThreads {
 	}
 
 	/*
-	 * Attempt to install IntelliJ's coroutine scheduler through the JDK's internal
-	 * virtual-thread builder constructor. Public JDK builders do not accept an
-	 * executor.
+	 * Public JDK builders do not accept an executor. The internal constructor
+	 * allows IntelliJ's coroutine scheduler to be supplied.
 	 */
-	private static final MethodHandle virtualThreadBuilderConstructor;
+	private static final @Nullable MethodHandle virtualThreadBuilderConstructor;
 
 	static {
 		MethodHandle handle;
@@ -70,10 +69,7 @@ public final class VirtualThreads {
 	}
 
 	/**
-	 * Return a virtual-thread builder using the IntelliJ coroutine scheduler when
-	 * available, otherwise the JDK default scheduler.
-	 *
-	 * @return a new virtual-thread builder.
+	 * Return a new virtual-thread builder.
 	 */
 	public static Thread.Builder ofVirtual() {
 		return getVirtualBuilder();

@@ -19,23 +19,13 @@ package biz.paluch.dap.assistant.presentation;
 import javax.swing.Icon;
 
 /**
- * Base icon selected by a build-tool integration for a dependency in table
- * views.
- *
- * <p>The icon is integration-selected and can distinguish declaration kind.
- * Version, rule, and security status are rendered separately by the consuming
- * surface.
+ * Integration-selected dependency icons. Version and security status are
+ * separate.
  *
  * @author Mark Paluch
- * @see IconDependencyPresentation
  */
 public interface DependencyIcons {
 
-	/**
-	 * Return the integration-selected base icon rendered next to the dependency.
-	 *
-	 * @return the table icon.
-	 */
 	Icon getTableIcon();
 
 }

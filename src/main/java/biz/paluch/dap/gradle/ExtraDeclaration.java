@@ -33,10 +33,6 @@ import com.intellij.psi.PsiElement;
  */
 interface ExtraDeclaration extends Property {
 
-	/**
-	 * Return the PSI element representing the source-level declaration.
-	 * @return the declaration element.
-	 */
 	PsiElement getDeclaration();
 
 }

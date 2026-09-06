@@ -34,9 +34,7 @@ import com.intellij.openapi.util.Iconable;
 import com.intellij.util.IncorrectOperationException;
 
 /**
- * Menu action that creates or opens a project-local
- * {@code dependencyfile.json}, seeding a fresh descriptor with the project's
- * known artifacts.
+ * Create or open a project-local {@code dependencyfile.json}.
  *
  * @author Mark Paluch
  */

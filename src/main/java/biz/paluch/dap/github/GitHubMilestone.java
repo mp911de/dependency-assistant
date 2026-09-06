@@ -48,11 +48,6 @@ class GitHubMilestone implements Milestone {
 		this.releaseDate = releaseDate;
 	}
 
-	/**
-	 * Return the repository-scoped milestone number.
-	 *
-	 * @return the number used by GitHub issue requests.
-	 */
 	long getNumber() {
 		return number;
 	}

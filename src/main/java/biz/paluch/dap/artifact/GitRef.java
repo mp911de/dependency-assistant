@@ -32,20 +32,10 @@ public class GitRef implements ArtifactVersion {
 
 	private final String ref;
 
-	/**
-	 * Create a Git reference version.
-	 *
-	 * @param ref the declared Git reference string.
-	 */
 	public GitRef(String ref) {
 		this.ref = ref;
 	}
 
-	/**
-	 * Return the declared Git reference.
-	 *
-	 * @return the Git reference string.
-	 */
 	public String getRef() {
 		return ref;
 	}
@@ -116,14 +106,8 @@ public class GitRef implements ArtifactVersion {
 	}
 
 	/**
-	 * Compare this ref lexically with another artifact version's display string.
-	 *
-	 * <p>The result is a deterministic {@link Comparable} fallback only. It does
-	 * not establish version precedence because {@link #canCompare(ArtifactVersion)}
-	 * always returns {@code false} for an opaque ref.
-	 *
-	 * @param o the artifact version to compare with.
-	 * @return the lexical comparison result.
+	 * Compare ref strings lexically. This does not establish version precedence.
+	 * @see #canCompare(ArtifactVersion)
 	 */
 	@Override
 	public int compareTo(ArtifactVersion o) {

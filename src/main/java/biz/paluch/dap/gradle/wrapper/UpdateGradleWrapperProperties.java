@@ -38,17 +38,12 @@ import com.intellij.psi.SyntaxTraverser;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Applies Gradle distribution dependency updates to Wrapper properties PSI.
- *
- * <p>The updater replaces only the version segment, preserving the URL host,
- * path prefix, URL tail, and {@code bin} or {@code all} flavor. An existing
- * {@code distributionSha256Sum} is replaced with the target release checksum.
- * When no target checksum is available, the existing checksum property is
- * commented out. A missing checksum property is not created.
- *
- * <p>Unsupported PSI, malformed distribution URLs, and updates for another
- * artifact are left unchanged. The caller owns write-action and command
- * management as defined by {@link FileDependencyUpdater}.
+ * Update Wrapper distribution versions while preserving the surrounding URL and
+ * flavor.
+ * <p>Existing checksums are replaced with the target checksum, or commented out
+ * if none is available. Missing checksum properties are not created.
+ * <p>Unsupported declarations and unrelated artifacts are ignored. Callers
+ * provide write-action and command management.
  *
  * @author Mark Paluch
  */

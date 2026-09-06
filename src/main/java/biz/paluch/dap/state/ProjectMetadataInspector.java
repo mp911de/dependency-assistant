@@ -25,43 +25,21 @@ import com.intellij.openapi.project.Project;
 import com.intellij.util.concurrency.annotations.RequiresBackgroundThread;
 
 /**
- * Strategy for capturing project metadata, such as its display name, source
- * repository, and issue tracker, from locally available build metadata.
- *
- * <p>Implementations inspect ecosystem-specific stores such as the local Maven
- * repository and return metadata or a nothing-found marker. The caller owns
- * staleness gating and persistence. Inspection may touch the filesystem, so
- * callers must invoke inspectors from a background thread.
+ * Inspect locally available project metadata. Callers own refresh timing and
+ * persistence. Inspection may access the filesystem.
  *
  * @author Mark Paluch
  */
 public interface ProjectMetadataInspector {
 
-	/**
-	 * Extension point for project metadata inspectors.
-	 */
 	ExtensionPointName<ProjectMetadataInspector> EP_NAME = ExtensionPointName
 			.create("biz.paluch.dap.projectMetadataInspector");
 
-	/**
-	 * Return whether this inspector can capture metadata for artifacts of the given
-	 * ecosystem.
-	 *
-	 * @param packageSystem the ecosystem the artifact belongs to.
-	 * @return {@code true} if {@link #inspect} understands the ecosystem.
-	 */
 	boolean supports(PackageSystem packageSystem);
 
 	/**
-	 * Inspect the artifact's locally available build metadata.
-	 *
-	 * @param project the project providing repository configuration and local build
-	 * models.
-	 * @param artifactId the artifact to inspect.
-	 * @param version the currently used version.
-	 * @param indicator the progress indicator.
-	 * @return the captured metadata, including an empty nothing-found marker when
-	 * inspection completed without usable metadata.
+	 * Inspect local metadata for the currently used version. Return an empty
+	 * metadata entry when inspection finds nothing usable.
 	 */
 	@RequiresBackgroundThread
 	CachedMetadata inspect(Project project, ArtifactId artifactId, ArtifactVersion version,

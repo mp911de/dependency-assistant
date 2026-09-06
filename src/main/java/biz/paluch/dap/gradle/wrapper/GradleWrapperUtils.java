@@ -38,10 +38,10 @@ import com.intellij.psi.PsiFile;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Shared recognition, version-range, and cached-checksum operations for Gradle
+ * Shared utilities, version-range, and cached-checksum operations for Gradle
  * Wrapper properties files.
  *
- * <p>Wrapper-file recognition is based on the {@code gradle-wrapper.properties}
+ * <p>Wrapper-file detection is based on the {@code gradle-wrapper.properties}
  * file name. Version matching is bounded and returns no ranges for values
  * longer than 2048 characters.
  *

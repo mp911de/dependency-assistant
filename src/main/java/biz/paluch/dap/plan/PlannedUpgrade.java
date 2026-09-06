@@ -21,31 +21,20 @@ import java.util.List;
 import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
 
 /**
- * A reviewed upgrade ready to be captured into the {@link UpgradePlan}.
- *
- * <p>This is the hand-off contract between the dependency review and the
- * upgrade plan model.
+ * Reviewed upgrade ready for capture into the {@link UpgradePlan}.
  *
  * @author Mark Paluch
- * @see DependencyUpgradeCandidate
- * @see UpgradePlan
  */
 public interface PlannedUpgrade {
 
 	/**
-	 * Return the initial display name captured for this upgrade.
-	 *
-	 * <p>The name is persisted and may later be renamed. It does not define item
-	 * identity, which is derived from the captured members.
-	 *
-	 * @return the upgrade item name.
+	 * Return the initial display name. It may be renamed and does not define item
+	 * identity.
 	 */
 	String getDisplayName();
 
 	/**
-	 * Return the upgrades this planned upgrade contributes, in update order.
-	 *
-	 * @return non-empty list of upgrades in update order.
+	 * Return a non-empty list of contributing candidates in update order.
 	 */
 	List<DependencyUpgradeCandidate> getUpgradeCandidates();
 

@@ -73,10 +73,8 @@ final class GitHubAccountSelector {
 	}
 
 	/**
-	 * Select the remembered compatible pair or fall back to a compatible current
-	 * pair.
-	 *
-	 * @return the selected repository and account, or {@literal null} when no
+	 * Select a repository and account, preferring the remembered compatible pair.
+	 * @return the selection, or {@literal null} if the project is untrusted or no
 	 * compatible pair exists.
 	 */
 	public @Nullable Selection select() {

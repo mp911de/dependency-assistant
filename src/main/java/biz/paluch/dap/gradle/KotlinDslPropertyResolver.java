@@ -42,10 +42,7 @@ class KotlinDslPropertyResolver implements PropertyResolver {
 	}
 
 	/**
-	 * Create a property resolver for the given Kotlin DSL build file. The parsed
-	 * {@code extra} and {@code val} properties are cached per PSI modification.
-	 * @param file the Kotlin build script.
-	 * @return a resolver backed by the file's local property declarations.
+	 * Return the file-local resolver, cached until the file changes.
 	 */
 	public static KotlinDslPropertyResolver from(PsiFile file) {
 

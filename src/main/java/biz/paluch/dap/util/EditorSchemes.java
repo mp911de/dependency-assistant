@@ -27,28 +27,13 @@ import com.intellij.openapi.editor.markup.TextAttributes;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Safe access to the global {@link EditorColorsScheme} and the values derived
- * from it, such as {@link TextAttributes} for a {@link TextAttributesKey} and
- * the editor font.
- *
- * <p>Every accessor tolerates an unavailable platform: when the
- * {@link Application} or {@link EditorColorsManager} is not initialized (for
- * example in plain unit tests, or during early startup), the scheme is treated
- * as absent and the caller-supplied fallback is returned instead of throwing.
- * This keeps static initializers and renderers that read scheme colors from
- * depending on a fully booted IDE.
+ * Editor colors and fonts that remain usable before the IDE is initialized.
+ * Each lookup reads the current scheme and falls back if it is unavailable.
  *
  * @author Mark Paluch
  */
 public abstract class EditorSchemes {
 
-	/**
-	 * Return the global editor color scheme, resolved per call so scheme switches
-	 * are picked up.
-	 *
-	 * @return the global scheme, or {@literal null} when the {@link Application} or
-	 * {@link EditorColorsManager} is not initialized.
-	 */
 	private static @Nullable EditorColorsScheme globalScheme() {
 
 		Application application = ApplicationManager.getApplication();
@@ -60,12 +45,8 @@ public abstract class EditorSchemes {
 	}
 
 	/**
-	 * Return the {@link TextAttributes} the global scheme assigns to the given key.
-	 *
-	 * @param key the attributes key to resolve.
-	 * @param fallback the value to return when no scheme attributes are available.
-	 * @return the scheme attributes for the key, or {@code fallback} when the
-	 * scheme is unavailable or defines no attributes for the key.
+	 * Return the current scheme's attributes, or the fallback if the scheme or
+	 * attributes are unavailable.
 	 */
 	public static TextAttributes attributes(TextAttributesKey key, TextAttributes fallback) {
 
@@ -78,12 +59,7 @@ public abstract class EditorSchemes {
 	}
 
 	/**
-	 * Create a {@link Font} in the global scheme's editor font, falling back to the
-	 * platform monospaced font when no scheme is available.
-	 *
-	 * @param style the AWT font style, for example {@link Font#PLAIN}.
-	 * @param size the font size in points.
-	 * @return a font using the editor font family.
+	 * Use the editor font family, falling back to the platform monospaced font.
 	 */
 	public static Font editorFont(int style, int size) {
 

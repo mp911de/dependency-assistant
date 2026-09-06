@@ -23,29 +23,17 @@ import biz.paluch.dap.artifact.RemoteUrl;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Normalized repository URL peeled from a declared SCM value.
+ * Normalized repository location from Maven or npm metadata.
  *
- * <p>Declared repository values arrive in ecosystem-specific wrappings. This
- * value type removes the wrapping and yields the delegate URL plus the declared
- * or inferred {@link RepositoryType}:
+ * <p>Removes SCM prefixes and revision fragments, expands npm shorthand, and
+ * strips trailing slashes and {@code .git} suffixes. Dual-URL SCM declarations
+ * use the fetch URL.
  *
- * <ul>
- * <li>Maven {@code scm:<provider>:} prefixes with colon or pipe ({@code |})
- * delimiters, including {@code [fetch=]}/{@code [push=]} dual-URL declarations
- * where the fetch URL is taken.</li>
- * <li>npm Git URL forms: {@code git+} scheme prefix, {@code #commit-ish} and
- * {@code #semver:} fragments, and shorthand expansion ({@code owner/repo},
- * {@code github:}, {@code gitlab:}, {@code bitbucket:}, {@code gist:}).</li>
- * <li>Trailing slashes and trailing {@code .git} suffixes.</li>
- * </ul>
- *
- * <p>Repository views carrying a query string, such as gitweb
- * {@code ?p=repo.git} URLs, are rejected. Equality uses the inferred repository
- * type and normalized delegate URL; it does not perform semantic URL
- * equivalence.
+ * <p>Equality compares the declared or inferred repository type and the
+ * normalized URL exactly.
  *
  * @author Mark Paluch
- * @see RepositoryType
+ * @see RemoteUrl
  */
 public class RepositoryUrl {
 
@@ -58,10 +46,8 @@ public class RepositoryUrl {
 	private static final String GIT_PLUS_PREFIX = "git+";
 
 	/**
-	 * npm {@code owner/repo} shorthand expands to github.com, so both segments
-	 * follow GitHub naming rules: owners are alphanumerics with single inner
-	 * hyphens up to 39 characters, repository names exclude the reserved {@code .}
-	 * and {@code ..}.
+	 * GitHub naming rules apply because npm {@code owner/repo} shorthand targets
+	 * github.com.
 	 */
 	private static final Pattern OWNER_REPO_SHORTHAND = Pattern
 			.compile("[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}/(?!\\.\\.?$)[A-Za-z0-9._-]{1,100}");
@@ -79,16 +65,12 @@ public class RepositoryUrl {
 	}
 
 	/**
-	 * Parse a declared repository value into its normalized form.
-	 *
-	 * <p>A {@code RepositoryUrl} exists only for values whose delegate URL parses
-	 * as a {@link RemoteUrl}: values that are not URL-shaped or carry a query
-	 * string (e.g. gitweb {@code ?p=repo.git} views) yield {@literal null}.
-	 * @param declared the raw value from a Maven {@code scm} element or an npm
-	 * {@code repository} field, or {@literal null} if undeclared.
-	 * @return the normalized repository URL, or {@literal null} if the value is
-	 * {@literal null}, blank, carries no delegate URL after unwrapping, or the
-	 * delegate URL is not a remote URL.
+	 * Parse a repository declaration. Query-based repository views are unsupported.
+	 * @param declared a Maven SCM value or npm repository URL, or {@literal null}
+	 * if undeclared.
+	 * @return the normalized location, or {@literal null} if the declaration is
+	 * absent, malformed, or contains no URL accepted by
+	 * {@link RemoteUrl#parse(String)}.
 	 */
 	public static @Nullable RepositoryUrl parse(@Nullable String declared) {
 
@@ -155,9 +137,7 @@ public class RepositoryUrl {
 	}
 
 	/**
-	 * Locate the delimiter between the SCM provider and the delegate URL. Per the
-	 * Maven SCM URL format, the delimiter is a colon, or a pipe when the delegate
-	 * URL itself contains colons. Whichever occurs first separates the provider.
+	 * Maven SCM permits a pipe delimiter when the URL contains colons.
 	 */
 	private static int providerDelimiter(String wrapped) {
 
@@ -169,10 +149,6 @@ public class RepositoryUrl {
 		return colon;
 	}
 
-	/**
-	 * Select the fetch URL from a {@code [fetch=]}/{@code [push=]} dual-URL
-	 * declaration, tolerating a lone push marker.
-	 */
 	private static String fetchUrl(String delegate) {
 
 		int fetch = delegate.indexOf(FETCH_MARKER);
@@ -192,10 +168,6 @@ public class RepositoryUrl {
 		return beforePush.isEmpty() ? delegate.substring(push + PUSH_MARKER.length()) : beforePush;
 	}
 
-	/**
-	 * Expand npm shorthand notation into a browsable https URL, or return
-	 * {@literal null} when the value is not a shorthand.
-	 */
 	private static @Nullable String expandShorthand(String candidate) {
 
 		if (candidate.startsWith("github:")) {
@@ -214,29 +186,14 @@ public class RepositoryUrl {
 		return OWNER_REPO_SHORTHAND.matcher(candidate).matches() ? "https://github.com/" + candidate : null;
 	}
 
-	/**
-	 * Return the declared or inferred version-control system.
-	 *
-	 * @return the repository type.
-	 */
 	public RepositoryType getType() {
 		return type;
 	}
 
-	/**
-	 * Return the normalized delegate URL.
-	 *
-	 * @return the non-blank delegate URL.
-	 */
 	public String getUrl() {
 		return url;
 	}
 
-	/**
-	 * Return the parsed host and path view of the normalized delegate URL.
-	 *
-	 * @return the parsed remote URL.
-	 */
 	public RemoteUrl getRemote() {
 		return remoteUrl;
 	}

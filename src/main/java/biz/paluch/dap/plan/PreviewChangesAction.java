@@ -43,12 +43,10 @@ import com.intellij.psi.PsiFile;
 import com.intellij.util.concurrency.AppExecutorUtil;
 
 /**
- * Preview the planned changes as a multi-file diff without modifying any file:
- * the covered items run against in-memory copies of the scope build files, and
- * the changed files show as a VCS-style diff chain of immutable before/after
- * snapshots. A tree selection narrows the preview to the selected items (a
- * group always as a whole); without a selection the whole plan previews. Files
- * no planned update matches stay out of the diff.
+ * Preview selected upgrades as immutable before/after snapshots without
+ * changing files.
+ * <p>Groups remain whole. Without a selection, preview the full plan. Unchanged
+ * files are omitted.
  *
  * @author Mark Paluch
  */
@@ -68,7 +66,7 @@ public class PreviewChangesAction extends UpgradePlanAction {
 	}
 
 	/**
-	 * Selection-less entry: previews the whole plan.
+	 * Preview the whole plan.
 	 */
 	@Override
 	public void perform(Project project) {
@@ -78,10 +76,8 @@ public class PreviewChangesAction extends UpgradePlanAction {
 	}
 
 	/**
-	 * Preview the planned changes of the given plan as a multi-file diff; callers
-	 * narrow to a selection through {@link UpgradePlan#withItems}. Also the
-	 * double-click entry from the plan tree; no-op while a plan run is in flight,
-	 * matching the muted actions.
+	 * Preview the supplied plan unless a run is in progress. Use
+	 * {@link UpgradePlan#withItems} to narrow the selection.
 	 */
 	static void preview(UpgradePlanService service, UpgradePlan plan) {
 
@@ -123,7 +119,7 @@ public class PreviewChangesAction extends UpgradePlanAction {
 	}
 
 	/**
-	 * Creates Plan changes and renders these as {@link FileChange}.
+	 * Build diff snapshots by applying updates to file copies.
 	 *
 	 * @author Mark Paluch
 	 */

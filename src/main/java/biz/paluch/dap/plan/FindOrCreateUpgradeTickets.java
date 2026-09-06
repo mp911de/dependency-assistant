@@ -43,10 +43,9 @@ import com.intellij.openapi.util.text.HtmlChunk;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Background task to find or create dependency upgrade tickets. Pending plan
- * items are processed by at most four concurrent virtual-thread workers. The
- * first failure stops items not yet started; items in flight complete and link
- * their ticket. The failure is reported together with the partial summary.
+ * Find or create upgrade tickets in the background.
+ * <p>The first failure stops pending work. In-flight items may still link
+ * tickets, and successful work is reported with the failure.
  *
  * @author Mark Paluch
  */
@@ -83,9 +82,6 @@ class FindOrCreateUpgradeTickets extends Task.Backgroundable {
 		this.items = items;
 	}
 
-	/**
-	 * Start the task if not already running.
-	 */
 	void start() {
 
 		if (service.isBusy() || items.stream()

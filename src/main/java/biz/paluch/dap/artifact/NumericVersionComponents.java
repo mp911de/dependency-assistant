@@ -35,29 +35,10 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 
 	private final BigDecimal[] parts;
 
-	/**
-	 * Creates a new {@link NumericVersionComponents} from the given integer values.
-	 * At least one value has to be given.
-	 *
-	 * @param parts must not be {@literal null} or empty.
-	 */
-	private NumericVersionComponents(int... parts) {
-		this(Arrays.stream(parts).mapToObj(BigDecimal::valueOf).toArray(BigDecimal[]::new));
-	}
-
-	/**
-	 * Creates a new {@link NumericVersionComponents} from the given integer values.
-	 */
 	private NumericVersionComponents(int major, int minor, int bugfix) {
 		this(BigDecimal.valueOf(major), BigDecimal.valueOf(minor), BigDecimal.valueOf(bugfix));
 	}
 
-	/**
-	 * Creates a new {@link NumericVersionComponents} from the given integer values.
-	 * At least one value has to be given.
-	 *
-	 * @param parts must not be {@literal null} or empty.
-	 */
 	private NumericVersionComponents(BigDecimal... parts) {
 
 		if (parts == null) {
@@ -78,9 +59,7 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 	}
 
 	/**
-	 * Create version components from the given parts.
-	 * @param parts the numeric version parts.
-	 * @return the numeric version components.
+	 * Create numeric version components.
 	 * @throws IllegalArgumentException if no parts are supplied or the major or
 	 * minor component is negative.
 	 */
@@ -90,10 +69,7 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 	}
 
 	/**
-	 * Parse the given string representation of a version into a
-	 * {@link NumericVersionComponents} object.
-	 * @param version the version string to parse.
-	 * @return the parsed numeric components.
+	 * Parse a dot-separated numeric version.
 	 * @throws IllegalArgumentException if the value is blank, contains a
 	 * non-numeric component, or has a negative major or minor component.
 	 */
@@ -113,68 +89,46 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 		return new NumericVersionComponents(intParts);
 	}
 
-	/**
-	 * Return the number of available components.
-	 */
 	public int getComponents() {
 		return parts.length;
 	}
 
 	/**
-	 * Return the numeric version parts.
-	 * @return a new array containing the numeric version parts.
+	 * Return a new array of numeric version parts.
 	 */
 	public int[] getParts() {
 		return Arrays.stream(parts).mapToInt(BigDecimal::intValue).toArray();
 	}
 
-	/**
-	 * Return the major component.
-	 * @return the major component, or zero when absent.
-	 */
 	public int getMajor() {
 		return parts.length > 0 ? parts[0].intValue() : 0;
 	}
 
 	/**
-	 * Return the minor component.
-	 * @return the minor component, or zero when absent.
+	 * Return the minor component, or zero if absent.
 	 */
 	public int getMinor() {
 		return parts.length > 1 ? parts[1].intValue() : 0;
 	}
 
 	/**
-	 * Return the bugfix component.
-	 * @return the bugfix component, or zero when absent.
+	 * Return the bugfix component, or zero if absent.
 	 */
 	public int getBugfix() {
 		return parts.length > 2 ? parts[2].intValue() : 0;
 	}
 
 	/**
-	 * Return the build component.
-	 * @return the build component, or zero when absent.
+	 * Return the build component, or zero if absent.
 	 */
 	public int getBuild() {
 		return parts.length > 3 ? parts[3].intValue() : 0;
 	}
 
-	/**
-	 * Return whether the current {@link NumericVersionComponents} is the same as
-	 * the given one.
-	 * @param version the version to compare with.
-	 * @return {@code true} if both values have the same canonical components.
-	 */
 	public boolean is(NumericVersionComponents version) {
 		return equals(version);
 	}
 
-	/**
-	 * Return whether the current {@link NumericVersionComponents} has the same
-	 * major and minor version as the given one.
-	 * @param other the version to compare with.
-	 */
 	public boolean hasSameMajorMinor(NumericVersionComponents other) {
 		return getMajor() == other.getMajor() && getMinor() == other.getMinor();
 	}
@@ -194,7 +148,7 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 	}
 
 	/**
-	 * Return a copy with the given bugfix component.
+	 * Return major, minor, and the given bugfix as three components.
 	 */
 	public NumericVersionComponents withBugfix(int bugfix) {
 		return new NumericVersionComponents(getMajor(), getMinor(), bugfix);
@@ -207,11 +161,6 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 		return "%s.%s.%s".formatted(getMajor(), getMinor(), getBugfix());
 	}
 
-	/*
-	 * (non-Javadoc)
-	 *
-	 * @see java.lang.Comparable#compareTo(java.lang.Object)
-	 */
 	public int compareTo(NumericVersionComponents that) {
 
 		if (that == null) {
@@ -234,11 +183,6 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 		return 0;
 	}
 
-	/*
-	 * (non-Javadoc)
-	 *
-	 * @see java.lang.Object#equals(java.lang.Object)
-	 */
 	@Override
 	public boolean equals(Object obj) {
 
@@ -253,11 +197,6 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 		return compareTo(other) == 0;
 	}
 
-	/*
-	 * (non-Javadoc)
-	 *
-	 * @see java.lang.Object#hashCode()
-	 */
 	@Override
 	public int hashCode() {
 
@@ -273,11 +212,6 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 		return result;
 	}
 
-	/*
-	 * (non-Javadoc)
-	 *
-	 * @see java.lang.Object#toString()
-	 */
 	@Override
 	public String toString() {
 

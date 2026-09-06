@@ -32,13 +32,11 @@ import org.springframework.util.Assert;
 public class DateUtils {
 
 	/**
-	 * Parse a date string into a {@link LocalDateTime}.
-	 * <p>The string can be an ISO_OFFSET_DATE_TIME string such as
-	 * {@code 2007-12-03T10:15:30+01:00},a local DateTime string such as
-	 * {@code 2007-12-03T10:15:30} or simply a date string such as
-	 * {@code 2007-12-03}.
-	 * @param date the date string to parse.
-	 * @return the parsed {@link LocalDateTime}.
+	 * Parse an ISO date or date-time. Date-only values use midnight. A supplied
+	 * offset is discarded without adjusting the local time.
+	 *
+	 * @throws IllegalArgumentException if the value is absent or blank.
+	 * @throws DateTimeParseException if the date cannot be parsed.
 	 */
 	public static LocalDateTime parse(String date) {
 		Assert.hasText(date, "Date must not be empty");

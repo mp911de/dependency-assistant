@@ -17,38 +17,23 @@
 package biz.paluch.dap.artifact;
 
 /**
- * Resolved form of a {@link DeclaredDependency} with an effective current
- * version.
- *
- * <p>The current version may be declared inline, resolved from a property, or
- * derived from a version catalog entry. It is fixed at construction and does
- * not change as additional declaration or version sources are merged into the
- * aggregate.
+ * A {@link DeclaredDependency} with an effective current version.
+ * <p>The version remains fixed as additional sources are merged.
  *
  * @author Mark Paluch
- * @see DeclaredDependency
  * @see DependencyCollector#registerUsage
  */
 public class Dependency extends DeclaredDependency implements VersionedArtifact {
 
 	private final ArtifactVersion currentVersion;
 
-	/**
-	 * Create a dependency usage with its effective current version.
-	 * @param pkg the package identity.
-	 * @param currentVersion the effective current version.
-	 */
 	public Dependency(PackageIdentity pkg, ArtifactVersion currentVersion) {
 		super(pkg);
 		this.currentVersion = currentVersion;
 	}
 
 	/**
-	 * Create a dependency usage with its effective current version from a declared
-	 * dependency.
-	 * @param declaredDependency the source of the dependency declaration.
-	 * @param version the effective version of the dependency.
-	 * @return the new dependency.
+	 * Create a usage with the given version and a copy of the declaration sources.
 	 */
 	public static Dependency from(DeclaredDependency declaredDependency, ArtifactVersion version) {
 
@@ -58,11 +43,6 @@ public class Dependency extends DeclaredDependency implements VersionedArtifact 
 		return dependency;
 	}
 
-	/**
-	 * Return the effective version of this dependency at its declaration site.
-	 *
-	 * @return the current version.
-	 */
 	public ArtifactVersion getCurrentVersion() {
 		return currentVersion;
 	}

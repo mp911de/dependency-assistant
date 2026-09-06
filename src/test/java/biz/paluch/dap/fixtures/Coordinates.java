@@ -29,10 +29,9 @@ import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionedPackage;
 
 /**
- * Versioned artifact coordinates fixture parsed from the
- * {@code group:artifact:version} form. Identity covers the full coordinates,
- * including the literal version form, so versions such as {@code 1.0} and
- * {@code 1.0.0} remain distinct when used as map keys.
+ * Versioned test coordinates in {@code group:artifact:version} form.
+ * <p>Equality uses the literal version, so {@code 1.0} and {@code 1.0.0} remain
+ * distinct map keys.
  *
  * @author Mark Paluch
  */
@@ -47,9 +46,6 @@ public class Coordinates implements VersionedPackage {
 		this.version = version;
 	}
 
-	/**
-	 * Create coordinates from the {@code group:artifact:version} form.
-	 */
 	public static Coordinates of(String coordinates) {
 
 		String[] segments = coordinates.split(":");
@@ -61,7 +57,7 @@ public class Coordinates implements VersionedPackage {
 	}
 
 	/**
-	 * Create coordinates from the {@code group:artifact:version} form.
+	 * Create a package identity from {@code group:artifact} coordinates.
 	 */
 	public static PackageIdentity identity(PackageSystem packageSystem, String coordinates) {
 
@@ -73,28 +69,16 @@ public class Coordinates implements VersionedPackage {
 		return PackageIdentity.of(ArtifactId.of(segments[0], segments[1]), packageSystem);
 	}
 
-	/**
-	 * Create coordinates from group id, artifact id, and version.
-	 */
 	public static Coordinates of(String groupId, String artifactId, String version) {
 		return new Coordinates(ArtifactId.of(groupId, artifactId), ArtifactVersion.of(version));
 	}
 
-	/**
-	 * Create coordinates from an artifact identifier and version string.
-	 */
 	public static Coordinates of(ArtifactId artifactId, String version) {
 		return new Coordinates(artifactId.detach(), ArtifactVersion.of(version));
 	}
 
 	/**
-	 * Create a Bill of Materials fixture from the given coordinates and member
-	 * declarations.
-	 *
-	 * @param coordinates the BOM coordinates in {@code group:artifact:version}
-	 * form.
-	 * @param customizer the managed member declarations.
-	 * @return the Bill of Materials fixture.
+	 * Create a BOM fixture from {@code group:artifact:version} coordinates.
 	 */
 	public static BillOfMaterials bom(String coordinates, Consumer<BomBuilder> customizer) {
 
@@ -140,9 +124,6 @@ public class Coordinates implements VersionedPackage {
 		return artifactId.groupId() + ":" + artifactId.artifactId() + ":" + version;
 	}
 
-	/**
-	 * Managed member declarations for a Bill of Materials fixture.
-	 */
 	public static class BomBuilder {
 
 		private final Coordinates bom;
@@ -154,7 +135,7 @@ public class Coordinates implements VersionedPackage {
 		}
 
 		/**
-		 * Add managed member coordinates in {@code group:artifact:version} form.
+		 * Add a managed member in {@code group:artifact:version} form.
 		 */
 		public void member(String coordinates) {
 			Coordinates member = Coordinates.of(coordinates);

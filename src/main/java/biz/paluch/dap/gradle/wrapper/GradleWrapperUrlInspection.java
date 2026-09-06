@@ -47,13 +47,9 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiElementVisitor;
 
 /**
- * Inspects {@code distributionUrl} values in Gradle Wrapper properties files.
- *
- * <p>The inspection reports embedded credentials, invalid URL structure,
- * non-Gradle archive names, malformed distribution file names, and a missing
- * {@code distributionSha256Sum}. It reads release and checksum data only from
- * the project cache. A cached checksum enables the checksum quick-fix only for
- * trusted projects.
+ * Inspect Gradle distribution URLs and missing checksums.
+ * <p>Release metadata comes from the cache. Checksum fixes require a trusted
+ * project.
  *
  * @author Mark Paluch
  */

@@ -27,7 +27,7 @@ import com.intellij.psi.PsiFile;
 
 /**
  * Document listener that schedules a {@link StateRefresher} pass for edits to
- * physical build files recognized by a dependency integration.
+ * physical build files supported by a dependency integration.
  *
  * <p>The listener observes every document change through the
  * {@link EditorFactory#getEventMulticaster() editor event multicaster} and
@@ -38,8 +38,8 @@ import com.intellij.psi.PsiFile;
  * one re-collection.
  *
  * <p>Filtering runs inside the write action that changed the document and is
- * limited to cached-PSI lookup and file-type recognition. Ownership resolution
- * happens later in the refresher.
+ * limited to cached-PSI lookup and file-type identification. Ownership
+ * resolution happens later in the refresher.
  *
  * @author Mark Paluch
  * @see StateRefresher

@@ -28,64 +28,34 @@ import com.intellij.lang.annotation.HighlightSeverity;
 import com.intellij.openapi.editor.colors.TextAttributesKey;
 
 /**
- * A {@link SeveritiesProvider} that supplies the highlight severity and text
- * attribute keys used for dependency annotations.
- *
- * <p>Upgrade availability and rule-driven suggestions share the informational
- * {@link #UPGRADE_AVAILABLE} severity while retaining separate color keys.
- * Separate vulnerability keys provide text attributes for each highest known
- * vulnerability severity and do not register additional highlight severities.
+ * Highlight severity and color keys for dependency annotations.
+ * <p>Availability and rule suggestions share an informational severity with
+ * separate colors. Vulnerability colors reflect the highest known severity.
  *
  * @author Mark Paluch
  */
 public class DependencyAssistantSeverities extends SeveritiesProvider {
 
-	/**
-	 * Editor color key applied to a declared version when a newer release is
-	 * available for the dependency.
-	 */
 	public static final TextAttributesKey UPGRADE_AVAILABLE_KEY = TextAttributesKey
 			.createTextAttributesKey("UPGRADE_AVAILABLE");
 
-	/**
-	 * Editor color key applied to a governed dependency version when an upgrade is
-	 * presented as a suggestion.
-	 */
 	public static final TextAttributesKey UPGRADE_SUGGESTION_KEY = TextAttributesKey
 			.createTextAttributesKey("UPGRADE_SUGGESTION");
 
-	/**
-	 * Editor color key applied when the highest known vulnerability severity is
-	 * low.
-	 */
 	public static final TextAttributesKey VULNERABLE_LOW_KEY = TextAttributesKey
 			.createTextAttributesKey("VULNERABLE_LOW");
 
-	/**
-	 * Editor color key applied when the highest known vulnerability severity is
-	 * medium.
-	 */
 	public static final TextAttributesKey VULNERABLE_MEDIUM_KEY = TextAttributesKey
 			.createTextAttributesKey("VULNERABLE_MEDIUM");
 
-	/**
-	 * Editor color key applied when the highest known vulnerability severity is
-	 * high.
-	 */
 	public static final TextAttributesKey VULNERABLE_HIGH_KEY = TextAttributesKey
 			.createTextAttributesKey("VULNERABLE_HIGH");
 
-	/**
-	 * Editor color key applied when the highest known vulnerability severity is
-	 * critical.
-	 */
 	public static final TextAttributesKey VULNERABLE_CRITICAL_KEY = TextAttributesKey
 			.createTextAttributesKey("VULNERABLE_CRITICAL");
 
 	/**
-	 * Shared highlight severity for dependency upgrade annotations, ranked just
-	 * above {@link HighlightSeverity#INFORMATION} so upgrade markers surface
-	 * without being treated as warnings.
+	 * Rank upgrade markers above information without treating them as warnings.
 	 */
 	public static final HighlightSeverity UPGRADE_AVAILABLE = new HighlightSeverity(
 			UPGRADE_AVAILABLE_KEY.getExternalName(),
@@ -94,11 +64,6 @@ public class DependencyAssistantSeverities extends SeveritiesProvider {
 			MessageBundle.lazyMessage("severity.upgrade.available.capitalized"), //
 			MessageBundle.lazyMessage("severity.upgrade.available.count.message"));
 
-	/**
-	 * Instantiated by the platform through the
-	 * {@code com.intellij.severitiesProvider} extension point; not intended to be
-	 * constructed directly.
-	 */
 	public DependencyAssistantSeverities() {
 	}
 

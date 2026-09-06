@@ -26,14 +26,12 @@ import biz.paluch.dap.state.StateService;
 import com.intellij.openapi.project.Project;
 
 /**
- * Utility methods to setup Dependency Assistant for tests.
+ * Installs an isolated release cache for tests.
+ *
  * @author Mark Paluch
  */
 public class DependencyAssistantFixtures {
 
-	/**
-	 * Set up Dependency Assistant for the given project.
-	 */
 	public static void setup(Project project) {
 		StateService service = StateService.getInstance(project);
 		service.setCache(createCache());
@@ -46,9 +44,7 @@ public class DependencyAssistantFixtures {
 	}
 
 	/**
-	 * Return deep copies of the registry artifacts so a test that records
-	 * vulnerabilities (mutating a {@link CachedRelease}) never pollutes the shared
-	 * static fixtures consumed by other tests.
+	 * Copy releases so vulnerability updates cannot contaminate shared fixtures.
 	 */
 	private static List<CachedArtifact> getArtifacts() {
 

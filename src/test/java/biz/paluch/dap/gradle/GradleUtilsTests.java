@@ -30,7 +30,7 @@ import static org.assertj.core.api.Assertions.*;
 class GradleUtilsTests {
 
 	@Test
-	void recognizesCustomNamedGroovyBuildScript() {
+	void supportsCustomNamedGroovyBuildScript() {
 
 		MockVirtualFile file = MockVirtualFile.file("spring-security-config.gradle");
 
@@ -41,7 +41,7 @@ class GradleUtilsTests {
 	}
 
 	@Test
-	void recognizesCustomNamedKotlinBuildScript() {
+	void supportsCustomNamedKotlinBuildScript() {
 
 		MockVirtualFile file = MockVirtualFile.file("spring-security-config.gradle.kts");
 
@@ -51,7 +51,7 @@ class GradleUtilsTests {
 	}
 
 	@Test
-	void recognizesGroovySettingsScript() {
+	void supportsGroovySettingsScript() {
 
 		MockVirtualFile file = MockVirtualFile.file("settings.gradle");
 
@@ -60,7 +60,7 @@ class GradleUtilsTests {
 	}
 
 	@Test
-	void recognizesKotlinSettingsScript() {
+	void supportsKotlinSettingsScript() {
 
 		MockVirtualFile file = MockVirtualFile.file("settings.gradle.kts");
 

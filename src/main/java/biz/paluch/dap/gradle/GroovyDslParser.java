@@ -37,12 +37,9 @@ import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals
 import org.jspecify.annotations.Nullable;
 
 /**
- * Parser for individual dependency declarations in a Groovy DSL Gradle file.
- * Resolution collaborators and declaration-form strategies share the lifecycle
- * of one {@link GroovyDslFileParser}.
+ * Parse Groovy dependency declarations within a {@link GroovyDslFileParser}.
  *
  * @author Mark Paluch
- * @see ArtifactDeclaration
  */
 class GroovyDslParser {
 
@@ -60,17 +57,7 @@ class GroovyDslParser {
 	}
 
 	/**
-	 * Parse a Groovy DSL declaration from the given call.
-	 * <p>Supports declarations such as: <pre class="code">
-	 * implementation 'org.junit.jupiter:junit-jupiter:5.11.0'
-	 * implementation group: 'org.junit.jupiter', name: 'junit-jupiter', version: '5.11.0'
-	 * implementation('org.junit.jupiter:junit-jupiter') { version { prefer '5.11.0' } }
-	 * id 'org.springframework.boot' version '3.3.2'
-	 * implementation libs.spring.core
-	 * </pre>
-	 * @param call the configuration call to parse.
-	 * @return the parsed declaration, or {@literal null} when the call is not
-	 * supported.
+	 * Parse a dependency or plugin call, or return {@literal null} if unsupported.
 	 */
 	@Nullable
 	ArtifactDeclaration parse(GrMethodCall call) {
@@ -232,11 +219,6 @@ class GroovyDslParser {
 
 	}
 
-	/**
-	 * Map-style declaration strategy. <pre class="code">
-	 * implementation group: 'org.junit.jupiter', name: 'junit-jupiter', version: '5.11.0'
-	 * </pre>
-	 */
 	private class MapStyleStrategy implements ParsingStrategy<GroovyDeclarationCall, GrMethodCall> {
 
 		@Override
@@ -289,14 +271,6 @@ class GroovyDslParser {
 
 	}
 
-	/**
-	 * Compact notation strategy, with the version either inline or in a
-	 * {@code version { ... }} block. <pre class="code">
-	 * implementation 'org.junit.jupiter:junit-jupiter:5.11.0'
-	 * implementation platform('org.springframework.boot:spring-boot-dependencies:3.3.2')
-	 * implementation('org.junit.jupiter:junit-jupiter') { version { prefer '5.11.0' } }
-	 * </pre>
-	 */
 	private class DependencyNotationStrategy implements ParsingStrategy<GroovyDeclarationCall, GrMethodCall> {
 
 		@Override
@@ -355,10 +329,9 @@ class GroovyDslParser {
 		}
 
 		/**
-		 * Return the effective version argument of a {@code version { ... }} block. The
-		 * strongest concrete constraint wins: {@code strictly}, then {@code require},
-		 * then {@code prefer}. Range constraints are skipped because callers need a
-		 * single upgradeable version value.
+		 * Select the strongest concrete version constraint.
+		 * <p>Ranges are skipped because updates need a single version value.
+		 * @see GradleVersionConstraint#PRECEDENCE
 		 */
 		private @Nullable GrExpression findVersionBlockConstraint(GrMethodCall call) {
 

@@ -37,13 +37,10 @@ import kotlin.coroutines.Continuation;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Project activity that places Dependency Assistant's Groovy completion
- * contributor before IntelliJ's Maven dependency completion contributor.
- *
- * <p>The IntelliJ contributor can stop subsequent completion processing, so
- * ordering is adjusted in each materialized form of the completion extension
- * point. This activity depends on IntelliJ extension-point internals and logs
- * initialization failures instead of failing project startup.
+ * Place Dependency Assistant completion before IntelliJ Maven completion.
+ * <p>The IntelliJ contributor can stop subsequent contributors. Reordering uses
+ * extension-point internals, so initialization failures are logged without
+ * failing project startup.
  *
  * @author Mark Paluch
  */

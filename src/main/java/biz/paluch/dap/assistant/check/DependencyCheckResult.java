@@ -24,19 +24,11 @@ import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.util.Sequence;
 
 /**
- * Result of a dependency check over one or more build files.
- *
- * <p>The result transports the sorted upgrade aggregates and the build-file
- * scope to the review dialog. Each {@link DependencyUpgradeCandidate} already
- * owns its assistant and declared versions, so grouping and row assembly remain
- * review concerns without side maps. The record retains and exposes the
- * supplied lists directly, so callers must not modify them after construction.
+ * Dependency-check candidates and non-fatal lookup errors for an upgrade
+ * review.
+ * <p>The supplied lists are retained directly and must not be modified.
  *
  * @author Mark Paluch
- * @param upgrades the upgrades that can be offered to the user.
- * @param scope the build-file scope included in the dependency check.
- * @param errors non-fatal release lookup errors. Empty when all lookups
- * succeeded.
  */
 public record DependencyCheckResult(List<DependencyUpgradeCandidate> upgrades, FileScope scope,
 		List<String> errors) implements Sequence<DependencyUpgradeCandidate> {

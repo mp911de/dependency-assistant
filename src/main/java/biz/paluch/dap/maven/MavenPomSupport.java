@@ -35,12 +35,7 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.lang.Contract;
 
 /**
- * Shared POM PSI support for Maven declaration parsers such as
- * {@link MavenParser} and {@link MavenBomParser}, metadata readers, repository
- * discovery, and update writers.
- *
- * <p>The support provides tag traversal, property extraction, and
- * artifact-coordinate parsing without retaining PSI state.
+ * Shared POM traversal and value extraction for Maven readers and writers.
  *
  * @author Mark Paluch
  */
@@ -91,18 +86,9 @@ class MavenPomSupport {
 	static final String ISSUE_MANAGEMENT = "issueManagement";
 
 	/**
-	 * Return whether the given {@code parent} tag is a supported parent dependency
-	 * declaration.
-	 *
-	 * <p>A candidate requires a non-empty project group ID distinct from the parent
-	 * group ID. It remains eligible when {@code relativePath} is omitted or empty;
-	 * an explicitly configured non-empty relative path identifies a local
-	 * multi-module parent and is excluded.
-	 *
-	 * @param root the project root tag.
-	 * @param parent the parent tag.
-	 * @return {@literal true} if the given {@code parent} tag is a supported
-	 * dependency candidate.
+	 * Return whether the parent is eligible for dependency upgrades.
+	 * <p>Parents with an inherited or matching group ID are treated as local. A
+	 * non-empty {@code relativePath} also excludes the parent.
 	 */
 	@Contract("_, null -> false; null, _ -> false")
 	public static boolean isParentDependencyCandidate(@Nullable XmlTag root, @Nullable XmlTag parent) {
@@ -131,17 +117,9 @@ class MavenPomSupport {
 	}
 
 	/**
-	 * Parse Maven artifact coordinates, resolving property placeholders where
-	 * present.
-	 *
-	 * <p>A missing group ID defaults to {@code org.apache.maven.plugins}. A missing
-	 * artifact ID produces no coordinates.
-	 *
-	 * @param groupId the declared group ID, or {@literal null} when omitted.
-	 * @param artifactId the declared artifact ID, or {@literal null} when omitted.
-	 * @param propertyResolver the resolver for coordinate placeholders.
-	 * @return the parsed coordinates, or {@literal null} when the artifact ID is
-	 * absent.
+	 * Resolve artifact coordinates, defaulting a missing group to
+	 * {@code org.apache.maven.plugins}.
+	 * @return the coordinates, or {@literal null} if the artifact ID is absent.
 	 */
 	public static @Nullable ArtifactId parseArtifactId(@Nullable String groupId, @Nullable String artifactId,
 			PropertyResolver propertyResolver) {
@@ -165,10 +143,7 @@ class MavenPomSupport {
 
 
 	/**
-	 * Parse root and profile Maven properties from the given POM.
-	 *
-	 * @param pomFile the POM to inspect.
-	 * @return each property name mapped to its plain value.
+	 * Return root and profile properties as plain values.
 	 */
 	public static Map<String, String> getProperties(XmlFile pomFile) {
 
@@ -179,11 +154,7 @@ class MavenPomSupport {
 	}
 
 	/**
-	 * Parse root and profile Maven properties from the given POM, retaining each
-	 * declaring PSI element.
-	 *
-	 * @param pomFile the POM to inspect.
-	 * @return each property name mapped to its value and declaration element.
+	 * Return root and profile properties with their declaration elements.
 	 */
 	public static Map<String, PropertyValue> parseProperties(XmlFile pomFile) {
 
@@ -303,12 +274,8 @@ class MavenPomSupport {
 		}
 
 		/**
-		 * Return the subtag text with {@code ${...}} placeholders resolved. Values that
-		 * remain unresolved are omitted.
-		 *
-		 * @param qname the subtag name.
-		 * @param resolver the resolver for property placeholders.
-		 * @return the resolved text, or {@literal null} when absent or unresolved.
+		 * Return resolved subtag text.
+		 * @see Subtag#getText(PropertyResolver)
 		 */
 		public @Nullable String getText(String qname, PropertyResolver resolver) {
 			return subtag(qname).getText(resolver);
@@ -351,11 +318,8 @@ class MavenPomSupport {
 		}
 
 		/**
-		 * Return the subtag text with {@code ${...}} placeholders resolved. Values that
-		 * remain unresolved are omitted.
-		 *
-		 * @param resolver the resolver for property placeholders.
-		 * @return the resolved text, or {@literal null} when absent or unresolved.
+		 * Return text with placeholders resolved, or {@literal null} if absent or
+		 * unresolved.
 		 */
 		public @Nullable String getText(PropertyResolver resolver) {
 

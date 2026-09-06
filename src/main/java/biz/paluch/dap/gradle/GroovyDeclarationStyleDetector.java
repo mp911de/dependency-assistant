@@ -35,14 +35,7 @@ import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals
 import org.jspecify.annotations.Nullable;
 
 /**
- * Groovy DSL declaration-style detection.
- *
- * <p>A version element is a literal or a reference. It is classified by the
- * call that owns it: a named {@code version:} argument, a constraint call
- * inside a {@code version { ... }} block, the chained {@code version} call of a
- * plugin declaration, or the coordinate of a dependency call. A literal that
- * declares a property referenced by one of those positions is a backing
- * property.
+ * Detect version declaration sites in Groovy Gradle scripts.
  *
  * @author Mark Paluch
  * @see DeclarationStyleDetector
@@ -85,19 +78,11 @@ class GroovyDeclarationStyleDetector implements DeclarationStyleDetector {
 		return DeclarationStyle.absent();
 	}
 
-	/**
-	 * Return the quoted coordinate of the command-style platform declaration at or
-	 * enclosing the given element.
-	 * @see GroovyDslUtils#findCommandPlatformString(PsiElement)
-	 */
 	@Nullable
 	PsiElement findCommandPlatformString(PsiElement element) {
 		return GroovyDslUtils.findCommandPlatformString(element);
 	}
 
-	/**
-	 * Classify a version literal or reference by the call that owns it.
-	 */
 	private static @Nullable DeclarationStyle classify(PsiElement element) {
 
 		// version: '1.0' or version: springVersion
@@ -143,10 +128,6 @@ class GroovyDeclarationStyleDetector implements DeclarationStyleDetector {
 				: null;
 	}
 
-	/**
-	 * Return whether the literal declares an {@code ext} or script property that a
-	 * dependency or plugin declaration in the same file references as version.
-	 */
 	private static boolean isBackingVersionProperty(GrLiteral literal) {
 
 		GroovyExtAssignment assignment = GroovyExtAssignment.from(literal);
@@ -158,10 +139,6 @@ class GroovyDeclarationStyleDetector implements DeclarationStyleDetector {
 		return file != null && referencedVersionProperties(file).contains(assignment.getKey());
 	}
 
-	/**
-	 * Property names that declarations in the file reference as version. Derived
-	 * from the forward parse and cached until the file changes.
-	 */
 	private static Set<String> referencedVersionProperties(PsiFile file) {
 		return PsiFileCache.get(file, GroovyDeclarationStyleDetector::computeReferencedVersionProperties);
 	}
@@ -180,11 +157,6 @@ class GroovyDeclarationStyleDetector implements DeclarationStyleDetector {
 		return names;
 	}
 
-	/**
-	 * Walk up from a constraint call to the enclosing dependency call, returning it
-	 * when the full {@code dependency { version { constraint } }} structure is
-	 * present.
-	 */
 	private static @Nullable GrMethodCall findVersionBlockDependencyCall(GrMethodCall constraintCall) {
 
 		GrClosableBlock versionClosure = PsiTreeUtil.getParentOfType(constraintCall, GrClosableBlock.class);
@@ -202,10 +174,6 @@ class GroovyDeclarationStyleDetector implements DeclarationStyleDetector {
 		return isDependencyCall(dependencyCall) ? dependencyCall : null;
 	}
 
-	/**
-	 * Return the plugin {@code id(...)} call if {@code call} is the chained
-	 * {@code version(...)} call in a Groovy plugin declaration.
-	 */
 	private static @Nullable GrMethodCall findPluginIdCallForVersionCall(GrMethodCall call) {
 
 		if (!(call.getInvokedExpression() instanceof GrReferenceExpression versionReference)

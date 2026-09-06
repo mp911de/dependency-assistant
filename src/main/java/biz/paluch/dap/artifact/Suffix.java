@@ -102,11 +102,7 @@ interface Suffix extends Comparable<Suffix> {
 	}
 
 	/**
-	 * Parse the suffix into a {@link Suffix} instance.
-	 *
-	 * @param suffix the raw suffix text to parse, or {@literal null} for a release
-	 * suffix.
-	 * @return the parsed suffix.
+	 * Parse a qualifier, treating absent or blank text as a release suffix.
 	 */
 	static Suffix parse(@Nullable String suffix) {
 
@@ -404,14 +400,8 @@ interface Suffix extends Comparable<Suffix> {
 	 */
 	class Release implements Suffix {
 
-		/**
-		 * Shared empty release suffix.
-		 */
 		public static final Release INSTANCE = new Release("");
 
-		/**
-		 * Shared {@code RELEASE} suffix.
-		 */
 		public static final Release RELEASE = new Release("RELEASE");
 
 		private final String canonical;

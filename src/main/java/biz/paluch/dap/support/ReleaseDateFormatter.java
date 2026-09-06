@@ -31,14 +31,8 @@ import com.intellij.util.text.DateFormatUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Localized formatter for release dates, due dates, and the age between
- * releases.
- *
- * <p>{@link #format(LocalDateTime)} uses a compact 60-day cutoff for past
- * releases. {@link #formatDetailed(LocalDateTime)} includes time of day and a
- * relative description for dates less than one year away. Due dates render
- * relative at day granularity within two weeks. Instances capture the current
- * instant and zone at creation, so create a formatter per rendering pass.
+ * Localized release and due-date presentation. The current instant is captured
+ * at creation, so create a formatter for each rendering pass.
  *
  * @author Mark Paluch
  */
@@ -62,35 +56,22 @@ public class ReleaseDateFormatter {
 	}
 
 	/**
-	 * Create a formatter using the system clock and default time zone.
-	 *
-	 * @return a formatter that captures the current system time.
+	 * Use the system clock and default time zone.
 	 */
 	public static ReleaseDateFormatter create() {
 		return new ReleaseDateFormatter(Clock.systemDefaultZone());
 	}
 
 	/**
-	 * Create a formatter using the given clock as time and zone source, primarily
-	 * for deterministic tests.
-	 *
-	 * @param clock the time and zone source to capture.
-	 * @return a formatter using the supplied clock.
+	 * Use the clock for the reference instant and time zone.
 	 */
 	public static ReleaseDateFormatter create(Clock clock) {
 		return new ReleaseDateFormatter(clock);
 	}
 
 	/**
-	 * Format a release date for compact display.
-	 *
-	 * <p>Future dates and past dates up to 60 whole days ago combine the platform's
-	 * relative description (for example, "3 days ago" or "in 3 days") with an
-	 * absolute medium-style date. Past dates beyond that cutoff use the absolute
-	 * date alone.
-	 *
-	 * @param releaseDate the release date to format.
-	 * @return the formatted release date.
+	 * Format a compact release date, adding relative text for recent or future
+	 * dates.
 	 */
 	public String format(LocalDateTime releaseDate) {
 
@@ -107,15 +88,7 @@ public class ReleaseDateFormatter {
 	}
 
 	/**
-	 * Format the given release date including the time of day, combining the
-	 * relative description with the absolute medium-style date and short-style time
-	 * (e.g. "3 days ago (Jun 25, 2026 2:05 PM)") when it is less than one year away
-	 * in either direction, and using the absolute date-time alone otherwise. Date
-	 * and time are composed without the locale's date-time separator. Intended for
-	 * documentation surfaces with room for detail.
-	 *
-	 * @param releaseDate the release date to format.
-	 * @return the formatted release date.
+	 * Format a release date with time of day and relative text for nearby dates.
 	 */
 	public String formatDetailed(LocalDateTime releaseDate) {
 
@@ -125,29 +98,16 @@ public class ReleaseDateFormatter {
 	}
 
 	/**
-	 * Format the given due date at day granularity, combining a relative
-	 * description that extends the relative ladder into the future ("today",
-	 * "tomorrow", "in 6 days", "next week") with the absolute medium-style date
-	 * (e.g. "in 6 days (Jul 16, 2026)"); beyond two weeks in either direction the
-	 * absolute date stands alone.
-	 *
-	 * @param dueDate the due date to format.
-	 * @return the formatted due date.
+	 * Format a due date at day granularity, adding relative text for nearby dates.
 	 */
 	public String formatDue(LocalDate dueDate) {
 		return combine(formatRelativeDay(dueDate), dateFormatter.format(dueDate));
 	}
 
 	/**
-	 * Format the age between two release dates as a single coarse unit (days,
-	 * weeks, or months) below one year, and as years with a month remainder beyond
-	 * (e.g. "1 year and 4 months"). Values round to the nearest unit so long spans
-	 * are not understated.
+	 * Format the absolute age between releases in coarse units, such as "2 months".
 	 *
-	 * @param from the first release date.
-	 * @param to the second release date.
-	 * @return the formatted age (e.g. "2 months"), or {@literal null} when the
-	 * dates are less than a day apart.
+	 * @return {@code null} if the dates are less than a day apart.
 	 */
 	public @Nullable String formatAge(LocalDateTime from, LocalDateTime to) {
 
@@ -186,10 +146,6 @@ public class ReleaseDateFormatter {
 				: MessageBundle.message("date.age.years-and-months", years, months);
 	}
 
-	/**
-	 * Relative description of the given instant, or {@literal null} when it falls
-	 * outside the one-year relative window.
-	 */
 	private @Nullable String formatRelative(Instant released) {
 
 		if (Math.abs(Duration.between(released, now).toDays()) >= RELATIVE_LIMIT_DAYS) {
@@ -199,10 +155,6 @@ public class ReleaseDateFormatter {
 		return DateFormatUtil.formatBetweenDates(released.toEpochMilli(), now.toEpochMilli());
 	}
 
-	/**
-	 * Relative day description ("today", "tomorrow", "in 6 days", "next week"), or
-	 * {@literal null} when the date falls outside the two-week window.
-	 */
 	private @Nullable String formatRelativeDay(LocalDate dueDate) {
 
 		long days = ChronoUnit.DAYS.between(LocalDate.ofInstant(now, clock.getZone()), dueDate);

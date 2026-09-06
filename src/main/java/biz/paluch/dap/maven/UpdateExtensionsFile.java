@@ -33,9 +33,7 @@ import com.intellij.psi.xml.XmlTag;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Applies selected extension version updates to a Maven {@code extensions.xml}
- * file by rewriting the inline {@code <version>} tag of each matching
- * {@code <extension>} declaration.
+ * Updates inline extension versions in {@code extensions.xml}.
  *
  * @author Mark Paluch
  */
@@ -59,11 +57,7 @@ class UpdateExtensionsFile implements FileDependencyUpdater {
 	}
 
 	/**
-	 * Apply a single update at the given version literal. The literal must be the
-	 * {@code <version>} XML tag. Other PSI elements are ignored.
-	 *
-	 * @param versionLiteral the version PSI element.
-	 * @param update the update to apply.
+	 * Update the nearest enclosing {@code <version>} tag, if present.
 	 */
 	public void applyUpdate(PsiElement versionLiteral, DependencyUpdate update) {
 

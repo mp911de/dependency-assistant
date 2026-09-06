@@ -21,20 +21,12 @@ import javax.swing.JTable;
 import com.intellij.util.ui.SortableColumnModel;
 
 /**
- * Utility methods for working with table models.
+ * Resolve review rows through the table's view-to-model mapping.
  *
  * @author Mark Paluch
  */
 class ModelUtil {
 
-	/**
-	 * Return the {@link TableRow} row backing the given view row.
-	 *
-	 * @param table the table whose model contains the row.
-	 * @param viewRow row index in view coordinates (e.g. from renderer/editor),
-	 * respecting the row sorter.
-	 * @return the table row at the corresponding model index.
-	 */
 	static TableRow getRow(JTable table, int viewRow) {
 		int modelRow = table.convertRowIndexToModel(viewRow);
 		return (TableRow) ((SortableColumnModel) table.getModel()).getRowValue(modelRow);

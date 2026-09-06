@@ -58,18 +58,10 @@ public class Generations implements Predicate<String> {
 	}
 
 	/**
-	 * Create generations from project development lines.
+	 * Parse permitted development lines, preserving declaration order and removing
+	 * duplicates. Empty input or {@code *} means unconstrained.
 	 *
-	 * <p>Duplicates are dropped while the declared order is preserved. A list
-	 * containing {@code *} collapses to the {@linkplain #unconstrained()
-	 * unconstrained} instance.
-	 *
-	 * @param generations the project development lines; must not be
-	 * {@literal null}.
-	 * @return generations matching any of the given development lines;
-	 * {@linkplain #unconstrained() unconstrained} when none are given.
-	 * @throws IllegalArgumentException if an entry is not a valid generation, see
-	 * {@link Generation#of(String)}.
+	 * @throws IllegalArgumentException if a generation cannot be parsed.
 	 * @see Generation#of(String)
 	 */
 	public static Generations from(String... generations) {
@@ -87,21 +79,12 @@ public class Generations implements Predicate<String> {
 	}
 
 	/**
-	 * Return the unconstrained instance accepting every version.
-	 *
-	 * @return the shared unconstrained instance.
+	 * Return generations accepting every version.
 	 */
 	public static Generations unconstrained() {
 		return UNCONSTRAINED;
 	}
 
-	/**
-	 * Return whether this object constrains versions to at least one generation.
-	 *
-	 * @return {@literal true} if at least one generation is listed;
-	 * {@literal false} for the {@linkplain #unconstrained() unconstrained}
-	 * instance.
-	 */
 	public boolean isConstrained() {
 		return !this.generations.isEmpty();
 	}
@@ -122,34 +105,24 @@ public class Generations implements Predicate<String> {
 	}
 
 	/**
-	 * Return these generations as an {@link ArtifactVersion} predicate.
-	 *
-	 * <p>The returned predicate unwraps prefixed versions before testing the
-	 * innermost version string against any listed generation.
-	 *
-	 * @return an {@link ArtifactVersion} predicate backed by these generations.
+	 * Return a predicate that tests the innermost version against the permitted
+	 * lines.
 	 */
 	public Predicate<ArtifactVersion> asVersionPredicate() {
 		return this.versionPredicate;
 	}
 
 	/**
-	 * Return the rendered generation value joining the normalized
-	 * {@linkplain Generation#value() generation values}: {@code 3.2.x}, then
-	 * {@code 3.2.x or 4.x}, then {@code 3.1.x, 3.2.x, or 4.x}.
-	 *
-	 * @return the rendered generation value; empty for the
-	 * {@linkplain #unconstrained() unconstrained} instance.
+	 * Return the display text, such as {@code 3.2.x or 4.x}, or empty if
+	 * unconstrained.
 	 */
 	public String value() {
 		return rendered;
 	}
 
 	/**
-	 * Return the listed generations in declared order.
-	 *
-	 * @return the listed generations; empty for the {@linkplain #unconstrained()
-	 * unconstrained} instance.
+	 * Return the immutable generations in declaration order, or empty if
+	 * unconstrained.
 	 */
 	public List<Generation> list() {
 		return this.generations;

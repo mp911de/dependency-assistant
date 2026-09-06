@@ -54,14 +54,10 @@ import com.intellij.psi.util.PsiTreeUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Base gutter provider for resolved dependency declarations, rendering upgrade
- * suggestions, known vulnerabilities, and governing rule state.
- *
- * <p>Markers are derived from live PSI and project-cached dependency data. The
- * provider performs no remote lookups. Clicking a marker starts a Dependency
- * Check for the containing build file and focuses the declared package. An
- * available-upgrade marker whose version literal is defined in another physical
- * file instead navigates to that literal.
+ * Dependency gutter markers backed by cached metadata.
+ * <p>Clicks open upgrade review, except upgrades to versions defined in another
+ * physical file, which navigate to that definition. No remote lookup is
+ * performed.
  *
  * @author Mark Paluch
  */
@@ -198,26 +194,16 @@ public class DependencyLineMarkerProvider extends LineMarkerProviderDescriptor {
 	}
 
 	/**
-	 * Resolve the dependency context used for the given element.
-	 *
-	 * <p>Subclasses may narrow dispatcher resolution to the integration registered
-	 * for their line-marker extension.
-	 *
-	 * @param element the PSI element being considered for a marker.
-	 * @return the resolved dependency context, or an
-	 * {@link ProjectDependencyContext#absent() absent} context when this provider
-	 * does not own the element.
+	 * Resolve the element's dependency context.
+	 * <p>Subclasses may restrict resolution to their integration.
+	 * @return an absent context if this provider does not own the element.
 	 */
 	protected ProjectDependencyContext getContext(PsiElement element) {
 		return DependencyAssistantDispatcher.findFirstContext(element);
 	}
 
 	/**
-	 * Navigation handler that opens the Dependency Check dialog scoped to the
-	 * clicked declaration's build file, with the artifact's row selected and
-	 * revealed.
-	 *
-	 * @param pkg the package identity to select in the dialog.
+	 * Opens upgrade review focused on the package in the clicked build file.
 	 */
 	public record UpgradeDialogNavigationHandler(PackageIdentity pkg)
 			implements GutterIconNavigationHandler<PsiElement> {

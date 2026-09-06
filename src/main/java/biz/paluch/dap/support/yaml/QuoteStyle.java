@@ -20,20 +20,14 @@ import org.jetbrains.yaml.psi.YAMLQuotedText;
 import org.jetbrains.yaml.psi.YAMLScalar;
 
 /**
- * Rendering style for a YAML scalar.
- *
- * <p>{@link #of(YAMLScalar)} detects the source scalar's style, and
- * {@link #wrap(String)} renders replacement content in that same style. Quoted
- * styles escape their delimiter syntax. {@link #NONE} leaves the replacement
- * unchanged and does not select a quoted style when the content requires one.
+ * YAML scalar quoting for replacements.
+ * <p>Quoted styles escape their delimiters. {@link #NONE} preserves plain text
+ * and does not add quotes when new content would require them.
  *
  * @author Mark Paluch
  */
 public enum QuoteStyle {
 
-	/**
-	 * Plain scalar style. Replacement content is returned unchanged.
-	 */
 	NONE {
 		@Override
 		public String wrap(String rawValue) {
@@ -41,9 +35,6 @@ public enum QuoteStyle {
 		}
 	},
 
-	/**
-	 * Single-quoted scalar style. Single quotes in the content are doubled.
-	 */
 	SINGLE {
 		@Override
 		public String wrap(String rawValue) {
@@ -51,10 +42,6 @@ public enum QuoteStyle {
 		}
 	},
 
-	/**
-	 * Double-quoted scalar style. Backslashes and double quotes in the content are
-	 * escaped.
-	 */
 	DOUBLE {
 		@Override
 		public String wrap(String rawValue) {
@@ -63,9 +50,7 @@ public enum QuoteStyle {
 	};
 
 	/**
-	 * Determine the rendering style of the given YAML scalar.
-	 * @param scalar the scalar to inspect.
-	 * @return the corresponding quoted style, or {@link #NONE} for a plain scalar.
+	 * Detect the scalar's quote style, or {@link #NONE} for plain text.
 	 */
 	public static QuoteStyle of(YAMLScalar scalar) {
 
@@ -76,9 +61,7 @@ public enum QuoteStyle {
 	}
 
 	/**
-	 * Render scalar content using this style.
-	 * @param rawValue the unquoted scalar content to render.
-	 * @return the rendered YAML scalar text.
+	 * Quote unquoted scalar content using this style.
 	 */
 	public abstract String wrap(String rawValue);
 

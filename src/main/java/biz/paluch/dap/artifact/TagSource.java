@@ -34,16 +34,13 @@ import com.intellij.openapi.progress.ProgressIndicator;
 public interface TagSource {
 
 	/**
-	 * Return the unique identifier of this source.
-	 * @return the source identifier.
+	 * Return the source identifier.
 	 */
 	String getId();
 
 	/**
-	 * Return all known tags for the given artifact at this source.
-	 * @param artifactId the artifact whose tags to retrieve.
-	 * @param indicator the progress indicator used to honor cancellation.
-	 * @return the tags known to this source.
+	 * Fetch known tags for the artifact.
+	 * @param indicator the progress indicator used for cancellation.
 	 * @throws ArtifactNotFoundException if the artifact is definitively absent.
 	 * @throws IOException if tag data cannot be read from the source.
 	 */

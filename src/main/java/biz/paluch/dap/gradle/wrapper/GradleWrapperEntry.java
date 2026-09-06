@@ -27,13 +27,8 @@ import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Parsed Gradle Wrapper distribution declaration exposed as a
- * {@link VersionedDependencySite}.
- *
- * <p>The entry retains its {@link WrapperProperty} kind, source property and
- * value element, decoded version text, and {@code bin} or {@code all}
- * distribution flavor. The declaration uses the synthetic
- * {@code org.gradle:gradle} coordinate.
+ * Parsed Wrapper distribution represented as the synthetic
+ * {@code org.gradle:gradle} dependency.
  *
  * @author Mark Paluch
  */

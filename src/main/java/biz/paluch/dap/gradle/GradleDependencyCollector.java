@@ -31,12 +31,8 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 
 /**
- * Collects dependency coordinates from a Gradle file using the appropriate
- * parser for Groovy DSL, Kotlin DSL, {@code gradle.properties}, or
- * {@code *.versions.toml} version catalogs.
- * <p>When the anchor file is a Gradle build or settings script, the collector
- * resolves visible Gradle properties and version-catalog accessors through the
- * project root so only actual script usages are collected.
+ * Collect dependencies from Gradle scripts, properties and version catalogs.
+ * <p>Script scans include only used catalog entries.
  *
  * @author Mark Paluch
  */
@@ -48,19 +44,13 @@ class GradleDependencyCollector {
 
 	private final StateService service;
 
-	/**
-	 * Create a collector with no predefined Gradle properties.
-	 * @param project the IntelliJ project owning the Gradle file.
-	 */
 	public GradleDependencyCollector(Project project) {
 		this(project, Map.of());
 	}
 
 	/**
-	 * Create a collector using project properties as a fallback after properties
-	 * discovered from the file tree.
-	 * @param project the IntelliJ project owning the Gradle file.
-	 * @param properties the fallback project properties.
+	 * Create a collector with fallback properties. File-tree properties take
+	 * precedence.
 	 */
 	public GradleDependencyCollector(Project project, Map<String, String> properties) {
 		this.properties = properties;
@@ -68,25 +58,10 @@ class GradleDependencyCollector {
 		this.service = StateService.getInstance(project);
 	}
 
-	/**
-	 * Collect artifact declarations from {@code buildFile} into the provided
-	 * {@code collector}.
-	 * <p>Script anchors resolve project-root Gradle properties and version-catalog
-	 * accessors without treating unused catalog entries as dependency usages.
-	 *
-	 * @param buildFile the Gradle-related file to parse.
-	 * @param collector the collector to populate in place.
-	 */
 	public void collect(PsiFile buildFile, DependencyCollector collector) {
 		doCollect(buildFile, collector);
 	}
 
-	/**
-	 * Collect declarations from the given Gradle-related PSI file into
-	 * {@code collector}.
-	 * @param psiFile the Gradle-related file to parse.
-	 * @param collector the collector to populate in place.
-	 */
 	protected void doCollect(PsiFile psiFile, DependencyCollector collector) {
 
 		VirtualFile file = psiFile.getVirtualFile();
@@ -108,12 +83,8 @@ class GradleDependencyCollector {
 	}
 
 	/**
-	 * Register an artifact declaration with the dependency collector.
-	 *
-	 * <p>A concrete, non-prefix, non-catalog version is registered as a usage. The
-	 * declaration and any BOM metadata are registered for every version shape.
-	 * @param collector the collector to populate.
-	 * @param declaration the artifact declaration to register.
+	 * Register the declaration and BOM metadata. Only concrete versions count as
+	 * usages.
 	 */
 	void register(DependencyCollector collector, ArtifactDeclaration declaration) {
 
@@ -134,12 +105,6 @@ class GradleDependencyCollector {
 		BomUtil.registerBillOfMaterials(service.getCache(), project, declaration, collector);
 	}
 
-	/**
-	 * Register a version-catalog declaration as a declaration and, when versioned,
-	 * as a usage.
-	 * @param collector the collector to populate.
-	 * @param declaration the catalog declaration to register.
-	 */
 	void registerCatalog(DependencyCollector collector, ArtifactDeclaration declaration) {
 
 		if (declaration.isVersioned()) {

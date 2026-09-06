@@ -52,18 +52,9 @@ import kotlin.coroutines.Continuation;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Project startup activity that installs the {@link FlushStateOnEdit edit
- * listener}, then waits for smart mode and queues initial dependency-state
- * population for each applicable integration.
- *
- * <p>The background pass prepares and indexes the integrations, resolves Bill
- * of Materials membership, and restarts highlighting. Outside power-save mode
- * it also performs the configured vulnerability and project-metadata scans.
- * Missing or stale release metadata is reported after initialization when the
- * dependency state has been used.
- *
- * <p>Repository-tag discovery runs as a separate background task and does not
- * delay completion of the startup pass.
+ * Initializes dependency state and installs build-file edit tracking.
+ * <p>Initial collection waits for smart mode. Optional remote scans are skipped
+ * in power-save mode. Repository-tag discovery runs separately.
  *
  * @author Mark Paluch
  */

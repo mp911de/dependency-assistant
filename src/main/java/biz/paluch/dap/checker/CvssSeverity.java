@@ -33,15 +33,8 @@ public enum CvssSeverity {
 	CRITICAL, HIGH, MEDIUM, LOW, NONE, UNKNOWN;
 
 	/**
-	 * Map a numeric CVSS base score to its qualitative severity band.
-	 *
-	 * <p>Scores at or above {@code 9.0} are critical, {@code 7.0} through
-	 * {@code 8.9} are high, {@code 4.0} through {@code 6.9} are medium, {@code 0.1}
-	 * through {@code 3.9} are low, and exactly {@code 0.0} is {@link #NONE}.
-	 * Negative values and {@link Double#NaN} yield {@link #UNKNOWN}.
-	 *
-	 * @param score the CVSS base score.
-	 * @return the qualitative severity band.
+	 * Map a CVSS base score to its qualitative severity band.
+	 * @return {@link #UNKNOWN} for a negative or otherwise unclassified score.
 	 */
 	public static CvssSeverity fromScore(double score) {
 
@@ -64,15 +57,8 @@ public enum CvssSeverity {
 	}
 
 	/**
-	 * Map an explicit severity label to its severity band.
-	 *
-	 * <p>Matching is case-insensitive against the enum constant names. Any label
-	 * that does not match a known constant, including {@literal null} or a blank
-	 * string, yields {@link #UNKNOWN}.
-	 *
-	 * @param label the severity label reported by the source, or {@literal null} if
-	 * absent.
-	 * @return the matching severity band.
+	 * Match a severity label without regard to case or surrounding whitespace.
+	 * @return {@link #UNKNOWN} if absent or unrecognized.
 	 */
 	public static CvssSeverity fromLabel(@Nullable String label) {
 
@@ -89,21 +75,14 @@ public enum CvssSeverity {
 	}
 
 	/**
-	 * Return the localized label for this severity.
-	 *
-	 * @return the localized severity label.
+	 * Return the localized severity label.
 	 */
 	public String getLabel() {
 		return MessageBundle.message("CvssSeverity." + name());
 	}
 
 	/**
-	 * Return the ordering rank for severity comparisons.
-	 *
-	 * <p>Higher values represent more severe ratings independently of enum
-	 * declaration order.
-	 *
-	 * @return the severity rank.
+	 * Return the severity rank. Higher values are more severe.
 	 */
 	public int rank() {
 		return switch (this) {

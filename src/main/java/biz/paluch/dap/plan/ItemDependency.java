@@ -25,11 +25,9 @@ import biz.paluch.dap.artifact.VersionSource;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Materialized dependency member of an Upgrade Plan item.
- *
- * <p>An implicit group member remains a full member of the item for display and
- * risk facts and is upgraded through the item's target, but emits no dependency
- * update of its own because another member owns its version-property write.
+ * Dependency member of a materialized plan item.
+ * <p>An implicit member contributes display and risk facts but emits no update.
+ * Another member owns its version-property write.
  *
  * @author Mark Paluch
  */

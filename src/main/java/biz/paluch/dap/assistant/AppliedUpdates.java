@@ -32,17 +32,12 @@ import biz.paluch.dap.util.Sequence;
 import com.intellij.openapi.vfs.VirtualFile;
 
 /**
- * Mutable accounting for dependency updates that changed build files.
- *
- * <p>Callers record an update only after verifying a file-text change. Summary
- * entries are sorted and deduplicated by display label. Flagged entries also
- * retain their applied update and the supplied reverse-application files.
- * Consume {@link #getReverse()} together with {@link #getReverseFiles()} to
- * rewrite those entries to their source versions through the normal per-file
- * update path.
+ * Mutable accounting for updates that changed build files.
+ * <p>Record an update only after verifying a file-text change. Summaries are
+ * sorted and deduplicated by display label. Flagged updates can be reversed
+ * using {@link #getReverse()} with {@link #getReverseFiles()}.
  *
  * @author Mark Paluch
- * @see AppliedUpdate
  */
 public class AppliedUpdates implements Sequence<AppliedUpdate> {
 
@@ -51,13 +46,8 @@ public class AppliedUpdates implements Sequence<AppliedUpdate> {
 	private final List<Reversible> outOfBounds = new ArrayList<>();
 
 	/**
-	 * Record an update that changed the given file and classify it against its
-	 * governing rule.
-	 *
+	 * Record an applied update and classify it against its governing rule.
 	 * @param file the changed file eligible for reverse application.
-	 * @param update the applied dependency update.
-	 * @param rule the rule governing the dependency.
-	 * @param presentation the source of the user-facing dependency label.
 	 */
 	public void record(VirtualFile file, DependencyUpdate update, DependencyRule rule,
 			DependencyPresentation presentation) {
@@ -70,14 +60,8 @@ public class AppliedUpdates implements Sequence<AppliedUpdate> {
 	}
 
 	/**
-	 * Record several applied updates under one display label.
-	 *
-	 * <p>No governing rule is available through this overload. Major version
-	 * crossings are therefore the only flagged entries.
-	 *
-	 * @param files the files eligible for reverse application.
-	 * @param updates the applied dependency updates.
-	 * @param displayName the user-facing dependency label shared by the updates.
+	 * Record several updates with the same label and reverse-application files.
+	 * @see #record(Iterable, DependencyUpdate, String)
 	 */
 	public void record(Iterable<VirtualFile> files, List<DependencyUpdate> updates, String displayName) {
 		for (DependencyUpdate update : updates) {
@@ -86,14 +70,9 @@ public class AppliedUpdates implements Sequence<AppliedUpdate> {
 	}
 
 	/**
-	 * Record an applied update under the given display label.
-	 *
-	 * <p>No governing rule is available through this overload. A major version
-	 * crossing is therefore the only flagged outcome.
-	 *
+	 * Record an applied update without a governing rule.
+	 * <p>Only major version crossings are flagged.
 	 * @param files the files eligible for reverse application.
-	 * @param update the applied dependency update.
-	 * @param displayName the user-facing dependency label.
 	 */
 	public void record(Iterable<VirtualFile> files, DependencyUpdate update, String displayName) {
 		AppliedUpdate summary = AppliedUpdate.from(update, displayName);
@@ -106,39 +85,26 @@ public class AppliedUpdates implements Sequence<AppliedUpdate> {
 	}
 
 	/**
-	 * Return the applied updates ordered by display label.
-	 *
-	 * <p>The returned set is the live, mutable summary set.
-	 *
-	 * @return the applied-update summaries.
+	 * Return the live, mutable summary set, ordered by display label.
 	 */
 	public Set<AppliedUpdate> applied() {
 		return applied;
 	}
 
-	/**
-	 * Return the first applied update.
-	 */
 	public AppliedUpdate first() {
 		return applied.iterator().next();
 	}
 
 	/**
-	 * Return reverse updates for the flagged entries.
-	 *
-	 * <p>The result is intended for the files from {@link #getReverseFiles()}.
-	 *
-	 * @return a new dependency-update sequence that exchanges each flagged entry's
-	 * source and target versions.
+	 * Return updates that restore the source versions of flagged entries.
+	 * <p>Apply them to the files from {@link #getReverseFiles()}.
 	 */
 	public DependencyUpdates getReverse() {
 		return new DependencyUpdates(outOfBounds.stream().map(Reversible::reverse).toList());
 	}
 
 	/**
-	 * Return the files supplied for reverse application of flagged entries.
-	 *
-	 * @return a new scope corresponding to {@link #getReverse()}.
+	 * Return the files to which {@link #getReverse()} applies.
 	 */
 	public FileScope getReverseFiles() {
 		return FileScope.of(outOfBounds.stream().map(Reversible::file).toList());

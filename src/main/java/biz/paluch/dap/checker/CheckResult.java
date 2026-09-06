@@ -46,29 +46,16 @@ public class CheckResult {
 		this.vulnerabilities = vulnerabilities;
 	}
 
-	/**
-	 * Return a builder collecting checked versions one at a time.
-	 *
-	 * @return a fresh builder.
-	 */
 	public static Builder builder() {
 		return new Builder();
 	}
 
-	/**
-	 * Return a result containing no checked version.
-	 *
-	 * @return the empty result.
-	 */
 	public static CheckResult empty() {
 		return EMPTY;
 	}
 
 	/**
-	 * Return whether the result contains no known package-version result.
-	 *
-	 * @return {@literal true} if every entry is absent or no entry exists;
-	 * {@literal false} otherwise.
+	 * Return whether no known package-version result exists.
 	 */
 	public boolean isEmpty() {
 
@@ -88,23 +75,13 @@ public class CheckResult {
 	}
 
 	/**
-	 * Return the vulnerabilities for the given package version.
-	 *
-	 * @param ecosystemPackage the package to look up.
-	 * @param version the version to look up.
-	 * @return the vulnerabilities a source returned for the version, or
-	 * {@link Vulnerabilities#absent() absent} when no source returned it.
+	 * Return the checked result, or {@link Vulnerabilities#absent()} if no source
+	 * answered.
 	 */
 	public Vulnerabilities getVulnerabilities(PackageIdentity ecosystemPackage, ArtifactVersion version) {
 		return vulnerabilities.getOrDefault(ecosystemPackage, Map.of()).getOrDefault(version, Vulnerabilities.absent());
 	}
 
-	/**
-	 * Apply the given action to each checked package and its per-version
-	 * vulnerabilities.
-	 *
-	 * @param consumer the action to apply to each package and its version results.
-	 */
 	public void forEach(BiConsumer<PackageIdentity, Map<ArtifactVersion, Vulnerabilities>> consumer) {
 		vulnerabilities.forEach(consumer);
 	}
@@ -117,11 +94,7 @@ public class CheckResult {
 	}
 
 	/**
-	 * Builder that collects checked {@link Vulnerabilities} per package and version
-	 * for a {@link CheckResult}.
-	 *
-	 * <p>Sources that discover results incrementally use the builder instead of
-	 * assembling a nested map. Builders are not thread-safe.
+	 * Collects per-version results. Not thread-safe.
 	 */
 	public static class Builder {
 
@@ -131,17 +104,9 @@ public class CheckResult {
 		}
 
 		/**
-		 * Add the checked result for a package version.
-		 *
-		 * <p>A later call for the same package and version replaces the previous
-		 * result. Add {@link Vulnerabilities#clean() clean} for a version that was
-		 * checked without finding an advisory; omit versions the source could not
-		 * answer for.
-		 *
-		 * @param ecosystemPackage the checked package.
-		 * @param version the checked version.
-		 * @param vulnerabilities the vulnerabilities found for the version.
-		 * @return this builder.
+		 * Replace the result for a package version.
+		 * <p>Record {@link Vulnerabilities#clean()} when checked without advisories.
+		 * Omit versions the source could not answer.
 		 */
 		public Builder add(PackageIdentity ecosystemPackage, ArtifactVersion version, Vulnerabilities vulnerabilities) {
 			this.vulnerabilities.computeIfAbsent(ecosystemPackage, key -> new LinkedHashMap<>()).put(version,
@@ -150,11 +115,7 @@ public class CheckResult {
 		}
 
 		/**
-		 * Build a result from the currently collected versions.
-		 *
-		 * <p>Subsequent changes to the builder do not affect the returned result.
-		 *
-		 * @return a new result, or {@link #empty()} when no version was added.
+		 * Snapshot the collected results independently of later builder changes.
 		 */
 		public CheckResult build() {
 

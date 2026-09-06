@@ -50,22 +50,14 @@ import org.jspecify.annotations.Nullable;
 class MavenRepositories extends MavenPomSupport {
 
 	/**
-	 * Collect the dependency and plugin repositories available to the given Maven
-	 * project.
-	 *
-	 * <p>Resolved model repositories are combined with root and profile
-	 * declarations from the POM. Only declarations whose raw URL starts with
-	 * {@code http://} or {@code https://} enter mirror routing. Maven settings then
-	 * apply mirror routing and eligible credentials, and the resulting repositories
-	 * are deduplicated by value.
-	 *
-	 * @param settings the effective Maven settings.
-	 * @param project the Maven project to inspect.
-	 * @param pomFile the POM whose declared repositories are also collected, or
-	 * {@literal null} to inspect only the resolved project model.
-	 * @param propertyResolver the resolver for repository ID and URL expressions,
-	 * or {@literal null} to leave them unchanged.
-	 * @return the deduplicated remote repositories in discovery order.
+	 * Combine model and POM repositories in discovery order, applying Maven
+	 * settings.
+	 * <p>Only raw HTTP(S) URLs enter mirror routing. Results are deduplicated by
+	 * value.
+	 * @param pomFile additional POM declarations, or {@literal null} for model
+	 * repositories only.
+	 * @param propertyResolver expression resolver, or {@literal null} to leave
+	 * expressions unchanged.
 	 */
 	public static Set<RemoteRepository> getRemoteRepositories(MavenSettings settings,
 			MavenProject project, @Nullable PsiFile pomFile,
@@ -109,11 +101,8 @@ class MavenRepositories extends MavenPomSupport {
 	}
 
 	/**
-	 * Parse dependency and plugin repositories declared by a POM and its profiles.
-	 *
-	 * @param pomFile the Maven POM file.
-	 * @return the repository declarations in traversal order, or an empty list for
-	 * non-XML files.
+	 * Read dependency and plugin repositories from the POM and its profiles.
+	 * @return declarations in traversal order, or an empty list for non-XML files.
 	 */
 	static List<MavenRemoteRepository> parseRepositories(PsiFile pomFile) {
 
@@ -180,13 +169,8 @@ class MavenRepositories extends MavenPomSupport {
 	}
 
 	/**
-	 * Collect release sources for all Maven sub-projects in the given project.
-	 * <p>Loads credentials from {@code settings.xml}, then aggregates the remote
-	 * repositories across every project known to {@link MavenProjectsManager},
-	 * deduplicates them, and wraps each as a {@link ReleaseSource}.
-	 *
-	 * @param project the IntelliJ project.
-	 * @return the aggregated release sources in repository discovery order.
+	 * Return release sources across imported Maven projects in discovery order.
+	 * <p>Mirrors and eligible credentials come from Maven settings.
 	 */
 	public static List<ReleaseSource> getReleaseSources(Project project) {
 

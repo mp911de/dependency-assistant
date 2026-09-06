@@ -23,8 +23,7 @@ import biz.paluch.dap.state.ProjectId;
  * project identity.
  *
  * <p>The context is always {@link #isAvailable() available}. Subclasses supply
- * package-system, project-version, and release-source behavior. Integrations
- * that need an absent state use a dedicated sentinel rather than this base.
+ * package-system, project-version, and release-source behavior.
  *
  * @author Mark Paluch
  * @see ProjectBuildContext

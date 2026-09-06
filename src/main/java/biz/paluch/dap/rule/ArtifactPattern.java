@@ -31,7 +31,7 @@ import com.intellij.openapi.util.Predicates;
  * <p>Natural ordering ranks patterns by specificity. Exact coordinate pairs
  * rank highest, followed by exact bare artifactIds, bare artifactId wildcards,
  * coordinate-pair wildcards, and the match-all pattern. Rule resolution selects
- * the greatest matching pattern; patterns that compare equal are tied and
+ * the greatest matching pattern. Patterns that compare equal are tied and
  * resolve to the first declared rule.
  *
  * @author Mark Paluch
@@ -61,24 +61,14 @@ public class ArtifactPattern implements Predicate<ArtifactId>, Comparable<Artifa
 		this.specificity = determineSpecificity(value, separator);
 	}
 
-	/**
-	 * Create an artifact pattern.
-	 *
-	 * @param value the pattern, either an artifactId pattern or a
-	 * {@code groupId:artifactId} or {@code groupId/artifactId} pair.
-	 * @return the artifact pattern.
-	 */
 	public static ArtifactPattern of(String value) {
 		return new ArtifactPattern(KnownPattern.of(value));
 	}
 
 	/**
-	 * Return the narrowest pattern key identifying the given coordinates: the bare
-	 * artifactId when groupId and artifactId are equal (as for npm-style
-	 * single-name packages), otherwise {@code groupId:artifactId}.
-	 *
-	 * @param artifactId the coordinates to render.
-	 * @return the pattern key.
+	 * Return a rule key for the coordinates. Single-name packages whose group and
+	 * artifact are equal use the bare name. Other packages use
+	 * {@code group:artifact}.
 	 */
 	public static String keyFor(ArtifactId artifactId) {
 

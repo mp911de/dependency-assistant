@@ -34,13 +34,9 @@ import com.intellij.util.xmlb.annotations.XCollection;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Project-level service persisting GitHub label and milestone listings across
- * IDE restarts.
- *
- * <p>Mutations count against a modification tracker so the persistence layer
- * skips snapshotting and serialization while the listings are unchanged.
- * Persistence callbacks exchange detached snapshots, so callers cannot mutate
- * the live cache through {@link #getState()} or a previously loaded state.
+ * Persistent GitHub label and milestone listings.
+ * <p>Persistence callbacks exchange detached snapshots. Mutations are tracked
+ * so unchanged state need not be serialized.
  *
  * @author Mark Paluch
  */
@@ -52,12 +48,6 @@ public class GitHubTicketCache
 
 	private final SimpleModificationTracker modificationTracker = new SimpleModificationTracker();
 
-	/**
-	 * Return the project-scoped service instance.
-	 *
-	 * @param project the IntelliJ project.
-	 * @return the corresponding service instance.
-	 */
 	public static GitHubTicketCache getInstance(Project project) {
 		return project.getService(GitHubTicketCache.class);
 	}
@@ -83,11 +73,7 @@ public class GitHubTicketCache
 	}
 
 	/**
-	 * Return the stored labels for the given repository coordinates.
-	 *
-	 * @param coordinates the GitHub host, owner, and repository key.
-	 * @return the stored labels. The list is empty when the repository has no
-	 * stored listing.
+	 * Return cached labels, or an empty list if none are stored.
 	 */
 	List<GitHubLabel> getLabels(GitRepositoryMetadata coordinates) {
 		return readRepositories(state -> {
@@ -107,11 +93,7 @@ public class GitHubTicketCache
 	}
 
 	/**
-	 * Return the stored open milestones for the given repository coordinates.
-	 *
-	 * @param coordinates the GitHub host, owner, and repository key.
-	 * @return the stored milestones. The list is empty when the repository has no
-	 * stored listing.
+	 * Return cached open milestones, or an empty list if none are stored.
 	 */
 	List<GitHubMilestone> getMilestones(GitRepositoryMetadata coordinates) {
 		return readRepositories(repositories -> {
@@ -131,10 +113,7 @@ public class GitHubTicketCache
 	}
 
 	/**
-	 * Replace the stored labels for the given repository coordinates.
-	 *
-	 * @param coordinates the GitHub host, owner, and repository key.
-	 * @param labels the complete label listing to store.
+	 * Replace the repository's cached label listing.
 	 */
 	void storeLabels(GitRepositoryMetadata coordinates, List<GitHubLabel> labels) {
 
@@ -150,10 +129,7 @@ public class GitHubTicketCache
 	}
 
 	/**
-	 * Replace the stored milestones for the given repository coordinates.
-	 *
-	 * @param coordinates the GitHub host, owner, and repository key.
-	 * @param milestones the complete open-milestone listing to store.
+	 * Replace the repository's cached open-milestone listing.
 	 */
 	void storeMilestones(GitRepositoryMetadata coordinates, List<GitHubMilestone> milestones) {
 
@@ -182,9 +158,6 @@ public class GitHubTicketCache
 	}
 
 
-	/**
-	 * Persisted service state.
-	 */
 	@Tag("repositories")
 	public static class Repositories {
 
@@ -260,9 +233,6 @@ public class GitHubTicketCache
 
 	}
 
-	/**
-	 * Stored label entry.
-	 */
 	@Tag("label")
 	public static class CachedLabel {
 
@@ -298,9 +268,6 @@ public class GitHubTicketCache
 
 	}
 
-	/**
-	 * Stored milestone entry.
-	 */
 	@Tag("milestone")
 	public static class CachedMilestone {
 

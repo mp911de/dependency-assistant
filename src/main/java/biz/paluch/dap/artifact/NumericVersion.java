@@ -24,14 +24,12 @@ package biz.paluch.dap.artifact;
 public interface NumericVersion extends ArtifactVersion {
 
 	/**
-	 * Return the numeric version parts.
-	 * @return a new array containing the numeric version parts.
+	 * Return a new array of numeric version parts.
 	 */
 	int[] getParts();
 
 	/**
 	 * Return the number of numeric version parts.
-	 * @return the number of numeric version parts.
 	 */
 	default int size() {
 		return getParts().length;

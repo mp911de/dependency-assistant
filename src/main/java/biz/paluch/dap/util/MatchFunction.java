@@ -22,63 +22,37 @@ import java.util.regex.Matcher;
 import org.springframework.util.Assert;
 
 /**
- * Callback strategy interface for locating successive ranges in decoded
- * property text.
- *
- * <p>
- * A {@code MatchFunction} is called repeatedly with the same decoded text
- * and the index at which the next search should begin. Implementations return
- * {@link #noMatch()} to signal completion. Match coordinates are offsets in the
- * decoded text so callers can map the result back to the original host text.
+ * Strategy for locating successive matches in decoded property text.
  *
  * @author Mark Paluch
- * @see MatchResult
+ * @see PropertyUtils#findTextRanges(com.intellij.lang.properties.psi.Property,
+ * MatchFunction)
  */
 public interface MatchFunction {
 
 	/**
-	 * Find the next match at or after the supplied decoded-text index.
-	 *
-	 * <p>The returned {@link MatchResult#start()} and {@link MatchResult#end()}
-	 * values must be offsets into {@code text}. A caller advances subsequent
-	 * searches to {@code end()}, so implementations that expose zero-length matches
-	 * must ensure repeated invocations do not return the same match indefinitely.
-	 *
-	 * @param text the decoded text to search.
-	 * @param startIndex the decoded-text index at which scanning should resume.
-	 * @return a matching result whose {@link MatchResult#hasMatch()} returns
-	 * {@literal true}, or {@link #noMatch()} if no further match is available.
+	 * Find the next match at or after {@code startIndex}.
+	 * <p>Offsets refer to the decoded {@code text}. Callers resume at the previous
+	 * match's end. Zero-length matches must not cause repeated calls to return the
+	 * same match indefinitely.
+	 * @return a result whose {@link MatchResult#hasMatch()} is {@literal true}, or
+	 * {@link #noMatch()} when the search is complete.
 	 */
 	MatchResult find(String text, int startIndex);
 
 	/**
-	 * Return a match result covering a named group from a matcher that already
-	 * matched.
-	 *
-	 * <p>The named group must have participated in the current match. Use the
-	 * original matcher when access to additional groups is needed.
-	 *
-	 * @param group the name of the capturing group to expose.
-	 * @param matcher the matcher positioned on a successful match.
-	 * @return a match result whose only exposed group is the named group.
-	 * @throws IllegalStateException if no successful match is available.
-	 * @throws IllegalArgumentException if {@code group} is not defined by the
-	 * pattern.
+	 * Expose a named group as the entire match, retaining its source offsets.
+	 * <p>The group must have participated in the current match. Other groups are
+	 * not exposed. Use the original matcher to access them.
+	 * @throws IllegalStateException if the matcher has no successful match.
+	 * @throws IllegalArgumentException if the pattern does not define the group.
 	 */
 	static MatchResult group(String group, Matcher matcher) {
 		return new DefaultMatchResult(matcher.group(group), matcher.start(group), matcher.end(group));
 	}
 
 	/**
-	 * Return a match function that treats the supplied string as a literal token.
-	 *
-	 * <p>The returned function delegates to {@link String#indexOf(String, int)}.
-	 * Pattern syntax and case folding are not applied.
-	 *
-	 * @param str the literal text to locate. It must contain at least one
-	 * non-whitespace character.
-	 * @return a match function that returns each occurrence of {@code str} at or
-	 * after the supplied start index.
+	 * Match literal occurrences of {@code str}, case-sensitively.
 	 * @throws IllegalArgumentException if {@code str} is {@literal null}, empty, or
 	 * blank.
 	 */
@@ -96,9 +70,7 @@ public interface MatchFunction {
 	}
 
 	/**
-	 * Return the shared result used to signal that no further match is available.
-	 *
-	 * @return a result whose {@link MatchResult#hasMatch()} returns
+	 * Return the shared result whose {@link MatchResult#hasMatch()} is
 	 * {@literal false}.
 	 */
 	static MatchResult noMatch() {
@@ -106,13 +78,10 @@ public interface MatchFunction {
 	}
 
 	/**
-	 * Return a match result for an already known decoded-text range.
-	 *
-	 * @param text the text returned from {@link MatchResult#group()}, not the full
-	 * source text.
-	 * @param start the decoded-text start offset, inclusive.
-	 * @param end the decoded-text end offset, exclusive.
-	 * @return a match result exposing the supplied group text and offsets.
+	 * Create a match for a known range in decoded text.
+	 * @param text the matched text, not the full source.
+	 * @param start the inclusive offset in the decoded source.
+	 * @param end the exclusive offset in the decoded source.
 	 */
 	static MatchResult match(String text, int start, int end) {
 		return new DefaultMatchResult(text, start, end);

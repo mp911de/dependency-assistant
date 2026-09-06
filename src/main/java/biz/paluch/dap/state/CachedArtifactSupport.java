@@ -32,11 +32,6 @@ import org.springframework.util.Assert;
  */
 public abstract class CachedArtifactSupport implements ArtifactId {
 
-	/**
-	 * Return the cached group identifier.
-	 *
-	 * @return the group identifier.
-	 */
 	public abstract @Nullable String getGroupId();
 
 	@Override
@@ -46,11 +41,6 @@ public abstract class CachedArtifactSupport implements ArtifactId {
 		return getGroupId();
 	}
 
-	/**
-	 * Return the cached artifact identifier.
-	 *
-	 * @return the artifact identifier.
-	 */
 	public abstract @Nullable String getArtifactId();
 
 	@Override
@@ -61,43 +51,26 @@ public abstract class CachedArtifactSupport implements ArtifactId {
 	}
 
 	/**
-	 * Return the persisted package system.
-	 *
-	 * @return the package system, or {@literal null} for a legacy entry written
-	 * before ecosystem tracking.
+	 * Return the ecosystem, or {@code null} for legacy entries.
 	 */
 	public abstract @Nullable PackageSystem getPackageSystem();
 
 	/**
-	 * Return whether this cache entry refers to the given artifact.
-	 *
-	 * @param artifactId the artifact to compare with.
-	 * @return {@literal true} if both group and artifact identifiers match.
+	 * Compare coordinates regardless of ecosystem.
 	 */
 	public boolean matches(ArtifactId artifactId) {
 		return artifactId.artifactId().equals(getArtifactId()) && artifactId.groupId().equals(getGroupId());
 	}
 
 	/**
-	 * Return whether this entry matches the given coordinates and ecosystem. A
-	 * {@literal null} ecosystem on either side is treated as a wildcard so entries
-	 * persisted before ecosystem tracking still match.
-	 *
-	 * @param artifactId the artifact to compare with.
-	 * @param packageSystem the ecosystem to compare. A {@literal null} value
-	 * matches any ecosystem.
-	 * @return {@code true} if the entry matches.
+	 * Compare coordinates and ecosystem. A missing ecosystem on either side is a
+	 * wildcard for legacy entries.
 	 */
 	public boolean matches(ArtifactId artifactId, @Nullable PackageSystem packageSystem) {
 		PackageSystem ecosystem = getPackageSystem();
 		return matches(artifactId) && (ecosystem == null || packageSystem == null || ecosystem == packageSystem);
 	}
 
-	/**
-	 * Return the artifact coordinates represented by this cache entry.
-	 *
-	 * @return the artifact identifier.
-	 */
 	@Transient
 	public ArtifactId toArtifactId() {
 		Assert.hasText(getGroupId(), "GroupId must not be empty");
@@ -106,12 +79,8 @@ public abstract class CachedArtifactSupport implements ArtifactId {
 	}
 
 	/**
-	 * Return the package identity represented by this cache entry.
-	 *
-	 * <p>A legacy entry without a package system is represented as
-	 * {@link PackageSystem#OTHER}.
-	 *
-	 * @return the package identity.
+	 * Return the package identity, using {@link PackageSystem#OTHER} for legacy
+	 * entries.
 	 */
 	@Transient
 	public PackageIdentity toPackageIdentity() {

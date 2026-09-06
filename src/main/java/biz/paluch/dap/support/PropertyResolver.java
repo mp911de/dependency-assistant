@@ -34,47 +34,29 @@ import org.springframework.util.Assert;
  */
 public interface PropertyResolver {
 
-	/**
-	 * Determine whether the given property key is available for resolution.
-	 *
-	 * @param key the property name to resolve.
-	 * @return {@literal true} if the key resolves to a value; {@literal false}
-	 * otherwise.
-	 */
 	default boolean containsProperty(String key) {
 		return getProperty(key) != null;
 	}
 
 	/**
-	 * Resolve the property value associated with the given key, or {@literal null}
-	 * if the key cannot be resolved.
-	 *
-	 * @param key the property name to resolve.
-	 * @return the property value, or {@literal null} if the key is absent.
-	 * @see #containsProperty(String)
+	 * Resolve the value, or return {@code null} if the key is absent.
 	 */
 	@Nullable
 	String getProperty(String key);
 
 	/**
-	 * Return declaration metadata for the given property key, if available.
-	 * @param key the property name.
-	 * @return the declaration metadata, or {@literal null}.
+	 * Return declaration metadata, or {@code null} if absent or unsupported.
 	 */
 	default @Nullable Property getPropertyValue(String key) {
 		return null;
 	}
 
 	/**
-	 * Resolve braced ({@code ${name}}) and unbraced ({@code $name}) placeholders in
-	 * the given text.
+	 * Expand {@code ${name}} and {@code $name} placeholders, including property
+	 * chains. Unknown placeholders, cycles, and chains beyond the resolution limit
+	 * remain unresolved.
 	 *
-	 * <p>Resolution repeats to support property chains. Unknown placeholders,
-	 * cycles, and chains beyond the resolution limit remain in the returned text.
-	 *
-	 * @param text the String to resolve.
-	 * @return the resolved String.
-	 * @throws IllegalArgumentException if {@code text} is {@literal null}.
+	 * @throws IllegalArgumentException if the text is {@code null}.
 	 */
 	default String resolvePlaceholders(String text) {
 		Assert.notNull(text, "Text must not be null");
@@ -82,31 +64,20 @@ public interface PropertyResolver {
 	}
 
 	/**
-	 * Compose this resolver with the given fallback resolver.
-	 *
-	 * <p>This resolver is consulted first for both {@link #getProperty(String)} and
-	 * {@link #getPropertyValue(String)} lookups.
-	 * @param fallback the resolver to consult if this resolver has no match.
-	 * @return a composite resolver with this resolver as primary and
-	 * {@code fallback} as secondary.
+	 * Use the fallback when this resolver has no value or declaration metadata. The
+	 * two lookups fall back independently.
 	 */
 	default PropertyResolver withFallback(PropertyResolver fallback) {
 		return new CompositePropertyResolver(this, fallback);
 	}
 
-	/**
-	 * Return an empty {@link PropertyResolver}.
-	 *
-	 * @return a resolver that contains no properties.
-	 */
 	static PropertyResolver empty() {
 		return key -> null;
 	}
 
 	/**
-	 * Create a {@link PropertyResolver} backed by the given property map.
-	 * @param properties the property entries keyed by property name.
-	 * @return a map-backed property resolver.
+	 * Retain the property map as a live source. Invalid PSI declarations are
+	 * treated as absent.
 	 */
 	static PropertyResolver fromMap(Map<String, ? extends Property> properties) {
 		return new MapPropertyResolver(properties);

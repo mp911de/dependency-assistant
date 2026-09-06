@@ -24,11 +24,6 @@ package biz.paluch.dap.artifact;
  */
 public interface HasArtifactId {
 
-	/**
-	 * Return the artifact coordinates.
-	 *
-	 * @return the artifact id.
-	 */
 	ArtifactId getArtifactId();
 
 }

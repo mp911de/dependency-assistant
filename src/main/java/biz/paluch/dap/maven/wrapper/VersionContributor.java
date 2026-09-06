@@ -33,12 +33,6 @@ import com.intellij.psi.PsiElement;
  */
 class VersionContributor extends VersionContributorSupport {
 
-	/**
-	 * Matches a caret position inside a Maven Wrapper version segment.
-	 * <pre class="code">
-	 * distributionUrl=https://.../apache-maven/3.&lt;caret&gt;9.0/apache-maven-3.9.0-bin.zip
-	 * </pre>
-	 */
 	static final PsiElementPattern.Capture<PsiElement> WRAPPER_VERSION = PROPERTY_VALUE
 			.inside(PlatformPatterns.psiElement(Property.class).withName(WrapperProperty.propertyNames()));
 

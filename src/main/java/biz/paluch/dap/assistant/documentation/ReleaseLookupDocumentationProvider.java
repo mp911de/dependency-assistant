@@ -33,12 +33,8 @@ import com.intellij.psi.SmartPsiElementPointer;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Provides Quick Documentation for release items in the completion lookup. The
- * highlighted release can include its release date, commit, relation to the
- * current version, dependency-rule result, and security-advisory differences.
- *
- * <p>{@link LookupElementDocumentationTargetProvider} remains experimental in
- * the target IntelliJ Platform and must be rechecked on platform upgrades.
+ * Quick Documentation for release-completion items.
+ * <p>The platform extension is experimental. Recheck it on platform upgrades.
  *
  * @author Mark Paluch
  * @see ReleaseCompletionProvider
@@ -93,13 +89,6 @@ public class ReleaseLookupDocumentationProvider implements LookupElementDocument
 			return html != null ? DocumentationResult.documentation(html) : null;
 		}
 
-		/**
-		 * Build the release documentation body, rendering with the declaration resolved
-		 * at the completion position.
-		 *
-		 * @return the HTML body, or {@literal null} when the file is no longer live or
-		 * the position no longer resolves to a dependency declaration.
-		 */
 		@Nullable
 		String buildHtmlBody() {
 

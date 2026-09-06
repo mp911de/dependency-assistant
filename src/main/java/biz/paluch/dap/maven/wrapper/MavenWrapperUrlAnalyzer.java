@@ -31,27 +31,17 @@ import biz.paluch.dap.maven.wrapper.MavenWrapperUrlProblem.UnknownArtifact;
 import biz.paluch.dap.util.HttpClientUtil;
 
 /**
- * PSI-free classifier for malformed or unsafe Maven Wrapper URL values.
- *
- * <p>The classifier checks credentials independently, then compares the Maven
- * coordinate path, repeated version and artifact segments, and file name with
- * the selected {@link WrapperProperty}. Coordinate classification is skipped
- * while IntelliJ's completion placeholder is present or property interpolation
- * occurs outside the URL authority.
+ * Classifies malformed or unsafe Maven Wrapper URLs without PSI.
+ * <p>Completion placeholders and interpolation outside the authority suspend
+ * coordinate checks. Credential checks still apply.
  *
  * @author Mark Paluch
  */
 class MavenWrapperUrlAnalyzer {
 
 	/**
-	 * Classify the given decoded wrapper URL value.
-	 *
-	 * @param property the wrapper property providing canonical coordinates.
-	 * @param decodedValue the Java-properties-unescaped property value.
-	 * @param rawText the raw property text used for completion-placeholder
-	 * detection.
-	 * @return the detected problems in classification order, possibly empty when
-	 * the value classifies cleanly or coordinate classification is skipped.
+	 * Classify a decoded wrapper URL.
+	 * @param rawText raw property text used to detect completion placeholders.
 	 */
 	static List<MavenWrapperUrlProblem> analyze(WrapperProperty property, String decodedValue, String rawText) {
 

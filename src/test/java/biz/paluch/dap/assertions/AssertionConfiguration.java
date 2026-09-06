@@ -22,25 +22,14 @@ import org.assertj.core.presentation.Representation;
 import org.assertj.core.presentation.StandardRepresentation;
 
 /**
- * AssertJ configuration used by Dependency Assistant tests.
- *
- * <p>The configuration installs {@link LineMarkerInfoRepresentation} into
- * AssertJ's standard representation so gutter assertion failures show the
- * underlying line marker tooltip and PSI element text. The configuration is
- * discovered by AssertJ's configuration mechanism during test execution.
+ * AssertJ configuration that includes gutter tooltips and PSI text in failures.
  *
  * @author Mark Paluch
  */
 public class AssertionConfiguration extends Configuration {
 
-	/**
-	 * Formatter for IntelliJ line marker types.
-	 */
 	public static final LineMarkerInfoRepresentation LINE_MARKER = new LineMarkerInfoRepresentation();
 
-	/**
-	 * Shared AssertJ representation used by the test suite.
-	 */
 	public static final StandardRepresentation REPRESENTATION = new StandardRepresentation();
 
 	static {
@@ -50,18 +39,13 @@ public class AssertionConfiguration extends Configuration {
 				LINE_MARKER::toStringOf);
 	}
 
-	/**
-	 * Returns the shared representation with Dependency Assistant formatters
-	 * installed.
-	 */
 	@Override
 	public Representation representation() {
 		return REPRESENTATION;
 	}
 
 	/**
-	 * Applies this configuration without printing AssertJ's default configuration
-	 * banner during test execution.
+	 * Apply configuration without the default AssertJ banner.
 	 */
 	@Override
 	public void applyAndDisplay() {

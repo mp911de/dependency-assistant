@@ -25,12 +25,10 @@ import biz.paluch.dap.util.HttpClientUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Browsable issue-tracker URLs of a dependency's upstream project.
+ * Browsable issue-tracker URLs for a dependency's upstream project.
  *
- * <p>A tracker either wraps the URL declared in the project metadata, created
- * through {@link #parse(String)}, or is derived from a detected
- * {@link RepositoryConnection} by the hosting {@link Platform}. Rendering the
- * URLs never probes the network.
+ * <p>Trackers come from a declared URL or a hosting {@link Platform}. Obtaining
+ * the URLs requires no network access.
  *
  * @author Mark Paluch
  * @see Platform#findIssueTracker
@@ -38,41 +36,23 @@ import org.jspecify.annotations.Nullable;
  */
 public interface IssueTracker {
 
-	/**
-	 * Return the issue-tracker entry URL.
-	 *
-	 * @return the tracker entry URL.
-	 */
 	URI getBaseUrl();
 
 	/**
-	 * Return the URL of the open-issues listing, the target for browsing existing
-	 * issues.
-	 *
-	 * @return the open-issues listing URL.
+	 * Return the URL for browsing existing issues.
 	 */
 	URI getOpenIssuesUrl();
 
 	/**
-	 * Return the URL for filing a new issue about the given artifact.
-	 *
-	 * <p>Trackers without a dedicated issue-creation page return their entry URL.
-	 *
-	 * @param artifactId the artifact the issue is about.
-	 * @param version the artifact version the issue applies to.
-	 * @return the issue-creation page or tracker entry URL.
+	 * Return the URL for filing an issue about the given artifact version.
+	 * <p>Trackers without an issue-creation page return their entry URL.
 	 */
 	URI getCreateNewIssueUrl(ArtifactId artifactId, ArtifactVersion version);
 
 	/**
-	 * Create a tracker for a declared issue-tracker URL.
-	 *
-	 * <p>Declared values arrive from remote project metadata. Callers must supply
-	 * an absolute HTTP(S) URI; malformed or unsupported values are rejected.
-	 *
-	 * @param url the declared issue-tracker URL.
-	 * @return the tracker, or {@literal null} if the value is malformed, has no
-	 * host, or uses a scheme other than HTTP(S).
+	 * Create a tracker for a declared absolute HTTP(S) URL.
+	 * @return the tracker, or {@literal null} if the URL has invalid syntax, lacks
+	 * a host, or uses a scheme other than HTTP(S).
 	 */
 	static @Nullable IssueTracker parse(String url) {
 		try {

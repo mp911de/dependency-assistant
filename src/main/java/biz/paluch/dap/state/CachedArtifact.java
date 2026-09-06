@@ -109,7 +109,7 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 	/**
 	 * Whether this artifact was classified as a Bill of Materials import by a scan.
 	 * Persisted separately from the memberships so a BOM whose contents could not
-	 * be resolved is still recognized as one.
+	 * be resolved is still supported as one.
 	 */
 	private @Attribute boolean bom;
 

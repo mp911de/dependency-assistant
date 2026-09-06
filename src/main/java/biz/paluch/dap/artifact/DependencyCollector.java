@@ -28,15 +28,9 @@ import java.util.function.Function;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Mutable aggregate populated during a dependency scan.
- *
- * <p>The collector keeps active dependency usages separate from managed
- * declarations such as Maven dependency management entries or Gradle platform
- * imports. It also records version properties and release sources discovered
- * while parsing build files.
- *
- * <p>{@link #isEmpty()} reflects dependency usages only; managed declarations
- * may still be present.
+ * Mutable result of a dependency scan.
+ * <p>Active usages are separate from managed declarations. A collector can have
+ * managed declarations even when {@link #isEmpty()} returns {@code true}.
  *
  * @author Mark Paluch
  * @see Dependency
@@ -66,22 +60,15 @@ public class DependencyCollector {
 		this.packageSystem = packageSystem;
 	}
 
-	/**
-	 * Add property names observed in the scanned build files.
-	 * @param propertyNames the property names to register.
-	 */
 	public void addProperties(Collection<String> propertyNames) {
 		this.properties.addAll(propertyNames);
 	}
 
 	/**
-	 * Register effective property values observed for the scanned build file.
-	 * <p>Used by integrations that perform scan-wide property promotion during
-	 * {@link biz.paluch.dap.IntrospectedDependencies#complete(DependencyCollector)
-	 * completion}. Each value should be the effective value visible from this
-	 * collector's anchor file, including inherited values from parent build
-	 * descriptors.
-	 * @param values the property values keyed by property name.
+	 * Register property values for scan-wide property promotion.
+	 * <p>Values must be effective at the anchor file, including inherited
+	 * properties.
+	 * @see biz.paluch.dap.IntrospectedDependencies#complete(DependencyCollector)
 	 */
 	public void addPropertyValues(Map<String, String> values) {
 		this.propertyValues.putAll(values);
@@ -96,18 +83,10 @@ public class DependencyCollector {
 		return propertyValues;
 	}
 
-	/**
-	 * Add a release source associated with the project's remote repositories.
-	 * @param releaseSource the source to add.
-	 */
 	public void addReleaseSource(ReleaseSource releaseSource) {
 		this.releaseSources.add(releaseSource);
 	}
 
-	/**
-	 * Add release sources associated with the project's remote repositories.
-	 * @param releaseSources the sources to add.
-	 */
 	public void addAllReleaseSources(Collection<? extends ReleaseSource> releaseSources) {
 		this.releaseSources.addAll(releaseSources);
 	}
@@ -121,15 +100,8 @@ public class DependencyCollector {
 	}
 
 	/**
-	 * Register a versioned dependency usage found in the scanned build files.
-	 *
-	 * <p>The first registered effective version is retained for an artifact.
-	 * Subsequent registrations merge only their declaration and version sources.
-	 *
-	 * @param artifactId the artifact coordinates.
-	 * @param currentVersion the effective version to retain on first registration.
-	 * @param declarationSource the source of the dependency declaration.
-	 * @param versionSource the source of the version declaration.
+	 * Register a usage, retaining the first effective version for its artifact.
+	 * Later registrations merge declaration and version sources.
 	 */
 	public void registerUsage(ArtifactId artifactId, ArtifactVersion currentVersion,
 			DeclarationSource declarationSource, VersionSource versionSource) {
@@ -138,13 +110,8 @@ public class DependencyCollector {
 	}
 
 	/**
-	 * Register a Bill of Materials resolved while scanning the build files.
-	 * <p>{@link BillOfMaterials} identity is its coordinates and version, so the
-	 * same BOM imported at two versions contributes two entries while a repeated
-	 * registration of one coordinate-version pair keeps the first. A Bill of
-	 * Materials with no members records the BOM identity and version without any
-	 * known member pins.
-	 * @param bom the resolved Bill of Materials.
+	 * Register a BOM, keeping the first entry for each package identity and
+	 * version.
 	 */
 	public void registerBillOfMaterials(BillOfMaterials bom) {
 		billOfMaterials.add(bom);
@@ -152,18 +119,15 @@ public class DependencyCollector {
 
 	/**
 	 * Return the Bills of Materials registered while scanning the build files.
-	 * @return the mutable live collection in registration order. The collection is
-	 * empty when the scan found none.
+	 * @return the mutable live collection in registration order.
 	 */
 	public Collection<BillOfMaterials> getBillOfMaterials() {
 		return billOfMaterials;
 	}
 
 	/**
-	 * Register a version-constraint declaration found in the scanned build files.
-	 * @param artifactId the artifact coordinates.
-	 * @param declarationSource the source of the managed declaration.
-	 * @param versionSource the source of the version constraint.
+	 * Register a managed declaration and merge its sources with earlier
+	 * registrations.
 	 */
 	public void registerDeclaration(ArtifactId artifactId,
 			DeclarationSource declarationSource, VersionSource versionSource) {
@@ -172,15 +136,10 @@ public class DependencyCollector {
 	}
 
 	/**
-	 * Promote each unresolved declaration to a usage when the given resolver
-	 * yields a {@link Dependency}.
-	 * <p>
-	 * Declarations whose artifact already has a registered usage are left
-	 * untouched. For each remaining declaration the resolver is invoked, and a
-	 * non-{@literal null} result is registered as a usage using the resolved
-	 * dependency's first declaration source and first version source.
-	 * @param resolver function that resolves a declaration to a usage, or returns
-	 * {@literal null} when no resolution is available.
+	 * Resolve declarations that have no registered usage.
+	 * @param resolver returns a dependency with at least one declaration source and
+	 * one version source, or {@literal null} if unresolved. Only the first source
+	 * of each kind is registered.
 	 */
 	public void promoteResolvedDeclarations(Function<DeclaredDependency, @Nullable Dependency> resolver) {
 
@@ -203,7 +162,6 @@ public class DependencyCollector {
 
 	/**
 	 * Return whether no dependency usages have been registered.
-	 * @return {@code true} if no usages have been registered.
 	 */
 	public boolean isEmpty() {
 		return usages.isEmpty();
@@ -212,7 +170,7 @@ public class DependencyCollector {
 	/**
 	 * Return all version-constraint declarations registered with this collector.
 	 * @return the live declarations in artifact-coordinate order. Removing from
-	 * this view mutates the collector; adding is unsupported.
+	 * this view mutates the collector. Adding is unsupported.
 	 */
 	public Collection<DeclaredDependency> getDeclarations() {
 		return declarations.values();
@@ -221,7 +179,7 @@ public class DependencyCollector {
 	/**
 	 * Return all versioned dependency usages registered with this collector.
 	 * @return the live usages in artifact-coordinate order. Removing from this view
-	 * mutates the collector; adding is unsupported.
+	 * mutates the collector. Adding is unsupported.
 	 */
 	public Collection<Dependency> getUsages() {
 		return usages.values();
@@ -238,8 +196,6 @@ public class DependencyCollector {
 	/**
 	 * Return the registered usage for the given artifact, or {@literal null} if no
 	 * usage has been registered.
-	 * @param artifactId the artifact coordinates to look up.
-	 * @return the registered usage, or {@literal null} if absent.
 	 */
 	public @Nullable Dependency getUsage(ArtifactId artifactId) {
 		return usages.get(artifactId);
@@ -248,8 +204,6 @@ public class DependencyCollector {
 	/**
 	 * Return the registered declaration for the given artifact, or {@literal null}
 	 * if no declaration has been registered.
-	 * @param artifactId the artifact coordinates to look up.
-	 * @return the registered declaration, or {@literal null} if absent.
 	 */
 	public @Nullable DeclaredDependency getDeclaration(ArtifactId artifactId) {
 		return declarations.get(artifactId);
@@ -258,9 +212,6 @@ public class DependencyCollector {
 	/**
 	 * Return the registered usage for the given group ID and artifact ID, or
 	 * {@literal null} if no usage has been registered.
-	 * @param groupId the Maven group ID.
-	 * @param artifactId the Maven artifact ID.
-	 * @return the registered usage, or {@literal null} if absent.
 	 */
 	public @Nullable Dependency getUsage(String groupId, String artifactId) {
 		return getUsage(ArtifactId.of(groupId, artifactId));

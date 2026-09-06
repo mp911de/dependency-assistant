@@ -26,11 +26,6 @@ import java.util.EventListener;
 @FunctionalInterface
 interface ReviewListener extends EventListener {
 
-	/**
-	 * Called when the review changed and the table must reflect it.
-	 *
-	 * @param change the required table refresh scope.
-	 */
 	void changed(ReviewChange change);
 
 }
