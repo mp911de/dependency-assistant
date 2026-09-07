@@ -16,13 +16,13 @@
 
 package biz.paluch.dap.plan;
 
+import java.io.IOException;
 import java.util.Collection;
 
 import biz.paluch.dap.assistant.AppliedUpdates;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StepsProgressIndicator;
 import com.intellij.openapi.progress.ProgressIndicator;
-import com.intellij.openapi.vcs.VcsException;
 import com.intellij.util.ThrowableConsumer;
 
 /**
@@ -37,12 +37,12 @@ interface PlanUpdateApplier {
 	 * <p>The caller supplies a background thread. Implementations own the write
 	 * boundary.
 	 * @return updates that changed files.
-	 * @throws VcsException if a required version-control operation fails.
+	 * @throws IOException if a required version-control operation fails.
 	 */
-	AppliedUpdates apply(UpgradePlan plan, ProgressIndicator indicator) throws VcsException;
+	AppliedUpdates apply(UpgradePlan plan, ProgressIndicator indicator) throws IOException;
 
 	default void doWithItems(Collection<UpgradePlanItem> items, ProgressIndicator indicator,
-			ThrowableConsumer<UpgradePlanItem, VcsException> consumer) throws VcsException {
+			ThrowableConsumer<UpgradePlanItem, IOException> consumer) throws IOException {
 
 		if (items.isEmpty()) {
 			return;

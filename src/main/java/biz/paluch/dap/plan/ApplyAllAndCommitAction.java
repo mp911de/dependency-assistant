@@ -26,6 +26,7 @@ import biz.paluch.dap.notify.NotificationChannel;
 import biz.paluch.dap.notify.Notifications;
 import biz.paluch.dap.notify.UpgradeNotification;
 import biz.paluch.dap.support.FileScope;
+import biz.paluch.dap.support.VersionControl;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.notification.NotificationAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
@@ -51,8 +52,15 @@ public class ApplyAllAndCommitAction extends ApplyAllAction {
 
 		super.update(e, service);
 
-		if (service == null || !service.hasVcs()) {
-			e.getPresentation().setEnabled(false);
+		if (service == null || !service.getVcs().canCommit()) {
+			e.getPresentation().setEnabledAndVisible(false);
+		}
+	}
+
+	@Override
+	public void actionPerformed(AnActionEvent e) {
+		if (VersionControl.find(e.getProject()).canCommit()) {
+			super.actionPerformed(e);
 		}
 	}
 
@@ -95,8 +103,9 @@ public class ApplyAllAndCommitAction extends ApplyAllAction {
 				UpgradeNotification.committed(applied));
 
 		// nothing to push when nothing was committed
-		if (!applied.isEmpty() && service.getVcs().canPush()) {
-			notification.action(NotificationActions.push(() -> push(service)));
+		VersionControl vcs = service.getVcs();
+		if (!applied.isEmpty() && vcs.canPush()) {
+			notification.action(NotificationActions.push(() -> push(service, vcs)));
 		}
 		if (unshelve != null) {
 			notification.action(unshelve);
@@ -104,9 +113,9 @@ public class ApplyAllAndCommitAction extends ApplyAllAction {
 		notification.notify(service.getProject());
 	}
 
-	private static void push(UpgradePlanService service) {
+	private static void push(UpgradePlanService service, VersionControl vcs) {
 		try {
-			service.getVcs().push();
+			vcs.push();
 		} catch (IllegalStateException e) {
 			LOG.warn("Push failed", e);
 			Notifications.error(NotificationChannel.PLAN, MessageBundle.message("plan.push.error"),

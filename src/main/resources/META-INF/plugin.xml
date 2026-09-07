@@ -11,7 +11,8 @@
 	<change-notes><!-- filled during build from CHANGELOG.adoc --></change-notes>
 
 	<depends>com.intellij.modules.xml</depends>
-	<depends>com.intellij.modules.vcs</depends>
+	<depends optional="true" config-file="biz.paluch.dependency-assistant-vcs.xml">com.intellij.modules.vcs</depends>
+	<depends optional="true" config-file="biz.paluch.dependency-assistant-vcs-plugin.xml">intellij.vcs.plugin</depends>
 	<depends optional="true" config-file="biz.paluch.dependency-assistant-maven.xml">org.jetbrains.idea.maven</depends>
 	<depends optional="true" config-file="biz.paluch.dependency-assistant-gradle-kotlin.xml">org.jetbrains.kotlin</depends>
 	<depends optional="true" config-file="biz.paluch.dependency-assistant-gradle.xml">org.jetbrains.plugins.gradle</depends>
@@ -139,14 +140,14 @@
 				key="inspection.version-drift.display-name"
 				level="WARNING"
 				enabledByDefault="true"
-				         implementationClass="biz.paluch.dap.assistant.editor.DependencyVersionDriftInspection"/>
+				implementationClass="biz.paluch.dap.assistant.editor.DependencyVersionDriftInspection"/>
 		<localInspection id="dap.dependency-rule"
-		                 bundle="messages.MessageBundle"
-		                 groupKey="plugin.name"
-		                 key="inspection.dependency-rule.display-name"
-		                 level="WARNING"
-		                 enabledByDefault="true"
-		                 implementationClass="biz.paluch.dap.assistant.editor.DependencyRuleInspection"/>
+				bundle="messages.MessageBundle"
+				groupKey="plugin.name"
+				key="inspection.dependency-rule.display-name"
+				level="WARNING"
+				enabledByDefault="true"
+				implementationClass="biz.paluch.dap.assistant.editor.DependencyRuleInspection"/>
 		<intentionAction id="dap.upgrade.dependencies">
 			<language/>
 			<skipBeforeAfter>true</skipBeforeAfter>

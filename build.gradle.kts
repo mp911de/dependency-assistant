@@ -6,7 +6,7 @@ import kotlin.streams.asSequence
 
 plugins {
 	id("java")
-	id("org.jetbrains.intellij.platform") version "2.17.0"
+	id("org.jetbrains.intellij.platform") version "2.18.1"
 }
 
 group = "biz.paluch"
@@ -29,7 +29,7 @@ dependencies {
 	asciidoctorj("org.asciidoctor:asciidoctorj-cli:3.0.1")
 
 	intellijPlatform {
-		intellijIdea("2026.1.3")
+		intellijIdea("2026.2.2")
 		testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
 		testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.JUnit5)
 		bundledPlugin("org.jetbrains.idea.maven")
@@ -108,7 +108,6 @@ intellijPlatform {
 			VerifyPluginTask.FailureLevel.OVERRIDE_ONLY_API_USAGES,
 			VerifyPluginTask.FailureLevel.NON_EXTENDABLE_API_USAGES,
 			VerifyPluginTask.FailureLevel.PLUGIN_STRUCTURE_WARNINGS,
-			VerifyPluginTask.FailureLevel.MISSING_DEPENDENCIES,
 			VerifyPluginTask.FailureLevel.INVALID_PLUGIN
 		)
 
@@ -120,10 +119,11 @@ intellijPlatform {
 
 java {
 	toolchain {
-		languageVersion.set(JavaLanguageVersion.of(21))
+		languageVersion.set(JavaLanguageVersion.of(25))
 	}
+	sourceCompatibility = JavaVersion.VERSION_21
+	targetCompatibility = JavaVersion.VERSION_21
 }
-
 
 val runIdePyCharm = intellijPlatformTesting.runIde.register("runIdePyCharm") {
 	type = IntelliJPlatformType.PyCharm
@@ -131,6 +131,23 @@ val runIdePyCharm = intellijPlatformTesting.runIde.register("runIdePyCharm") {
 }
 
 tasks {
+
+	verifyPlugin {
+		// MP-2974: MISSING_DEPENDENCIES also rejects absent optional plugins.
+		// Check mandatory dependencies in fresh verdicts instead.
+		val reports = verificationReportsDirectory
+		doFirst {
+			reports.get().asFile.deleteRecursively()
+		}
+		doLast {
+			val verdicts = reports.get().asFile.walkTopDown()
+				.filter { it.name == "verification-verdict.txt" }.toList()
+			check(verdicts.isNotEmpty()) { "Plugin Verifier produced no verdicts" }
+			check(verdicts.none { it.readText().contains("missing mandatory dependency") }) {
+				"Missing mandatory plugin dependencies. See ${reports.get().asFile}"
+			}
+		}
+	}
 
 	patchPluginXml {
 		dependsOn("asciidoctor")
@@ -165,10 +182,16 @@ tasks {
 	withType<Test>().configureEach {
 		useJUnitPlatform()
 		failOnNoDiscoveredTests = true
+		// Ultimate's obfuscated startup classes collide with platform classes in the test classloader.
+		systemProperty(
+			"disabled.plugins.file.path",
+			layout.projectDirectory.file("src/test/resources/disabled_plugins.txt").asFile.absolutePath
+		)
+		systemProperty("idea.ignore.disabled.plugins", "false")
 	}
 
 	withType<RunIdeTask>().configureEach {
 		systemProperty("idea.log.debug.categories", "biz.paluch.dap")
-
 	}
+
 }

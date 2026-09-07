@@ -40,6 +40,7 @@ import biz.paluch.dap.rule.ResolutionContext;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.DependencyUpdates;
 import biz.paluch.dap.support.FileScope;
+import biz.paluch.dap.support.VersionControl;
 import biz.paluch.dap.upgrade.FileUpdateEngine;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.notification.NotificationType;
@@ -48,7 +49,6 @@ import com.intellij.openapi.command.UndoConfirmationPolicy;
 import com.intellij.openapi.progress.EmptyProgressIndicator;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.vcs.ProjectLevelVcsManager;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import com.intellij.util.Consumer;
@@ -107,8 +107,9 @@ class AssistantReviewActions {
 							applied.getReverse())));
 		}
 
-		if (ProjectLevelVcsManager.getInstance(project).hasActiveVcss()) {
-			notification.action(NotificationActions.commit(project, applied));
+		VersionControl vcs = VersionControl.find(project);
+		if (vcs.canCommit()) {
+			notification.action(NotificationActions.commit(project, applied, vcs));
 		}
 
 		notification.action(NotificationActions.undo(project)).notify(project);

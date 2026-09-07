@@ -16,6 +16,8 @@
 
 package biz.paluch.dap.plan;
 
+import java.io.IOException;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
@@ -24,13 +26,14 @@ import java.util.function.Consumer;
 import biz.paluch.dap.assistant.AppliedUpdates;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.FileScope;
+import biz.paluch.dap.support.VersionControl;
 import biz.paluch.dap.support.UpgradeResult;
 import biz.paluch.dap.upgrade.FileUpdateEngine;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.openapi.application.WriteAction;
 import com.intellij.openapi.command.CommandProcessor;
 import com.intellij.openapi.progress.ProgressIndicator;
-import com.intellij.openapi.vcs.VcsException;
+
 
 /**
  * Apply-and-commit transaction that creates one commit per changed plan item.
@@ -44,7 +47,7 @@ class VcsUpdateApplier implements PlanUpdateApplier {
 
 	private final UpgradePlanService service;
 
-	private final PlanVcs vcs;
+	private final VersionControl vcs;
 
 	private final FileUpdateEngine engine;
 
@@ -52,14 +55,18 @@ class VcsUpdateApplier implements PlanUpdateApplier {
 		this(service, service.getVcs(), new FileUpdateEngine(service.getProject()));
 	}
 
-	VcsUpdateApplier(UpgradePlanService service, PlanVcs vcs, FileUpdateEngine engine) {
+	VcsUpdateApplier(UpgradePlanService service, VersionControl vcs, FileUpdateEngine engine) {
 		this.service = service;
 		this.vcs = vcs;
 		this.engine = engine;
 	}
 
 	@Override
-	public AppliedUpdates apply(UpgradePlan plan, ProgressIndicator indicator) throws VcsException {
+	public AppliedUpdates apply(UpgradePlan plan, ProgressIndicator indicator) throws IOException {
+
+		if (!vcs.canCommit(plan.getScope())) {
+			throw new IOException(MessageBundle.message("plan.vcs.commit.unsupported"));
+		}
 
 		AppliedUpdates appliedUpdates = new AppliedUpdates();
 		List<UpgradePlanItem> ordered = ticketedFirst(plan);
@@ -97,12 +104,12 @@ class VcsUpdateApplier implements PlanUpdateApplier {
 		});
 	}
 
-	private void commit(FileScope scope, UpgradePlanItem item) throws VcsException {
+	private void commit(FileScope scope, UpgradePlanItem item) throws IOException {
 
 		boolean committed;
 		try {
 			committed = vcs.commit(scope, service.getCommitMessage(item));
-		} catch (VcsException commitFailure) {
+		} catch (IOException commitFailure) {
 			// Some VCS implementations can report an error after creating the commit.
 			// Keep the plan aligned with the repository in that case.
 			if (!vcs.hasChanges(scope)) {
@@ -113,7 +120,7 @@ class VcsUpdateApplier implements PlanUpdateApplier {
 
 		service.removeCommittedItem(item);
 		if (!committed) {
-			throw new VcsException(MessageBundle.message("plan.vcs.commit.no-changes"));
+			throw new IOException(MessageBundle.message("plan.vcs.commit.no-changes"));
 		}
 	}
 

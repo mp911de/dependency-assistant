@@ -16,6 +16,8 @@
 
 package biz.paluch.dap.plan;
 
+import java.io.IOException;
+
 import java.util.List;
 
 import biz.paluch.dap.assistant.AppliedUpdates;
@@ -25,6 +27,7 @@ import biz.paluch.dap.notify.NotificationChannel;
 import biz.paluch.dap.notify.Notifications;
 import biz.paluch.dap.notify.UpgradeNotification;
 import biz.paluch.dap.support.FileScope;
+import biz.paluch.dap.support.VersionControl;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.notification.NotificationAction;
@@ -37,8 +40,8 @@ import com.intellij.openapi.ui.DoNotAskOption;
 import com.intellij.openapi.ui.MessageConstants;
 import com.intellij.openapi.ui.MessageDialogBuilder;
 import com.intellij.openapi.ui.Messages;
-import com.intellij.openapi.vcs.VcsException;
-import com.intellij.openapi.vcs.changes.shelf.ShelvedChangeList;
+
+
 import com.intellij.util.ui.UIUtil;
 import org.jspecify.annotations.Nullable;
 
@@ -83,12 +86,13 @@ public class ApplyAllAction extends UpgradePlanAction {
 					.notify(service.getProject());
 			return;
 		}
-		FileScope dirty = service.getVcs().dirtyInScope(scope);
-
+		VersionControl vcs = service.getVcs();
+		FileScope dirty = vcs.dirtyInScope(scope);
 		ApplyDecision decision = confirm(service.getProject(), items.size(), dirty);
 		if (decision == ApplyDecision.CANCEL) {
 			return;
 		}
+
 		boolean shelve = decision == ApplyDecision.SHELVE_AND_APPLY;
 		PlanUpdateApplier applier = createApplier(service);
 
@@ -105,14 +109,14 @@ public class ApplyAllAction extends UpgradePlanAction {
 
 				try {
 					if (shelve) {
-						ShelvedChangeList shelf = service.getVcs().shelve(dirty,
+						Runnable restore = vcs.shelve(dirty,
 								MessageBundle.message("plan.shelve.message"));
-						if (shelf != null) {
-							unshelve = NotificationActions.unshelve(() -> service.getVcs().unshelve(shelf));
+						if (restore != null) {
+							unshelve = NotificationActions.unshelve(restore);
 						}
 					}
 					appliedUpdates = applier.apply(toApply, indicator);
-				} catch (VcsException e) {
+				} catch (IOException e) {
 					throw new RuntimeException(e);
 				}
 			}
@@ -194,8 +198,9 @@ public class ApplyAllAction extends UpgradePlanAction {
 				UpgradeNotification.applied(applied));
 
 		if (!applied.isEmpty()) {
-			if (service.hasVcs()) {
-				notification.action(NotificationActions.commit(project, applied));
+			VersionControl vcs = service.getVcs();
+			if (vcs.canCommit()) {
+				notification.action(NotificationActions.commit(project, applied, vcs));
 			}
 			List<String> commandNames = applied.stream()
 					.map(update -> UpdateApplier.getCommandName(update.displayName(), update.getTargetVersion()))

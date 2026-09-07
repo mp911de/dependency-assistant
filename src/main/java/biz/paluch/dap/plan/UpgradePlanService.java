@@ -28,6 +28,7 @@ import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.plan.UpgradePlanState.Content;
 import biz.paluch.dap.plan.UpgradePlanState.Item;
 import biz.paluch.dap.support.FileScope;
+import biz.paluch.dap.support.VersionControl;
 import biz.paluch.dap.ticket.Label;
 import biz.paluch.dap.ticket.Milestone;
 import biz.paluch.dap.ticket.Ticket;
@@ -72,9 +73,9 @@ public final class UpgradePlanService implements Disposable {
 
 	private final Project project;
 
-	private final BetterPsiManager psiManager;
+	private final VersionControl vcs;
 
-	private final PlanVcs vcs;
+	private final BetterPsiManager psiManager;
 
 	private final UpgradePlanListener events;
 
@@ -101,8 +102,8 @@ public final class UpgradePlanService implements Disposable {
 	UpgradePlanService(Project project) {
 
 		this.project = project;
+		this.vcs = VersionControl.find(project);
 		this.psiManager = BetterPsiManager.getInstance(project);
-		this.vcs = new PlanVcs(project);
 		this.events = project.getMessageBus().syncPublisher(UpgradePlanListener.TOPIC);
 		this.textTemplates = new PlanTextTemplates(project);
 		this.state = UpgradePlanState.getInstance(project);
@@ -122,11 +123,7 @@ public final class UpgradePlanService implements Disposable {
 		return project;
 	}
 
-	boolean hasVcs() {
-		return vcs.hasVcs();
-	}
-
-	PlanVcs getVcs() {
+	VersionControl getVcs() {
 		return this.vcs;
 	}
 
@@ -324,7 +321,7 @@ public final class UpgradePlanService implements Disposable {
 
 	MilestoneSelector getMilestoneSelector() {
 
-		String branch = hasVcs() ? getVcs().getCurrentBranch() : null;
+		String branch = getVcs().getCurrentBranch();
 		Versioned projectVersion = resolveProjectVersion(affectedFiles());
 		return new MilestoneSelector(branch, projectVersion);
 	}

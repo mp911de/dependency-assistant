@@ -37,6 +37,7 @@ import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.util.MessageBundle;
+import biz.paluch.dap.util.StepsProgressIndicator;
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
 import com.intellij.ide.PowerSaveMode;
 import com.intellij.openapi.progress.ProgressIndicator;
@@ -47,7 +48,6 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.startup.ProjectActivity;
 import com.intellij.openapi.util.Predicates;
 import com.intellij.util.JavaCoroutines;
-import com.intellij.util.progress.StepsProgressIndicator;
 import kotlin.Unit;
 import kotlin.coroutines.Continuation;
 import org.jspecify.annotations.Nullable;
@@ -86,8 +86,8 @@ public class PostStartup implements ProjectActivity {
 
 		List<DependencyAssistant> assistants = DependencyAssistantDispatcher.findAll(project);
 		VulnerabilityScanner scanner = VulnerabilityScanner.create(project);
-		StepsProgressIndicator steps = new StepsProgressIndicator(indicator,
-				assistants.size() + (scanner.isPresent() ? 1 : 0));
+		StepsProgressIndicator steps = StepsProgressIndicator.forSteps(indicator,
+				assistants.size() + 1 + (scanner.isPresent() ? 1 : 0));
 		ProjectStateIndexer indexer = new ProjectStateIndexer(project, steps);
 		steps.setIndeterminate(false);
 

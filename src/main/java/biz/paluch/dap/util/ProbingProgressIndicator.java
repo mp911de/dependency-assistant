@@ -67,8 +67,6 @@ public class ProbingProgressIndicator extends AbstractProgressIndicatorBase impl
 
 	private static final String WEIGHTED_STEPS_CLASS = WeightedStepsProgressIndicator.class.getName();
 
-	private static final String DELEGATING_STEPS_CLASS = StepsProgressIndicatorWrapper.class.getName();
-
 	private static final PrintStream DEFAULT_OUT = System.out;
 
 	private final Object monitor = new Object();
@@ -750,7 +748,7 @@ public class ProbingProgressIndicator extends AbstractProgressIndicatorBase impl
 		String className = element.getClassName();
 		return className.startsWith("com.intellij.") || className.startsWith("org.jetbrains.")
 				|| className.equals(PROBE_CLASS) || className.startsWith(PROBE_CLASS + "$")
-				|| className.equals(WEIGHTED_STEPS_CLASS) || className.equals(DELEGATING_STEPS_CLASS);
+				|| className.equals(WEIGHTED_STEPS_CLASS);
 	}
 
 	private static Duration percentile(List<Step> steps, double percentile) {

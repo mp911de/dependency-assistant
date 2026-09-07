@@ -22,9 +22,8 @@ import java.util.List;
 import java.util.Set;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.support.VersionControl;
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
-import com.intellij.dvcs.repo.Repository;
-import com.intellij.dvcs.repo.VcsRepositoryManager;
 import com.intellij.ide.trustedProjects.TrustedProjects;
 import com.intellij.json.psi.JsonFile;
 import com.intellij.json.psi.JsonObject;
@@ -102,7 +101,7 @@ public class DependencyfileService implements Disposable, DependencyRuleService 
 	@Override
 	public DependencyRule resolve(ResolutionContext context) {
 		DependencyRules rules = rules();
-		String branchName = currentBranchName(this.project, context.getBranchFile());
+		String branchName = getCurrentBranchName(this.project, context.getBranchFile());
 		ArtifactVersion projectVersion = context.getProjectVersion().orElseGet(() -> null);
 		return rules.resolve(context.getArtifactId(), branchName, projectVersion,
 				context.suppressSemanticUpgrading());
@@ -212,13 +211,8 @@ public class DependencyfileService implements Disposable, DependencyRuleService 
 		this.ruleOverride = null;
 	}
 
-	private static @Nullable String currentBranchName(Project project, @Nullable VirtualFile file) {
-		if (file == null) {
-			return null;
-		}
-
-		Repository repository = VcsRepositoryManager.getInstance(project).getRepositoryForFileQuick(file);
-		return (repository != null ? repository.getCurrentBranchName() : null);
+	private static @Nullable String getCurrentBranchName(Project project, @Nullable VirtualFile file) {
+		return file == null ? null : VersionControl.find(project).getCurrentBranch(file);
 	}
 
 	static class DescriptorChangeListener implements BulkFileListener {

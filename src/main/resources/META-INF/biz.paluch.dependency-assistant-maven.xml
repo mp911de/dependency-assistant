@@ -14,6 +14,7 @@
 		<completion.contributor
 				id="dap.maven.release-version-contributor"
 				language="XML"
+				order="first"
 				implementationClass="biz.paluch.dap.maven.MavenReleaseVersionCompletionContributor"/>
 		<annotator language="XML"
 		           implementationClass="biz.paluch.dap.assistant.editor.DependencyVersionAnnotator"/>

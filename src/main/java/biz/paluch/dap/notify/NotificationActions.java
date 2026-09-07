@@ -22,14 +22,11 @@ import java.util.Iterator;
 import java.util.List;
 
 import biz.paluch.dap.assistant.AppliedUpdates;
+import biz.paluch.dap.support.VersionControl;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.notification.NotificationAction;
 import com.intellij.openapi.command.undo.UndoManager;
-import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.vcs.AbstractVcsHelper;
-import com.intellij.openapi.vcs.changes.ChangeListManager;
-import com.intellij.openapi.vcs.changes.LocalChangeList;
 
 /**
  * Follow-up actions that expire their notification when chosen.
@@ -93,21 +90,12 @@ public class NotificationActions {
 	 * Save documents and open the commit dialog for the default change list, with a
 	 * commit message describing the applied updates.
 	 */
-	public static NotificationAction commit(Project project, AppliedUpdates updates) {
+	public static NotificationAction commit(Project project, AppliedUpdates updates, VersionControl vcs) {
 
 		String message = new NotificationTextTemplates(project).getCommitMessage(updates);
 
-		return NotificationAction.createSimpleExpiring(MessageBundle.message("notification.commit"), () -> {
-
-			FileDocumentManager.getInstance().saveAllDocuments();
-
-			ChangeListManager manager = ChangeListManager.getInstance(project);
-			manager.invokeAfterUpdate(true, () -> {
-				LocalChangeList changeList = manager.getDefaultChangeList();
-				AbstractVcsHelper.getInstance(project).commitChanges(changeList.getChanges(), changeList, message,
-						null);
-			});
-		});
+		return NotificationAction.createSimpleExpiring(MessageBundle.message("notification.commit"),
+				() -> vcs.openCommitDialog(message));
 	}
 
 	public static NotificationAction revertFlagged(Runnable revert) {

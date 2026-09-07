@@ -137,6 +137,9 @@ public class DependencyfileArtifacts {
 
 		if (changed) {
 			CodeStyleManager.getInstance(project).reformat(jsonFile);
+			// Formatting can replace the JSON PSI nodes.
+			JsonObject formattedRoot = (JsonObject) jsonFile.getTopLevelValue();
+			artifacts = (JsonObject) formattedRoot.findProperty("artifacts").getValue();
 		}
 		return nameValueRange(artifacts, entries.iterator().next().key());
 	}

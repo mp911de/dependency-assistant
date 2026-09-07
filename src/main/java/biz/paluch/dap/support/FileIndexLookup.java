@@ -23,7 +23,6 @@ import com.intellij.openapi.components.Service;
 import com.intellij.openapi.fileTypes.FileType;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.roots.ProjectFileIndex;
-import com.intellij.openapi.vcs.changes.ChangeListManager;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.search.DelegatingGlobalSearchScope;
 import com.intellij.psi.search.FileTypeIndex;
@@ -44,8 +43,6 @@ public final class FileIndexLookup {
 
 	private final ProjectFileIndex fileIndex;
 
-	private final ChangeListManager changeListManager;
-
 	private final GlobalSearchScope projectScope;
 
 	private final GlobalSearchScope libraryScope;
@@ -53,7 +50,6 @@ public final class FileIndexLookup {
 	private FileIndexLookup(Project project) {
 		this.project = project;
 		this.fileIndex = ProjectFileIndex.getInstance(project);
-		this.changeListManager = ChangeListManager.getInstance(project);
 		this.projectScope = ProjectScope.getProjectScope(project);
 		this.libraryScope = ProjectScope.getLibrariesScope(project);
 	}
@@ -75,6 +71,7 @@ public final class FileIndexLookup {
 
 	private GlobalSearchScope projectScope(Predicate<VirtualFile> filter) {
 
+		VersionControl vcs = VersionControl.find(project);
 		return new DelegatingGlobalSearchScope(projectScope) {
 
 			@Override
@@ -82,7 +79,7 @@ public final class FileIndexLookup {
 				return super.contains(file) && fileIndex.isInContent(file)
 						&& !libraryScope.contains(file)
 						&& !fileIndex.isUnderIgnored(file)
-						&& !changeListManager.isIgnoredFile(file)
+						&& !vcs.isIgnored(file)
 						&& filter.test(file);
 			}
 

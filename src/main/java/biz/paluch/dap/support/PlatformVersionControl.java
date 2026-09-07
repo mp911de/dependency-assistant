@@ -14,14 +14,13 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.plan;
+package biz.paluch.dap.support;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.Sequence;
 import com.intellij.dvcs.DvcsUtil;
@@ -31,12 +30,15 @@ import com.intellij.dvcs.push.PushSupport;
 import com.intellij.dvcs.push.PushTarget;
 import com.intellij.dvcs.repo.Repository;
 import com.intellij.dvcs.repo.VcsRepositoryManager;
+import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vcs.AbstractVcs;
+import com.intellij.openapi.vcs.AbstractVcsHelper;
 import com.intellij.openapi.vcs.ProjectLevelVcsManager;
 import com.intellij.openapi.vcs.VcsException;
 import com.intellij.openapi.vcs.changes.Change;
 import com.intellij.openapi.vcs.changes.ChangeListManagerEx;
+import com.intellij.openapi.vcs.changes.LocalChangeList;
 import com.intellij.openapi.vcs.changes.shelf.ShelveChangesManager;
 import com.intellij.openapi.vcs.changes.shelf.ShelvedChangeList;
 import com.intellij.openapi.vcs.checkin.CheckinEnvironment;
@@ -44,15 +46,13 @@ import com.intellij.openapi.vfs.VirtualFile;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Upgrade Plan version-control operations through platform VCS abstractions. No
- * VCS-specific plugin is required.
- * <p>File operations use the supplied scope. Branch and push operations use the
- * first project repository. Multi-repository selection is not supported.
+ * Platform VCS integration, registered only when the VCS module is available.
+ * <p>Branch and push operations without a file use the first project
+ * repository. Multi-repository selection is not supported.
  *
  * @author Mark Paluch
  */
-// TODO: consider multi-repository projects
-class PlanVcs {
+public class PlatformVersionControl implements VersionControl {
 
 	private final Project project;
 
@@ -62,7 +62,7 @@ class PlanVcs {
 
 	private final VcsRepositoryManager repositoryManager;
 
-	PlanVcs(Project project) {
+	public PlatformVersionControl(Project project) {
 
 		this.project = project;
 		this.vcsManager = ProjectLevelVcsManager.getInstance(project);
@@ -70,25 +70,32 @@ class PlanVcs {
 		this.repositoryManager = VcsRepositoryManager.getInstance(project);
 	}
 
-	boolean hasVcs() {
+	@Override
+	public boolean isPresent() {
+		return true;
+	}
+
+	@Override
+	public boolean isActive() {
 		return vcsManager.hasActiveVcss();
 	}
 
-	/**
-	 * Return whether the first repository provides push support.
-	 */
-	boolean canPush() {
+	@Override
+	@SuppressWarnings({"rawtypes", "unchecked"})
+	public boolean canPush() {
 
-		Repository repository = repository();
-		return repository != null && DvcsUtil.getPushSupport(repository.getVcs()) != null;
+		Repository repository = getRepository();
+		PushSupport support = repository != null ? DvcsUtil.getPushSupport(repository.getVcs()) : null;
+		return support != null && support.getSource(repository) != null && support.getDefaultTarget(repository) != null;
 	}
 
 	/**
 	 * Return scope files with uncommitted changes on any changelist.
 	 */
-	FileScope dirtyInScope(FileScope scope) {
+	@Override
+	public FileScope dirtyInScope(FileScope scope) {
 
-		if (!hasVcs()) {
+		if (!isActive()) {
 			return FileScope.of();
 		}
 
@@ -102,60 +109,51 @@ class PlanVcs {
 		return FileScope.of(dirty);
 	}
 
-	/**
-	 * Shelve and roll back uncommitted scope changes. Call from a background
-	 * thread.
-	 * @return the shelf, or {@literal null} if there are no changes.
-	 * @throws VcsException if shelving fails.
-	 */
-	@Nullable
-	ShelvedChangeList shelve(FileScope scope, String message) throws VcsException {
+	@Override
+	public @Nullable Runnable shelve(FileScope scope, String message) throws IOException {
 
+		if (!isActive()) {
+			throw new IOException(MessageBundle.message("plan.vcs.unavailable"));
+		}
 		List<Change> changes = refreshedChanges(scope);
 		if (changes.isEmpty()) {
 			return null;
 		}
-
 		try {
-			return ShelveChangesManager.getInstance(project).shelveChanges(changes, message, true);
-		} catch (IOException e) {
-			throw new VcsException(e);
+			ShelvedChangeList shelf = ShelveChangesManager.getInstance(project).shelveChanges(changes, message, true);
+			return () -> {
+				if (!isActive()) {
+					throw new IllegalStateException(MessageBundle.message("plan.vcs.unavailable"));
+				}
+				ShelveChangesManager.getInstance(project)
+						.unshelveSilentlyAsynchronously(project, List.of(shelf), List.of(), List.of(), null);
+			};
+		} catch (VcsException ex) {
+			throw new IOException(ex.getMessage(), ex);
 		}
 	}
 
-	/**
-	 * Restore a shelf asynchronously. The shelf manager reports the outcome.
-	 */
-	void unshelve(ShelvedChangeList shelf) {
-		ShelveChangesManager.getInstance(project)
-				.unshelveSilentlyAsynchronously(project, List.of(shelf), List.of(), List.of(), null);
-	}
+	@Override
+	public boolean commit(FileScope scope, String message) throws IOException {
 
-	/**
-	 * Commit current scope changes.
-	 * @return whether changes were found and committed.
-	 * @throws VcsException if commit is unsupported or fails.
-	 */
-	boolean commit(FileScope scope, String message) throws VcsException {
-
+		CheckinEnvironment checkin = checkinEnvironment(scope);
+		if (scope.hasMissingFiles() || checkin == null) {
+			throw new IOException(MessageBundle.message("plan.vcs.commit.unsupported"));
+		}
 		List<Change> changes = refreshedChanges(scope);
 		if (changes.isEmpty()) {
 			return false;
 		}
-
-		CheckinEnvironment checkin = checkinEnvironment(scope);
-		if (checkin == null) {
-			throw new VcsException(MessageBundle.message("plan.vcs.commit.unsupported"));
-		}
-
 		List<VcsException> errors = checkin.commit(changes, message);
 		if (errors != null && !errors.isEmpty()) {
-			throw errors.getFirst();
+			VcsException error = errors.getFirst();
+			throw new IOException(error.getMessage(), error);
 		}
 		return true;
 	}
 
-	boolean hasChanges(FileScope scope) {
+	@Override
+	public boolean hasChanges(FileScope scope) {
 		return !refreshedChanges(scope).isEmpty();
 	}
 
@@ -165,9 +163,10 @@ class PlanVcs {
 	 * unavailable.
 	 */
 	@SuppressWarnings({"rawtypes", "unchecked"})
-	void push() {
+	@Override
+	public void push() {
 
-		Repository repository = repository();
+		Repository repository = getRepository();
 		PushSupport support = repository != null ? DvcsUtil.getPushSupport(repository.getVcs()) : null;
 		if (support == null) {
 			throw new IllegalStateException(MessageBundle.message("plan.vcs.push.unsupported"));
@@ -182,18 +181,58 @@ class PlanVcs {
 		support.getPusher().push(Map.of(repository, new PushSpec<>(source, target)), null, false);
 	}
 
-	/**
-	 * Return the first repository's branch name, or {@literal null} without a named
-	 * branch. Call from a background thread.
-	 */
-	@Nullable
-	String getCurrentBranch() {
-
-		Repository repository = repository();
+	@Override
+	public @Nullable String getCurrentBranch() {
+		Repository repository = getRepository();
 		return repository != null ? repository.getCurrentBranchName() : null;
 	}
 
+	@Override
+	public @Nullable String getCurrentBranch(VirtualFile file) {
+		Repository repository = repositoryManager.getRepositoryForFileQuick(file);
+		return repository != null ? repository.getCurrentBranchName() : null;
+	}
+
+	@Override
+	public boolean canCommit() {
+		for (AbstractVcs vcs : vcsManager.getAllActiveVcss()) {
+			if (vcs.getCheckinEnvironment() != null) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	@Override
+	public boolean canCommit(FileScope scope) {
+		return !scope.hasMissingFiles() && checkinEnvironment(scope) != null;
+	}
+
+	@Override
+	public boolean isIgnored(VirtualFile file) {
+		return isActive() && changeListManager.isIgnoredFile(file);
+	}
+
+	@Override
+	public void openCommitDialog(String message) {
+		if (!canCommit()) {
+			return;
+		}
+		FileDocumentManager.getInstance().saveAllDocuments();
+		changeListManager.invokeAfterUpdate(true, () -> {
+			if (canCommit()) {
+				LocalChangeList changeList = changeListManager.getDefaultChangeList();
+				AbstractVcsHelper.getInstance(project).commitChanges(changeList.getChanges(), changeList, message,
+						null);
+			}
+		});
+	}
+
 	private List<Change> refreshedChanges(Sequence<VirtualFile> scope) {
+
+		if (!isActive()) {
+			return List.of();
+		}
 
 		// reflect the just-applied, saved edits before reading changes
 		changeListManager.waitForUpdate();
@@ -217,20 +256,19 @@ class PlanVcs {
 	}
 
 	private @Nullable AbstractVcs vcsFor(Sequence<VirtualFile> scope) {
-
+		AbstractVcs selected = null;
 		for (VirtualFile file : scope) {
-
 			AbstractVcs vcs = vcsManager.getVcsFor(file);
-			if (vcs != null) {
-				return vcs;
+			if (vcs == null || (selected != null && vcs != selected)) {
+				return null;
 			}
+			selected = vcs;
 		}
-
-		return null;
+		return selected;
 	}
 
-	private @Nullable Repository repository() {
-		return repositoryManager.getRepositories().stream().findFirst().orElse(null);
+	private @Nullable Repository getRepository() {
+		return isActive() ? repositoryManager.getRepositories().stream().findFirst().orElse(null) : null;
 	}
 
 }

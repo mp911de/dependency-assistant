@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.plan;
 
+import java.io.IOException;
 import java.util.List;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
@@ -26,7 +27,6 @@ import biz.paluch.dap.upgrade.FileUpdateEngine;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.progress.ProgressIndicator;
-import com.intellij.openapi.vcs.VcsException;
 
 /**
  * Apply plan items with platform undo and no VCS commit.
@@ -49,7 +49,7 @@ class UpdateApplier implements PlanUpdateApplier {
 	}
 
 	@Override
-	public AppliedUpdates apply(UpgradePlan plan, ProgressIndicator indicator) throws VcsException {
+	public AppliedUpdates apply(UpgradePlan plan, ProgressIndicator indicator) throws IOException {
 
 		AppliedUpdates appliedUpdates = new AppliedUpdates();
 

@@ -32,6 +32,7 @@ import biz.paluch.dap.metadata.IssueTracker;
 import biz.paluch.dap.rule.DependencyRuleService;
 import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.support.PropertyResolver;
+import biz.paluch.dap.support.VersionControl;
 import biz.paluch.dap.util.Properties;
 import biz.paluch.dap.util.Sequence;
 import com.tngtech.archunit.core.importer.ImportOption.DoNotIncludeTests;
@@ -84,6 +85,7 @@ class ArchitectureTests {
 						.withStrictClosedHierarchy(VulnerabilityRepository.class)
 						.withStrictClosedHierarchy(VersionedArtifact.class)
 						.withStrictClosedHierarchy(VersionedPackage.class)
+						.withStrictClosedHierarchy(VersionControl.class)
 						.withStrictClosedHierarchy("biz.paluch.dap.github.GitHubAction")
 						.withClosedHierarchy(DependencySite.class)
 						.withClosedHierarchy(DependencyRuleService.class)
