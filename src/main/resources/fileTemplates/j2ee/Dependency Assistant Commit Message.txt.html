@@ -4,7 +4,9 @@
     Upgrade Plan item.</p>
 <p>This built-in template is editable. Along with plain text and Velocity directives, you
     can also use the predefined variables listed below. They are expanded into the
-    corresponding values.</p>
+    corresponding values. Runs of blank lines collapse into a single blank line and
+    surrounding whitespace is removed, so variables that expand to an empty string leave
+    no trace.</p>
 <table>
     <tr>
         <td><code>${DEPENDENCY}</code></td>
@@ -19,6 +21,19 @@
     <tr>
         <td><code>${TO_VERSION}</code></td>
         <td>The planned target version.</td>
+    </tr>
+    <tr>
+        <td><code>${TICKET}</code></td>
+        <td>The linked ticket reference as shown in the IDE, for example
+            <code>#1234</code>. Empty when no ticket is linked.
+        </td>
+    </tr>
+    <tr>
+        <td><code>${CLOSES}</code></td>
+        <td>The linked ticket's closing reference rendered from the ticket system's
+            template, for example <code>Closes #1234</code> on GitHub. Empty when no
+            ticket is linked.
+        </td>
     </tr>
 </table>
 </body>

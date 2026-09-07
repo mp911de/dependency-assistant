@@ -132,4 +132,14 @@ public class NotificationActions {
 		return NotificationAction.createSimpleExpiring(MessageBundle.message("notification.not-now"), dismiss);
 	}
 
+	public static NotificationAction notThisWeek(Runnable dismiss) {
+		return NotificationAction.createSimpleExpiring(MessageBundle.message("notification.not-this-week"),
+				dismiss);
+	}
+
+	public static NotificationAction stopNagging(Runnable dismiss) {
+		return NotificationAction.createSimpleExpiring(MessageBundle.message("notification.do-not-show-again"),
+				dismiss);
+	}
+
 }

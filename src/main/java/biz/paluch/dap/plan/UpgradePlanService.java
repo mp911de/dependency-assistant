@@ -31,7 +31,6 @@ import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.ticket.Label;
 import biz.paluch.dap.ticket.Milestone;
 import biz.paluch.dap.ticket.Ticket;
-import biz.paluch.dap.ticket.TicketKey;
 import biz.paluch.dap.ticket.TicketRepository;
 import biz.paluch.dap.ticket.TicketSystem;
 import biz.paluch.dap.ticket.TicketSystemInvalidationListener;
@@ -61,7 +60,7 @@ import com.intellij.util.messages.MessageBusConnection;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Owner of persisted Upgrade Plan transitions.
+ * Service for persistent Upgrade Plan transitions.
  * <p>Apply, undo and redo advance revisions. Undo and redo restore the
  * corresponding logical state. Ticket creation is external and cannot be
  * undone, but plan links can.
@@ -95,10 +94,6 @@ public final class UpgradePlanService implements Disposable {
 
 	private volatile List<Label> labels = List.of();
 
-	private boolean disposed;
-
-	// transient: an apply or ticket-publishing run is in flight, muting plan
-	// actions
 	private volatile boolean busy;
 
 	private volatile boolean refreshingMilestones;
@@ -140,11 +135,11 @@ public final class UpgradePlanService implements Disposable {
 	}
 
 	TicketSystem getTicketSystem() {
-
-		if (this.ticketSystem == null) {
+		TicketSystem ticketSystem = this.ticketSystem;
+		if (ticketSystem == null) {
 			throw new IllegalStateException("No ticket system available");
 		}
-		return this.ticketSystem;
+		return ticketSystem;
 	}
 
 	void refreshTicketSystem() {
@@ -240,16 +235,15 @@ public final class UpgradePlanService implements Disposable {
 	}
 
 	List<String> affectedFiles() {
-		return List.copyOf(getContent().getAffectedFiles());
+		return List.copyOf(getPlan().getContent().getAffectedFiles());
 	}
 
 	@Override
 	public void dispose() {
-		this.disposed = true;
 	}
 
 	boolean hasItems() {
-		return !getContent().isEmpty();
+		return !getPlan().getContent().isEmpty();
 	}
 
 	/**
@@ -328,6 +322,13 @@ public final class UpgradePlanService implements Disposable {
 				}).submit(AppExecutorUtil.getAppExecutorService());
 	}
 
+	MilestoneSelector getMilestoneSelector() {
+
+		String branch = hasVcs() ? getVcs().getCurrentBranch() : null;
+		Versioned projectVersion = resolveProjectVersion(affectedFiles());
+		return new MilestoneSelector(branch, projectVersion);
+	}
+
 	/**
 	 * Paste a fragment as one undoable transition using
 	 * {@link PlanAction#pasteItems}.
@@ -338,14 +339,14 @@ public final class UpgradePlanService implements Disposable {
 			return;
 		}
 
-		execute(PlanAction.pasteItems(pasted, getContent()));
+		execute(PlanAction.pasteItems(pasted, getPlan().getContent()));
 	}
 
 	/**
 	 * Remove an item through undoable state change, retaining the file scope.
 	 */
 	void removeItem(UpgradePlanItem item) {
-		execute(PlanAction.removeItems(getContent(), item));
+		execute(PlanAction.removeItems(getPlan().getContent(), item));
 	}
 
 	/**
@@ -353,7 +354,7 @@ public final class UpgradePlanService implements Disposable {
 	 */
 	void removeItems(Collection<UpgradePlanItem> items) {
 		if (!items.isEmpty()) {
-			execute(PlanAction.removeItems(getContent(), items));
+			execute(PlanAction.removeItems(getPlan().getContent(), items));
 		}
 	}
 
@@ -363,12 +364,12 @@ public final class UpgradePlanService implements Disposable {
 	 */
 	void linkTicket(UpgradePlanItem item, TicketRepository repository, Ticket ticket) {
 		ApplicationManager.getApplication().invokeLater(() -> {
-			execute(PlanAction.linkTicket(getContent(), item, new UpgradeTicket(repository, ticket)));
+			execute(PlanAction.linkTicket(getPlan().getContent(), item, new UpgradeTicket(repository, ticket)));
 		});
 	}
 
 	void renameItem(UpgradePlanItem item, String displayName, boolean rememberName) {
-		execute(PlanAction.renameItem(getContent(), item, displayName, rememberName));
+		execute(PlanAction.renameItem(getPlan().getContent(), item, displayName, rememberName));
 	}
 
 	/**
@@ -385,37 +386,24 @@ public final class UpgradePlanService implements Disposable {
 	}
 
 	/**
-	 * Render the commit message and append the linked ticket's close reference when
-	 * available.
+	 * Render the commit message. The linked ticket's display and close references
+	 * are available to the template and render empty without a ticket or ticket
+	 * system.
 	 */
 	String getCommitMessage(UpgradePlanItem item) {
-		String subject = textTemplates.commitMessage(item);
-		String close = getTicketCloseReference(item);
-		return close != null ? subject + "\n\n" + close : subject;
+		return hasTicketSystem() ? textTemplates.getCommitMessage(item, getTicketSystem())
+				: textTemplates.getCommitMessage(item);
 	}
 
 	String getTicketTitle(UpgradePlanItem item) {
-		return textTemplates.ticketTitle(item);
-	}
-
-	/**
-	 * Return the close reference, or {@literal null} without a ticket, ticket
-	 * system or supported close-reference format.
-	 */
-	@Nullable
-	String getTicketCloseReference(UpgradePlanItem item) {
-		TicketKey ticketKey = item.getTicketKey();
-		if (ticketKey == null || !hasTicketSystem()) {
-			return null;
-		}
-		return getTicketSystem().getCloseReference(ticketKey);
+		return textTemplates.getTicketTitle(item);
 	}
 
 	/**
 	 * Remove a committed item from the plan without registering semantic undo.
 	 */
 	void removeCommittedItem(UpgradePlanItem item) {
-		apply(PlanAction.removeItems(getContent(), List.of(item)));
+		apply(PlanAction.removeItems(getPlan().getContent(), List.of(item)));
 		events.planItemChanged();
 	}
 
@@ -451,10 +439,6 @@ public final class UpgradePlanService implements Disposable {
 	 */
 	void clear() {
 		execute(PlanAction.discardUpgrades(getPlan()));
-	}
-
-	private Content getContent() {
-		return getPlan().getContent();
 	}
 
 	/**
@@ -515,12 +499,6 @@ public final class UpgradePlanService implements Disposable {
 		}
 	}
 
-	MilestoneSelector getMilestoneSelector() {
-
-		String branch = hasVcs() ? getVcs().getCurrentBranch() : null;
-		Versioned projectVersion = resolveProjectVersion(affectedFiles());
-		return new MilestoneSelector(branch, projectVersion);
-	}
 
 	@RequiresReadLock
 	private Versioned resolveProjectVersion(List<String> affectedFiles) {

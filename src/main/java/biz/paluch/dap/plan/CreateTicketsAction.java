@@ -78,7 +78,7 @@ public class CreateTicketsAction extends UpgradePlanAction {
 
 		UpgradePlanService service = UpgradePlanService.getInstance(project);
 		if (service.hasTicketSystem()) {
-			createTickets(service, PlanSelection.from(e).orElseGet(() -> service.getUpgradePlan().getItems()));
+			createTickets(service, getTargetItems(e, service));
 		}
 	}
 

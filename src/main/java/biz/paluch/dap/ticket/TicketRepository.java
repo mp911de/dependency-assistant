@@ -76,12 +76,11 @@ public interface TicketRepository {
 	List<? extends Label> getLabels(ProgressIndicator indicator) throws IOException;
 
 	/**
-	 * Return a thread-safe view whose milestone and label listings never refresh
-	 * remote data. Empty lists mean no cached data, not necessarily no remote
-	 * entries. Search and creation may be unsupported.
+	 * Return a thread-safe view whose milestone and label listings remain cached
+	 * without network access. Empty lists mean no cached data, not necessarily no
+	 * remote entries. Search and creation may be unsupported.
 	 */
 	TicketRepository cached();
-
 
 	/**
 	 * Render a ticket key for IDE display without network access.

@@ -20,20 +20,35 @@ import java.net.URI;
 import java.util.List;
 
 /**
- * Repository-owned ticket data. Persist {@link #getKey()} with its system
- * association to render references without fetching the ticket again.
+ * Ticket data obtained from a bound {@link TicketRepository}.
+ *
+ * <p>The {@link TicketKey} carries no system or repository identity. Retain its
+ * association with the bound {@link TicketSystem} when persisting it. The
+ * system can render display and commit references from the key without fetching
+ * the ticket again.
  *
  * @author Mark Paluch
- * @see TicketRepository
  */
 public interface Ticket {
 
+	/**
+	 * Return the ticket identifier without display adornments or commit keywords.
+	 */
 	TicketKey getKey();
 
+	/**
+	 * Return the ticket title.
+	 */
 	String getTitle();
 
+	/**
+	 * Return the ticket's lifecycle state in its repository.
+	 */
 	TicketState getState();
 
+	/**
+	 * Return the URI for opening the ticket in a web browser.
+	 */
 	URI getWebLink();
 
 	/**

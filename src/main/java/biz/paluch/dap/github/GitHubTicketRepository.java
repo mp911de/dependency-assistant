@@ -36,6 +36,7 @@ import biz.paluch.dap.ticket.TicketState;
 import biz.paluch.dap.util.StringUtils;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.intellij.openapi.progress.ProgressIndicator;
+import com.intellij.openapi.project.Project;
 import org.jetbrains.plugins.github.api.GHRepositoryCoordinates;
 import org.jetbrains.plugins.github.api.GHRepositoryPath;
 import org.jetbrains.plugins.github.api.GithubApiRequest;
@@ -72,27 +73,30 @@ class GitHubTicketRepository implements TicketRepository {
 
 	private final GitHubTicketCache cache;
 
+	private final GitHubConventions conventions;
+
 	GitHubTicketRepository(GitRepositoryMetadata coordinates, GithubApiRequestExecutor executor,
-			GitHubTicketCache cache) {
-		this(toRepositoryCoordinates(coordinates), coordinates, executor, cache);
+			GitHubTicketCache cache, Project project) {
+		this(toRepositoryCoordinates(coordinates), coordinates, executor, cache, project);
 	}
 
 	GitHubTicketRepository(GHRepositoryCoordinates repository, GithubApiRequestExecutor executor,
-			GitHubTicketCache cache) {
-		this(repository, toRepositoryMetadata(repository), executor, cache);
+			GitHubTicketCache cache, Project project) {
+		this(repository, toRepositoryMetadata(repository), executor, cache, project);
 	}
 
 	private GitHubTicketRepository(GHRepositoryCoordinates repository, GitRepositoryMetadata coordinates,
-			GithubApiRequestExecutor executor, GitHubTicketCache cache) {
+			GithubApiRequestExecutor executor, GitHubTicketCache cache, Project project) {
 		this.repository = repository;
 		this.coordinates = coordinates;
 		this.executor = executor;
 		this.cache = cache;
+		this.conventions = new GitHubConventions(project, repository.getRepositoryPath());
 	}
 
 	GitHubTicketRepository(GithubServerPath server, GitRepositoryMetadata coordinates,
-			GithubApiRequestExecutor executor, GitHubTicketCache cache) {
-		this(toRepositoryCoordinates(server, coordinates), coordinates, executor, cache);
+			GithubApiRequestExecutor executor, GitHubTicketCache cache, Project project) {
+		this(toRepositoryCoordinates(server, coordinates), coordinates, executor, cache, project);
 	}
 
 	@Override
@@ -254,12 +258,12 @@ class GitHubTicketRepository implements TicketRepository {
 
 	@Override
 	public String getDisplayReference(TicketKey key) {
-		return GitHubConventions.INSTANCE.getDisplayReference(key);
+		return conventions.getDisplayReference(key);
 	}
 
 	@Override
 	public String getCloseReference(TicketKey key) {
-		return GitHubConventions.INSTANCE.getCloseReference(key);
+		return conventions.getCloseReference(key);
 	}
 
 	private GHRepositoryPath repositoryPath() {

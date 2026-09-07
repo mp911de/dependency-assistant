@@ -46,12 +46,12 @@ class GitHubTicketSystem implements TicketSystem {
 
 	@Override
 	public String getDisplayReference(TicketKey key) {
-		return GitHubConventions.INSTANCE.getDisplayReference(key);
+		return repository.getDisplayReference(key);
 	}
 
 	@Override
 	public String getCloseReference(TicketKey key) {
-		return GitHubConventions.INSTANCE.getCloseReference(key);
+		return repository.getCloseReference(key);
 	}
 
 	@Override

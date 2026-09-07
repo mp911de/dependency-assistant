@@ -48,7 +48,6 @@ public interface Milestone {
 
 	@Nullable
 	default LocalDate getReleaseDay() {
-
 		LocalDateTime releaseDate = getReleaseDate();
 		return releaseDate != null ? releaseDate.toLocalDate() : null;
 	}
@@ -57,7 +56,6 @@ public interface Milestone {
 	 * Whether an open milestone is due before today in the local time zone.
 	 */
 	default boolean isOverdue() {
-
 		LocalDate releaseDay = getReleaseDay();
 		return isOpen() && releaseDay != null && releaseDay.isBefore(LocalDate.now());
 	}

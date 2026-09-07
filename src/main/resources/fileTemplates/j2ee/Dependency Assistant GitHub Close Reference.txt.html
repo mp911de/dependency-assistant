@@ -1,0 +1,37 @@
+<html>
+<body>
+<p>This built-in template renders the GitHub issue reference that Dependency Assistant
+    places into commit messages through the <code>${CLOSES}</code> variable of the Commit
+    Message template.</p>
+<p>This built-in template is editable. Along with plain text and Velocity directives, you
+    can also use the predefined variables listed below. They are expanded into the
+    corresponding values. GitHub links and closes issues for the keywords listed in
+    <a href="https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/linking-a-pull-request-to-an-issue">Linking
+        a pull request to an issue</a>. Examples: <code>Fixes ${REFERENCE}</code>,
+    <code>Resolves ${FULL_REFERENCE}</code>, <code>[resolves GH-${NUMBER}]</code>.</p>
+<table>
+    <tr>
+        <td><code>${NUMBER}</code></td>
+        <td>The issue number, for example <code>1234</code>.</td>
+    </tr>
+    <tr>
+        <td><code>${OWNER}</code></td>
+        <td>The repository owner, for example <code>mp911de</code>.</td>
+    </tr>
+    <tr>
+        <td><code>${REPOSITORY}</code></td>
+        <td>The repository name, for example <code>dependency-assistant</code>.</td>
+    </tr>
+    <tr>
+        <td><code>${REFERENCE}</code></td>
+        <td>The short issue reference, for example <code>#1234</code>.</td>
+    </tr>
+    <tr>
+        <td><code>${FULL_REFERENCE}</code></td>
+        <td>The repository-qualified issue reference, for example
+            <code>github-linguist/linguist#1234</code>.
+        </td>
+    </tr>
+</table>
+</body>
+</html>

@@ -32,6 +32,21 @@ public interface TicketSystemProvider {
 	ExtensionPointName<TicketSystemProvider> EP_NAME = ExtensionPointName.create("biz.paluch.dap.ticketSystem");
 
 	/**
+	 * Whether this provider can bind the project. Returning {@code true} selects
+	 * this provider without considering later providers. May access credentials and
+	 * block.
+	 */
+	boolean supports(Project project);
+
+	/**
+	 * Bind the project after {@link #supports(Project)} returned {@code true}. May
+	 * access credentials and block.
+	 *
+	 * @throws IllegalStateException if the project is unsupported.
+	 */
+	TicketSystem create(Project project);
+
+	/**
 	 * Bind through the first supporting provider, or return {@code null} if none
 	 * supports the project. Creation failures propagate without trying later
 	 * providers. Resolution may access credentials and block.
@@ -49,20 +64,5 @@ public interface TicketSystemProvider {
 
 		return null;
 	}
-
-	/**
-	 * Whether this provider can bind the project. Returning {@code true} selects
-	 * this provider without considering later providers. May access credentials and
-	 * block.
-	 */
-	boolean supports(Project project);
-
-	/**
-	 * Bind the project after {@link #supports(Project)} returned {@code true}. May
-	 * access credentials and block.
-	 *
-	 * @throws IllegalStateException if the project is unsupported.
-	 */
-	TicketSystem create(Project project);
 
 }

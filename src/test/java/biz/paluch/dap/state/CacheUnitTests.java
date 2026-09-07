@@ -16,6 +16,12 @@
 
 package biz.paluch.dap.state;
 
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.PackageSystem;
@@ -87,6 +93,76 @@ class CacheUnitTests {
 
 		assertThat(cache.getProjects()).extracting(ProjectCache::getId).containsExactly(root);
 		assertThat(cache.getModificationCount()).isGreaterThan(before);
+	}
+
+	@Test
+	void nagsOnceCacheIsOlderThanAWeek() {
+
+		TickingClock clock = new TickingClock();
+		Cache cache = new Cache(clock);
+		cache.recordUpdate();
+
+		assertThat(cache.shouldNag()).isFalse();
+
+		clock.advance(Cache.LAST_TIME_CACHE_WAS_UPDATED.plusHours(1));
+
+		assertThat(cache.shouldNag()).isTrue();
+	}
+
+	@Test
+	void doNotNagSuppressesForGivenDuration() {
+
+		TickingClock clock = new TickingClock();
+		Cache cache = new Cache(clock);
+		cache.recordUpdate();
+		clock.advance(Cache.LAST_TIME_CACHE_WAS_UPDATED.plusHours(1));
+
+		cache.doNotNag(Cache.PLEASE_BE_SILENT_LONGER);
+
+		assertThat(cache.shouldNag()).isFalse();
+		clock.advance(Cache.PLEASE_BE_SILENT_FOR);
+		assertThat(cache.shouldNag()).isFalse();
+		clock.advance(Cache.PLEASE_BE_SILENT_LONGER);
+		assertThat(cache.shouldNag()).isTrue();
+	}
+
+	@Test
+	void stopNaggingSuppressesPermanently() {
+
+		TickingClock clock = new TickingClock();
+		Cache cache = new Cache(clock);
+		cache.recordUpdate();
+		clock.advance(Cache.LAST_TIME_CACHE_WAS_UPDATED.plusHours(1));
+
+		cache.stopNagging();
+		clock.advance(Duration.ofDays(365 * 10));
+
+		assertThat(cache.shouldNag()).isFalse();
+	}
+
+	static class TickingClock extends Clock {
+
+		private Instant now = Instant.parse("2026-01-01T00:00:00Z");
+
+		void advance(Duration duration) {
+			now = now.plus(duration);
+		}
+
+		@Override
+		public ZoneId getZone() {
+			return ZoneOffset.UTC;
+		}
+
+		@Override
+		public Clock withZone(ZoneId zone) {
+			return this;
+		}
+
+		@Override
+		public Instant instant() {
+			return now;
+		}
+
 	}
 
 }

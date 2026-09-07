@@ -73,9 +73,16 @@ public class Cache implements ModificationTracker {
 	private static final int EMPTY_THRESHOLD = 3;
 
 	/**
-	 * Duration for which {@link #doNotNag()} suppresses refresh reminders.
+	 * Default duration for which {@link #doNotNag(Duration)} suppresses refresh
+	 * reminders.
 	 */
 	public static final Duration PLEASE_BE_SILENT_FOR = Duration.ofHours(12);
+
+	/**
+	 * Extended duration for which {@link #doNotNag(Duration)} suppresses refresh
+	 * reminders.
+	 */
+	public static final Duration PLEASE_BE_SILENT_LONGER = Duration.ofDays(7);
 
 	/**
 	 * Maximum cache age before {@link #shouldNag()} may request a refresh.
@@ -177,10 +184,21 @@ public class Cache implements ModificationTracker {
 	}
 
 	/**
-	 * Suppress refresh reminders for {@link #PLEASE_BE_SILENT_FOR}.
+	 * Suppress refresh reminders for the given duration.
+	 *
+	 * @see #PLEASE_BE_SILENT_FOR
+	 * @see #PLEASE_BE_SILENT_LONGER
 	 */
-	public void doNotNag() {
-		doNotNagUntil = clock.instant().plus(PLEASE_BE_SILENT_FOR).toEpochMilli();
+	public void doNotNag(Duration duration) {
+		doNotNagUntil = clock.instant().plus(duration).toEpochMilli();
+		modificationTracker.incModificationCount();
+	}
+
+	/**
+	 * Suppress refresh reminders permanently.
+	 */
+	public void stopNagging() {
+		doNotNagUntil = Long.MAX_VALUE;
 		modificationTracker.incModificationCount();
 	}
 

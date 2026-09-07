@@ -35,6 +35,8 @@ public class AssistantTemplateGroup implements FileTemplateGroupDescriptorFactor
 
 	public static final String COMMIT_TEMPLATE = "Dependency Assistant Commit Message.txt";
 
+	public static final String GITHUB_CLOSE_REFERENCE_TEMPLATE = "Dependency Assistant GitHub Close Reference.txt";
+
 	@Override
 	public FileTemplateGroupDescriptor getFileTemplatesDescriptor() {
 
@@ -55,6 +57,15 @@ public class AssistantTemplateGroup implements FileTemplateGroupDescriptorFactor
 			@Override
 			public String getDisplayName() {
 				return MessageBundle.message("template.commit");
+			}
+
+		});
+
+		group.addTemplate(new FileTemplateDescriptor(GITHUB_CLOSE_REFERENCE_TEMPLATE, AllIcons.Vcs.Vendors.Github) {
+
+			@Override
+			public String getDisplayName() {
+				return MessageBundle.message("template.github-close-reference");
 			}
 
 		});

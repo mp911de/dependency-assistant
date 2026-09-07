@@ -16,18 +16,48 @@
 
 package biz.paluch.dap.github;
 
-import biz.paluch.dap.ticket.TicketKey;
+import java.util.Properties;
 
+import biz.paluch.dap.assistant.AssistantTemplateGroup;
+import biz.paluch.dap.ticket.TicketKey;
+import biz.paluch.dap.util.TextTemplates;
+import com.intellij.openapi.project.Project;
+import org.jetbrains.plugins.github.api.GHRepositoryPath;
+
+/**
+ * Renders GitHub issue references for one repository. Display references use
+ * the fixed {@code #number} form. Close references render the editable
+ * {@link AssistantTemplateGroup#GITHUB_CLOSE_REFERENCE_TEMPLATE}.
+ *
+ * @author Mark Paluch
+ */
 class GitHubConventions {
 
-	static final GitHubConventions INSTANCE = new GitHubConventions();
+	private final TextTemplates templates;
+
+	private final GHRepositoryPath path;
+
+	GitHubConventions(Project project, GHRepositoryPath path) {
+		this.templates = TextTemplates.getInstance(project);
+		this.path = path;
+	}
 
 	public String getDisplayReference(TicketKey key) {
 		return "#" + key;
 	}
 
 	public String getCloseReference(TicketKey key) {
-		return "Closes " + getDisplayReference(key);
+
+		Properties properties = new Properties();
+		properties.setProperty("NUMBER", key.getValue());
+		properties.setProperty("OWNER", path.getOwner());
+		properties.setProperty("REPOSITORY", path.getRepository());
+		properties.setProperty("REFERENCE", getDisplayReference(key));
+		properties.setProperty("FULL_REFERENCE",
+				"%s/%s%s".formatted(path.getOwner(), path.getRepository(), getDisplayReference(key)));
+
+		return templates.render(AssistantTemplateGroup.GITHUB_CLOSE_REFERENCE_TEMPLATE, properties).stripTrailing()
+				.trim();
 	}
 
 }

@@ -16,13 +16,13 @@
 
 package biz.paluch.dap.plan;
 
-import java.io.IOException;
 import java.util.Properties;
 
 import biz.paluch.dap.assistant.AssistantTemplateGroup;
-import biz.paluch.dap.util.MessageBundle;
-import com.intellij.ide.fileTemplates.FileTemplate;
-import com.intellij.ide.fileTemplates.FileTemplateManager;
+import biz.paluch.dap.ticket.TicketKey;
+import biz.paluch.dap.ticket.TicketSystem;
+import biz.paluch.dap.util.StringUtils;
+import biz.paluch.dap.util.TextTemplates;
 import com.intellij.openapi.project.Project;
 
 /**
@@ -33,34 +33,59 @@ import com.intellij.openapi.project.Project;
  */
 class PlanTextTemplates {
 
-	private final FileTemplateManager manager;
+	private final TextTemplates templates;
 
 	PlanTextTemplates(Project project) {
-		this.manager = FileTemplateManager.getInstance(project);
+		this.templates = TextTemplates.getInstance(project);
 	}
 
-	String ticketTitle(UpgradePlanItem item) {
-		return render(AssistantTemplateGroup.TICKET_TEMPLATE, "plan.template.ticket", item);
+	String getTicketTitle(UpgradePlanItem item) {
+		return templates.render(AssistantTemplateGroup.TICKET_TEMPLATE, getProperties(item)).stripTrailing().trim();
 	}
 
-	String commitMessage(UpgradePlanItem item) {
-		return render(AssistantTemplateGroup.COMMIT_TEMPLATE, "plan.template.commit", item);
+	/**
+	 * Render the commit message without ticket references. {@code TICKET} and
+	 * {@code CLOSES} render empty.
+	 */
+	String getCommitMessage(UpgradePlanItem item) {
+		return renderCommitMessage(getProperties(item));
 	}
 
-	private String render(String templateName, String messageKey, UpgradePlanItem item) {
+	/**
+	 * Render the commit message with the linked ticket's references rendered by the
+	 * ticket system. {@code TICKET} and {@code CLOSES} render empty without a
+	 * linked ticket.
+	 */
+	String getCommitMessage(UpgradePlanItem item, TicketSystem ticketSystem) {
 
+		TicketKey ticketKey = item.getTicketKey();
+		if (ticketKey == null) {
+			return getCommitMessage(item);
+		}
+
+		return renderCommitMessage(getProperties(item, ticketSystem, ticketKey));
+	}
+
+	private String renderCommitMessage(Properties properties) {
+		return StringUtils.collapseBlankLines(
+				templates.render(AssistantTemplateGroup.COMMIT_TEMPLATE, properties).stripTrailing());
+	}
+
+	private static Properties getProperties(UpgradePlanItem item) {
 		Properties properties = new Properties();
 		properties.setProperty("DEPENDENCY", item.getDisplayName());
 		properties.setProperty("FROM_VERSION", item.getFromVersion().toString());
 		properties.setProperty("TO_VERSION", item.getToVersion().toString());
+		properties.setProperty("TICKET", "");
+		properties.setProperty("CLOSES", "");
+		return properties;
+	}
 
-		FileTemplate template = manager.getJ2eeTemplate(templateName);
-		try {
-			return template.getText(properties).stripTrailing();
-		} catch (IOException e) {
-			throw new IllegalStateException(MessageBundle.message("template.render.error",
-					MessageBundle.message(messageKey)), e);
-		}
+	private static Properties getProperties(UpgradePlanItem item, TicketSystem ticketSystem, TicketKey ticketKey) {
+		Properties properties = getProperties(item);
+		properties.setProperty("TICKET", ticketSystem.getDisplayReference(ticketKey));
+		properties.setProperty("CLOSES", ticketSystem.getCloseReference(ticketKey));
+		return properties;
 	}
 
 }

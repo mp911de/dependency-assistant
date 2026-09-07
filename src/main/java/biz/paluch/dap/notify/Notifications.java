@@ -133,7 +133,8 @@ public class Notifications {
 
 	/**
 	 * Create a prompt for missing release metadata. Callers supply the refresh and
-	 * dismissal actions.
+	 * dismissal actions. The first action renders as a button, the second inline,
+	 * further actions collapse into a dropdown.
 	 */
 	public static NotificationBuilder releaseMetadataUnavailable() {
 
@@ -145,6 +146,7 @@ public class Notifications {
 		notification.configureDoNotAskOption("notification.cache.no.releases",
 				MessageBundle.message("notification.do-not-show-again"));
 		notification.setSuggestionType(true);
+		notification.setAddExtraAction(true);
 		notification.setIcon(DependencyAssistantIcons.ICON);
 
 		return new Builder(notification);
@@ -152,7 +154,8 @@ public class Notifications {
 
 	/**
 	 * Create a prompt for stale release metadata. Callers supply the refresh and
-	 * dismissal actions.
+	 * dismissal actions. The first action renders as a button, the second inline,
+	 * further actions collapse into a dropdown.
 	 */
 	public static NotificationBuilder releaseMetadataStale(Instant cacheUpdate) {
 
@@ -166,6 +169,7 @@ public class Notifications {
 		notification.configureDoNotAskOption("notification.cache.stale.releases",
 				MessageBundle.message("notification.do-not-show-again"));
 		notification.setSuggestionType(true);
+		notification.setAddExtraAction(true);
 		notification.setIcon(DependencyAssistantIcons.ICON);
 
 		return new Builder(notification);

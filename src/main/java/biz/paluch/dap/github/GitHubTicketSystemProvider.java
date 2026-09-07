@@ -65,7 +65,7 @@ public class GitHubTicketSystemProvider implements TicketSystemProvider {
 
 		GithubApiRequestExecutor executor = result.getRequiredExecutor();
 		GitHubTicketRepository repository = new GitHubTicketRepository(mapping.getRepository(), executor,
-				GitHubTicketCache.getInstance(project));
+				GitHubTicketCache.getInstance(project), project);
 		return new GitHubTicketSystem(repository);
 	}
 

@@ -18,6 +18,7 @@ package biz.paluch.dap.util;
 
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.regex.Pattern;
 
 import com.intellij.openapi.util.text.StringUtil;
 import org.jetbrains.annotations.Contract;
@@ -32,6 +33,7 @@ import org.springframework.util.Assert;
  */
 public abstract class StringUtils {
 
+	private static final Pattern BLANK_LINES = Pattern.compile("(?:\\r?\\n[ \\t]*){3,}");
 
 	/**
 	 * Return whether the value is absent, empty, or whitespace-only.
@@ -84,6 +86,14 @@ public abstract class StringUtils {
 	 */
 	public static String unquote(String str) {
 		return StringUtil.unquoteString(str);
+	}
+
+	/**
+	 * Collapse runs of blank lines into a single blank line and strip surrounding
+	 * whitespace.
+	 */
+	public static String collapseBlankLines(String text) {
+		return BLANK_LINES.matcher(text).replaceAll("\n\n").strip().trim();
 	}
 
 	/**

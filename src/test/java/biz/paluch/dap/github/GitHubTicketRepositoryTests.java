@@ -25,6 +25,7 @@ import java.util.List;
 
 import biz.paluch.dap.artifact.GitRepositoryMetadata;
 import biz.paluch.dap.extension.IdeaProjectTests;
+import biz.paluch.dap.extension.TestFixture;
 import biz.paluch.dap.plan.InMemoryTicketRepository.InMemoryLabel;
 import biz.paluch.dap.ticket.Label;
 import biz.paluch.dap.ticket.Ticket;
@@ -34,6 +35,7 @@ import com.github.tomakehurst.wiremock.WireMockServer;
 import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.progress.EmptyProgressIndicator;
 import com.intellij.openapi.progress.ProgressIndicator;
+import com.intellij.openapi.project.Project;
 import org.jetbrains.plugins.github.api.GithubApiRequestExecutor;
 import org.jetbrains.plugins.github.api.GithubServerPath;
 import org.jspecify.annotations.Nullable;
@@ -58,6 +60,9 @@ class GitHubTicketRepositoryTests {
 
 	static final EmptyProgressIndicator EMPTY_INDICATOR = new EmptyProgressIndicator(ModalityState.NON_MODAL);
 
+	@TestFixture
+	Project project;
+
 	WireMockServer server;
 
 	GitHubTicketCache cache = new GitHubTicketCache();
@@ -72,7 +77,7 @@ class GitHubTicketRepositoryTests {
 
 		GithubServerPath serverPath = new GithubServerPath(true, "localhost", server.port(), null);
 		GithubApiRequestExecutor executor = GithubApiRequestExecutor.Factory.getInstance().create();
-		repository = new GitHubTicketRepository(serverPath, COORDINATES, executor, cache);
+		repository = new GitHubTicketRepository(serverPath, COORDINATES, executor, cache, project);
 	}
 
 	@AfterEach

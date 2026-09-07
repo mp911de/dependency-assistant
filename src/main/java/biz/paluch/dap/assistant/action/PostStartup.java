@@ -31,6 +31,7 @@ import biz.paluch.dap.assistant.check.VulnerabilityScanner;
 import biz.paluch.dap.metadata.ProjectMetadataIndexer;
 import biz.paluch.dap.metadata.RepositoryTagScanner;
 import biz.paluch.dap.notify.NotificationActions;
+import biz.paluch.dap.notify.NotificationBuilder;
 import biz.paluch.dap.notify.Notifications;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
@@ -104,8 +105,8 @@ public class PostStartup implements ProjectActivity {
 		steps.nextStep();
 
 		if (scanner.isPresent()) {
-			if (!PowerSaveMode.isEnabled()) {
-				scanVulnerabilities(scanner, indicator, project, service);
+			if (!PowerSaveMode.isEnabled() && service.getCache().hasReleases()) {
+				scanVulnerabilities(scanner, indicator);
 			}
 			steps.nextStep();
 		}
@@ -134,20 +135,24 @@ public class PostStartup implements ProjectActivity {
 		Cache cache = service.getCache();
 
 		if (!cache.hasReleases() && cache.shouldNag()) {
-			Notifications.releaseMetadataUnavailable()
-					.action(NotificationActions.refreshReleaseMetadata(() -> refreshReleaseMetadata(project)))
-					.action(NotificationActions.notNow(cache::doNotNag))
-					.notify(project);
+			withReminderActions(Notifications.releaseMetadataUnavailable(), project, cache).notify(project);
 			return;
 		}
 
 		Instant lastUpdate = cache.getLastUpdate();
 		if (lastUpdate != null && cache.shouldNag()) {
-			Notifications.releaseMetadataStale(lastUpdate)
-					.action(NotificationActions.refreshReleaseMetadata(() -> refreshReleaseMetadata(project)))
-					.action(NotificationActions.notNow(cache::doNotNag))
-					.notify(project);
+			withReminderActions(Notifications.releaseMetadataStale(lastUpdate), project, cache).notify(project);
 		}
+	}
+
+	private static NotificationBuilder withReminderActions(NotificationBuilder builder, Project project,
+			Cache cache) {
+
+		return builder
+				.action(NotificationActions.refreshReleaseMetadata(() -> refreshReleaseMetadata(project)))
+				.action(NotificationActions.notNow(() -> cache.doNotNag(Cache.PLEASE_BE_SILENT_FOR)))
+				.action(NotificationActions.notThisWeek(() -> cache.doNotNag(Cache.PLEASE_BE_SILENT_LONGER)))
+				.action(NotificationActions.stopNagging(cache::stopNagging));
 	}
 
 	private static void refreshReleaseMetadata(Project project) {
@@ -167,12 +172,7 @@ public class PostStartup implements ProjectActivity {
 		}.queue();
 	}
 
-	private void scanVulnerabilities(VulnerabilityScanner scanner, ProgressIndicator indicator, Project project,
-			StateService service) {
-
-		if (!service.getCache().hasReleases()) {
-			return;
-		}
+	private void scanVulnerabilities(VulnerabilityScanner scanner, ProgressIndicator indicator) {
 
 		indicator.setText(MessageBundle.message("post-startup.checker-startup.loading"));
 		scanner.scanUsedVersions(indicator);

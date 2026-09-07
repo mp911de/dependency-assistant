@@ -16,54 +16,50 @@
 
 package biz.paluch.dap.notify;
 
-import java.io.IOException;
 import java.util.Properties;
 
 import biz.paluch.dap.assistant.AppliedUpdate;
 import biz.paluch.dap.assistant.AppliedUpdates;
 import biz.paluch.dap.assistant.AssistantTemplateGroup;
 import biz.paluch.dap.util.MessageBundle;
-import com.intellij.ide.fileTemplates.FileTemplate;
-import com.intellij.ide.fileTemplates.FileTemplateManager;
+import biz.paluch.dap.util.StringUtils;
+import biz.paluch.dap.util.TextTemplates;
 import com.intellij.openapi.project.Project;
 
 /**
  * Renders user-editable commit text from the project's File and Code Templates
- * scheme.
+ * scheme. Applied updates carry no ticket, so {@code TICKET} and {@code CLOSES}
+ * render empty.
  *
  * @author Mark Paluch
  */
 class NotificationTextTemplates {
 
-	private final FileTemplateManager manager;
+	private final TextTemplates templates;
 
 	NotificationTextTemplates(Project project) {
-		this.manager = FileTemplateManager.getInstance(project);
+		this.templates = TextTemplates.getInstance(project);
 	}
 
 	public String getCommitMessage(AppliedUpdates updates) {
 
 		if (updates.size() == 1) {
-			return render(AssistantTemplateGroup.COMMIT_TEMPLATE, "plan.template.commit", updates.first());
+			return getCommitMessage(updates.first());
 		}
 
 		return "%s%n%n%s".formatted(MessageBundle.message("notification.commit.title.many"), updates);
 	}
 
-	private String render(String templateName, String messageKey, AppliedUpdate item) {
+	private String getCommitMessage(AppliedUpdate item) {
 
 		Properties properties = new Properties();
 		properties.setProperty("DEPENDENCY", item.displayName());
 		properties.setProperty("FROM_VERSION", item.getFromVersion().toString());
 		properties.setProperty("TO_VERSION", item.getTargetVersion().toString());
+		properties.setProperty("TICKET", "");
+		properties.setProperty("CLOSES", "");
 
-		FileTemplate template = manager.getJ2eeTemplate(templateName);
-		try {
-			return template.getText(properties).stripTrailing();
-		} catch (IOException e) {
-			throw new IllegalStateException(MessageBundle.message("template.render.error",
-					MessageBundle.message(messageKey)), e);
-		}
+		return StringUtils.collapseBlankLines(templates.render(AssistantTemplateGroup.COMMIT_TEMPLATE, properties));
 	}
 
 }

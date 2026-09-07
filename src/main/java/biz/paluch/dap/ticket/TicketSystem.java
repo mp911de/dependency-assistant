@@ -24,13 +24,20 @@ package biz.paluch.dap.ticket;
  * ticket fetch. Rendering must not perform network access.
  *
  * @author Mark Paluch
+ * @see Ticket
  * @see TicketSystemProvider
  * @see TicketRepository
  */
 public interface TicketSystem {
 
+	/**
+	 * The display name of the ticket system.
+	 */
 	String getDisplayName();
 
+	/**
+	 * Return the repository that contains the tickets.
+	 */
 	TicketRepository getRepository();
 
 	/**
