@@ -48,13 +48,13 @@ public class ApplyAllAndCommitAction extends ApplyAllAction {
 	private static final Logger LOG = Logger.getInstance(ApplyAllAndCommitAction.class);
 
 	@Override
-	public void update(AnActionEvent e, @Nullable UpgradePlanService service) {
+	protected boolean isVisible(AnActionEvent e, UpgradePlanService service) {
+		return service.getVcs().isPresent();
+	}
 
-		super.update(e, service);
-
-		if (service == null || !service.getVcs().canCommit()) {
-			e.getPresentation().setEnabledAndVisible(false);
-		}
+	@Override
+	protected boolean isEnabled(AnActionEvent e, UpgradePlanService service) {
+		return super.isEnabled(e, service) && service.getVcs().canCommit();
 	}
 
 	@Override

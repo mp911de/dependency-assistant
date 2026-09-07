@@ -56,10 +56,13 @@ class RefreshMilestonesAction extends UpgradePlanAction {
 	}
 
 	@Override
-	public void update(AnActionEvent e, @Nullable UpgradePlanService service) {
-		boolean visible = this.service.hasTicketSystem();
-		e.getPresentation().setVisible(visible);
-		e.getPresentation().setEnabled(visible && this.service.isRefreshingListsEnabled());
+	protected boolean isVisible(AnActionEvent e, UpgradePlanService service) {
+		return this.service.hasTicketSystem();
+	}
+
+	@Override
+	protected boolean isEnabled(AnActionEvent e, UpgradePlanService service) {
+		return service.isRefreshingListsEnabled();
 	}
 
 	@Override

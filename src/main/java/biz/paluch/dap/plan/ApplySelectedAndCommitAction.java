@@ -17,7 +17,6 @@
 package biz.paluch.dap.plan;
 
 import com.intellij.openapi.actionSystem.AnActionEvent;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Apply and commit selected items through {@link ApplyAllAndCommitAction}. An
@@ -28,13 +27,8 @@ import org.jspecify.annotations.Nullable;
 public class ApplySelectedAndCommitAction extends ApplyAllAndCommitAction {
 
 	@Override
-	public void update(AnActionEvent e, @Nullable UpgradePlanService service) {
-
-		super.update(e, service);
-
-		if (PlanSelection.from(e).isEmpty()) {
-			e.getPresentation().setEnabled(false);
-		}
+	protected boolean isEnabled(AnActionEvent e, UpgradePlanService service) {
+		return !PlanSelection.from(e).isEmpty();
 	}
 
 	@Override

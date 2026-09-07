@@ -43,9 +43,7 @@ public class CreateTicketsAction extends UpgradePlanAction {
 
 		boolean available = service != null && service.hasTicketSystem();
 		Presentation presentation = e.getPresentation();
-		presentation.setVisible(available);
 		if (!available) {
-			presentation.setEnabled(false);
 			return;
 		}
 
@@ -63,9 +61,23 @@ public class CreateTicketsAction extends UpgradePlanAction {
 					withoutTickets);
 		}
 		presentation.setDescription(message);
-		if (presentation.isEnabled()) {
-			presentation.setEnabled(withoutTickets > 0);
+	}
+
+	@Override
+	protected boolean isVisible(AnActionEvent e, UpgradePlanService service) {
+		return service.hasTicketSystem();
+	}
+
+	@Override
+	protected boolean isEnabled(AnActionEvent e, UpgradePlanService service) {
+		List<UpgradePlanItem> targetItems = getTargetItems(e, service);
+		int withoutTickets = 0;
+		for (UpgradePlanItem item : targetItems) {
+			if (!item.hasTicket()) {
+				withoutTickets++;
+			}
 		}
+		return super.isEnabled(e, service) && withoutTickets > 0;
 	}
 
 	@Override

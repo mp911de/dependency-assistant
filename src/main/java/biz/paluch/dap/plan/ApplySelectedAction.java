@@ -17,7 +17,6 @@
 package biz.paluch.dap.plan;
 
 import com.intellij.openapi.actionSystem.AnActionEvent;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Apply selected items through {@link ApplyAllAction}. An empty selection does
@@ -28,13 +27,8 @@ import org.jspecify.annotations.Nullable;
 public class ApplySelectedAction extends ApplyAllAction {
 
 	@Override
-	public void update(AnActionEvent e, @Nullable UpgradePlanService service) {
-
-		super.update(e, service);
-
-		if (PlanSelection.from(e).isEmpty()) {
-			e.getPresentation().setEnabled(false);
-		}
+	protected boolean isEnabled(AnActionEvent e, UpgradePlanService service) {
+		return super.isEnabled(e, service) && !PlanSelection.from(e).isEmpty();
 	}
 
 	@Override

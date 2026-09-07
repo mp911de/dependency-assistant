@@ -18,7 +18,6 @@ package biz.paluch.dap.plan;
 
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.project.Project;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Refresh the Upgrade Plan by rematerializing its persisted facts against the
@@ -29,12 +28,9 @@ import org.jspecify.annotations.Nullable;
  */
 public class RefreshPlanAction extends UpgradePlanAction {
 
-	/**
-	 * Enabled without items: a refresh is useful on an empty plan view as well.
-	 */
 	@Override
-	public void update(AnActionEvent e, @Nullable UpgradePlanService service) {
-		e.getPresentation().setEnabled(service != null && !service.isBusy());
+	protected boolean isEnabled(AnActionEvent e, UpgradePlanService service) {
+		return !service.isBusy();
 	}
 
 	@Override

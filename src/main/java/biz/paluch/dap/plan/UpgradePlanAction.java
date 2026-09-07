@@ -18,6 +18,7 @@ package biz.paluch.dap.plan;
 
 import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnActionEvent;
+import com.intellij.openapi.actionSystem.Presentation;
 import com.intellij.openapi.project.DumbAwareAction;
 import com.intellij.openapi.project.Project;
 import org.jspecify.annotations.Nullable;
@@ -43,7 +44,21 @@ abstract class UpgradePlanAction extends DumbAwareAction {
 	 * @param service the plan service, or {@literal null} without a project.
 	 */
 	public void update(AnActionEvent e, @Nullable UpgradePlanService service) {
-		e.getPresentation().setEnabled(service != null && service.hasItems() && !service.isBusy());
+		Presentation presentation = e.getPresentation();
+		if (service == null) {
+			presentation.setEnabled(false);
+			return;
+		}
+		presentation.setVisible(isVisible(e, service));
+		presentation.setEnabled(isEnabled(e, service));
+	}
+
+	protected boolean isVisible(AnActionEvent e, UpgradePlanService service) {
+		return true;
+	}
+
+	protected boolean isEnabled(AnActionEvent e, UpgradePlanService service) {
+		return service.hasItems() && !service.isBusy();
 	}
 
 	@Override
