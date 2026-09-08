@@ -16,10 +16,16 @@
 
 package biz.paluch.dap.notify;
 
+import biz.paluch.dap.util.StringUtils;
 import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationGroup;
 import com.intellij.notification.NotificationGroupManager;
 import com.intellij.notification.NotificationType;
+import com.intellij.openapi.util.NlsContexts;
+import com.intellij.openapi.util.text.HtmlBuilder;
+import com.intellij.openapi.util.text.HtmlChunk;
+import org.jetbrains.annotations.Nls;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Plugin notification groups configured in {@code plugin.xml}.
@@ -74,7 +80,16 @@ public enum NotificationChannel {
 	 * @param content the notification content, which may contain HTML.
 	 */
 	public Notification create(String title, String content, NotificationType type) {
+
+		if (StringUtils.hasText(title) && StringUtils.isEmpty(content)) {
+			return getGroup().createNotification("", emulateTitle(title, ""), type);
+		}
 		return getGroup().createNotification(title, content, type);
+	}
+
+	private static @NlsContexts.NotificationContent @NotNull String emulateTitle(@NotNull @Nls String title,
+			@NotNull @Nls String content) {
+		return (new HtmlBuilder()).append(HtmlChunk.raw(title).bold()).br().appendRaw(content).toString();
 	}
 
 	NotificationGroup getGroup() {
