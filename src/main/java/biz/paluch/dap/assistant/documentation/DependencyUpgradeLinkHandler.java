@@ -24,7 +24,6 @@ import biz.paluch.dap.util.MessageBundle;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.command.WriteCommandAction;
-import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.platform.backend.documentation.DocumentationLinkHandler;
 import com.intellij.platform.backend.documentation.DocumentationTarget;
@@ -119,8 +118,9 @@ public class DependencyUpgradeLinkHandler implements DocumentationLinkHandler {
 			PsiFile declarationFile = ReadAction.compute(upgradeTarget::getDeclarationFile);
 			if (declarationFile != null) {
 				ApplicationManager.getApplication()
-						.invokeLater(() -> ProgressManager.getInstance().run(new DependencyCheckTask(project,
-								new UpgradeRequest(List.of(), declarationFile, upgradeTarget.getPackageIdentity()))));
+						.invokeLater(() -> new DependencyCheckTask(project,
+								new UpgradeRequest(List.of(), declarationFile, upgradeTarget.getPackageIdentity()))
+										.queue());
 			}
 
 			return ReadAction.compute(() -> LinkResolveResult.Async.resolvedTarget(target));

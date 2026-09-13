@@ -44,7 +44,6 @@ import com.intellij.codeInsight.daemon.LineMarkerInfo;
 import com.intellij.codeInsight.daemon.LineMarkerProviderDescriptor;
 import com.intellij.openapi.editor.markup.GutterIconRenderer;
 import com.intellij.openapi.fileEditor.OpenFileDescriptor;
-import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.util.IconLoader;
 import com.intellij.openapi.util.text.HtmlChunk;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -212,8 +211,8 @@ public class DependencyLineMarkerProvider extends LineMarkerProviderDescriptor {
 		public void navigate(MouseEvent mouseEvent, PsiElement psiElement) {
 
 			PsiFile file = psiElement.getContainingFile();
-			ProgressManager.getInstance().run(new DependencyCheckTask(file.getProject(),
-					new UpgradeRequest(List.of(), file, pkg)));
+			new DependencyCheckTask(file.getProject(),
+					new UpgradeRequest(List.of(), file, pkg)).queue();
 		}
 
 	}

@@ -29,6 +29,7 @@ import com.intellij.openapi.project.Project;
 public interface NotificationBuilder {
 
 	/**
+	 * Associate a {@link NotificationAction} with the notification.
 	 * @return this builder.
 	 */
 	NotificationBuilder action(NotificationAction action);
@@ -39,6 +40,10 @@ public interface NotificationBuilder {
 	 */
 	NotificationBuilder expireWhen(NotificationExpiry expiry);
 
+	/**
+	 * Trigger the notification.
+	 * @param project associated project.
+	 */
 	void notify(Project project);
 
 }

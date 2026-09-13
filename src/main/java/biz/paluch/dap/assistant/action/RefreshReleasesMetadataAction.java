@@ -23,7 +23,6 @@ import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.Presentation;
-import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.project.Project;
 
 /**
@@ -46,7 +45,7 @@ public class RefreshReleasesMetadataAction extends AnAction {
 			return;
 		}
 
-		ProgressManager.getInstance().run(new RefreshReleaseMetadata(project));
+		new RefreshReleaseMetadata(project).queue();
 	}
 
 	@Override

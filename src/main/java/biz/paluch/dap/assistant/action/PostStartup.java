@@ -41,7 +41,6 @@ import biz.paluch.dap.util.StepsProgressIndicator;
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
 import com.intellij.ide.PowerSaveMode;
 import com.intellij.openapi.progress.ProgressIndicator;
-import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.DumbService;
 import com.intellij.openapi.project.Project;
@@ -149,14 +148,10 @@ public class PostStartup implements ProjectActivity {
 			Cache cache) {
 
 		return builder
-				.action(NotificationActions.refreshReleaseMetadata(() -> refreshReleaseMetadata(project)))
+				.action(NotificationActions.refreshReleaseMetadata(() -> new RefreshReleaseMetadata(project).queue()))
 				.action(NotificationActions.notNow(() -> cache.doNotNag(Cache.PLEASE_BE_SILENT_FOR)))
 				.action(NotificationActions.notThisWeek(() -> cache.doNotNag(Cache.PLEASE_BE_SILENT_LONGER)))
 				.action(NotificationActions.stopNagging(cache::stopNagging));
-	}
-
-	private static void refreshReleaseMetadata(Project project) {
-		ProgressManager.getInstance().run(new RefreshReleaseMetadata(project));
 	}
 
 	private void scanRepositoryTags(Project project, StateService service) {
