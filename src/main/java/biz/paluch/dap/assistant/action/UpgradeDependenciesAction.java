@@ -22,18 +22,21 @@ import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.DependencyAssistantIcons;
+import biz.paluch.dap.artifact.PackageIdentity;
+import biz.paluch.dap.assistant.ArtifactReferenceContext;
 import biz.paluch.dap.util.FileUtils;
 import biz.paluch.dap.util.MessageBundle;
+import biz.paluch.dap.util.PsiElements;
 import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.actionSystem.Presentation;
-import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Iconable;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 
 /**
@@ -90,7 +93,19 @@ public class UpgradeDependenciesAction extends AnAction implements DumbAware, Ic
 		selection = selection.stream().filter(FileUtils::isFile).toList();
 		PsiFile editorFile = event.getData(CommonDataKeys.PSI_FILE);
 
-		ProgressManager.getInstance().run(new DependencyCheckTask(project, new UpgradeRequest(selection, editorFile)));
+
+		PsiElement element = event.getData(CommonDataKeys.PSI_ELEMENT);
+		PackageIdentity focus = null;
+		if (element != null && editorFile != null) {
+			element = PsiElements.unleaf(element);
+			ArtifactReferenceContext referenceContext = ArtifactReferenceContext.from(element,
+					editorFile);
+			if (referenceContext.isPresent()) {
+				focus = referenceContext.getPackageIdentity();
+			}
+		}
+
+		new DependencyCheckTask(project, new UpgradeRequest(selection, editorFile, focus)).queue();
 	}
 
 }

@@ -22,14 +22,17 @@ import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.DependencyAssistantIcons;
+import biz.paluch.dap.artifact.PackageIdentity;
+import biz.paluch.dap.assistant.ArtifactReferenceContext;
 import biz.paluch.dap.util.MessageBundle;
+import biz.paluch.dap.util.PsiElements;
 import com.intellij.codeInsight.intention.HighPriorityAction;
 import com.intellij.codeInsight.intention.impl.BaseIntentionAction;
 import com.intellij.codeInsight.intention.preview.IntentionPreviewInfo;
 import com.intellij.openapi.editor.Editor;
-import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Iconable;
+import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.util.IncorrectOperationException;
 
@@ -70,7 +73,21 @@ public class UpgradeDependenciesIntention extends BaseIntentionAction
 	public void invoke(Project project, Editor editor, PsiFile psiFile) throws IncorrectOperationException {
 
 		if (DependencyAssistantDispatcher.findFirstContext(project, psiFile).isAvailable()) {
-			ProgressManager.getInstance().run(new DependencyCheckTask(project, new UpgradeRequest(List.of(), psiFile)));
+
+			int offset = editor.getCaretModel().getOffset();
+			PsiElement element = psiFile.findElementAt(offset);
+
+			PackageIdentity focus = null;
+			if (element != null) {
+				element = PsiElements.unleaf(element);
+				ArtifactReferenceContext referenceContext = ArtifactReferenceContext.from(element,
+						psiFile);
+				if (referenceContext.isPresent()) {
+					focus = referenceContext.getPackageIdentity();
+				}
+			}
+
+			new DependencyCheckTask(project, new UpgradeRequest(List.of(), psiFile, focus)).queue();
 		}
 	}
 
