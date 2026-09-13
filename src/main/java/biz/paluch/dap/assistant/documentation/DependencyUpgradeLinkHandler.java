@@ -16,8 +16,6 @@
 
 package biz.paluch.dap.assistant.documentation;
 
-import java.util.List;
-
 import biz.paluch.dap.assistant.action.DependencyCheckTask;
 import biz.paluch.dap.assistant.action.UpgradeRequest;
 import biz.paluch.dap.util.MessageBundle;
@@ -117,10 +115,9 @@ public class DependencyUpgradeLinkHandler implements DocumentationLinkHandler {
 
 			PsiFile declarationFile = ReadAction.compute(upgradeTarget::getDeclarationFile);
 			if (declarationFile != null) {
-				ApplicationManager.getApplication()
-						.invokeLater(() -> new DependencyCheckTask(project,
-								new UpgradeRequest(List.of(), declarationFile, upgradeTarget.getPackageIdentity()))
-										.queue());
+				new DependencyCheckTask(project,
+						new UpgradeRequest(declarationFile, upgradeTarget.getPackageIdentity()))
+								.queue();
 			}
 
 			return ReadAction.compute(() -> LinkResolveResult.Async.resolvedTarget(target));

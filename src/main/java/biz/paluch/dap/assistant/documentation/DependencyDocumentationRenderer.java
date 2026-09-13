@@ -16,7 +16,6 @@
 
 package biz.paluch.dap.assistant.documentation;
 
-import java.net.URI;
 import java.text.NumberFormat;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -59,7 +58,6 @@ import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ReleaseDateFormatter;
 import biz.paluch.dap.util.HttpClientUtil;
 import biz.paluch.dap.util.MessageBundle;
-import com.intellij.icons.AllIcons;
 import com.intellij.lang.documentation.DocumentationMarkup;
 import com.intellij.openapi.util.text.HtmlBuilder;
 import com.intellij.openapi.util.text.HtmlChunk;
@@ -528,11 +526,7 @@ class DependencyDocumentationRenderer {
 			Vulnerabilities vulnerabilities = stateService.getVulnerabilities(artifactId, release.getVersion());
 			VersionStatus status = VersionStatus.of(evaluator, currentVersion, release.getVersion(),
 					vulnerabilities);
-			URI releaseNotesUrl = withIcons
-					? projectMetadata.findReleaseNotesUrl(release.getVersion())
-					: null;
-			rows.append(new DocumentedRelease(status, presentation, release, linkable, withIcons,
-					releaseNotesUrl).render(formatter));
+			rows.append(new DocumentedRelease(status, presentation, release, linkable, withIcons).render(formatter));
 		}
 	}
 
@@ -710,7 +704,7 @@ class DependencyDocumentationRenderer {
 		private final @Nullable HtmlChunk releaseNotesCell;
 
 		DocumentedRelease(VersionStatus status, DependencyPresentation presentation,
-				Release release, boolean linkable, boolean withIcons, @Nullable URI releaseNotesUrl) {
+				Release release, boolean linkable, boolean withIcons) {
 
 			this.release = release;
 			this.version = release.getVersion();
@@ -731,19 +725,11 @@ class DependencyDocumentationRenderer {
 						: htmlIcon;
 				this.firstColumnIcon = HtmlChunk.tag("td").child(content);
 				this.releaseNotesCell = HtmlChunk.tag("td")
-						.child(releaseNotesUrl != null ? releaseNotesLink(releaseNotesUrl) : HtmlChunk.empty());
+						.child(HtmlChunk.empty());
 			} else {
 				this.firstColumnIcon = null;
 				this.releaseNotesCell = null;
 			}
-		}
-
-		private HtmlChunk releaseNotesLink(URI releaseNotesUrl) {
-			return HtmlChunk.tag("a")
-					.attr("href", releaseNotesUrl.toString())
-					.attr("title",
-							MessageBundle.message("documentation.release-notes", version.toDocumentationString()))
-					.child(HtmlChunk.icon("AllIcons.Toolwindows.Documentation", AllIcons.Toolwindows.Documentation));
 		}
 
 		HtmlChunk render(ReleaseDateFormatter formatter) {

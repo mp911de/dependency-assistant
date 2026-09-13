@@ -409,42 +409,6 @@ class DependencyDocumentationRendererTests {
 	}
 
 	@Test
-	void shouldRenderReleaseNotesLinkPerReleaseRow() {
-
-		String html = renderer("7.4.1.RELEASE",
-				releaseNotes("scm:git:https://gitlab.com/redis/lettuce.git",
-						"7.4.1.RELEASE", "7.5.0.RELEASE", "7.5.1.RELEASE"))
-								.render(Releases.LETTUCE_CORE.toArtifactId(), true);
-
-		assertThat(html)
-				.contains("href=\"https://gitlab.com/redis/lettuce/-/releases/7.5.1.RELEASE\"")
-				.contains("title=\"Release notes for 7.5.1.RELEASE\"")
-				.contains("AllIcons.Toolwindows.Documentation");
-	}
-
-	@Test
-	void shouldOmitReleaseNotesIconWithoutResolvedUrl() {
-
-		String html = renderer("7.4.1.RELEASE", releaseNotes("scm:git:https://gitlab.com/redis/lettuce.git"))
-				.render(Releases.LETTUCE_CORE.toArtifactId(), true);
-
-		assertThat(html)
-				.doesNotContain("AllIcons.Toolwindows.Documentation")
-				.doesNotContain("Release notes for");
-	}
-
-	@Test
-	void shouldOmitReleaseNotesColumnWithoutIcons() {
-
-		String html = renderer("7.4.1.RELEASE",
-				releaseNotes("scm:git:https://gitlab.com/redis/lettuce.git",
-						"7.4.1.RELEASE", "7.5.0.RELEASE", "7.5.1.RELEASE"))
-								.render(Releases.LETTUCE_CORE.toArtifactId(), false);
-
-		assertThat(html).doesNotContain("Release notes for");
-	}
-
-	@Test
 	void shouldRenderRuleViolationForGoverningRule() {
 
 		String html = renderer("7.4.1.RELEASE", rejectingRule())
