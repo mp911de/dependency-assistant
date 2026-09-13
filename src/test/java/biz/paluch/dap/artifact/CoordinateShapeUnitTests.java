@@ -84,6 +84,10 @@ class CoordinateShapeUnitTests {
 				Arguments.of("prefixes before common separator suffix",
 						List.of("bcpg-jdk18on", "bcpkix-jdk18on", "bcprov-jdk18on"),
 						List.of("bcpg", "bcpkix", "bcprov")),
+				Arguments.of("strip both separator prefix and suffix",
+						List.of("maven-surefire-plugin", "maven-failsafe-plugin"), List.of("failsafe", "surefire")),
+				Arguments.of("keep suffix when stripping would empty a remainder",
+						List.of("spring-plugin", "spring-boot-plugin"), List.of("boot-plugin", "plugin")),
 				Arguments.of("no usable shape yields no parts", List.of("httpcore5", "httpcore5reactive"),
 						List.of()));
 	}

@@ -131,24 +131,37 @@ public class CoordinateShape {
 		List<String> suffixes = artifactIds.stream()
 				.map(id -> id.substring(separatorPrefix.length()))
 				.filter(value -> !value.isEmpty())
-				.sorted()
 				.toList();
-		return suffixes.size() == artifactIds.size() ? suffixes : List.of();
+		if (suffixes.size() != artifactIds.size()) {
+			return List.of();
+		}
+
+		List<String> stripped = stripSeparatorSuffix(suffixes);
+		return stripped.isEmpty() ? suffixes.stream().sorted().toList() : stripped;
 	}
 
 	private List<String> separatorSuffixLabelParts() {
+		return stripSeparatorSuffix(artifactIds);
+	}
 
-		String suffix = commonSeparatorSuffix(artifactIds);
+	/**
+	 * Remove a common suffix at a separator boundary, e.g. {@code -plugin}.
+	 * @return sorted remainders, or an empty list if no such suffix exists or a
+	 * remainder would be empty.
+	 */
+	private static List<String> stripSeparatorSuffix(List<String> values) {
+
+		String suffix = commonSeparatorSuffix(values);
 		if (suffix == null) {
 			return List.of();
 		}
 
-		List<String> prefixes = artifactIds.stream()
+		List<String> prefixes = values.stream()
 				.map(id -> id.substring(0, id.length() - suffix.length()))
 				.filter(value -> !value.isEmpty())
 				.sorted()
 				.toList();
-		return prefixes.size() == artifactIds.size() ? prefixes : List.of();
+		return prefixes.size() == values.size() ? prefixes : List.of();
 	}
 
 	private static String promoteAbbreviation(String prefix, String groupId) {
@@ -225,11 +238,12 @@ public class CoordinateShape {
 	private static @Nullable String commonSeparatorSuffix(List<String> artifactIds) {
 
 		String suffix = StringUtils.longestCommonSuffix(artifactIds);
-		if (suffix.isEmpty() || !isSeparator(suffix.charAt(0))) {
+		int separator = firstSeparator(suffix);
+		if (separator < 0) {
 			return null;
 		}
 
-		return suffix;
+		return suffix.substring(separator);
 	}
 
 	private static boolean isBaseOfAll(String base, List<String> artifactIds) {
@@ -256,6 +270,16 @@ public class CoordinateShape {
 
 	private static int lastSeparator(String value) {
 		return Math.max(value.lastIndexOf('-'), value.lastIndexOf('.'));
+	}
+
+	private static int firstSeparator(String value) {
+
+		for (int i = 0; i < value.length(); i++) {
+			if (isSeparator(value.charAt(i))) {
+				return i;
+			}
+		}
+		return -1;
 	}
 
 }
