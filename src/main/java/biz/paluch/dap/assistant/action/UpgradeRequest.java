@@ -40,6 +40,10 @@ import org.springframework.util.Assert;
 public record UpgradeRequest(List<VirtualFile> selection, @Nullable PsiFile editorFile,
 		@Nullable PackageIdentity focusArtifact) {
 
+	public UpgradeRequest(PsiFile editorFile, @Nullable PackageIdentity focusArtifact) {
+		this(List.of(), editorFile, focusArtifact);
+	}
+
 	public UpgradeRequest(List<VirtualFile> selection, @Nullable PsiFile editorFile) {
 		this(selection, editorFile, null);
 	}

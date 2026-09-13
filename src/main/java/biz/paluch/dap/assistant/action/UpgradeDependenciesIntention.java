@@ -16,8 +16,6 @@
 
 package biz.paluch.dap.assistant.action;
 
-import java.util.List;
-
 import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantDispatcher;
@@ -87,7 +85,7 @@ public class UpgradeDependenciesIntention extends BaseIntentionAction
 				}
 			}
 
-			new DependencyCheckTask(project, new UpgradeRequest(List.of(), psiFile, focus)).queue();
+			new DependencyCheckTask(project, new UpgradeRequest(psiFile, focus)).queue();
 		}
 	}
 

@@ -17,7 +17,6 @@
 package biz.paluch.dap.assistant.editor;
 
 import java.awt.event.MouseEvent;
-import java.util.List;
 
 import javax.swing.Icon;
 
@@ -212,7 +211,7 @@ public class DependencyLineMarkerProvider extends LineMarkerProviderDescriptor {
 
 			PsiFile file = psiElement.getContainingFile();
 			new DependencyCheckTask(file.getProject(),
-					new UpgradeRequest(List.of(), file, pkg)).queue();
+					new UpgradeRequest(file, pkg)).queue();
 		}
 
 	}
