@@ -7,6 +7,23 @@ This document provides a curated changelog for each release.
 [[releasenotes]]
 == Release notes
 
+=== 0.5.0
+
+- GitHub-specific template for ticket close references in commit messages.
+- Upgrade Plan refinements: `Create All Tickets` no longer depends on the current selection, and Git versions are restored as expected when a plan is loaded.
+- Upgrade notifications now offer a commit action for applied updates.
+Notifications expire once their action has been triggered, after subsequent edits, or after a global undo, so they do not linger beyond their usefulness.
+- Release metadata reminders come with refined dismissal options, clearer notification groups, and consistent title formatting.
+- Gradle refinements: Kotlin plugin helpers such as `kotlin("jvm")` are resolved, Kotlin `val` property parsing has been improved, and nested properties are excluded.
+Version element detection in Gradle and TOML files is more precise as a result.
+- Project state no longer goes stale after build files are removed or renamed.
+Maven and Gradle project contexts are cached.
+- npm Git dependency updates and version expression handling have been improved.
+Registry response parsing has been reduced to what is actually needed, with a fallback for oversized responses.
+- Antora dependency highlighting, version handling, and updates have been fixed, along with refined playbook detection and analysis.
+- Upgrades applied from the documentation panel now use the correct version identifiers.
+- Cancellation is handled consistently across services, with virtual-thread task scopes for parallel background work.
+
 === 0.5.0-RC2
 
 - Plugin update notification. After updating the plugin, a notification summarizes the changes since the previously installed version. Change notes are taken from the plugin descriptor, no network lookup required.
