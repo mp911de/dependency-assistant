@@ -20,6 +20,7 @@ import java.util.List;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.assistant.AppliedUpdate;
 import biz.paluch.dap.assistant.AppliedUpdates;
 import biz.paluch.dap.support.DependencyUpdate;
 import com.intellij.notification.NotificationType;
@@ -40,7 +41,7 @@ class UpgradeNotificationUnitTests {
 		UpgradeNotification notification = UpgradeNotification.applied(new AppliedUpdates());
 
 		assertThat(notification.isEmpty()).isTrue();
-		assertThat(notification.getTitle()).isEqualTo("No build file changed.");
+		assertThat(notification.getTitle()).isEqualTo("No build file changed");
 		assertThat(notification.getContent()).isEmpty();
 		assertThat(notification.withFlagged().getType()).isEqualTo(NotificationType.INFORMATION);
 	}
@@ -55,7 +56,7 @@ class UpgradeNotificationUnitTests {
 		UpgradeNotification notification = UpgradeNotification.applied(updates);
 
 		assertThat(notification.isSingle()).isTrue();
-		assertThat(notification.getTitle()).isEqualTo("spring-core upgraded to 6.2.1");
+		assertThat(notification.getTitle()).isEqualTo("Upgraded to spring-core 6.2.1");
 		assertThat(notification.getContent()).isEmpty();
 		assertThat(notification.getType()).isEqualTo(NotificationType.INFORMATION);
 	}
@@ -67,9 +68,9 @@ class UpgradeNotificationUnitTests {
 		updates.record(List.of(), new DependencyUpdate(ArtifactId.of("org.springframework", "spring-core"),
 				ArtifactVersion.of("6.2.1"), ArtifactVersion.of("6.2.0"), List.of(), List.of()), "spring-core");
 
-		assertThat(UpgradeNotification.applied(updates).getTitle()).isEqualTo("spring-core downgraded to 6.2.0");
+		assertThat(UpgradeNotification.applied(updates).getTitle()).isEqualTo("Downgraded to spring-core 6.2.0");
 		assertThat(UpgradeNotification.committed(updates).getTitle())
-				.isEqualTo("spring-core downgraded to 6.2.0 and committed");
+				.isEqualTo("Committed downgrade to spring-core 6.2.0");
 	}
 
 	@Test
@@ -84,23 +85,22 @@ class UpgradeNotificationUnitTests {
 		UpgradeNotification notification = UpgradeNotification.applied(updates);
 
 		assertThat(notification.isSingle()).isFalse();
-		assertThat(notification.getTitle()).isEqualTo("2 dependencies upgraded");
+		assertThat(notification.getTitle()).isEqualTo("Upgraded 2 dependencies");
 		assertThat(notification.getContent()).isEqualTo("spring-core 6.2.1, spring-data-commons 3.4.1");
 		assertThat(UpgradeNotification.committed(updates).getTitle())
-				.isEqualTo("2 dependencies upgraded and committed");
+				.isEqualTo("Committed 2 dependency upgrades");
 	}
 
 	@Test
 	void singleFlaggedUpdateDescribesFlagAsSentenceAndWarns() {
 
 		AppliedUpdates updates = new AppliedUpdates();
-		updates.record(List.of(), new DependencyUpdate(ArtifactId.of("org.springframework", "spring-core"),
-				ArtifactVersion.of("6.2.0"), ArtifactVersion.of("7.0.0"), List.of(), List.of()), "spring-core");
+		updates.applied().add(violation("spring-core", "6.2.0", "7.0.0"));
 
 		UpgradeNotification notification = UpgradeNotification.applied(updates).withFlagged();
 
-		assertThat(notification.getTitle()).isEqualTo("spring-core upgraded to 7.0.0");
-		assertThat(notification.getContent()).isEqualTo("Upgrade crosses a major version.");
+		assertThat(notification.getTitle()).isEqualTo("Upgraded to spring-core 7.0.0");
+		assertThat(notification.getContent()).isEqualTo("Upgrade violates the dependency rule.");
 		assertThat(notification.getType()).isEqualTo(NotificationType.WARNING);
 	}
 
@@ -108,29 +108,34 @@ class UpgradeNotificationUnitTests {
 	void severalFlaggedUpdatesListAffectedEntriesUnderHeading() {
 
 		AppliedUpdates updates = new AppliedUpdates();
-		updates.record(List.of(), new DependencyUpdate(ArtifactId.of("org.springframework", "spring-core"),
-				ArtifactVersion.of("6.2.0"), ArtifactVersion.of("7.0.0"), List.of(), List.of()), "spring-core");
+		updates.applied().add(violation("spring-core", "6.2.0", "7.0.0"));
 		updates.record(List.of(), new DependencyUpdate(ArtifactId.of("org.springframework.data", "spring-data-commons"),
 				ArtifactVersion.of("3.4.0"), ArtifactVersion.of("3.4.1"), List.of(), List.of()), "spring-data-commons");
 
 		UpgradeNotification notification = UpgradeNotification.applied(updates).withFlagged();
 
 		assertThat(notification.getContent()).isEqualTo("<p>spring-core 7.0.0, spring-data-commons 3.4.1</p>"
-				+ "<p><b>1 upgrade crosses a major version:</b><ul><li>spring-core 7.0.0</li></ul></p>");
+				+ "<p><b>1 upgrade violates a dependency rule:</b><ul><li>spring-core 7.0.0</li></ul></p>");
 		assertThat(notification.getType()).isEqualTo(NotificationType.WARNING);
 	}
 
 	@Test
-	void unflaggedUpdatesStayInformationalWithFlagged() {
+	void majorCrossingWithoutRuleStaysInformational() {
 
 		AppliedUpdates updates = new AppliedUpdates();
 		updates.record(List.of(), new DependencyUpdate(ArtifactId.of("org.springframework", "spring-core"),
-				ArtifactVersion.of("6.2.0"), ArtifactVersion.of("6.2.1"), List.of(), List.of()), "spring-core");
+				ArtifactVersion.of("6.2.0"), ArtifactVersion.of("7.0.0"), List.of(), List.of()), "spring-core");
 
 		UpgradeNotification notification = UpgradeNotification.applied(updates).withFlagged();
 
 		assertThat(notification.getContent()).isEmpty();
 		assertThat(notification.getType()).isEqualTo(NotificationType.INFORMATION);
+	}
+
+	private static AppliedUpdate violation(String artifact, String from, String to) {
+		return new AppliedUpdate(new DependencyUpdate(ArtifactId.of("org.springframework", artifact),
+				ArtifactVersion.of(from), ArtifactVersion.of(to), List.of(), List.of()), artifact,
+				AppliedUpdate.Flag.COMPLIANCE);
 	}
 
 }

@@ -62,16 +62,14 @@ public class UpgradeNotification {
 	}
 
 	/**
-	 * Return wording with warnings for out-of-bounds updates and major version
-	 * crossings. The notification becomes a warning if any such entries exist.
+	 * Return wording with warnings for updates that violate their dependency rule.
+	 * The notification becomes a warning if any such entries exist.
 	 */
 	public UpgradeNotification withFlagged() {
 
 		List<HtmlChunk> extended = new ArrayList<>(details);
-		appendFlagged(extended, AppliedUpdate.Flag.COMPLIANCE, "notification.out-of-bounds",
-				"notification.out-of-bounds.single");
-		appendFlagged(extended, AppliedUpdate.Flag.MAJOR_CROSSING, "notification.major-crossing",
-				"notification.major-crossing.single");
+		appendFlagged(extended, AppliedUpdate.Flag.COMPLIANCE, "notification.rule-violation",
+				"notification.rule-violation.single");
 
 		NotificationType extendedType = extended.size() > details.size() ? NotificationType.WARNING : type;
 		return new UpgradeNotification(updates, wording, List.copyOf(extended), extendedType);
@@ -171,7 +169,7 @@ public class UpgradeNotification {
 
 		HtmlChunk.Element list = HtmlChunk.ul();
 		for (AppliedUpdate update : flagged) {
-			list = list.child(HtmlChunk.li().addText(update.getMessage("notification.out-of-bounds.entry")));
+			list = list.child(HtmlChunk.li().addText(update.getMessage("notification.rule-violation.entry")));
 		}
 
 		// headings carry trusted markup from the message bundle

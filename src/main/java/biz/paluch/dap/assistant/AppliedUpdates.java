@@ -43,7 +43,7 @@ public class AppliedUpdates implements Sequence<AppliedUpdate> {
 
 	private final Set<AppliedUpdate> applied = new TreeSet<>();
 
-	private final List<Reversible> outOfBounds = new ArrayList<>();
+	private final List<Reversible> violations = new ArrayList<>();
 
 	/**
 	 * Record an applied update and classify it against its governing rule.
@@ -55,7 +55,7 @@ public class AppliedUpdates implements Sequence<AppliedUpdate> {
 		AppliedUpdate summary = AppliedUpdate.from(update, rule, presentation);
 		applied.add(summary);
 		if (summary.isFlagged()) {
-			outOfBounds.add(new Reversible(file, update));
+			violations.add(new Reversible(file, update));
 		}
 	}
 
@@ -70,18 +70,11 @@ public class AppliedUpdates implements Sequence<AppliedUpdate> {
 	}
 
 	/**
-	 * Record an applied update without a governing rule.
-	 * <p>Only major version crossings are flagged.
-	 * @param files the files eligible for reverse application.
+	 * Record an applied update without a governing rule. Nothing is flagged.
+	 * @param files the files that were changed.
 	 */
 	public void record(Iterable<VirtualFile> files, DependencyUpdate update, String displayName) {
-		AppliedUpdate summary = AppliedUpdate.from(update, displayName);
-		applied.add(summary);
-		if (summary.isFlagged()) {
-			for (VirtualFile file : files) {
-				outOfBounds.add(new Reversible(file, update));
-			}
-		}
+		applied.add(AppliedUpdate.from(update, displayName));
 	}
 
 	/**
@@ -100,14 +93,14 @@ public class AppliedUpdates implements Sequence<AppliedUpdate> {
 	 * <p>Apply them to the files from {@link #getReverseFiles()}.
 	 */
 	public DependencyUpdates getReverse() {
-		return new DependencyUpdates(outOfBounds.stream().map(Reversible::reverse).toList());
+		return new DependencyUpdates(violations.stream().map(Reversible::reverse).toList());
 	}
 
 	/**
 	 * Return the files to which {@link #getReverse()} applies.
 	 */
 	public FileScope getReverseFiles() {
-		return FileScope.of(outOfBounds.stream().map(Reversible::file).toList());
+		return FileScope.of(violations.stream().map(Reversible::file).toList());
 	}
 
 	@Override

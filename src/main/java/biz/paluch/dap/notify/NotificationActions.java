@@ -99,7 +99,7 @@ public class NotificationActions {
 	}
 
 	public static NotificationAction revertFlagged(Runnable revert) {
-		return NotificationAction.createSimpleExpiring(MessageBundle.message("notification.undo-out-of-bounds"),
+		return NotificationAction.createSimpleExpiring(MessageBundle.message("notification.revert-rule-violations"),
 				revert);
 	}
 

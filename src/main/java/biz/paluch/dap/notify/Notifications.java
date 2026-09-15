@@ -144,7 +144,7 @@ public class Notifications {
 				NotificationType.INFORMATION);
 
 		notification.configureDoNotAskOption("notification.cache.no.releases",
-				MessageBundle.message("notification.do-not-show-again"));
+				MessageBundle.message("notification.cache.no.releases.settings"));
 		notification.setSuggestionType(true);
 		notification.setAddExtraAction(true);
 		notification.setIcon(DependencyAssistantIcons.ICON);
@@ -167,7 +167,7 @@ public class Notifications {
 				NotificationType.INFORMATION);
 
 		notification.configureDoNotAskOption("notification.cache.stale.releases",
-				MessageBundle.message("notification.do-not-show-again"));
+				MessageBundle.message("notification.cache.stale.releases.settings"));
 		notification.setSuggestionType(true);
 		notification.setAddExtraAction(true);
 		notification.setIcon(DependencyAssistantIcons.ICON);

@@ -79,19 +79,6 @@ public class ArtifactVersionChange {
 	}
 
 	/**
-	 * Return whether the change leaves the source major line. A different version
-	 * scheme counts as a major switch. An unknown source version does not.
-	 */
-	public boolean crossesMajor() {
-		if (!from.isVersioned()) {
-			return false;
-		}
-
-		ArtifactVersion source = from.getVersion();
-		return source.scheme() != to.scheme() || !to.hasSameMajor(source);
-	}
-
-	/**
 	 * Classify the upgrade, giving preview targets precedence over numeric
 	 * boundaries.
 	 *

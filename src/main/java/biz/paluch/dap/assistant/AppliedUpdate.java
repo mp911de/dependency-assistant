@@ -65,13 +65,11 @@ public record AppliedUpdate(ArtifactVersionChange update,
 	}
 
 	/**
-	 * Classify an applied update without a governing rule.
-	 * <p>Only major version crossings receive a follow-up flag.
+	 * Summarize an applied update without a governing rule. Nothing is flagged.
 	 */
 	public static AppliedUpdate from(DependencyUpdate update,
 			String displayName) {
-		return new AppliedUpdate(update, displayName,
-				flagFor(update, DependencyRule.absent(), null));
+		return new AppliedUpdate(update, displayName, Flag.NONE);
 	}
 
 	public ArtifactVersion getFromVersion() {
@@ -136,28 +134,22 @@ public record AppliedUpdate(ArtifactVersionChange update,
 		 * The target is rejected by the governing rule, or its classified upgrade
 		 * strategy is disabled by that rule.
 		 */
-		COMPLIANCE,
-
-		/**
-		 * No governing rule, and the upgrade crosses a major version line.
-		 */
-		MAJOR_CROSSING
+		COMPLIANCE
 
 	}
 
 	private static Flag flagFor(ArtifactVersionChange update, DependencyRule rule,
 			@Nullable UpgradeStrategy upgradeStrategy) {
 
-		if (rule.isPresent()) {
-
-			boolean compliant = rule.test(update.to());
-			if (upgradeStrategy != null) {
-				compliant &= rule.isEnabled(upgradeStrategy);
-			}
-			return compliant ? Flag.NONE : Flag.COMPLIANCE;
+		if (!rule.isPresent()) {
+			return Flag.NONE;
 		}
 
-		return update.crossesMajor() ? Flag.MAJOR_CROSSING : Flag.NONE;
+		boolean compliant = rule.test(update.to());
+		if (upgradeStrategy != null) {
+			compliant &= rule.isEnabled(upgradeStrategy);
+		}
+		return compliant ? Flag.NONE : Flag.COMPLIANCE;
 	}
 
 }
