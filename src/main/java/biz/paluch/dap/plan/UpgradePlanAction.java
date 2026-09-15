@@ -73,11 +73,19 @@ abstract class UpgradePlanAction extends DumbAwareAction {
 		if (project != null) {
 			UpgradePlanService service = UpgradePlanService.getInstance(project);
 			if (!service.isBusy()) {
-				perform(project);
+				perform(e, project, service);
 			}
 		}
 	}
 
-	public abstract void perform(Project project);
+	/**
+	 * Perform the action within the scope of the given {@link Project} and
+	 * {@link UpgradePlanService} if the service is not
+	 * {@link UpgradePlanService#isBusy()}.
+	 * @param e the original event.
+	 * @param project associated project.
+	 * @param service upgrade plan service.
+	 */
+	public abstract void perform(AnActionEvent e, Project project, UpgradePlanService service);
 
 }

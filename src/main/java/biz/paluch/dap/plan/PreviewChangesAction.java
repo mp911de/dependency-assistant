@@ -53,26 +53,9 @@ import com.intellij.util.concurrency.AppExecutorUtil;
 public class PreviewChangesAction extends UpgradePlanAction {
 
 	@Override
-	public void actionPerformed(AnActionEvent e) {
-
-		Project project = e.getProject();
-		if (project == null) {
-			return;
-		}
-
-		UpgradePlanService service = UpgradePlanService.getInstance(project);
+	public void perform(AnActionEvent e, Project project, UpgradePlanService service) {
 		UpgradePlan plan = service.getUpgradePlan();
 		preview(service, plan.withItems(PlanSelection.from(e).orElseGet(plan::getItems)));
-	}
-
-	/**
-	 * Preview the whole plan.
-	 */
-	@Override
-	public void perform(Project project) {
-
-		UpgradePlanService service = UpgradePlanService.getInstance(project);
-		preview(service, service.getUpgradePlan());
 	}
 
 	/**

@@ -103,9 +103,7 @@ public class CreateTicketsAction extends UpgradePlanAction {
 	 * selection.
 	 */
 	@Override
-	public void perform(Project project) {
-
-		UpgradePlanService service = UpgradePlanService.getInstance(project);
+	public void perform(AnActionEvent e, Project project, UpgradePlanService service) {
 		if (service.hasTicketSystem()) {
 			createTickets(service, service.getUpgradePlan().getItems());
 		}

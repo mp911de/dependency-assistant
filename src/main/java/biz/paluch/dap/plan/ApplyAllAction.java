@@ -41,7 +41,6 @@ import com.intellij.openapi.ui.MessageConstants;
 import com.intellij.openapi.ui.MessageDialogBuilder;
 import com.intellij.openapi.ui.Messages;
 
-
 import com.intellij.util.ui.UIUtil;
 import org.jspecify.annotations.Nullable;
 
@@ -57,22 +56,7 @@ public class ApplyAllAction extends UpgradePlanAction {
 	private static final Logger LOG = Logger.getInstance(ApplyAllAction.class);
 
 	@Override
-	public void perform(Project project) {
-		// no-op
-	}
-
-	@Override
-	public void actionPerformed(AnActionEvent e) {
-
-		Project project = e.getProject();
-		if (project == null) {
-			return;
-		}
-
-		UpgradePlanService service = UpgradePlanService.getInstance(project);
-		if (service.isBusy()) {
-			return;
-		}
+	public void perform(AnActionEvent e, Project project, UpgradePlanService service) {
 
 		UpgradePlan plan = service.getUpgradePlan().rebuild();
 		List<UpgradePlanItem> items = PlanSelection.from(e)

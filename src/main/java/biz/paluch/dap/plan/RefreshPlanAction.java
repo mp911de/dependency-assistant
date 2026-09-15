@@ -34,7 +34,7 @@ public class RefreshPlanAction extends UpgradePlanAction {
 	}
 
 	@Override
-	public void perform(Project project) {
+	public void perform(AnActionEvent e, Project project, UpgradePlanService service) {
 		UpgradePlanService.getInstance(project).requestReload();
 	}
 

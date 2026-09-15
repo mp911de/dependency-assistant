@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.plan;
 
+import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.project.Project;
 
 /**
@@ -27,7 +28,7 @@ import com.intellij.openapi.project.Project;
 public class DiscardPlanAction extends UpgradePlanAction {
 
 	@Override
-	public void perform(Project project) {
+	public void perform(AnActionEvent e, Project project, UpgradePlanService service) {
 		UpgradePlanService.getInstance(project).clear();
 	}
 
