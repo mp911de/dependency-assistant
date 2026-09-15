@@ -25,10 +25,10 @@ import java.util.function.Consumer;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.CoordinateShape;
 import biz.paluch.dap.artifact.PackageIdentity;
+import biz.paluch.dap.artifact.VersionProperty;
 import biz.paluch.dap.assistant.check.DeclaredVersions;
 import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
 import biz.paluch.dap.assistant.check.UpgradeGroup;
-import biz.paluch.dap.assistant.check.VersionProperty;
 import biz.paluch.dap.assistant.presentation.DependencyPresentation;
 import biz.paluch.dap.assistant.presentation.IconDependencyPresentation;
 import biz.paluch.dap.checker.Vulnerabilities;
@@ -102,7 +102,7 @@ class GroupRow extends TableRow {
 	private static GroupRow create(String name, List<SingleTableRow> members) {
 
 		List<DependencyUpgradeCandidate> upgrades = members.stream()
-				.flatMap(it -> it.getUpgradeCandidates().stream()).toList();
+				.flatMap(it -> it.getUpgrades().stream()).toList();
 		UpgradeGroup group = UpgradeGroup.of(upgrades);
 		return new GroupRow(name, group);
 	}
@@ -167,7 +167,7 @@ class GroupRow extends TableRow {
 	}
 
 	@Override
-	public List<DependencyUpgradeCandidate> getUpgradeCandidates() {
+	public List<DependencyUpgradeCandidate> getUpgrades() {
 		return group.toList();
 	}
 

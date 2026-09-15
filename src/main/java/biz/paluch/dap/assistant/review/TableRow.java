@@ -28,15 +28,15 @@ import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.PackageIdentity;
+import biz.paluch.dap.artifact.VersionProperty;
 import biz.paluch.dap.assistant.VersionStatus;
 import biz.paluch.dap.assistant.check.DeclaredVersions;
 import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
-import biz.paluch.dap.assistant.check.VersionProperty;
 import biz.paluch.dap.assistant.presentation.DependencyPresentation;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.lookup.DependencySiteQuery;
 import biz.paluch.dap.metadata.ProjectName;
-import biz.paluch.dap.plan.PlannedUpgrade;
+import biz.paluch.dap.plan.UpgradePlanSource;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.util.MessageBundle;
@@ -57,7 +57,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-abstract class TableRow implements PlannedUpgrade, Comparable<TableRow> {
+abstract class TableRow implements UpgradePlanSource, Comparable<TableRow> {
 
 	private final Icon tableIcon;
 
@@ -66,6 +66,9 @@ abstract class TableRow implements PlannedUpgrade, Comparable<TableRow> {
 	public TableRow(Icon tableIcon) {
 		this.tableIcon = tableIcon;
 	}
+
+	@Override
+	public abstract List<DependencyUpgradeCandidate> getUpgrades();
 
 	static Icon createTableIcon(DependencyUpgradeCandidate candidate) {
 

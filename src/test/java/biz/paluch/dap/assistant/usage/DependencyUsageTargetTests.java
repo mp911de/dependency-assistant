@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.assistant.check;
+package biz.paluch.dap.assistant.usage;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.extension.IdeaProjectTests;

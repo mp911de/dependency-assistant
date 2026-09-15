@@ -48,7 +48,7 @@ class UpgradePlanServiceUnitTests {
 	@Test
 	void repeatedDeletesUndoAndRedoInSequence(Project project) {
 
-		List<UpgradePlanItem> items = TestPlannedUpgrade.create(project, TARGET, Stream.of("alpha", "bravo")
+		List<PlannedUpgrade> items = TestUpgradePlanSource.create(project, TARGET, Stream.of("alpha", "bravo")
 				.map(UpgradePlanServiceUnitTests::candidate).toList());
 		UpgradePlanService service = UpgradePlanService.getInstance(project);
 		UndoManager undoManager = UndoManager.getInstance(project);
@@ -95,8 +95,8 @@ class UpgradePlanServiceUnitTests {
 	@Test
 	void renameActionAppliesUndoesAndRedoes() {
 
-		UpgradePlanState.Item stored = UpgradePlanState.Item.from(candidate("alpha"), TARGET);
-		UpgradePlanItem item = TestPlannedUpgrade.LOADER.create(stored);
+		UpgradePlanState.Upgrade stored = UpgradePlanState.Upgrade.from(candidate("alpha"), TARGET);
+		PlannedUpgrade item = TestUpgradePlanSource.LOADER.create(stored);
 		stored.setMaterialized(item);
 		UpgradePlanState.Content content = new UpgradePlanState.Content();
 		content.getItems().add(stored);
@@ -118,12 +118,12 @@ class UpgradePlanServiceUnitTests {
 	@Test
 	void renameActionRemembersNameWhenRequested() {
 
-		UpgradePlanState.Item stored = UpgradePlanState.Item.from(candidate("alpha"), TARGET);
-		UpgradePlanItem item = TestPlannedUpgrade.LOADER.create(stored);
+		UpgradePlanState.Upgrade stored = UpgradePlanState.Upgrade.from(candidate("alpha"), TARGET);
+		PlannedUpgrade item = TestUpgradePlanSource.LOADER.create(stored);
 		stored.setMaterialized(item);
 		UpgradePlanState.Content content = new UpgradePlanState.Content();
 		content.getItems().add(stored);
-		List<PackageIdentity> packages = List.of(item.getMembers().getFirst().getPackageIdentity());
+		List<PackageIdentity> packages = List.of(item.getDependencies().getFirst().getPackageIdentity());
 		ApplicationSettings settings = ApplicationSettings.getInstance();
 		settings.doWithState((Consumer<? super ApplicationSettings.State>) state -> state.getNameHints().clear());
 
@@ -144,38 +144,38 @@ class UpgradePlanServiceUnitTests {
 
 		ApplicationSettings settings = ApplicationSettings.getInstance();
 		settings.doWithState((Consumer<? super ApplicationSettings.State>) state -> state.getNameHints().clear());
-		List<UpgradePlanItem> items = TestPlannedUpgrade.create(project, TARGET, candidate("alpha"));
+		List<PlannedUpgrade> items = TestUpgradePlanSource.create(project, TARGET, candidate("alpha"));
 		UpgradePlanService service = UpgradePlanService.getInstance(project);
 		UndoManager undoManager = UndoManager.getInstance(project);
 		try {
 
-			assertThat(settings.findNameHint(items.getFirst().getMembers().getFirst()
+			assertThat(settings.findNameHint(items.getFirst().getDependencies().getFirst()
 					.getPackageIdentity())).isNull();
 
 			service.renameItem(items.getFirst(), "Alpha", true);
 			assertThat(service.getUpgradePlan().getItems().getFirst().getDisplayName()).isEqualTo("Alpha");
 
-			assertThat(settings.findNameHint(items.getFirst().getMembers().getFirst()
+			assertThat(settings.findNameHint(items.getFirst().getDependencies().getFirst()
 					.getPackageIdentity())).isEqualTo("Alpha");
 
 			undoManager.undo(null);
 			assertThat(service.getUpgradePlan().getItems().getFirst().getDisplayName()).isEqualTo("alpha");
 
-			assertThat(settings.findNameHint(items.getFirst().getMembers().getFirst()
+			assertThat(settings.findNameHint(items.getFirst().getDependencies().getFirst()
 					.getPackageIdentity())).isNull();
 
 			undoManager.redo(null);
 			assertThat(service.getUpgradePlan().getItems().getFirst().getDisplayName()).isEqualTo("Alpha");
 
-			assertThat(settings.findNameHint(items.getFirst().getMembers().getFirst()
+			assertThat(settings.findNameHint(items.getFirst().getDependencies().getFirst()
 					.getPackageIdentity())).isEqualTo("Alpha");
 		} finally {
 			((UndoManagerImpl) undoManager).dropHistoryInTests();
 		}
 	}
 
-	private static TestPlannedUpgrade candidate(String name) {
-		return new TestPlannedUpgrade(TestCandidates.candidate(ArtifactId.of("org.example", name), CURRENT,
+	private static TestUpgradePlanSource candidate(String name) {
+		return new TestUpgradePlanSource(TestCandidates.candidate(ArtifactId.of("org.example", name), CURRENT,
 				it -> it.releases(TARGET)));
 	}
 

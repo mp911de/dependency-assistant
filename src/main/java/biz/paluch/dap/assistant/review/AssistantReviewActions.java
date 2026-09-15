@@ -32,7 +32,7 @@ import biz.paluch.dap.notify.NotificationBuilder;
 import biz.paluch.dap.notify.NotificationChannel;
 import biz.paluch.dap.notify.Notifications;
 import biz.paluch.dap.notify.UpgradeNotification;
-import biz.paluch.dap.plan.PlannedUpgrade;
+import biz.paluch.dap.plan.UpgradePlanSource;
 import biz.paluch.dap.plan.UpgradePlanToolWindowFactory;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleService;
@@ -151,7 +151,7 @@ class AssistantReviewActions {
 				Notifications.errorMessage(error)).notify(project);
 	}
 
-	public void openInUpgradePlan(Map<PlannedUpgrade, ArtifactVersion> upgrades, FileScope scope) {
+	public void openInUpgradePlan(Map<UpgradePlanSource, ArtifactVersion> upgrades, FileScope scope) {
 		UpgradePlanToolWindowFactory.openWith(project, upgrades, scope);
 	}
 

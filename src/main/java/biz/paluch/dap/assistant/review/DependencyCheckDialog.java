@@ -42,8 +42,8 @@ import javax.swing.ListCellRenderer;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.assistant.check.DependencyCheckResult;
-import biz.paluch.dap.assistant.check.DependencySiteNavigator;
-import biz.paluch.dap.plan.PlannedUpgrade;
+import biz.paluch.dap.assistant.usage.DependencySiteNavigator;
+import biz.paluch.dap.plan.UpgradePlanSource;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.util.BetterPsiManager;
@@ -207,7 +207,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 		this.components.stopEditing();
 
-		Map<PlannedUpgrade, ArtifactVersion> upgrades = review.getSelectedUpgrades();
+		Map<UpgradePlanSource, ArtifactVersion> upgrades = review.getSelectedUpgrades();
 		if (upgrades.isEmpty()) {
 			return;
 		}

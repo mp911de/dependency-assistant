@@ -18,10 +18,7 @@ package biz.paluch.dap.plan;
 
 import java.util.List;
 
-import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnActionEvent;
-import com.intellij.openapi.actionSystem.Presentation;
-import com.intellij.openapi.project.DumbAwareAction;
 import com.intellij.openapi.project.Project;
 
 /**
@@ -30,38 +27,27 @@ import com.intellij.openapi.project.Project;
  *
  * @author Mark Paluch
  */
-public class UnlinkTicketAction extends DumbAwareAction {
+public class UnlinkTicketAction extends UpgradePlanAction {
 
 	@Override
-	public void update(AnActionEvent e) {
-
-		Project project = e.getProject();
-		UpgradePlanService service = project != null ? UpgradePlanService.getInstance(project) : null;
-		boolean visible = service != null && service.hasTicketSystem();
-		Presentation presentation = e.getPresentation();
-		presentation.setVisible(visible);
-
-		boolean hasTicket = PlanSelection.from(e).stream().anyMatch(UpgradePlanItem::hasTicket);
-		presentation.setEnabled(visible && !service.isBusy() && hasTicket);
+	protected boolean isVisible(AnActionEvent e, UpgradePlanService service) {
+		return service.hasTicketSystem();
 	}
 
 	@Override
-	public ActionUpdateThread getActionUpdateThread() {
-		return ActionUpdateThread.BGT;
+	protected boolean isEnabled(AnActionEvent e, UpgradePlanService service) {
+
+		boolean hasTicket = PlanSelection.from(e).stream().anyMatch(PlannedUpgrade::hasTicket);
+		return !service.isBusy() && hasTicket;
 	}
 
 	@Override
-	public void actionPerformed(AnActionEvent e) {
+	public void perform(AnActionEvent e, Project project, UpgradePlanService service) {
 
-		Project project = e.getProject();
-		if (project == null) {
-			return;
-		}
-
-		List<UpgradePlanItem> ticketed = PlanSelection.from(e).stream()
-				.filter(UpgradePlanItem::hasTicket).toList();
+		List<PlannedUpgrade> ticketed = PlanSelection.from(e).stream()
+				.filter(PlannedUpgrade::hasTicket).toList();
 		if (!ticketed.isEmpty()) {
-			UpgradePlanService.getInstance(project).unlinkTickets(ticketed);
+			service.unlinkTickets(ticketed);
 		}
 	}
 

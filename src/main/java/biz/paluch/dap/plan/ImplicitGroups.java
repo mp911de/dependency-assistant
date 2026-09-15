@@ -25,13 +25,11 @@ import java.util.Map;
 import java.util.Set;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.PackageIdentity;
+import biz.paluch.dap.artifact.VersionProperty;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
-import biz.paluch.dap.assistant.check.VersionProperty;
-import biz.paluch.dap.plan.UpgradePlanState.Item;
-import biz.paluch.dap.plan.UpgradePlanState.Member;
+import biz.paluch.dap.plan.UpgradePlanState.Dependency;
+import biz.paluch.dap.plan.UpgradePlanState.Upgrade;
 import biz.paluch.dap.state.ApplicationSettings;
 import biz.paluch.dap.util.Sequence;
 import biz.paluch.dap.util.StringUtils;
@@ -44,15 +42,15 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-class ImplicitGroups implements Sequence<Item> {
+class ImplicitGroups implements Sequence<Upgrade> {
 
-	private final List<Item> items;
+	private final List<Upgrade> upgrades;
 
-	public ImplicitGroups(List<Item> items) {
-		this.items = items;
+	public ImplicitGroups(List<Upgrade> upgrades) {
+		this.upgrades = upgrades;
 	}
 
-	static ImplicitGroups create(Map<? extends PlannedUpgrade, ArtifactVersion> upgrades,
+	static ImplicitGroups create(Map<? extends UpgradePlanSource, ArtifactVersion> upgrades,
 			ApplicationSettings settings) {
 
 		List<ReviewedUpgrade> reviewedUpgrades = new ArrayList<>(upgrades.size());
@@ -84,7 +82,7 @@ class ImplicitGroups implements Sequence<Item> {
 			match.owner().fold(reviewedUpgrade, match.property(), owners);
 		}
 
-		List<Item> items = new ArrayList<>(retained.size());
+		List<Upgrade> items = new ArrayList<>(retained.size());
 		for (ReviewedUpgrade reviewedUpgrade : retained) {
 			items.add(reviewedUpgrade.toItem(owners, settings));
 		}
@@ -92,26 +90,26 @@ class ImplicitGroups implements Sequence<Item> {
 		return new ImplicitGroups(items);
 	}
 
-	private static List<VersionProperty> properties(DependencyUpgradeCandidate candidate) {
+	private static List<VersionProperty> properties(DependencyUpgradeSource candidate) {
 
 		List<VersionProperty> properties = new ArrayList<>();
 		for (VersionSource source : candidate.getDependency().getVersionSources()) {
 
 			if (source instanceof VersionSource.VersionProperty property) {
-				properties.add(new VersionProperty(candidate.getAssistant().getId(), property.getProperty()));
+				properties.add(new VersionProperty(candidate.getAssistantId(), property.getProperty()));
 			}
 		}
 		return properties;
 	}
 
 	@Override
-	public Iterator<Item> iterator() {
-		return this.items.iterator();
+	public Iterator<Upgrade> iterator() {
+		return this.upgrades.iterator();
 	}
 
 	@Override
-	public List<Item> toList() {
-		return this.items;
+	public List<Upgrade> toList() {
+		return this.upgrades;
 	}
 
 	private record OwnerMatch(ReviewedUpgrade owner, VersionProperty property) {
@@ -124,18 +122,18 @@ class ImplicitGroups implements Sequence<Item> {
 
 		private final ArtifactVersion target;
 
-		private final List<DependencyUpgradeCandidate> candidates;
+		private final List<DependencyUpgradeSource> candidates;
 
 		private final boolean group;
 
-		private final Set<DependencyUpgradeCandidate> folded = new HashSet<>();
+		private final Set<DependencyUpgradeSource> folded = new HashSet<>();
 
 		private String name;
 
-		ReviewedUpgrade(PlannedUpgrade capture, ArtifactVersion target) {
+		ReviewedUpgrade(UpgradePlanSource capture, ArtifactVersion target) {
 			this.name = capture.getDisplayName();
 			this.target = target;
-			this.candidates = new ArrayList<>(capture.getUpgradeCandidates());
+			this.candidates = new ArrayList<>(capture.getUpgrades());
 			this.group = candidates.size() > 1;
 		}
 
@@ -145,7 +143,7 @@ class ImplicitGroups implements Sequence<Item> {
 
 		void claimProperties(Map<VersionProperty, ReviewedUpgrade> owners) {
 
-			for (DependencyUpgradeCandidate candidate : candidates) {
+			for (DependencyUpgradeSource candidate : candidates) {
 				for (VersionProperty property : properties(candidate)) {
 					owners.putIfAbsent(property, this);
 				}
@@ -159,7 +157,7 @@ class ImplicitGroups implements Sequence<Item> {
 		@Nullable
 		OwnerMatch findOwner(Map<VersionProperty, ReviewedUpgrade> owners) {
 
-			for (DependencyUpgradeCandidate candidate : candidates) {
+			for (DependencyUpgradeSource candidate : candidates) {
 				for (VersionProperty property : properties(candidate)) {
 
 					ReviewedUpgrade owner = owners.get(property);
@@ -177,7 +175,7 @@ class ImplicitGroups implements Sequence<Item> {
 				this.name = property.property();
 			}
 
-			for (DependencyUpgradeCandidate candidate : peer.candidates) {
+			for (DependencyUpgradeSource candidate : peer.candidates) {
 				candidates.add(candidate);
 				folded.add(candidate);
 			}
@@ -188,14 +186,14 @@ class ImplicitGroups implements Sequence<Item> {
 			});
 		}
 
-		Item toItem(Map<VersionProperty, ReviewedUpgrade> owners, ApplicationSettings settings) {
+		Upgrade toItem(Map<VersionProperty, ReviewedUpgrade> owners, ApplicationSettings settings) {
 
 			Set<VersionProperty> claimed = new HashSet<>();
-			List<Member> members = new ArrayList<>(candidates.size());
+			List<Dependency> members = new ArrayList<>(candidates.size());
 			List<PackageIdentity> packages = new ArrayList<>(candidates.size());
-			for (DependencyUpgradeCandidate candidate : candidates) {
+			for (DependencyUpgradeSource candidate : candidates) {
 				members.add(toMember(candidate, claimed, owners));
-				packages.add(candidate.getDependency().getPackageIdentity());
+				packages.add(candidate.getPackageIdentity());
 			}
 
 			String hint = null;
@@ -203,23 +201,23 @@ class ImplicitGroups implements Sequence<Item> {
 			if (!isRuleNamed()) {
 				hint = settings.findNameHint(packages);
 			}
-			return Item.from(hint != null ? hint : name, target, members, candidates);
+			return Upgrade.from(hint != null ? hint : name, target, members, candidates);
 		}
 
 		private boolean isRuleNamed() {
 
-			for (DependencyUpgradeCandidate candidate : candidates) {
-				if (StringUtils.hasText(candidate.getRule().getDependencyName())) {
+			for (DependencyUpgradeSource candidate : candidates) {
+				if (StringUtils.hasText(candidate.getDependencyName())) {
 					return true;
 				}
 			}
 			return false;
 		}
 
-		private Member toMember(DependencyUpgradeCandidate candidate, Set<VersionProperty> claimed,
+		private Dependency toMember(DependencyUpgradeSource candidate, Set<VersionProperty> claimed,
 				Map<VersionProperty, ReviewedUpgrade> owners) {
 
-			Dependency dependency = candidate.getDependency();
+			biz.paluch.dap.artifact.Dependency dependency = candidate.getDependency();
 			Set<VersionSource> sources = dependency.getVersionSources();
 			List<VersionSource> retained = new ArrayList<>(sources.size());
 			boolean propertyBased = false;
@@ -232,7 +230,7 @@ class ImplicitGroups implements Sequence<Item> {
 				}
 
 				propertyBased = true;
-				VersionProperty key = new VersionProperty(candidate.getAssistant().getId(), property.getProperty());
+				VersionProperty key = new VersionProperty(candidate.getAssistantId(), property.getProperty());
 
 				if (folded.contains(candidate)) {
 					ReviewedUpgrade owner = owners.get(key);
@@ -246,19 +244,20 @@ class ImplicitGroups implements Sequence<Item> {
 			}
 
 			if (retained.size() == sources.size()) {
-				return Member.of(candidate);
+				return Dependency.of(candidate);
 			}
 
 			if (retained.isEmpty() && propertyBased) {
-				Member member = Member.of(candidate);
+				Dependency member = Dependency.of(candidate);
 				member.implicit = true;
 				return member;
 			}
 
-			Dependency subset = new Dependency(dependency.getPackageIdentity(), dependency.getCurrentVersion());
+			biz.paluch.dap.artifact.Dependency subset = new biz.paluch.dap.artifact.Dependency(
+					dependency.getPackageIdentity(), dependency.getCurrentVersion());
 			subset.addAllVersionSources(retained);
 			subset.addAllDeclarationSources(dependency.getDeclarationSources());
-			return new Member(subset, candidate.getAssistant());
+			return new Dependency(subset, candidate.getAssistantId());
 		}
 
 	}

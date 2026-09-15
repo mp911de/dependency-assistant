@@ -85,7 +85,7 @@ class DependencyfileArtifactWriter {
 				return;
 			}
 
-			List<ArtifactId> artifactIds = row.getUpgradeCandidates().stream()
+			List<ArtifactId> artifactIds = row.getUpgrades().stream()
 					.map(DependencyUpgradeCandidate::getArtifactId).toList();
 
 			String name = row.getDisplayName();

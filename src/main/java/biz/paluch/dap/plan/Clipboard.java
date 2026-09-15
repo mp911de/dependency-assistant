@@ -106,12 +106,12 @@ class Clipboard {
 			}
 
 			StringJoiner joiner = new StringJoiner("\n");
-			for (UpgradePlanItem item : plan) {
+			for (PlannedUpgrade item : plan) {
 
 				joiner.add(service.getTicketTitle(item));
 
 				if (item.isGroup()) {
-					for (ItemDependency dependency : item) {
+					for (UpgradePlanDependency dependency : item) {
 						String text = " - %s %s -> %s".formatted(dependency.getArtifactId(),
 								dependency.getCurrentVersionString(),
 								item.getToVersionString());

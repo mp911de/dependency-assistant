@@ -26,7 +26,7 @@ import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.plan.UpgradePlanState.Content;
-import biz.paluch.dap.plan.UpgradePlanState.Item;
+import biz.paluch.dap.plan.UpgradePlanState.Upgrade;
 import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.support.VersionControl;
 import biz.paluch.dap.ticket.Label;
@@ -280,8 +280,8 @@ public final class UpgradePlanService implements Disposable {
 					});
 			UpgradePlanLoader loader = new UpgradePlanLoader(project, ticketSystem);
 
-			for (Item item : snapshot.content()) {
-				item.setMaterialized(loader.create(item));
+			for (Upgrade upgrade : snapshot.content()) {
+				upgrade.setMaterialized(loader.create(upgrade));
 			}
 
 			UpgradePlan plan = snapshot.content().createUpgradePlan();
@@ -300,7 +300,7 @@ public final class UpgradePlanService implements Disposable {
 	 * Replace the plan with reviewed upgrades and their captured scope. Reconsider
 	 * the milestone when its catalog is available.
 	 */
-	void planUpgrades(Map<? extends PlannedUpgrade, ArtifactVersion> upgrades, FileScope scope) {
+	void planUpgrades(Map<? extends UpgradePlanSource, ArtifactVersion> upgrades, FileScope scope) {
 		execute(PlanAction.planUpgrades(upgrades, scope, getPlan()));
 
 		Milestones milestones = new Milestones(getMilestones());
@@ -342,14 +342,14 @@ public final class UpgradePlanService implements Disposable {
 	/**
 	 * Remove an item through undoable state change, retaining the file scope.
 	 */
-	void removeItem(UpgradePlanItem item) {
+	void removeItem(PlannedUpgrade item) {
 		execute(PlanAction.removeItems(getPlan().getContent(), item));
 	}
 
 	/**
 	 * Remove items through one undoable state change, retaining the file scope.
 	 */
-	void removeItems(Collection<UpgradePlanItem> items) {
+	void removeItems(Collection<PlannedUpgrade> items) {
 		if (!items.isEmpty()) {
 			execute(PlanAction.removeItems(getPlan().getContent(), items));
 		}
@@ -359,23 +359,23 @@ public final class UpgradePlanService implements Disposable {
 	 * Queue an undoable ticket association change. Undo affects the link, not the
 	 * external ticket.
 	 */
-	void linkTicket(UpgradePlanItem item, TicketRepository repository, Ticket ticket) {
+	void linkTicket(PlannedUpgrade item, TicketRepository repository, Ticket ticket) {
 		ApplicationManager.getApplication().invokeLater(() -> {
 			execute(PlanAction.linkTicket(getPlan().getContent(), item, new UpgradeTicket(repository, ticket)));
 		});
 	}
 
-	void renameItem(UpgradePlanItem item, String displayName, boolean rememberName) {
+	void renameItem(PlannedUpgrade item, String displayName, boolean rememberName) {
 		execute(PlanAction.renameItem(getPlan().getContent(), item, displayName, rememberName));
 	}
 
 	/**
 	 * Clear ticket links in one undoable command without deleting external tickets.
 	 */
-	void unlinkTickets(List<UpgradePlanItem> items) {
+	void unlinkTickets(List<PlannedUpgrade> items) {
 
 		Content content = getPlan().getContent();
-		List<PlanAction> actions = items.stream().filter(UpgradePlanItem::hasTicket)
+		List<PlanAction> actions = items.stream().filter(PlannedUpgrade::hasTicket)
 				.map(it -> PlanAction.unlinkTicket(content, it)).toList();
 		if (!actions.isEmpty()) {
 			execute(PlanAction.composite(actions));
@@ -387,19 +387,19 @@ public final class UpgradePlanService implements Disposable {
 	 * are available to the template and render empty without a ticket or ticket
 	 * system.
 	 */
-	String getCommitMessage(UpgradePlanItem item) {
+	String getCommitMessage(PlannedUpgrade item) {
 		return hasTicketSystem() ? textTemplates.getCommitMessage(item, getTicketSystem())
 				: textTemplates.getCommitMessage(item);
 	}
 
-	String getTicketTitle(UpgradePlanItem item) {
+	String getTicketTitle(PlannedUpgrade item) {
 		return textTemplates.getTicketTitle(item);
 	}
 
 	/**
 	 * Remove a committed item from the plan without registering semantic undo.
 	 */
-	void removeCommittedItem(UpgradePlanItem item) {
+	void removeCommittedItem(PlannedUpgrade item) {
 		apply(PlanAction.removeItems(getPlan().getContent(), List.of(item)));
 		events.planItemChanged();
 	}

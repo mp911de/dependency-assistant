@@ -16,8 +16,7 @@
 
 package biz.paluch.dap.plan;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.io.IOException;
 
 import biz.paluch.dap.assistant.AppliedUpdates;
 import biz.paluch.dap.notify.NotificationActions;
@@ -83,16 +82,8 @@ public class ApplyAllAndCommitAction extends ApplyAllAction {
 	}
 
 	@Override
-	PlanUpdateApplier createApplier(UpgradePlanService service) {
-		return new VcsUpdateApplier(service);
-	}
-
-	@Override
-	void finishRun(UpgradePlanService service, UpgradePlan attempted) {
-		Set<UpgradePlanItem> remaining = new HashSet<>(service.getUpgradePlan().getItems());
-		if (attempted.stream().anyMatch(item -> !remaining.contains(item))) {
-			service.vcsApplied(attempted.getScope());
-		}
+	AppliedUpdates execute(UpgradePlanExecutor executor) throws IOException {
+		return executor.applyAndCommit();
 	}
 
 	@Override

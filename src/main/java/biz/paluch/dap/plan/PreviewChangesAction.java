@@ -125,7 +125,7 @@ public class PreviewChangesAction extends UpgradePlanAction {
 			FileUpdateEngine engine = new FileUpdateEngine(service.getProject());
 
 			List<DependencyUpdate> updates = new ArrayList<>();
-			for (UpgradePlanItem item : plan) {
+			for (PlannedUpgrade item : plan) {
 				updates.addAll(item.createUpdates());
 			}
 

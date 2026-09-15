@@ -26,7 +26,7 @@ import java.util.Set;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.plan.UpgradePlanState.Content;
-import biz.paluch.dap.plan.UpgradePlanState.Item;
+import biz.paluch.dap.plan.UpgradePlanState.Upgrade;
 import biz.paluch.dap.state.ApplicationSettings;
 import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.util.MessageBundle;
@@ -66,7 +66,7 @@ interface PlanAction {
 	/**
 	 * Replace the plan with the reviewed upgrades and their captured file scope.
 	 */
-	static PlanAction planUpgrades(Map<? extends PlannedUpgrade, ArtifactVersion> upgrades, FileScope scope,
+	static PlanAction planUpgrades(Map<? extends UpgradePlanSource, ArtifactVersion> upgrades, FileScope scope,
 			UpgradePlanState.Plan plan) {
 		return new PlanUpgrades(upgrades, scope, plan);
 	}
@@ -79,11 +79,11 @@ interface PlanAction {
 		return new PasteItems(pasteContent, content);
 	}
 
-	static PlanAction removeItems(Content content, UpgradePlanItem item) {
+	static PlanAction removeItems(Content content, PlannedUpgrade item) {
 		return new RemoveItems(content, item);
 	}
 
-	static PlanAction removeItems(Content content, Collection<UpgradePlanItem> items) {
+	static PlanAction removeItems(Content content, Collection<PlannedUpgrade> items) {
 		return new RemoveItems(content, items);
 	}
 
@@ -91,11 +91,11 @@ interface PlanAction {
 	 * Link a ticket, or clear the association when {@code ticket} is
 	 * {@literal null}.
 	 */
-	static PlanAction linkTicket(Content content, UpgradePlanItem item, @Nullable UpgradeTicket ticket) {
+	static PlanAction linkTicket(Content content, PlannedUpgrade item, @Nullable UpgradeTicket ticket) {
 		return new LinkTicket(content, item, ticket);
 	}
 
-	static PlanAction unlinkTicket(Content content, UpgradePlanItem item) {
+	static PlanAction unlinkTicket(Content content, PlannedUpgrade item) {
 		return new UnlinkTicket(content, item);
 	}
 
@@ -103,7 +103,7 @@ interface PlanAction {
 	 * Rename an item, optionally updating its application-wide name hint.
 	 * @param displayName an already sanitized name.
 	 */
-	static PlanAction renameItem(Content content, UpgradePlanItem item, String displayName, boolean rememberName) {
+	static PlanAction renameItem(Content content, PlannedUpgrade item, String displayName, boolean rememberName) {
 		return new RenameItem(content, item, displayName, rememberName);
 	}
 
@@ -172,13 +172,13 @@ interface PlanAction {
 
 		private final Content content;
 
-		private final UpgradePlanItem item;
+		private final PlannedUpgrade item;
 
 		private final @Nullable UpgradeTicket oldTicket;
 
 		private final @Nullable UpgradeTicket newTicket;
 
-		private LinkTicket(Content content, UpgradePlanItem item, @Nullable UpgradeTicket newTicket) {
+		private LinkTicket(Content content, PlannedUpgrade item, @Nullable UpgradeTicket newTicket) {
 			this.content = content;
 			this.item = item;
 			this.oldTicket = item.getTicket();
@@ -207,10 +207,10 @@ interface PlanAction {
 
 		private void update(@Nullable UpgradeTicket ticket) {
 
-			for (Item item : content) {
-				if (this.item.getId().equals(item.getId())) {
-					item.setTicket(UpgradePlanState.Ticket.from(ticket));
-					UpgradePlanItem materialized = item.getMaterialized();
+			for (Upgrade upgrade : content) {
+				if (this.item.getId().equals(upgrade.getId())) {
+					upgrade.setTicket(UpgradePlanState.Ticket.from(ticket));
+					PlannedUpgrade materialized = upgrade.getMaterialized();
 					if (materialized != null) {
 						materialized.setTicket(ticket);
 					}
@@ -224,7 +224,7 @@ interface PlanAction {
 
 	class UnlinkTicket extends LinkTicket {
 
-		private UnlinkTicket(Content content, UpgradePlanItem item) {
+		private UnlinkTicket(Content content, PlannedUpgrade item) {
 			super(content, item, null);
 		}
 
@@ -241,7 +241,7 @@ interface PlanAction {
 
 		private final Content content;
 
-		private final UpgradePlanItem item;
+		private final PlannedUpgrade item;
 
 		private final String oldName;
 
@@ -255,15 +255,15 @@ interface PlanAction {
 
 		private final List<PackageIdentity> packages;
 
-		private RenameItem(Content content, UpgradePlanItem item, String newName, boolean rememberName) {
+		private RenameItem(Content content, PlannedUpgrade item, String newName, boolean rememberName) {
 			this.settings = ApplicationSettings.getInstance();
 			this.content = content;
 			this.item = item;
 			this.oldName = item.getDisplayName();
 			this.newName = newName;
 			this.rememberName = rememberName;
-			this.packages = new ArrayList<>(item.getMembers().size());
-			for (ItemDependency member : item) {
+			this.packages = new ArrayList<>(item.getDependencies().size());
+			for (UpgradePlanDependency member : item) {
 				this.packages.add(member.getPackageIdentity());
 			}
 		}
@@ -303,10 +303,10 @@ interface PlanAction {
 
 		private void update(String displayName) {
 
-			for (Item item : content) {
-				if (this.item.getId().equals(item.getId())) {
-					item.setDisplayName(displayName);
-					UpgradePlanItem materialized = item.getMaterialized();
+			for (Upgrade upgrade : content) {
+				if (this.item.getId().equals(upgrade.getId())) {
+					upgrade.setDisplayName(displayName);
+					PlannedUpgrade materialized = upgrade.getMaterialized();
 					if (materialized != null) {
 						materialized.setDisplayName(displayName);
 					}
@@ -322,18 +322,18 @@ interface PlanAction {
 
 		private final Content content;
 
-		private final Collection<Item> oldItems;
+		private final Collection<Upgrade> oldUpgrades;
 
 		private final Collection<ItemId> toRemove;
 
-		private RemoveItems(Content content, UpgradePlanItem toRemove) {
+		private RemoveItems(Content content, PlannedUpgrade toRemove) {
 			this(content, List.of(toRemove));
 		}
 
-		private RemoveItems(Content content, Collection<UpgradePlanItem> toRemove) {
+		private RemoveItems(Content content, Collection<PlannedUpgrade> toRemove) {
 			this.content = content;
-			this.toRemove = toRemove.stream().map(UpgradePlanItem::getId).toList();
-			this.oldItems = new ArrayList<>();
+			this.toRemove = toRemove.stream().map(PlannedUpgrade::getId).toList();
+			this.oldUpgrades = new ArrayList<>();
 		}
 
 		@Override
@@ -349,18 +349,18 @@ interface PlanAction {
 		@Override
 		public void apply() {
 
-			oldItems.clear();
-			List<Item> items = content.getItems();
-			oldItems.addAll(items);
-			items.removeIf(item -> toRemove.contains(item.getId()));
+			oldUpgrades.clear();
+			List<Upgrade> upgrades = content.getItems();
+			oldUpgrades.addAll(upgrades);
+			upgrades.removeIf(item -> toRemove.contains(item.getId()));
 		}
 
 		@Override
 		public void undo() {
 
-			List<Item> items = content.getItems();
-			items.clear();
-			items.addAll(oldItems);
+			List<Upgrade> upgrades = content.getItems();
+			upgrades.clear();
+			upgrades.addAll(oldUpgrades);
 		}
 
 	}
@@ -373,7 +373,7 @@ interface PlanAction {
 
 		private final Content newContent;
 
-		private PlanUpgrades(Map<? extends PlannedUpgrade, ArtifactVersion> upgrades,
+		private PlanUpgrades(Map<? extends UpgradePlanSource, ArtifactVersion> upgrades,
 				FileScope scope, UpgradePlanState.Plan plan) {
 			this.plan = plan;
 
@@ -451,18 +451,18 @@ interface PlanAction {
 
 		private final List<String> oldFiles;
 
-		private final List<Item> oldItems;
+		private final List<Upgrade> oldUpgrades;
 
 		private final List<String> newFiles = new ArrayList<>();
 
-		private final List<Item> newItems = new ArrayList<>();
+		private final List<Upgrade> newUpgrades = new ArrayList<>();
 
 		private PasteItems(Content pasteContent, Content content) {
 
 			this.pasteContent = pasteContent.snapshot();
 			this.content = content;
 			this.oldFiles = new ArrayList<>(content.getAffectedFiles());
-			this.oldItems = new ArrayList<>(content.getItems());
+			this.oldUpgrades = new ArrayList<>(content.getItems());
 		}
 
 		@Override
@@ -479,19 +479,19 @@ interface PlanAction {
 		public void apply() {
 
 			newFiles.clear();
-			newItems.clear();
+			newUpgrades.clear();
 
 			Set<String> paths = new LinkedHashSet<>(content.getAffectedFiles());
 			paths.addAll(pasteContent.getAffectedFiles());
 			newFiles.addAll(paths);
 			content.setAffectedFiles(new ArrayList<>(newFiles));
 
-			Set<Item> items = new LinkedHashSet<>(content.getItems());
-			items.removeAll(pasteContent.getItems());
-			items.addAll(pasteContent.getItems());
-			newItems.addAll(items);
+			Set<Upgrade> upgrades = new LinkedHashSet<>(content.getItems());
+			upgrades.removeAll(pasteContent.getItems());
+			upgrades.addAll(pasteContent.getItems());
+			newUpgrades.addAll(upgrades);
 
-			content.setItems(new ArrayList<>(newItems));
+			content.setItems(new ArrayList<>(newUpgrades));
 		}
 
 		@Override
@@ -501,9 +501,9 @@ interface PlanAction {
 			affectedFiles.clear();
 			affectedFiles.addAll(oldFiles);
 
-			List<Item> items = content.getItems();
-			items.clear();
-			items.addAll(oldItems);
+			List<Upgrade> upgrades = content.getItems();
+			upgrades.clear();
+			upgrades.addAll(oldUpgrades);
 		}
 
 	}

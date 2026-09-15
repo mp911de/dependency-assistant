@@ -24,8 +24,8 @@ import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.fixtures.TestAssistant;
 import biz.paluch.dap.plan.UpgradePlanState.DeclarationKind;
 import biz.paluch.dap.plan.UpgradePlanState.DeclarationSourceState;
-import biz.paluch.dap.plan.UpgradePlanState.Item;
-import biz.paluch.dap.plan.UpgradePlanState.Member;
+import biz.paluch.dap.plan.UpgradePlanState.Dependency;
+import biz.paluch.dap.plan.UpgradePlanState.Upgrade;
 import biz.paluch.dap.plan.UpgradePlanState.VersionSourceKind;
 import biz.paluch.dap.plan.UpgradePlanState.VersionSourceState;
 import biz.paluch.dap.support.DependencyUpdate;
@@ -43,10 +43,10 @@ class UpgradePlanLoaderUnitTests {
 	@Test
 	void reconstructsApplyAndNavigationFactsFromPersistedState() {
 
-		Item stored = item("Spring Core", "6.2.2",
+		Upgrade stored = item("Spring Core", "6.2.2",
 				member("org.springframework", "spring-core", "6.2.1", "spring.version"));
 
-		UpgradePlanItem planItem = TestPlannedUpgrade.LOADER.create(stored);
+		PlannedUpgrade planItem = TestUpgradePlanSource.LOADER.create(stored);
 
 		assertThat(planItem).isNotNull();
 		assertThat(planItem.getDisplayName()).isEqualTo("Spring Core");
@@ -69,39 +69,40 @@ class UpgradePlanLoaderUnitTests {
 	@Test
 	void retainsUnresolvedStateWhenAssistantCannotBeResolved() {
 
-		Item stored = item("Spring Core", "6.2.2",
+		Upgrade stored = item("Spring Core", "6.2.2",
 				member("org.springframework", "spring-core", "6.2.1", "spring.version"));
 		stored.getMembers().getFirst().assistant = "missing.Assistant";
 
-		assertThat(TestPlannedUpgrade.LOADER.create(stored)).isNull();
+		assertThat(TestUpgradePlanSource.LOADER.create(stored)).isNull();
 	}
 
 	@Test
 	void implicitMemberRemainsVisibleWithoutCreatingAnUpdate() {
 
-		Member owner = member("org.springframework", "spring-core", "6.2.1", "spring.version");
-		Member implicit = member("com.example", "addon", "6.2.1", "spring.version");
+		Dependency owner = member("org.springframework", "spring-core", "6.2.1", "spring.version");
+		Dependency implicit = member("com.example", "addon", "6.2.1", "spring.version");
 		implicit.implicit = true;
 
-		UpgradePlanItem planItem = TestPlannedUpgrade.LOADER.create(item("spring.version", "6.2.2", owner, implicit));
+		PlannedUpgrade planItem = TestUpgradePlanSource.LOADER.create(item("spring.version", "6.2.2", owner, implicit));
 
 		assertThat(planItem).isNotNull();
-		assertThat(planItem.getMembers()).hasSize(2);
-		assertThat(planItem.getMembers()).extracting(ItemDependency::isImplicit).containsExactly(false, true);
+		assertThat(planItem.getDependencies()).hasSize(2);
+		assertThat(planItem.getDependencies()).extracting(UpgradePlanDependency::isImplicit).containsExactly(false,
+				true);
 		assertThat(planItem.createUpdates()).singleElement()
 				.extracting(update -> update.artifactId().artifactId()).isEqualTo("spring-core");
 	}
 
-	private static Item item(String displayName, String target, Member... members) {
-		Item item = new Item();
-		item.setDisplayName(displayName);
-		item.setToVersion(target);
-		item.setMembers(List.of(members));
-		return item;
+	private static Upgrade item(String displayName, String target, Dependency... members) {
+		Upgrade upgrade = new Upgrade();
+		upgrade.setDisplayName(displayName);
+		upgrade.setToVersion(target);
+		upgrade.setMembers(List.of(members));
+		return upgrade;
 	}
 
-	private static Member member(String groupId, String artifactId, String fromVersion, String property) {
-		Member member = new Member();
+	private static Dependency member(String groupId, String artifactId, String fromVersion, String property) {
+		Dependency member = new Dependency();
 		member.groupId = groupId;
 		member.artifactId = artifactId;
 		member.fromVersion = fromVersion;

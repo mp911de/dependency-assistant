@@ -24,16 +24,13 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 
-import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
-import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.HasPackageIdentity;
 import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
 import biz.paluch.dap.checker.CvssSeverity;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.support.FileScope;
@@ -277,34 +274,34 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 	 * reload succeeds.
 	 */
 	@Tag("content")
-	static class Content implements Iterable<Item> {
+	static class Content implements Iterable<Upgrade> {
 
 		@XCollection(propertyElementName = "items", elementName = "item", style = XCollection.Style.v2)
-		private List<Item> items = new ArrayList<>();
+		private List<Upgrade> upgrades = new ArrayList<>();
 
 		@XCollection(propertyElementName = "affectedFiles", elementName = "file", style = XCollection.Style.v2)
 		private List<String> affectedFiles = new ArrayList<>();
 
 		public static Content from(Content original, UpgradePlan plan) {
 			Content content = new Content();
-			List<Item> items = new ArrayList<>();
-			for (Item item : original) {
-				if (plan.stream().anyMatch(it -> it.getId().equals(item.getId()))) {
-					items.add(item);
+			List<Upgrade> upgrades = new ArrayList<>();
+			for (Upgrade upgrade : original) {
+				if (plan.stream().anyMatch(it -> it.getId().equals(upgrade.getId()))) {
+					upgrades.add(upgrade);
 				}
 			}
 
-			content.setItems(items);
+			content.setItems(upgrades);
 			content.getAffectedFiles().addAll(original.getAffectedFiles());
 			return content;
 		}
 
-		public List<Item> getItems() {
-			return items;
+		public List<Upgrade> getItems() {
+			return upgrades;
 		}
 
-		public void setItems(List<Item> items) {
-			this.items = items;
+		public void setItems(List<Upgrade> upgrades) {
+			this.upgrades = upgrades;
 		}
 
 		public List<String> getAffectedFiles() {
@@ -320,18 +317,18 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 		}
 
 		boolean isEmpty() {
-			return items.isEmpty();
+			return upgrades.isEmpty();
 		}
 
 		@Override
-		public Iterator<Item> iterator() {
-			return items.iterator();
+		public Iterator<Upgrade> iterator() {
+			return upgrades.iterator();
 		}
 
 		public synchronized Content snapshot() {
 			Content snapshot = new Content();
-			for (Item item : items) {
-				snapshot.items.add(item.snapshot());
+			for (Upgrade upgrade : upgrades) {
+				snapshot.upgrades.add(upgrade.snapshot());
 			}
 			snapshot.affectedFiles = List.copyOf(affectedFiles);
 			return snapshot;
@@ -339,15 +336,16 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 
 		UpgradePlan createUpgradePlan() {
 			FileScope scope = FileScope.from(getAffectedFiles());
-			List<UpgradePlanItem> items = new ArrayList<>();
-			for (Item item : this) {
-				UpgradePlanItem materialized = item.getMaterialized();
+			List<PlannedUpgrade> items = new ArrayList<>();
+			for (Upgrade upgrade : this) {
+				PlannedUpgrade materialized = upgrade.getMaterialized();
 				if (materialized != null) {
 					items.add(materialized);
 				}
 			}
 			return UpgradePlan.of(scope, items);
 		}
+
 	}
 
 	/**
@@ -356,8 +354,8 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 	 *
 	 * @author Mark Paluch
 	 */
-	@Tag("item")
-	static class Item implements Cloneable {
+	@Tag("upgrade")
+	static class Upgrade implements Cloneable {
 
 		@Transient
 		private @Nullable ItemId id;
@@ -381,31 +379,31 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 		private @Nullable Ticket ticket;
 
 		@XCollection(propertyElementName = "members", elementName = "member", style = XCollection.Style.v2)
-		private List<Member> members = new ArrayList<>();
+		private List<Dependency> members = new ArrayList<>();
 
 		@Transient
-		private @Nullable UpgradePlanItem materialized;
+		private @Nullable PlannedUpgrade materialized;
 
-		static Item from(PlannedUpgrade plannedUpgrade, ArtifactVersion targetVersion) {
+		static Upgrade from(UpgradePlanSource source, ArtifactVersion targetVersion) {
 
-			List<Member> members = plannedUpgrade.getUpgradeCandidates().stream().map(Member::of).toList();
-			return from(plannedUpgrade.getDisplayName(), targetVersion, members,
-					plannedUpgrade.getUpgradeCandidates());
+			List<Dependency> members = source.getUpgrades().stream().map(Dependency::of).toList();
+			return from(source.getDisplayName(), targetVersion, members,
+					source.getUpgrades());
 		}
 
-		static Item from(String displayName, ArtifactVersion targetVersion, List<Member> members,
-				List<DependencyUpgradeCandidate> upgrades) {
+		static Upgrade from(String displayName, ArtifactVersion targetVersion, List<Dependency> members,
+				List<? extends DependencyUpgradeSource> upgrades) {
 
-			Item item = new Item();
+			Upgrade item = new Upgrade();
 			item.setToVersion(targetVersion.toString());
 			item.displayName = displayName;
 			item.members.addAll(members);
 
 			Vulnerabilities currentVulnerabilities = Vulnerabilities.clean();
 			Vulnerabilities targetVulnerabilities = Vulnerabilities.clean();
-			for (DependencyUpgradeCandidate upgrade : upgrades) {
+			for (DependencyUpgradeSource upgrade : upgrades) {
 				currentVulnerabilities = currentVulnerabilities
-						.addAll(upgrade.getVulnerabilities(upgrade.getCurrentVersion()));
+						.addAll(upgrade.getVulnerabilities(upgrade.getDependency().getCurrentVersion()));
 				targetVulnerabilities = targetVulnerabilities.addAll(upgrade.getVulnerabilities(targetVersion));
 			}
 			item.vulnerabilityFix = currentVulnerabilities.isVulnerable()
@@ -474,29 +472,29 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 			this.ticket = ticket;
 		}
 
-		public List<Member> getMembers() {
+		public List<Dependency> getMembers() {
 			return members;
 		}
 
-		public void setMembers(List<Member> members) {
+		public void setMembers(List<Dependency> members) {
 			this.members = members;
 		}
 
 		@Transient
-		public @Nullable UpgradePlanItem getMaterialized() {
+		public @Nullable PlannedUpgrade getMaterialized() {
 			return materialized;
 		}
 
 		@Transient
-		public void setMaterialized(@Nullable UpgradePlanItem materialized) {
+		public void setMaterialized(@Nullable PlannedUpgrade materialized) {
 			this.materialized = materialized;
 		}
 
-		public static ItemId createItemId(List<UpgradePlanState.Member> members) {
+		public static ItemId createItemId(List<Dependency> members) {
 
 			Set<ItemId.MemberKey> memberKeys = new HashSet<>();
 
-			for (UpgradePlanState.Member member : members) {
+			for (Dependency member : members) {
 				memberKeys.add(
 						new ItemId.MemberKey(member.groupId, member.artifactId, member.packageSystem,
 								member.fromVersion, member.assistant));
@@ -506,18 +504,18 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 		}
 
 		@Override
-		protected Item clone() {
+		protected Upgrade clone() {
 			try {
-				return (Item) super.clone();
+				return (Upgrade) super.clone();
 			} catch (CloneNotSupportedException e) {
 				throw new UnsupportedOperationException(e);
 			}
 		}
 
-		public Item snapshot() {
-			Item snapshot = clone();
-			snapshot.members = members.stream().map(Member::new).toList();
-			UpgradePlanItem materialized = snapshot.getMaterialized();
+		public Upgrade snapshot() {
+			Upgrade snapshot = clone();
+			snapshot.members = members.stream().map(Dependency::new).toList();
+			PlannedUpgrade materialized = snapshot.getMaterialized();
 
 			if (materialized != null) {
 				snapshot.ticket = Ticket.from(materialized.getTicket());
@@ -528,10 +526,10 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 
 		@Override
 		public boolean equals(Object o) {
-			if (!(o instanceof Item item)) {
+			if (!(o instanceof Upgrade upgrade)) {
 				return false;
 			}
-			return getId().equals(item.getId());
+			return getId().equals(upgrade.getId());
 		}
 
 		@Override
@@ -826,8 +824,8 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 	 * <p>An implicit member emits no update because another member owns its shared
 	 * version-property write.
 	 */
-	@Tag("member")
-	public static class Member implements HasPackageIdentity {
+	@Tag("dependency")
+	public static class Dependency implements HasPackageIdentity {
 
 		@Attribute
 		public boolean implicit;
@@ -853,10 +851,10 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 		@XCollection(propertyElementName = "versionSources", elementName = "versionSource", style = XCollection.Style.v2)
 		public List<VersionSourceState> versionSources = new ArrayList<>();
 
-		public Member() {
+		public Dependency() {
 		}
 
-		Member(Member member) {
+		Dependency(Dependency member) {
 			this.implicit = member.implicit;
 			this.groupId = member.groupId;
 			this.artifactId = member.artifactId;
@@ -872,7 +870,7 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 			}
 		}
 
-		Member(Dependency dependency, DependencyAssistant assistant) {
+		Dependency(biz.paluch.dap.artifact.Dependency dependency, String assistantId) {
 
 			PackageIdentity pkg = dependency.getPackageIdentity();
 			ArtifactId artifactId = pkg.getArtifactId();
@@ -880,7 +878,7 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 			this.artifactId = artifactId.artifactId();
 			this.packageSystem = pkg.getPackageSystem();
 			this.fromVersion = dependency.getCurrentVersion().toString();
-			this.assistant = assistant.getId();
+			this.assistant = assistantId;
 
 			for (VersionSource source : dependency.getVersionSources()) {
 				VersionSourceState versionSource = VersionSourceState.from(source);
@@ -893,9 +891,9 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 			}
 		}
 
-		public static Member of(DependencyUpgradeCandidate upgrade) {
-			Dependency dependency = upgrade.getDependency();
-			return new Member(dependency, upgrade.getAssistant());
+		public static Dependency of(DependencyUpgradeSource upgrade) {
+			biz.paluch.dap.artifact.Dependency dependency = upgrade.getDependency();
+			return new Dependency(dependency, upgrade.getAssistantId());
 		}
 
 		@Transient
@@ -906,7 +904,7 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 
 		@Override
 		public boolean equals(Object o) {
-			if (!(o instanceof Member that)) {
+			if (!(o instanceof Dependency that)) {
 				return false;
 			}
 			if (implicit != that.implicit) {

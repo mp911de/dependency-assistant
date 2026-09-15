@@ -31,14 +31,14 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionAge;
+import biz.paluch.dap.artifact.VersionProperty;
 import biz.paluch.dap.assistant.DependencyUpgradeIcons;
 import biz.paluch.dap.assistant.check.DeclaredVersions;
 import biz.paluch.dap.assistant.check.DependencyCheckResult;
 import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
-import biz.paluch.dap.assistant.check.VersionProperty;
 import biz.paluch.dap.checker.CheckerIcons;
 import biz.paluch.dap.checker.Vulnerabilities;
-import biz.paluch.dap.plan.PlannedUpgrade;
+import biz.paluch.dap.plan.UpgradePlanSource;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.UpgradeStrategy;
 import com.intellij.lang.documentation.DocumentationMarkup;
@@ -333,7 +333,7 @@ class UpgradeReview {
 			}
 
 			ArtifactVersion version = getRequiredUpdateTo(row);
-			for (DependencyUpgradeCandidate upgrade : row.getUpgradeCandidates()) {
+			for (DependencyUpgradeCandidate upgrade : row.getUpgrades()) {
 				updates.add(upgrade.createUpdate(version));
 			}
 		}
@@ -346,9 +346,9 @@ class UpgradeReview {
 	 * transfer.
 	 * @throws IllegalStateException if a selected row has no target version.
 	 */
-	Map<PlannedUpgrade, ArtifactVersion> getSelectedUpgrades() {
+	Map<UpgradePlanSource, ArtifactVersion> getSelectedUpgrades() {
 
-		Map<PlannedUpgrade, ArtifactVersion> selected = new LinkedHashMap<>();
+		Map<UpgradePlanSource, ArtifactVersion> selected = new LinkedHashMap<>();
 		for (TableRow row : getCandidates()) {
 			if (isApplyUpdate(row)) {
 				selected.put(row, getRequiredUpdateTo(row));

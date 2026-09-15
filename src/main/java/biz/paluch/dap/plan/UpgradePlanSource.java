@@ -14,15 +14,26 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.assistant.check;
+package biz.paluch.dap.plan;
+
+import java.util.List;
 
 /**
- * Version-property identity used to couple dependencies.
- * <p>Identity uses the assistant id and bare property name, excluding profile
- * and module scope.
+ * Reviewed upgrade ready for capture into the {@link UpgradePlan}.
  *
  * @author Mark Paluch
  */
-public record VersionProperty(String assistantId, String property) {
+public interface UpgradePlanSource {
+
+	/**
+	 * Return the initial display name. It may be renamed and does not define item
+	 * identity.
+	 */
+	String getDisplayName();
+
+	/**
+	 * Return a non-empty list of contributing dependency upgrades in update order.
+	 */
+	List<? extends DependencyUpgradeSource> getUpgrades();
 
 }

@@ -25,14 +25,14 @@ import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
 import biz.paluch.dap.fixtures.TestAssistant;
 import biz.paluch.dap.fixtures.TestCandidates;
 import biz.paluch.dap.plan.UpgradePlanState.Content;
-import biz.paluch.dap.plan.UpgradePlanState.Item;
 import biz.paluch.dap.plan.UpgradePlanState.Plan;
+import biz.paluch.dap.plan.UpgradePlanState.Upgrade;
 import biz.paluch.dap.state.Cache;
 import com.intellij.openapi.command.impl.UndoManagerImpl;
 import com.intellij.openapi.command.undo.UndoManager;
 import com.intellij.openapi.project.Project;
 
-class TestPlannedUpgrade implements PlannedUpgrade {
+class TestUpgradePlanSource implements UpgradePlanSource {
 
 	public static final UpgradePlanLoader LOADER = new UpgradePlanLoader(List.of(TestAssistant.INSTANCE), null,
 			new Cache());
@@ -41,11 +41,11 @@ class TestPlannedUpgrade implements PlannedUpgrade {
 
 	private final List<DependencyUpgradeCandidate> upgrades;
 
-	TestPlannedUpgrade(DependencyUpgradeCandidate upgrade) {
+	TestUpgradePlanSource(DependencyUpgradeCandidate upgrade) {
 		this(upgrade.getArtifactId().artifactId(), List.of(upgrade));
 	}
 
-	TestPlannedUpgrade(String name, List<DependencyUpgradeCandidate> upgrades) {
+	TestUpgradePlanSource(String name, List<DependencyUpgradeCandidate> upgrades) {
 		this.upgrades = List.copyOf(upgrades);
 		this.name = name;
 	}
@@ -55,8 +55,8 @@ class TestPlannedUpgrade implements PlannedUpgrade {
 	 * persisted on the project and return the loaded items, with undo history
 	 * cleared.
 	 */
-	static List<UpgradePlanItem> create(Project project, ArtifactVersion target,
-			TestPlannedUpgrade... candidates) {
+	static List<PlannedUpgrade> create(Project project, ArtifactVersion target,
+			TestUpgradePlanSource... candidates) {
 		return create(project, target, List.of(candidates));
 	}
 
@@ -65,18 +65,18 @@ class TestPlannedUpgrade implements PlannedUpgrade {
 	 * persisted on the project and return the loaded items, with undo history
 	 * cleared.
 	 */
-	static List<UpgradePlanItem> create(Project project, ArtifactVersion target,
-			Collection<TestPlannedUpgrade> candidates) {
+	static List<PlannedUpgrade> create(Project project, ArtifactVersion target,
+			Collection<TestUpgradePlanSource> candidates) {
 
 		Content content = new Content();
 		content.getAffectedFiles().add("pom.xml");
-		List<UpgradePlanItem> items = new ArrayList<>();
-		for (TestPlannedUpgrade candidate : candidates) {
+		List<PlannedUpgrade> items = new ArrayList<>();
+		for (TestUpgradePlanSource candidate : candidates) {
 
-			List<UpgradePlanState.Member> members = candidate.getUpgradeCandidates().stream()
-					.map(UpgradePlanState.Member::of).toList();
-			Item stored = Item.from(candidate.name, target, members, candidate.getUpgradeCandidates());
-			UpgradePlanItem item = LOADER.create(stored);
+			List<UpgradePlanState.Dependency> members = candidate.getUpgrades().stream()
+					.map(UpgradePlanState.Dependency::of).toList();
+			Upgrade stored = Upgrade.from(candidate.name, target, members, candidate.getUpgrades());
+			PlannedUpgrade item = LOADER.create(stored);
 			stored.setMaterialized(item);
 			content.getItems().add(stored);
 			items.add(item);
@@ -95,11 +95,11 @@ class TestPlannedUpgrade implements PlannedUpgrade {
 	 * a test feeds items directly (for example into a tree) and each item carries
 	 * its own target version.
 	 */
-	static UpgradePlanItem item(String coordinates, String target) {
+	static PlannedUpgrade item(String coordinates, String target) {
 
-		TestPlannedUpgrade candidate = new TestPlannedUpgrade(
+		TestUpgradePlanSource candidate = new TestUpgradePlanSource(
 				TestCandidates.candidate(coordinates, it -> it.releases(target)));
-		Item stored = Item.from(candidate, ArtifactVersion.of(target));
+		Upgrade stored = Upgrade.from(candidate, ArtifactVersion.of(target));
 		return LOADER.create(stored);
 	}
 
@@ -109,7 +109,7 @@ class TestPlannedUpgrade implements PlannedUpgrade {
 	}
 
 	@Override
-	public List<DependencyUpgradeCandidate> getUpgradeCandidates() {
+	public List<DependencyUpgradeCandidate> getUpgrades() {
 		return upgrades;
 	}
 

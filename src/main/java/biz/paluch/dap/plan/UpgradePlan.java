@@ -33,25 +33,25 @@ import biz.paluch.dap.util.Sequence;
  *
  * @author Mark Paluch
  */
-class UpgradePlan implements Sequence<UpgradePlanItem> {
+class UpgradePlan implements Sequence<PlannedUpgrade> {
 
 	private final FileScope scope;
 
-	private final List<UpgradePlanItem> items;
+	private final List<PlannedUpgrade> items;
 
-	private UpgradePlan(FileScope scope, List<UpgradePlanItem> items) {
+	private UpgradePlan(FileScope scope, List<PlannedUpgrade> items) {
 		this.scope = scope;
 		this.items = List.copyOf(items);
 	}
 
-	static UpgradePlan of(FileScope scope, List<UpgradePlanItem> items) {
+	static UpgradePlan of(FileScope scope, List<PlannedUpgrade> items) {
 		return new UpgradePlan(scope, items);
 	}
 
 	/**
 	 * Return a plan with the supplied items in order, retaining the captured scope.
 	 */
-	UpgradePlan withItems(Iterable<UpgradePlanItem> items) {
+	UpgradePlan withItems(Iterable<PlannedUpgrade> items) {
 		return new UpgradePlan(scope, Sequence.of(items).toList());
 	}
 
@@ -59,7 +59,7 @@ class UpgradePlan implements Sequence<UpgradePlanItem> {
 		return scope;
 	}
 
-	List<UpgradePlanItem> getItems() {
+	List<PlannedUpgrade> getItems() {
 		return items;
 	}
 
@@ -80,17 +80,17 @@ class UpgradePlan implements Sequence<UpgradePlanItem> {
 	}
 
 	@Override
-	public Stream<UpgradePlanItem> stream() {
+	public Stream<PlannedUpgrade> stream() {
 		return items.stream();
 	}
 
 	@Override
-	public List<UpgradePlanItem> toList() {
+	public List<PlannedUpgrade> toList() {
 		return items;
 	}
 
 	@Override
-	public Iterator<UpgradePlanItem> iterator() {
+	public Iterator<PlannedUpgrade> iterator() {
 		return items.iterator();
 	}
 
@@ -100,16 +100,16 @@ class UpgradePlan implements Sequence<UpgradePlanItem> {
 
 	private String getAttentionSummary() {
 
-		Map<UpgradePlanItem.AttentionLevel, Long> counts = new EnumMap<>(UpgradePlanItem.AttentionLevel.class);
-		for (UpgradePlanItem item : items) {
+		Map<PlannedUpgrade.AttentionLevel, Long> counts = new EnumMap<>(PlannedUpgrade.AttentionLevel.class);
+		for (PlannedUpgrade item : items) {
 			counts.merge(item.getAttentionLevel(), 1L, Long::sum);
 		}
 
 		StringBuilder summary = new StringBuilder();
-		for (UpgradePlanItem.AttentionLevel level : UpgradePlanItem.AttentionLevel.values()) {
+		for (PlannedUpgrade.AttentionLevel level : PlannedUpgrade.AttentionLevel.values()) {
 
 			Long count = counts.get(level);
-			if (count == null || level == UpgradePlanItem.AttentionLevel.PATCH) {
+			if (count == null || level == PlannedUpgrade.AttentionLevel.PATCH) {
 				continue;
 			}
 			summary.append(" · ").append(getAttentionLabel(level, count));
@@ -118,7 +118,7 @@ class UpgradePlan implements Sequence<UpgradePlanItem> {
 		return summary.toString();
 	}
 
-	private static String getAttentionLabel(UpgradePlanItem.AttentionLevel level, long count) {
+	private static String getAttentionLabel(PlannedUpgrade.AttentionLevel level, long count) {
 
 		return switch (level) {
 		case VULNERABILITY_FIX -> MessageBundle.message("plan.summary.attention.cve", count);

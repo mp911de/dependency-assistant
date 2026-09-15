@@ -87,7 +87,7 @@ class UpgradePlanTree {
 
 	private final Runnable pasteAction;
 
-	private final Consumer<UpgradePlanItem> itemDoubleClickAction;
+	private final Consumer<PlannedUpgrade> itemDoubleClickAction;
 
 	private final DefaultMutableTreeNode root = new DefaultMutableTreeNode();
 
@@ -103,11 +103,11 @@ class UpgradePlanTree {
 
 	private boolean pasteAvailable;
 
-	private List<UpgradePlanItem> planItems = List.of();
+	private List<PlannedUpgrade> planItems = List.of();
 
-	private List<UpgradePlanItem> shownItems = List.of();
+	private List<PlannedUpgrade> shownItems = List.of();
 
-	UpgradePlanTree(Runnable emptyAction, Runnable pasteAction, Consumer<UpgradePlanItem> itemDoubleClickAction,
+	UpgradePlanTree(Runnable emptyAction, Runnable pasteAction, Consumer<PlannedUpgrade> itemDoubleClickAction,
 			UpgradePlanService service, boolean sortByAttention, boolean sortAlphabetically) {
 
 		this.service = service;
@@ -185,7 +185,7 @@ class UpgradePlanTree {
 		}
 	}
 
-	void setItems(List<UpgradePlanItem> planItems) {
+	void setItems(List<PlannedUpgrade> planItems) {
 		this.planItems = planItems;
 		rebuild();
 	}
@@ -218,10 +218,10 @@ class UpgradePlanTree {
 	 * Refresh item values, preserving expansion and selection where the row
 	 * structure permits.
 	 */
-	void refreshItems(List<UpgradePlanItem> planItems) {
+	void refreshItems(List<PlannedUpgrade> planItems) {
 
 		this.planItems = List.copyOf(planItems);
-		List<UpgradePlanItem> shownItems = PlanItemOrdering.order(this.planItems, sortByAttention, sortAlphabetically);
+		List<PlannedUpgrade> shownItems = PlanItemOrdering.order(this.planItems, sortByAttention, sortAlphabetically);
 		if (shownItems.size() != root.getChildCount()) {
 			rebuild();
 			return;
@@ -246,14 +246,14 @@ class UpgradePlanTree {
 
 	PlanSelection getSelection() {
 
-		Set<UpgradePlanItem> selectionSet = getSelectionSet();
+		Set<PlannedUpgrade> selectionSet = getSelectionSet();
 
 		if (selectionSet.isEmpty()) {
 			return PlanSelection.empty();
 		}
 
-		List<UpgradePlanItem> selection = new ArrayList<>();
-		for (UpgradePlanItem item : planItems) {
+		List<PlannedUpgrade> selection = new ArrayList<>();
+		for (PlannedUpgrade item : planItems) {
 			if (selectionSet.contains(item)) {
 				selection.add(item);
 			}
@@ -262,16 +262,16 @@ class UpgradePlanTree {
 		return PlanSelection.of(selection);
 	}
 
-	Set<UpgradePlanItem> getSelectionSet() {
+	Set<PlannedUpgrade> getSelectionSet() {
 
 		TreePath[] paths = tree.getSelectionPaths();
 		if (paths == null) {
 			return Set.of();
 		}
 
-		Set<UpgradePlanItem> selectionSet = new LinkedHashSet<>();
+		Set<PlannedUpgrade> selectionSet = new LinkedHashSet<>();
 		for (TreePath path : paths) {
-			UpgradePlanItem item = itemOf((DefaultMutableTreeNode) path.getLastPathComponent());
+			PlannedUpgrade item = itemOf((DefaultMutableTreeNode) path.getLastPathComponent());
 			if (item == null) {
 				continue;
 			}
@@ -285,7 +285,7 @@ class UpgradePlanTree {
 	 * not provide rename targets.
 	 */
 	@Nullable
-	UpgradePlanItem getRenameTarget() {
+	PlannedUpgrade getRenameTarget() {
 
 		TreePath[] paths = tree.getSelectionPaths();
 		if (paths == null || paths.length != 1) {
@@ -296,11 +296,11 @@ class UpgradePlanTree {
 	}
 
 	@Nullable
-	UpgradePlanItem selectionAfterRemoving(Set<UpgradePlanItem> items) {
+	PlannedUpgrade selectionAfterRemoving(Set<PlannedUpgrade> items) {
 		return PlanItemOrdering.selectionAfterRemoval(this.shownItems, items);
 	}
 
-	void selectItem(@Nullable UpgradePlanItem item) {
+	void selectItem(@Nullable PlannedUpgrade item) {
 
 		if (item == null) {
 			tree.clearSelection();
@@ -329,7 +329,7 @@ class UpgradePlanTree {
 
 		root.removeAllChildren();
 		BadgeColumns badgeColumns = new BadgeColumns(shownItems);
-		for (UpgradePlanItem item : shownItems) {
+		for (PlannedUpgrade item : shownItems) {
 
 			PlanTreeNode node = new PlanTreeNode(item, badgeColumns);
 			if (item.isGroup()) {
@@ -387,7 +387,7 @@ class UpgradePlanTree {
 			return null;
 		}
 
-		UpgradePlanItem item = node.getItem();
+		PlannedUpgrade item = node.getItem();
 		Badge ticket = ticketBadge(item);
 		return ticket != null && badgeAt(node, rowBounds, event.getPoint()) == ticket
 				? item.getTicket()
@@ -404,13 +404,13 @@ class UpgradePlanTree {
 		return gutter.badgeAt(rowBounds.height, local);
 	}
 
-	private @Nullable Badge ticketBadge(UpgradePlanItem item) {
+	private @Nullable Badge ticketBadge(PlannedUpgrade item) {
 		return service.hasTicketSystem() ? item.getTicketBadge() : null;
 	}
 
 	private boolean previewAt(MouseEvent event) {
 
-		UpgradePlanItem item = itemAtRow(rowAt(event));
+		PlannedUpgrade item = itemAtRow(rowAt(event));
 		if (item != null) {
 			itemDoubleClickAction.accept(item);
 			return true;
@@ -435,25 +435,25 @@ class UpgradePlanTree {
 		return path != null && path.getLastPathComponent() instanceof PlanTreeNode node ? node : null;
 	}
 
-	private @Nullable UpgradePlanItem itemAtRow(int row) {
+	private @Nullable PlannedUpgrade itemAtRow(int row) {
 
 		TreePath path = row >= 0 ? tree.getPathForRow(row) : null;
 		return path != null ? itemOf((DefaultMutableTreeNode) path.getLastPathComponent()) : null;
 	}
 
-	private static @Nullable UpgradePlanItem itemOf(DefaultMutableTreeNode node) {
+	private static @Nullable PlannedUpgrade itemOf(DefaultMutableTreeNode node) {
 
-		if (node.getUserObject() instanceof UpgradePlanItem item) {
+		if (node.getUserObject() instanceof PlannedUpgrade item) {
 			return item;
 		}
 		if (node.getParent() instanceof DefaultMutableTreeNode parent
-				&& parent.getUserObject() instanceof UpgradePlanItem item) {
+				&& parent.getUserObject() instanceof PlannedUpgrade item) {
 			return item;
 		}
 		return null;
 	}
 
-	private @Nullable DefaultMutableTreeNode findNode(UpgradePlanItem item) {
+	private @Nullable DefaultMutableTreeNode findNode(PlannedUpgrade item) {
 
 		for (int i = 0; i < root.getChildCount(); i++) {
 
@@ -469,11 +469,11 @@ class UpgradePlanTree {
 
 		Object value = ((DefaultMutableTreeNode) path.getLastPathComponent()).getUserObject();
 
-		if (value instanceof UpgradePlanItem item) {
+		if (value instanceof PlannedUpgrade item) {
 			return item.getDisplayName();
 		}
 
-		if (value instanceof ItemDependency member) {
+		if (value instanceof UpgradePlanDependency member) {
 			return member.getArtifactCoordinates();
 		}
 
@@ -525,7 +525,7 @@ class UpgradePlanTree {
 
 			if (value instanceof PlanTreeNode node) {
 
-				UpgradePlanItem item = node.getItem();
+				PlannedUpgrade item = node.getItem();
 				text.setIcon(item.getIcon());
 				text.append(item.getDisplayName(), item.isGroup()
 						? new SimpleTextAttributes(SimpleTextAttributes.STYLE_BOLD, null)
@@ -534,7 +534,7 @@ class UpgradePlanTree {
 						SimpleTextAttributes.GRAYED_ATTRIBUTES);
 
 				panel.add(node.getBadgeGutter(), BorderLayout.EAST);
-			} else if (((DefaultMutableTreeNode) value).getUserObject() instanceof ItemDependency member) {
+			} else if (((DefaultMutableTreeNode) value).getUserObject() instanceof UpgradePlanDependency member) {
 
 				text.setIcon(AllIcons.Nodes.Library);
 				text.append(member.getArtifactCoordinates(), SimpleTextAttributes.REGULAR_ATTRIBUTES);
@@ -562,20 +562,20 @@ class UpgradePlanTree {
 
 		private final BadgeGutter badgeGutter;
 
-		PlanTreeNode(UpgradePlanItem item, BadgeColumns badgeColumns) {
+		PlanTreeNode(PlannedUpgrade item, BadgeColumns badgeColumns) {
 			super(item, item.isGroup());
 			this.badgeGutter = new BadgeGutter(badgeColumns, item.getTicketBadge(), item.getAttentionBadge());
 		}
 
-		UpgradePlanItem getItem() {
-			return (UpgradePlanItem) getUserObject();
+		PlannedUpgrade getItem() {
+			return (PlannedUpgrade) getUserObject();
 		}
 
 		BadgeGutter getBadgeGutter() {
 			return badgeGutter;
 		}
 
-		void setItem(UpgradePlanItem item, BadgeColumns badgeColumns) {
+		void setItem(PlannedUpgrade item, BadgeColumns badgeColumns) {
 			setUserObject(item);
 			badgeGutter.setBadges(badgeColumns, item.getTicketBadge(), item.getAttentionBadge());
 		}
@@ -650,12 +650,12 @@ class UpgradePlanTree {
 
 		private final int gap;
 
-		BadgeColumns(List<UpgradePlanItem> items) {
+		BadgeColumns(List<PlannedUpgrade> items) {
 
 			BadgeComponent measurer = new BadgeComponent();
 			int ticketWidth = 0;
 			int attentionWidth = 0;
-			for (UpgradePlanItem item : items) {
+			for (PlannedUpgrade item : items) {
 				measurer.setBadge(item.getTicketBadge());
 				ticketWidth = Math.max(ticketWidth, measurer.getPreferredSize().width);
 				measurer.setBadge(item.getAttentionBadge());
@@ -755,17 +755,17 @@ class UpgradePlanTree {
 	 */
 	static class PlanItemOrdering {
 
-		private static final Comparator<UpgradePlanItem> BY_ATTENTION = Comparator
-				.comparing(UpgradePlanItem::getAttentionLevel);
+		private static final Comparator<PlannedUpgrade> BY_ATTENTION = Comparator
+				.comparing(PlannedUpgrade::getAttentionLevel);
 
-		private static final Comparator<UpgradePlanItem> ALPHABETICALLY = Comparator.comparing(
-				UpgradePlanItem::getDisplayName,
+		private static final Comparator<PlannedUpgrade> ALPHABETICALLY = Comparator.comparing(
+				PlannedUpgrade::getDisplayName,
 				String.CASE_INSENSITIVE_ORDER);
 
 		private PlanItemOrdering() {
 		}
 
-		static List<UpgradePlanItem> order(List<UpgradePlanItem> items, boolean byAttention, boolean alphabetically) {
+		static List<PlannedUpgrade> order(List<PlannedUpgrade> items, boolean byAttention, boolean alphabetically) {
 
 			if (byAttention && alphabetically) {
 				return items.stream().sorted(BY_ATTENTION.thenComparing(ALPHABETICALLY)).toList();
@@ -779,13 +779,13 @@ class UpgradePlanTree {
 			return List.copyOf(items);
 		}
 
-		static @Nullable UpgradePlanItem selectionAfterRemoval(List<UpgradePlanItem> shownItems,
-				Set<UpgradePlanItem> removedItems) {
+		static @Nullable PlannedUpgrade selectionAfterRemoval(List<PlannedUpgrade> shownItems,
+				Set<PlannedUpgrade> removedItems) {
 
-			List<UpgradePlanItem> remaining = new ArrayList<>(shownItems.size());
+			List<PlannedUpgrade> remaining = new ArrayList<>(shownItems.size());
 			int firstRemovedIndex = -1;
 			for (int i = 0; i < shownItems.size(); i++) {
-				UpgradePlanItem item = shownItems.get(i);
+				PlannedUpgrade item = shownItems.get(i);
 				if (!removedItems.contains(item)) {
 					remaining.add(item);
 				} else if (firstRemovedIndex == -1) {

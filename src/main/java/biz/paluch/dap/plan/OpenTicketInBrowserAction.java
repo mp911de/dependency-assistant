@@ -41,7 +41,7 @@ public class OpenTicketInBrowserAction extends DumbAwareAction {
 		Project project = e.getProject();
 		UpgradePlanService service = project != null ? UpgradePlanService.getInstance(project) : null;
 		boolean visible = service != null && service.hasTicketSystem();
-		UpgradePlanItem item = PlanSelection.from(e).first();
+		PlannedUpgrade item = PlanSelection.from(e).first();
 
 		Presentation presentation = e.getPresentation();
 		presentation.setVisible(visible);

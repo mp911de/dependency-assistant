@@ -35,13 +35,13 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-class PlanSelection implements Sequence<UpgradePlanItem> {
+class PlanSelection implements Sequence<PlannedUpgrade> {
 
 	private static final PlanSelection EMPTY = new PlanSelection(List.of());
 
-	private final List<UpgradePlanItem> items;
+	private final List<PlannedUpgrade> items;
 
-	private PlanSelection(List<UpgradePlanItem> items) {
+	private PlanSelection(List<PlannedUpgrade> items) {
 		this.items = items;
 	}
 
@@ -52,7 +52,7 @@ class PlanSelection implements Sequence<UpgradePlanItem> {
 	/**
 	 * Copy the selected items in action-processing order.
 	 */
-	static PlanSelection of(List<UpgradePlanItem> items) {
+	static PlanSelection of(List<PlannedUpgrade> items) {
 		return new PlanSelection(List.copyOf(items));
 	}
 
@@ -63,9 +63,9 @@ class PlanSelection implements Sequence<UpgradePlanItem> {
 			return new PlanSelection(List.of());
 		}
 
-		List<UpgradePlanItem> items = new ArrayList<>(selection.length);
+		List<PlannedUpgrade> items = new ArrayList<>(selection.length);
 		for (Object value : selection) {
-			if (value instanceof UpgradePlanItem item) {
+			if (value instanceof PlannedUpgrade item) {
 				items.add(item);
 			}
 		}
@@ -73,7 +73,7 @@ class PlanSelection implements Sequence<UpgradePlanItem> {
 		return new PlanSelection(items);
 	}
 
-	List<UpgradePlanItem> items() {
+	List<PlannedUpgrade> items() {
 		return items;
 	}
 
@@ -81,14 +81,14 @@ class PlanSelection implements Sequence<UpgradePlanItem> {
 	 * Return the first item, or {@literal null} for an empty selection.
 	 */
 	@Nullable
-	UpgradePlanItem first() {
+	PlannedUpgrade first() {
 		return items.isEmpty() ? null : items.getFirst();
 	}
 
 	/**
 	 * Run the action for the first item if present.
 	 */
-	void doWithFirst(Consumer<UpgradePlanItem> consumer) {
+	void doWithFirst(Consumer<PlannedUpgrade> consumer) {
 		if (!items.isEmpty()) {
 			consumer.accept(items.getFirst());
 		}
@@ -100,19 +100,19 @@ class PlanSelection implements Sequence<UpgradePlanItem> {
 	}
 
 	@Override
-	public Stream<UpgradePlanItem> stream() {
+	public Stream<PlannedUpgrade> stream() {
 		return items.stream();
 	}
 
 	@Override
-	public Iterator<UpgradePlanItem> iterator() {
+	public Iterator<PlannedUpgrade> iterator() {
 		return items.iterator();
 	}
 
 	/**
 	 * Return selected items, evaluating the fallback only for an empty selection.
 	 */
-	List<UpgradePlanItem> orElseGet(Supplier<? extends List<UpgradePlanItem>> supplier) {
+	List<PlannedUpgrade> orElseGet(Supplier<? extends List<PlannedUpgrade>> supplier) {
 		return items.isEmpty() ? supplier.get() : items;
 	}
 

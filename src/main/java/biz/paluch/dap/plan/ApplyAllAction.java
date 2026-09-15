@@ -59,7 +59,7 @@ public class ApplyAllAction extends UpgradePlanAction {
 	public void perform(AnActionEvent e, Project project, UpgradePlanService service) {
 
 		UpgradePlan plan = service.getUpgradePlan().rebuild();
-		List<UpgradePlanItem> items = PlanSelection.from(e)
+		List<PlannedUpgrade> items = PlanSelection.from(e)
 				.orElseGet(plan::getItems);
 		UpgradePlan toApply = plan.withItems(items);
 
@@ -78,7 +78,6 @@ public class ApplyAllAction extends UpgradePlanAction {
 		}
 
 		boolean shelve = decision == ApplyDecision.SHELVE_AND_APPLY;
-		PlanUpdateApplier applier = createApplier(service);
 
 		Task.Modal task = new Task.Modal(project, MessageBundle.message("plan.apply.progress"), true) {
 
@@ -99,7 +98,7 @@ public class ApplyAllAction extends UpgradePlanAction {
 							unshelve = NotificationActions.unshelve(restore);
 						}
 					}
-					appliedUpdates = applier.apply(toApply, indicator);
+					appliedUpdates = execute(new UpgradePlanExecutor(service, toApply, indicator));
 				} catch (IOException e) {
 					throw new RuntimeException(e);
 				}
@@ -131,11 +130,7 @@ public class ApplyAllAction extends UpgradePlanAction {
 
 			@Override
 			public void onFinished() {
-				try {
-					finishRun(service, toApply);
-				} finally {
-					service.setBusy(false);
-				}
+				service.setBusy(false);
 			}
 
 		};
@@ -149,11 +144,8 @@ public class ApplyAllAction extends UpgradePlanAction {
 		}
 	}
 
-	PlanUpdateApplier createApplier(UpgradePlanService service) {
-		return new UpdateApplier(service);
-	}
-
-	void finishRun(UpgradePlanService service, UpgradePlan attempted) {
+	AppliedUpdates execute(UpgradePlanExecutor executor) throws IOException {
+		return executor.apply();
 	}
 
 	/**
@@ -187,7 +179,7 @@ public class ApplyAllAction extends UpgradePlanAction {
 				notification.action(NotificationActions.commit(project, applied, vcs));
 			}
 			List<String> commandNames = applied.stream()
-					.map(update -> UpdateApplier.getCommandName(update.displayName(), update.getTargetVersion()))
+					.map(update -> UpgradePlanExecutor.getCommandName(update.displayName(), update.getTargetVersion()))
 					.toList();
 			notification.action(NotificationActions.undoAll(project, commandNames));
 		}

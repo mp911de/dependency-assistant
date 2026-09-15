@@ -27,8 +27,8 @@ import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.plan.UpgradePlanState.DeclarationSourceState;
-import biz.paluch.dap.plan.UpgradePlanState.Item;
-import biz.paluch.dap.plan.UpgradePlanState.Member;
+import biz.paluch.dap.plan.UpgradePlanState.Dependency;
+import biz.paluch.dap.plan.UpgradePlanState.Upgrade;
 import biz.paluch.dap.plan.UpgradePlanState.VersionSourceState;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.GitVersionResolver;
@@ -69,15 +69,15 @@ class UpgradePlanLoader {
 	 * Materialize the item, or return {@literal null} if its facts or assistants
 	 * are unavailable.
 	 */
-	public @Nullable UpgradePlanItem create(Item item) {
+	public @Nullable PlannedUpgrade create(Upgrade upgrade) {
 
-		if (ArtifactVersion.from(item.getToVersion()).isEmpty() || item.getMembers().isEmpty()) {
+		if (ArtifactVersion.from(upgrade.getToVersion()).isEmpty() || upgrade.getMembers().isEmpty()) {
 			return null;
 		}
 
-		List<InterfaceAssistant> resolvedAssistants = new ArrayList<>(item.getMembers().size());
-		List<ItemDependency> dependencies = new ArrayList<>(item.getMembers().size());
-		for (Member member : item.getMembers()) {
+		List<InterfaceAssistant> resolvedAssistants = new ArrayList<>(upgrade.getMembers().size());
+		List<UpgradePlanDependency> dependencies = new ArrayList<>(upgrade.getMembers().size());
+		for (Dependency member : upgrade.getMembers()) {
 			if (!isValid(member)) {
 				return null;
 			}
@@ -90,21 +90,21 @@ class UpgradePlanLoader {
 			dependencies.add(toDependency(member));
 		}
 
-		ArtifactVersion version = ArtifactVersion.of(item.getToVersion());
-		for (Member member : item.getMembers()) {
+		ArtifactVersion version = ArtifactVersion.of(upgrade.getToVersion());
+		for (Dependency member : upgrade.getMembers()) {
 
 			Versioned versioned = gitVersionResolver.resolveStrict(member.getPackageIdentity()
-					.getArtifactId(), item.getToVersion());
+					.getArtifactId(), upgrade.getToVersion());
 			if (versioned.isVersioned()) {
 				version = versioned.getVersion();
 				break;
 			}
 		}
 
-		UpgradePlanItem planItem = new UpgradePlanItem(item.getId(), item.getDisplayName(),
-				version, item.isVulnerabilityFix(), item.getVulnerabilityCount(),
-				item.getHighestVulnerabilitySeverity(), dependencies, resolvedAssistants);
-		UpgradePlanState.Ticket ticket = item.getTicket();
+		PlannedUpgrade planItem = new PlannedUpgrade(upgrade.getId(), upgrade.getDisplayName(),
+				version, upgrade.isVulnerabilityFix(), upgrade.getVulnerabilityCount(),
+				upgrade.getHighestVulnerabilitySeverity(), dependencies, resolvedAssistants);
+		UpgradePlanState.Ticket ticket = upgrade.getTicket();
 		if (ticket != null) {
 			planItem.setTicket(ticket.toUpgradeTicket(ticketSystem));
 		}
@@ -112,7 +112,7 @@ class UpgradePlanLoader {
 		return planItem;
 	}
 
-	private static boolean isValid(Member member) {
+	private static boolean isValid(Dependency member) {
 
 		if (StringUtils.isEmpty(member.groupId) || StringUtils.isEmpty(member.artifactId)
 				|| ArtifactVersion.from(member.fromVersion).isEmpty() || StringUtils.isEmpty(member.assistant)) {
@@ -133,10 +133,11 @@ class UpgradePlanLoader {
 		return true;
 	}
 
-	private static ItemDependency toDependency(Member member) {
+	private static UpgradePlanDependency toDependency(Dependency member) {
 
 		ArtifactVersion fromVersion = ArtifactVersion.of(member.fromVersion);
-		ItemDependency dependency = new ItemDependency(member.getPackageIdentity(), fromVersion, member.implicit);
+		UpgradePlanDependency dependency = new UpgradePlanDependency(member.getPackageIdentity(), fromVersion,
+				member.implicit);
 
 		if (member.declarationSources.isEmpty()) {
 			dependency.addDeclarationSource(DeclarationSource.dependency());

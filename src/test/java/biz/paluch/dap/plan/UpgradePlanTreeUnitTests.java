@@ -49,9 +49,9 @@ class UpgradePlanTreeUnitTests {
 	@Test
 	void disablingSortingRestoresLatestPlanOrder(Project project) {
 
-		UpgradePlanItem patch = TestPlannedUpgrade.item("org.example:patch:1.0.0", "1.0.1");
-		UpgradePlanItem minor = TestPlannedUpgrade.item("org.example:minor:1.0.0", "1.1.0");
-		UpgradePlanItem major = TestPlannedUpgrade.item("org.example:major:1.0.0", "2.0.0");
+		PlannedUpgrade patch = TestUpgradePlanSource.item("org.example:patch:1.0.0", "1.0.1");
+		PlannedUpgrade minor = TestUpgradePlanSource.item("org.example:minor:1.0.0", "1.1.0");
+		PlannedUpgrade major = TestUpgradePlanSource.item("org.example:major:1.0.0", "2.0.0");
 		PlanTreeProbe probe = new PlanTreeProbe(project, patch, minor, major);
 
 		probe.planTree.setSortByAttention(true);
@@ -64,8 +64,8 @@ class UpgradePlanTreeUnitTests {
 	@Test
 	void everyRowPaintsItsOwnBadgeWidth(Project project) {
 
-		UpgradePlanItem patch = TestPlannedUpgrade.item("org.example:patch:1.0.0", "1.0.1");
-		UpgradePlanItem major = TestPlannedUpgrade.item("org.example:major:1.0.0", "2.0.0");
+		PlannedUpgrade patch = TestUpgradePlanSource.item("org.example:patch:1.0.0", "1.0.1");
+		PlannedUpgrade major = TestUpgradePlanSource.item("org.example:major:1.0.0", "2.0.0");
 		PlanTreeProbe probe = new PlanTreeProbe(project, patch, major);
 
 		// the tree stamps one renderer per row and reuses it at one size, so a row
@@ -77,7 +77,7 @@ class UpgradePlanTreeUnitTests {
 	@Test
 	void badgesHaveDistinctHitZones(Project project) {
 
-		UpgradePlanItem item = TestPlannedUpgrade.item("org.example:major:1.0.0", "2.0.0");
+		PlannedUpgrade item = TestUpgradePlanSource.item("org.example:major:1.0.0", "2.0.0");
 		item.setTicket(new UpgradeTicket("123", "#123", "https://tickets.example/123", "test"));
 		PlanTreeProbe probe = new PlanTreeProbe(project, item);
 
@@ -93,9 +93,9 @@ class UpgradePlanTreeUnitTests {
 	@Test
 	void gutterWidthUsesWidestTicketBadge(Project project) {
 
-		UpgradePlanItem shortTicket = TestPlannedUpgrade.item("org.example:short:1.0.0", "1.0.1");
+		PlannedUpgrade shortTicket = TestUpgradePlanSource.item("org.example:short:1.0.0", "1.0.1");
 		shortTicket.setTicket(new UpgradeTicket("123", "#1", "https://tickets.example/123", "test"));
-		UpgradePlanItem longTicket = TestPlannedUpgrade.item("org.example:long:1.0.0", "1.0.1");
+		PlannedUpgrade longTicket = TestUpgradePlanSource.item("org.example:long:1.0.0", "1.0.1");
 		longTicket.setTicket(new UpgradeTicket("123", "#123456789", "https://tickets.example/123", "test"));
 
 		PlanTreeProbe compact = new PlanTreeProbe(project, shortTicket);
@@ -111,7 +111,7 @@ class UpgradePlanTreeUnitTests {
 	@Test
 	void refreshingItemRefreshesTicketHitZone(Project project) {
 
-		UpgradePlanItem item = TestPlannedUpgrade.item("org.example:patch:1.0.0", "1.0.1");
+		PlannedUpgrade item = TestUpgradePlanSource.item("org.example:patch:1.0.0", "1.0.1");
 		PlanTreeProbe probe = new PlanTreeProbe(project, item);
 
 		item.setTicket(new UpgradeTicket("123", "#123", "https://tickets.example/123", "test"));
@@ -129,8 +129,8 @@ class UpgradePlanTreeUnitTests {
 	@Test
 	void renameTargetIsTheSingleSelectedTopLevelItem(Project project) {
 
-		UpgradePlanItem alpha = TestPlannedUpgrade.item("org.example:alpha:1.0.0", "1.1.0");
-		UpgradePlanItem bravo = TestPlannedUpgrade.item("org.example:bravo:1.0.0", "1.1.0");
+		PlannedUpgrade alpha = TestUpgradePlanSource.item("org.example:alpha:1.0.0", "1.1.0");
+		PlannedUpgrade bravo = TestUpgradePlanSource.item("org.example:bravo:1.0.0", "1.1.0");
 		PlanTreeProbe probe = new PlanTreeProbe(project, alpha, bravo);
 
 		assertThat(probe.planTree.getRenameTarget()).isNull();
@@ -145,12 +145,12 @@ class UpgradePlanTreeUnitTests {
 	@Test
 	void renameTargetIgnoresGroupMemberRows(Project project) {
 
-		TestPlannedUpgrade group = new TestPlannedUpgrade("spring.version", List.of(
+		TestUpgradePlanSource group = new TestUpgradePlanSource("spring.version", List.of(
 				TestCandidates.candidate("org.springframework:spring-core:6.0.0",
 						it -> it.releases("6.1.0").versionProperty("spring.version")),
 				TestCandidates.candidate("org.springframework:spring-context:6.0.0",
 						it -> it.releases("6.1.0").versionProperty("spring.version"))));
-		UpgradePlanItem item = TestPlannedUpgrade.create(project, ArtifactVersion.of("6.1.0"), group).getFirst();
+		PlannedUpgrade item = TestUpgradePlanSource.create(project, ArtifactVersion.of("6.1.0"), group).getFirst();
 		PlanTreeProbe probe = new PlanTreeProbe(project, item);
 
 		probe.tree.expandRow(0);
@@ -172,7 +172,7 @@ class UpgradePlanTreeUnitTests {
 
 		final Tree tree;
 
-		PlanTreeProbe(Project project, UpgradePlanItem... items) {
+		PlanTreeProbe(Project project, PlannedUpgrade... items) {
 
 			this.planTree = new UpgradePlanTree(() -> {
 			}, () -> {
@@ -188,7 +188,7 @@ class UpgradePlanTreeUnitTests {
 			DefaultMutableTreeNode root = (DefaultMutableTreeNode) tree.getModel().getRoot();
 			List<String> names = new ArrayList<>();
 			root.children().asIterator().forEachRemaining(node -> names
-					.add(((UpgradePlanItem) ((DefaultMutableTreeNode) node).getUserObject()).getDisplayName()));
+					.add(((PlannedUpgrade) ((DefaultMutableTreeNode) node).getUserObject()).getDisplayName()));
 			return names;
 		}
 

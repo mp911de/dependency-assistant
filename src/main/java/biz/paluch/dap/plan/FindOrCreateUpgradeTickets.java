@@ -63,7 +63,7 @@ class FindOrCreateUpgradeTickets extends Task.Backgroundable {
 
 	private final List<Label> labels;
 
-	private final List<UpgradePlanItem> items;
+	private final List<PlannedUpgrade> items;
 
 	private final AtomicInteger created = new AtomicInteger();
 
@@ -72,7 +72,7 @@ class FindOrCreateUpgradeTickets extends Task.Backgroundable {
 	private final AtomicInteger failed = new AtomicInteger();
 
 	FindOrCreateUpgradeTickets(UpgradePlanService service, TicketSystem ticketSystem, List<Milestone> milestones,
-			List<Label> labels, List<UpgradePlanItem> items) {
+			List<Label> labels, List<PlannedUpgrade> items) {
 
 		super(service.getProject(), MessageBundle.message("plan.tickets.progress"), true);
 		this.service = service;
@@ -85,7 +85,7 @@ class FindOrCreateUpgradeTickets extends Task.Backgroundable {
 	void start() {
 
 		if (service.isBusy() || items.stream()
-				.allMatch(UpgradePlanItem::hasTicket)) {
+				.allMatch(PlannedUpgrade::hasTicket)) {
 			return;
 		}
 
@@ -103,7 +103,7 @@ class FindOrCreateUpgradeTickets extends Task.Backgroundable {
 
 		indicator.setIndeterminate(false);
 
-		List<UpgradePlanItem> pending = items.stream()
+		List<PlannedUpgrade> pending = items.stream()
 				.filter(item -> !item.hasTicket()).toList();
 		if (pending.isEmpty()) {
 			return;
@@ -116,7 +116,7 @@ class FindOrCreateUpgradeTickets extends Task.Backgroundable {
 
 		try (TaskScope scope = TaskScope.open("UpgradeTickets", indicator, MAX_CONCURRENT_TASKS)) {
 
-			for (UpgradePlanItem item : pending) {
+			for (PlannedUpgrade item : pending) {
 				scope.fork(() -> {
 					findOrCreate(repository, openStates, steps, item, taskFailure);
 					return null;
@@ -153,7 +153,7 @@ class FindOrCreateUpgradeTickets extends Task.Backgroundable {
 	}
 
 	private void findOrCreate(TicketRepository repository, List<TicketState> openStates,
-			WeightedStepsProgressIndicator indicator, UpgradePlanItem item,
+			WeightedStepsProgressIndicator indicator, PlannedUpgrade item,
 			AtomicReference<TicketCreationFailed> taskFailure) {
 
 		if (taskFailure.get() != null) {

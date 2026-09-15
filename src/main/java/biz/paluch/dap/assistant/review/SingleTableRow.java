@@ -21,19 +21,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 
-import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.DeclarationSource;
-import biz.paluch.dap.artifact.Dependency;
-import biz.paluch.dap.artifact.HasArtifactId;
-import biz.paluch.dap.artifact.HasPackageIdentity;
-import biz.paluch.dap.artifact.HasPackageSystem;
-import biz.paluch.dap.artifact.PackageIdentity;
-import biz.paluch.dap.artifact.PackageSystem;
-import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.artifact.*;
 import biz.paluch.dap.assistant.check.DeclaredVersions;
 import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
-import biz.paluch.dap.assistant.check.VersionProperty;
 import biz.paluch.dap.assistant.presentation.DependencyPresentation;
 import biz.paluch.dap.assistant.presentation.IconDependencyPresentation;
 import biz.paluch.dap.checker.Vulnerabilities;
@@ -173,7 +163,7 @@ class SingleTableRow extends TableRow implements HasArtifactId, HasPackageIdenti
 	}
 
 	@Override
-	public List<DependencyUpgradeCandidate> getUpgradeCandidates() {
+	public List<DependencyUpgradeCandidate> getUpgrades() {
 		return List.of(upgradeCandidate);
 	}
 

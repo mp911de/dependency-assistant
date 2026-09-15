@@ -99,7 +99,7 @@ class SelectorAction<T> extends DumbAwareAction implements CustomComponentAction
 		button.setVisible(presentation.isVisible());
 		button.setEnabled(service.isRefreshingListsEnabled() && presentation.isEnabled());
 		button.setClearVisible(model.getSelected() != null);
-		button.setTooltips(tooltipText(), MessageBundle.message(tooltipKey + ".clear"));
+		button.setTooltips(getTooltipText(), MessageBundle.message(tooltipKey + ".clear"));
 	}
 
 	private String shownText() {
@@ -107,17 +107,17 @@ class SelectorAction<T> extends DumbAwareAction implements CustomComponentAction
 		return selection != null ? model.getText(selection) : MessageBundle.message(tooltipKey + ".placeholder");
 	}
 
-	private String tooltipText() {
+	private String getTooltipText() {
 
 		T selection = model.getSelected();
 		if (selection == null) {
 			return MessageBundle.message(tooltipKey + ".empty");
 		}
 
-		return tooltipText(selection);
+		return getTooltipText(selection);
 	}
 
-	private String tooltipText(T value) {
+	private String getTooltipText(T value) {
 		String tooltip = model.getToolTip(value);
 		String tooltipToUse = tooltip != null && !tooltip.isBlank() ? tooltip : model.getText(value);
 		return StringUtils.hasText(tooltipToUse) ? StringUtil.escapeXmlEntities(tooltipToUse) : tooltipToUse;
@@ -196,7 +196,7 @@ class SelectorAction<T> extends DumbAwareAction implements CustomComponentAction
 			};
 			Presentation templatePresentation = option.getTemplatePresentation();
 			templatePresentation.setIcon(model.getIcon(value));
-			templatePresentation.putClientProperty(ActionUtil.TOOLTIP_TEXT, tooltipText(value));
+			templatePresentation.putClientProperty(ActionUtil.TOOLTIP_TEXT, getTooltipText(value));
 			templatePresentation.putClientProperty(ActionUtil.SECONDARY_TEXT,
 					model.getSecondaryText(value));
 			values.add(option);
@@ -231,7 +231,7 @@ class SelectorAction<T> extends DumbAwareAction implements CustomComponentAction
 		e.getPresentation().setVisible(visible);
 		e.getPresentation().setEnabled(visible && service.isRefreshingListsEnabled());
 		e.getPresentation().setText(shown, false);
-		e.getPresentation().setDescription(tooltipText());
+		e.getPresentation().setDescription(getTooltipText());
 	}
 
 	@Override

@@ -56,7 +56,7 @@ public class UpgradePlanToolWindowFactory implements ToolWindowFactory, DumbAwar
 	/**
 	 * Replace the plan with reviewed upgrades and their file scope, then reveal it.
 	 */
-	public static void openWith(Project project, Map<? extends PlannedUpgrade, ArtifactVersion> upgrades,
+	public static void openWith(Project project, Map<? extends UpgradePlanSource, ArtifactVersion> upgrades,
 			FileScope scope) {
 
 		UpgradePlanService.getInstance(project).planUpgrades(upgrades, scope);

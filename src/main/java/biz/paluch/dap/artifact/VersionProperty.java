@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 the original author or authors.
+ * Copyright 2026-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,22 +14,15 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.plan;
-
-import java.util.List;
-
-import com.intellij.openapi.actionSystem.AnActionEvent;
+package biz.paluch.dap.artifact;
 
 /**
- * Whole-plan target presentation for {@link CreateTicketsAction}.
+ * Version-property identity used to couple dependencies.
+ * <p>Identity uses the assistant id and bare property name, excluding profile
+ * and module scope.
  *
  * @author Mark Paluch
  */
-public class CreateAllTicketsAction extends CreateTicketsAction {
-
-	@Override
-	List<PlannedUpgrade> getTargetItems(AnActionEvent e, UpgradePlanService service) {
-		return service.getUpgradePlan().getItems();
-	}
+public record VersionProperty(String assistantId, String property) {
 
 }

@@ -70,7 +70,7 @@ public class UpgradeGroup implements Sequence<DependencyUpgradeCandidate> {
 			}
 		}
 
-		Dependency dependency = new Dependency(first.getDependency().getPackageIdentity(), current);
+		Dependency dependency = new Dependency(first.getPackageIdentity(), current);
 		for (DependencyUpgradeCandidate member : members) {
 			dependency.addAllDeclarationSources(member.getDependency().getDeclarationSources());
 			dependency.addAllVersionSources(member.getDependency().getVersionSources());

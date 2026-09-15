@@ -39,7 +39,7 @@ class PlanTextTemplates {
 		this.templates = TextTemplates.getInstance(project);
 	}
 
-	String getTicketTitle(UpgradePlanItem item) {
+	String getTicketTitle(PlannedUpgrade item) {
 		return templates.render(AssistantTemplateGroup.TICKET_TEMPLATE, getProperties(item)).stripTrailing().trim();
 	}
 
@@ -47,7 +47,7 @@ class PlanTextTemplates {
 	 * Render the commit message without ticket references. {@code TICKET} and
 	 * {@code CLOSES} render empty.
 	 */
-	String getCommitMessage(UpgradePlanItem item) {
+	String getCommitMessage(PlannedUpgrade item) {
 		return renderCommitMessage(getProperties(item));
 	}
 
@@ -56,7 +56,7 @@ class PlanTextTemplates {
 	 * ticket system. {@code TICKET} and {@code CLOSES} render empty without a
 	 * linked ticket.
 	 */
-	String getCommitMessage(UpgradePlanItem item, TicketSystem ticketSystem) {
+	String getCommitMessage(PlannedUpgrade item, TicketSystem ticketSystem) {
 
 		TicketKey ticketKey = item.getTicketKey();
 		if (ticketKey == null) {
@@ -71,7 +71,7 @@ class PlanTextTemplates {
 				templates.render(AssistantTemplateGroup.COMMIT_TEMPLATE, properties).stripTrailing());
 	}
 
-	private static Properties getProperties(UpgradePlanItem item) {
+	private static Properties getProperties(PlannedUpgrade item) {
 		Properties properties = new Properties();
 		properties.setProperty("DEPENDENCY", item.getDisplayName());
 		properties.setProperty("FROM_VERSION", item.getFromVersion().toString());
@@ -81,7 +81,7 @@ class PlanTextTemplates {
 		return properties;
 	}
 
-	private static Properties getProperties(UpgradePlanItem item, TicketSystem ticketSystem, TicketKey ticketKey) {
+	private static Properties getProperties(PlannedUpgrade item, TicketSystem ticketSystem, TicketKey ticketKey) {
 		Properties properties = getProperties(item);
 		properties.setProperty("TICKET", ticketSystem.getDisplayReference(ticketKey));
 		properties.setProperty("CLOSES", ticketSystem.getCloseReference(ticketKey));

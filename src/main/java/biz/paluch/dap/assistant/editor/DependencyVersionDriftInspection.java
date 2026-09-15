@@ -38,7 +38,7 @@ import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.assistant.ArtifactReferenceContext;
 import biz.paluch.dap.assistant.ArtifactReferenceContextVisitor;
 import biz.paluch.dap.assistant.action.StateRefresher;
-import biz.paluch.dap.assistant.check.DependencySiteNavigator;
+import biz.paluch.dap.assistant.usage.DependencySiteNavigator;
 import biz.paluch.dap.lookup.DependencySiteQuery;
 import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.state.ProjectId;

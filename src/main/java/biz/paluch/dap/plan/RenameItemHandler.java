@@ -44,7 +44,7 @@ import com.intellij.refactoring.rename.RenameHandler;
 
 /**
  * Rename the single plan item published as
- * {@link UpgradePlanItem#RENAME_TARGET}.
+ * {@link PlannedUpgrade#RENAME_TARGET}.
  * <p>The plan rename is undoable. Optional name hints include implicit members.
  * Declining to remember a name preserves existing hints. Descriptor updates
  * require an existing descriptor.
@@ -56,7 +56,7 @@ public class RenameItemHandler implements RenameHandler, TitledHandler, DumbAwar
 
 	@Override
 	public boolean isAvailableOnDataContext(DataContext dataContext) {
-		return dataContext.getData(UpgradePlanItem.RENAME_TARGET) != null;
+		return dataContext.getData(PlannedUpgrade.RENAME_TARGET) != null;
 	}
 
 	@Override
@@ -74,7 +74,7 @@ public class RenameItemHandler implements RenameHandler, TitledHandler, DumbAwar
 	@Override
 	public void invoke(Project project, PsiElement[] elements, DataContext dataContext) {
 
-		UpgradePlanItem item = dataContext.getData(UpgradePlanItem.RENAME_TARGET);
+		PlannedUpgrade item = dataContext.getData(PlannedUpgrade.RENAME_TARGET);
 		if (item == null) {
 			return;
 		}
@@ -109,16 +109,16 @@ public class RenameItemHandler implements RenameHandler, TitledHandler, DumbAwar
 		}
 	}
 
-	private static List<ArtifactId> getArtifactIds(UpgradePlanItem item) {
+	private static List<ArtifactId> getArtifactIds(PlannedUpgrade item) {
 
 		List<ArtifactId> artifactIds = new ArrayList<>();
-		for (ItemDependency member : item.getMembers()) {
+		for (UpgradePlanDependency member : item.getDependencies()) {
 			artifactIds.add(member.getArtifactId());
 		}
 		return artifactIds;
 	}
 
-	private static Set<String> getSuggestions(Project project, UpgradePlanItem item) {
+	private static Set<String> getSuggestions(Project project, PlannedUpgrade item) {
 
 		ProjectMetadataService service = ProjectMetadataService.getInstance(project);
 
@@ -127,7 +127,7 @@ public class RenameItemHandler implements RenameHandler, TitledHandler, DumbAwar
 
 		suggestions.add(item.getDisplayName());
 
-		for (ItemDependency itemDependency : item) {
+		for (UpgradePlanDependency itemDependency : item) {
 
 			ArtifactId artifactId = itemDependency.getArtifactId();
 			ProjectMetadata metadata = service.getMetadata(artifactId);
@@ -140,7 +140,7 @@ public class RenameItemHandler implements RenameHandler, TitledHandler, DumbAwar
 
 		CoordinateShape shape = CoordinateShape.of(artifactIds);
 
-		for (ItemDependency itemDependency : item) {
+		for (UpgradePlanDependency itemDependency : item) {
 			String derived = shape.deriveGroupName(itemDependency.getArtifactId().groupId());
 			if (StringUtils.hasText(derived)) {
 				suggestions.add(derived);
@@ -149,7 +149,7 @@ public class RenameItemHandler implements RenameHandler, TitledHandler, DumbAwar
 		return suggestions;
 	}
 
-	private static void updateDependencyfile(Project project, UpgradePlanItem item, String name) {
+	private static void updateDependencyfile(Project project, PlannedUpgrade item, String name) {
 
 		VirtualFile descriptor = DependencyfileService.getInstance(project).getDescriptor();
 		if (descriptor == null) {

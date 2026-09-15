@@ -47,7 +47,7 @@ public class CreateTicketsAction extends UpgradePlanAction {
 			return;
 		}
 
-		List<UpgradePlanItem> targetItems = getTargetItems(e, service);
+		List<PlannedUpgrade> targetItems = getTargetItems(e, service);
 		int withoutTickets = (int) targetItems.stream().filter(item -> !item.hasTicket()).count();
 		presentation.setText(MessageBundle.message("plan.create-tickets.text", withoutTickets));
 		Object[] selection = e.getData(PlatformDataKeys.SELECTED_ITEMS);
@@ -70,9 +70,9 @@ public class CreateTicketsAction extends UpgradePlanAction {
 
 	@Override
 	protected boolean isEnabled(AnActionEvent e, UpgradePlanService service) {
-		List<UpgradePlanItem> targetItems = getTargetItems(e, service);
+		List<PlannedUpgrade> targetItems = getTargetItems(e, service);
 		int withoutTickets = 0;
-		for (UpgradePlanItem item : targetItems) {
+		for (PlannedUpgrade item : targetItems) {
 			if (!item.hasTicket()) {
 				withoutTickets++;
 			}
@@ -94,7 +94,7 @@ public class CreateTicketsAction extends UpgradePlanAction {
 		}
 	}
 
-	List<UpgradePlanItem> getTargetItems(AnActionEvent e, UpgradePlanService service) {
+	List<PlannedUpgrade> getTargetItems(AnActionEvent e, UpgradePlanService service) {
 		return PlanSelection.from(e).orElseGet(() -> service.getUpgradePlan().getItems());
 	}
 
@@ -109,7 +109,7 @@ public class CreateTicketsAction extends UpgradePlanAction {
 		}
 	}
 
-	private void createTickets(UpgradePlanService service, List<UpgradePlanItem> items) {
+	private void createTickets(UpgradePlanService service, List<PlannedUpgrade> items) {
 
 		TicketSystem ticketSystem = service.getTicketSystem();
 

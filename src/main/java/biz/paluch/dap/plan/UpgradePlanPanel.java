@@ -30,7 +30,7 @@ import java.util.concurrent.Callable;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
 
-import biz.paluch.dap.assistant.check.DependencySiteNavigator;
+import biz.paluch.dap.assistant.usage.DependencySiteNavigator;
 import biz.paluch.dap.notify.NotificationChannel;
 import biz.paluch.dap.notify.Notifications;
 import biz.paluch.dap.support.FileScope;
@@ -159,7 +159,7 @@ class UpgradePlanPanel extends SimpleToolWindowPanel implements Disposable, Upgr
 
 	private final UpgradePlanTabActions tabActions;
 
-	private @Nullable UpgradePlanItem selectionAfterReload;
+	private @Nullable PlannedUpgrade selectionAfterReload;
 
 	private boolean focusTreeAfterReload;
 
@@ -279,9 +279,9 @@ class UpgradePlanPanel extends SimpleToolWindowPanel implements Disposable, Upgr
 
 		// rename target (Shift+F6): a single selected top-level item while the plan
 		// is idle. Withhold it otherwise so the platform rename disables itself
-		UpgradePlanItem renameTarget = tree.getRenameTarget();
+		PlannedUpgrade renameTarget = tree.getRenameTarget();
 		if (renameTarget != null && !service.isBusy()) {
-			sink.set(UpgradePlanItem.RENAME_TARGET, renameTarget);
+			sink.set(PlannedUpgrade.RENAME_TARGET, renameTarget);
 		}
 	}
 
@@ -457,12 +457,12 @@ class UpgradePlanPanel extends SimpleToolWindowPanel implements Disposable, Upgr
 
 	private void removeSelectedItems() {
 
-		Set<UpgradePlanItem> selection = tree.getSelectionSet();
+		Set<PlannedUpgrade> selection = tree.getSelectionSet();
 		if (selection.isEmpty() || service.isBusy()) {
 			return;
 		}
 
-		UpgradePlanItem selectionAfterDelete = tree.selectionAfterRemoving(selection);
+		PlannedUpgrade selectionAfterDelete = tree.selectionAfterRemoving(selection);
 
 		selectionAfterReload = selectionAfterDelete;
 		focusTreeAfterReload = true;
@@ -572,9 +572,9 @@ class UpgradePlanPanel extends SimpleToolWindowPanel implements Disposable, Upgr
 
 		private final JBPopupFactory factory = JBPopupFactory.getInstance();
 
-		private final UpgradePlanItem item;
+		private final PlannedUpgrade item;
 
-		PlanItemNavigatable(UpgradePlanItem item) {
+		PlanItemNavigatable(PlannedUpgrade item) {
 			this.item = item;
 		}
 

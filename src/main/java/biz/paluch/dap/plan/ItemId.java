@@ -27,9 +27,6 @@ import org.springframework.util.ObjectUtils;
  * its member coordinates, package systems, current versions, and owning
  * assistants.
  *
- * <p>The display name, target version, ticket, declaration structure, and
- * implicit-member flag do not participate in identity.
- *
  * @author Mark Paluch
  */
 class ItemId {

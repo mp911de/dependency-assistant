@@ -39,7 +39,7 @@ public class ShowReleaseNotesAction extends DumbAwareAction {
 	public void update(AnActionEvent e) {
 
 		Project project = e.getProject();
-		UpgradePlanItem item = PlanSelection.from(e).first();
+		PlannedUpgrade item = PlanSelection.from(e).first();
 
 		e.getPresentation().setEnabled(project != null && item != null && releaseNotesUrl(project, item) != null);
 	}
@@ -65,10 +65,10 @@ public class ShowReleaseNotesAction extends DumbAwareAction {
 		});
 	}
 
-	private static @Nullable URI releaseNotesUrl(Project project, UpgradePlanItem item) {
+	private static @Nullable URI releaseNotesUrl(Project project, PlannedUpgrade item) {
 
 		ProjectMetadata metadata = ProjectMetadataService.getInstance(project)
-				.getMetadata(item.getMembers().getFirst().getArtifactId());
+				.getMetadata(item.getDependencies().getFirst().getArtifactId());
 		return metadata.findReleaseNotesUrl(item.getToVersion());
 	}
 

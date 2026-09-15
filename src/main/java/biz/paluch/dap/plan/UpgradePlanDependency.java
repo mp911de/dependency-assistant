@@ -31,7 +31,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-class ItemDependency extends Dependency {
+class UpgradePlanDependency extends Dependency {
 
 	private final boolean implicit;
 
@@ -39,7 +39,7 @@ class ItemDependency extends Dependency {
 
 	private @Nullable String versionProperties;
 
-	ItemDependency(PackageIdentity pkg, ArtifactVersion currentVersion, boolean implicit) {
+	UpgradePlanDependency(PackageIdentity pkg, ArtifactVersion currentVersion, boolean implicit) {
 		super(pkg, currentVersion);
 		this.implicit = implicit;
 		this.currentVersionString = currentVersion.toDocumentationString();
@@ -68,4 +68,5 @@ class ItemDependency extends Dependency {
 		}
 		return this.versionProperties;
 	}
+
 }

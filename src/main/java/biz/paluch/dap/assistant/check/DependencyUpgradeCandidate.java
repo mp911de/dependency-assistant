@@ -31,10 +31,12 @@ import biz.paluch.dap.artifact.HasPackageIdentity;
 import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
+import biz.paluch.dap.artifact.VersionProperty;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.assistant.presentation.IconDependencyPresentation;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.checker.VulnerabilityRepository;
+import biz.paluch.dap.plan.DependencyUpgradeSource;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.UpgradeStrategy;
@@ -51,7 +53,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-public class DependencyUpgradeCandidate implements HasArtifactId, HasPackageIdentity {
+public class DependencyUpgradeCandidate implements HasArtifactId, HasPackageIdentity, DependencyUpgradeSource {
 
 	private final Dependency dependency;
 
@@ -136,8 +138,19 @@ public class DependencyUpgradeCandidate implements HasArtifactId, HasPackageIden
 		return dependency.getArtifactId();
 	}
 
+	@Override
 	public Dependency getDependency() {
 		return dependency;
+	}
+
+	@Override
+	public String getAssistantId() {
+		return assistant.getId();
+	}
+
+	@Override
+	public String getDependencyName() {
+		return rule.getDependencyName();
 	}
 
 	public DependencyAssistant getAssistant() {
@@ -201,6 +214,7 @@ public class DependencyUpgradeCandidate implements HasArtifactId, HasPackageIden
 	 * Return vulnerabilities sampled on first access and retained for this
 	 * candidate.
 	 */
+	@Override
 	public Vulnerabilities getVulnerabilities(ArtifactVersion version) {
 		return vulnerabilitiesByVersion.computeIfAbsent(version, vulnerabilities::getVulnerabilities);
 	}
