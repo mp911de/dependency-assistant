@@ -200,9 +200,10 @@ class DependencyfileArtifactWriter {
 
 	private void saveDocument(VirtualFile file) {
 
-		Document document = FileDocumentManager.getInstance().getDocument(file);
+		FileDocumentManager documentManager = FileDocumentManager.getInstance();
+		Document document = documentManager.getDocument(file);
 		if (document != null) {
-			FileDocumentManager.getInstance().saveDocument(document);
+			documentManager.saveDocument(document);
 		}
 	}
 

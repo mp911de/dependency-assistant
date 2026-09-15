@@ -183,6 +183,7 @@ public class FileUpdateEngine {
 
 		if (document != null) {
 			documentManager.commitDocument(document);
+			documentManager.doPostponedOperationsAndUnblockDocument(document);
 			fileDocumentManager.saveDocument(document);
 		}
 		return result;
