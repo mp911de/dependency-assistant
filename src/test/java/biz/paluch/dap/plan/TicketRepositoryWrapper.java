@@ -85,4 +85,5 @@ class TicketRepositoryWrapper implements TicketRepository {
 	public String getCloseReference(TicketKey key) {
 		return delegate.getCloseReference(key);
 	}
+
 }
