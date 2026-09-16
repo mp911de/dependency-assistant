@@ -7,7 +7,7 @@ This document provides a curated changelog for each release.
 [[releasenotes]]
 == Release notes
 
-=== 0.5.0
+=== 1.0.0
 
 - GitHub-specific template for ticket close references in commit messages.
 - Upgrade Plan refinements: `Create All Tickets` no longer depends on the current selection, and Git versions are restored as expected when a plan is loaded.
