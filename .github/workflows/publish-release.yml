@@ -188,7 +188,9 @@ jobs:
                           )
                       }
 
-                      archiveFile.set(
+                      // Plugin SDK 2.19 replaced archiveFile with the
+                      // archiveFiles collection (native variants support)
+                      archiveFiles.setFrom(
                           project.file(archivePath.get())
                       )
                       token.set(
