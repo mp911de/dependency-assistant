@@ -11,6 +11,11 @@ on:
         description: Release ticket number (open issue titled "Release <version>")
         required: true
         type: number
+      generate_release_notes:
+        description: Generate release notes with the changelog tool (otherwise GitHub auto-generates them)
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -203,6 +208,7 @@ jobs:
 
       - name: Install changelog tool
         id: changelog_tool
+        if: inputs.generate_release_notes
         shell: bash
         env:
           CHANGELOG_REPOSITORY: https://github.com/mp911de/changelog.git
@@ -235,6 +241,7 @@ jobs:
 
       - name: Generate release notes
         id: notes
+        if: inputs.generate_release_notes
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
@@ -364,12 +371,18 @@ jobs:
             release_flags+=(--prerelease)
           fi
 
+          # without the changelog tool, let GitHub derive notes from merged PRs
+          if [[ -n "$RELEASE_NOTES" ]]; then
+            release_flags+=(--notes-file "$RELEASE_NOTES")
+          else
+            release_flags+=(--generate-notes)
+          fi
+
           gh release create "$RELEASE_TAG" \
             "$PLUGIN_BINARY" \
             "$PLUGIN_BINARY.sha256" \
             --verify-tag \
             --title "$RELEASE_TAG" \
-            --notes-file "$RELEASE_NOTES" \
             "${release_flags[@]}"
 
       - name: Dispatch Marketplace publication
