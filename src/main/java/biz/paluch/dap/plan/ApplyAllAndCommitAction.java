@@ -105,13 +105,23 @@ public class ApplyAllAndCommitAction extends ApplyAllAction {
 	}
 
 	private static void push(UpgradePlanService service, VersionControl vcs) {
-		try {
-			vcs.push();
-		} catch (IllegalStateException e) {
-			LOG.warn("Push failed", e);
-			Notifications.error(NotificationChannel.PLAN, MessageBundle.message("plan.push.error"),
-					Notifications.errorMessage(e)).notify(service.getProject());
-		}
+
+		Project project = service.getProject();
+		new Task.Backgroundable(project, MessageBundle.message("plan.push.progress"), true) {
+
+			@Override
+			public void run(ProgressIndicator indicator) {
+				vcs.push();
+			}
+
+			@Override
+			public void onThrowable(Throwable error) {
+				LOG.warn("Push failed", error);
+				Notifications.error(NotificationChannel.PLAN, MessageBundle.message("plan.push.error"),
+						Notifications.errorMessage(error)).notify(project);
+			}
+
+		}.queue();
 	}
 
 }
