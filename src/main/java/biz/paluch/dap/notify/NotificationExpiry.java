@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.notify;
 
+import biz.paluch.dap.assistant.DependencyCheckListener;
 import com.intellij.notification.Notification;
 import com.intellij.openapi.actionSystem.ActionManager;
 import com.intellij.openapi.actionSystem.AnAction;
@@ -35,6 +36,18 @@ import com.intellij.util.messages.MessageBusConnection;
  * @see NotificationBuilder#expireWhen(NotificationExpiry)
  */
 public interface NotificationExpiry {
+
+	/**
+	 * Expire when a dependency check starts in the notification's project.
+	 */
+	static NotificationExpiry onDependencyCheckStarted() {
+
+		return (project, notification) -> {
+			MessageBusConnection connection = project.getMessageBus().connect();
+			notification.whenExpired(connection::disconnect);
+			connection.subscribe(DependencyCheckListener.TOPIC, notification::expire);
+		};
+	}
 
 	/**
 	 * Expire once the notification on {@code undoTransparentActionStarted}.

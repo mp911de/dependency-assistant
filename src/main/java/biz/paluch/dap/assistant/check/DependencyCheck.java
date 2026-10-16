@@ -30,6 +30,7 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.ReleaseSources;
 import biz.paluch.dap.artifact.Releases;
+import biz.paluch.dap.assistant.DependencyCheckListener;
 import biz.paluch.dap.metadata.ProjectMetadataIndexer;
 import biz.paluch.dap.rule.DependencyfileService;
 import biz.paluch.dap.state.ApplicationSettings;
@@ -79,6 +80,7 @@ public class DependencyCheck {
 			UpgradeScope scope) {
 
 		this.stateService.markUsed();
+		this.project.getMessageBus().syncPublisher(DependencyCheckListener.TOPIC).dependencyCheckStarted();
 		indicator.setIndeterminate(false);
 
 		double scanWeight = scope.entries().size() > 50 ? 0.3 : 0.1;

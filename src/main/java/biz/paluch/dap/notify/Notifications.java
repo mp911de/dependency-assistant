@@ -47,21 +47,40 @@ public class Notifications {
 
 	/**
 	 * Create an informational notification on the general channel.
+	 *
+	 * @param title title of the notification.
+	 * @param content notification content.
 	 */
 	public static NotificationBuilder info(String title, String content) {
 		return info(NotificationChannel.GENERAL, title, content);
 	}
 
+	/**
+	 * Create an informational notification on the given
+	 * {@link NotificationChannel}.
+	 *
+	 * @param channel notification channel to use.
+	 * @param title title of the notification.
+	 * @param content notification content.
+	 */
 	public static NotificationBuilder info(NotificationChannel channel, String title, String content) {
 		return new Builder(channel.create(title, content, NotificationType.INFORMATION));
 	}
 
+	/**
+	 * Create a warning notification on the given {@link NotificationChannel}.
+	 *
+	 * @param channel notification channel to use.
+	 * @param title title of the notification.
+	 * @param content notification content.
+	 */
 	public static NotificationBuilder warning(NotificationChannel channel, String title, String content) {
 		return new Builder(channel.create(title, content, NotificationType.WARNING));
 	}
 
 	/**
 	 * Create an error notification with the default title on the general channel.
+	 * @param content notification content.
 	 */
 	public static NotificationBuilder error(String content) {
 		return error(MessageBundle.message("error.title"), content);
@@ -74,6 +93,13 @@ public class Notifications {
 		return error(NotificationChannel.GENERAL, title, content);
 	}
 
+	/**
+	 * Create an error notification on the given {@link NotificationChannel}.
+	 *
+	 * @param channel notification channel to use.
+	 * @param title title of the notification.
+	 * @param content notification content.
+	 */
 	public static NotificationBuilder error(NotificationChannel channel, String title, String content) {
 		return new Builder(channel.create(title, content, NotificationType.ERROR));
 	}
@@ -172,7 +198,7 @@ public class Notifications {
 		notification.setAddExtraAction(true);
 		notification.setIcon(DependencyAssistantIcons.ICON);
 
-		return new Builder(notification);
+		return new Builder(notification).expireWhen(NotificationExpiry.onDependencyCheckStarted());
 	}
 
 	private static String getDurationMessage(Instant cacheUpdate) {
