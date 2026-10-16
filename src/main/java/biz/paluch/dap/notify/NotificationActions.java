@@ -107,7 +107,7 @@ public class NotificationActions {
 		return NotificationAction.createSimpleExpiring(MessageBundle.message("notification.push"), push);
 	}
 
-	public static NotificationAction unshelve(Runnable unshelve) {
+	public static NotificationAction rollback(Runnable unshelve) {
 		return NotificationAction.createSimpleExpiring(MessageBundle.message("notification.unshelve"), unshelve);
 	}
 

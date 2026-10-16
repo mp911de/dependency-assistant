@@ -77,11 +77,11 @@ public class ApplyAllAction extends UpgradePlanAction {
 			return;
 		}
 
-		boolean shelve = decision == ApplyDecision.SHELVE_AND_APPLY;
+		boolean shouldShelve = decision == ApplyDecision.SHELVE_AND_APPLY;
 
 		Task.Modal task = new Task.Modal(project, MessageBundle.message("plan.apply.progress"), true) {
 
-			private @Nullable NotificationAction unshelve;
+			private @Nullable NotificationAction rollback;
 
 			private AppliedUpdates appliedUpdates = new AppliedUpdates();
 
@@ -91,11 +91,11 @@ public class ApplyAllAction extends UpgradePlanAction {
 				indicator.setIndeterminate(false);
 
 				try {
-					if (shelve) {
-						Runnable restore = vcs.shelve(dirty,
+					if (shouldShelve) {
+						Runnable rollback = vcs.shelveAndRollback(dirty,
 								MessageBundle.message("plan.shelve.message"));
-						if (restore != null) {
-							unshelve = NotificationActions.unshelve(restore);
+						if (rollback != null) {
+							this.rollback = NotificationActions.rollback(rollback);
 						}
 					}
 					appliedUpdates = execute(new UpgradePlanExecutor(service, toApply, indicator));
@@ -106,7 +106,7 @@ public class ApplyAllAction extends UpgradePlanAction {
 
 			@Override
 			public void onSuccess() {
-				notifyDone(service, appliedUpdates, unshelve);
+				notifyDone(service, appliedUpdates, rollback);
 			}
 
 			@Override
@@ -125,7 +125,7 @@ public class ApplyAllAction extends UpgradePlanAction {
 
 			// offer shelf recovery once a shelf exists
 			private NotificationBuilder withUnshelve(NotificationBuilder notification) {
-				return unshelve != null ? notification.action(unshelve) : notification;
+				return rollback != null ? notification.action(rollback) : notification;
 			}
 
 			@Override
@@ -163,11 +163,11 @@ public class ApplyAllAction extends UpgradePlanAction {
 
 	/**
 	 * Report applied updates.
-	 * @param unshelve shelf recovery action, or {@literal null} if no shelf was
+	 * @param rollback shelf recovery action, or {@literal null} if no shelf was
 	 * created.
 	 */
 	void notifyDone(UpgradePlanService service, AppliedUpdates applied,
-			@Nullable NotificationAction unshelve) {
+			@Nullable NotificationAction rollback) {
 
 		Project project = service.getProject();
 		NotificationBuilder notification = Notifications.applied(NotificationChannel.PLAN,
@@ -183,8 +183,8 @@ public class ApplyAllAction extends UpgradePlanAction {
 					.toList();
 			notification.action(NotificationActions.undoAll(project, commandNames));
 		}
-		if (unshelve != null) {
-			notification.action(unshelve);
+		if (rollback != null) {
+			notification.action(rollback);
 		}
 		notification.notify(project);
 	}

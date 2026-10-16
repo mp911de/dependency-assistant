@@ -110,7 +110,7 @@ public class PlatformVersionControl implements VersionControl {
 	}
 
 	@Override
-	public @Nullable Runnable shelve(FileScope scope, String message) throws IOException {
+	public @Nullable Runnable shelveAndRollback(FileScope scope, String message) throws IOException {
 
 		if (!isActive()) {
 			throw new IOException(MessageBundle.message("plan.vcs.unavailable"));

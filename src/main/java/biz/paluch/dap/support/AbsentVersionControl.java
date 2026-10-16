@@ -64,7 +64,7 @@ enum AbsentVersionControl implements VersionControl {
 	}
 
 	@Override
-	public @Nullable Runnable shelve(FileScope scope, String message) throws IOException {
+	public @Nullable Runnable shelveAndRollback(FileScope scope, String message) throws IOException {
 		return null;
 	}
 

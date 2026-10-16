@@ -85,7 +85,7 @@ public interface VersionControl {
 	 * @throws IOException if shelving is unavailable or fails.
 	 */
 	@Nullable
-	Runnable shelve(FileScope scope, String message) throws IOException;
+	Runnable shelveAndRollback(FileScope scope, String message) throws IOException;
 
 	/**
 	 * Commit current scope changes on a background thread.
@@ -107,7 +107,7 @@ public interface VersionControl {
 	void openCommitDialog(String message);
 
 	/**
-	 * Push the first repository using its default target.
+	 * Push the first repository using its default target on a background thread.
 	 * @throws IllegalStateException if push support, source or target is
 	 * unavailable.
 	 */

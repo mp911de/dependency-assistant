@@ -30,6 +30,8 @@ import biz.paluch.dap.util.MessageBundle;
 import com.intellij.notification.NotificationAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.progress.ProgressIndicator;
+import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.MessageDialogBuilder;
 import com.intellij.openapi.ui.Messages;
@@ -88,7 +90,7 @@ public class ApplyAllAndCommitAction extends ApplyAllAction {
 
 	@Override
 	void notifyDone(UpgradePlanService service, AppliedUpdates applied,
-			@Nullable NotificationAction unshelve) {
+			@Nullable NotificationAction rollback) {
 
 		NotificationBuilder notification = Notifications.applied(NotificationChannel.PLAN,
 				UpgradeNotification.committed(applied));
@@ -98,8 +100,8 @@ public class ApplyAllAndCommitAction extends ApplyAllAction {
 		if (!applied.isEmpty() && vcs.canPush()) {
 			notification.action(NotificationActions.push(() -> push(service, vcs)));
 		}
-		if (unshelve != null) {
-			notification.action(unshelve);
+		if (rollback != null) {
+			notification.action(rollback);
 		}
 		notification.notify(service.getProject());
 	}
