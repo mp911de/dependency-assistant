@@ -48,6 +48,7 @@ import biz.paluch.dap.lookup.SiteRole;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.Sequence;
 import com.intellij.openapi.Disposable;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.editor.Document;
@@ -179,7 +180,7 @@ public class DependencySiteNavigator {
 		find(target, where, result -> {
 
 			if (result.size() == 1) {
-				result.first().navigate();
+				result.first().navigate(ModalityState.stateForComponent(where.getComponent()));
 				return;
 			}
 			present(target, result, where);
@@ -369,8 +370,9 @@ public class DependencySiteNavigator {
 			return false;
 		}
 
+		ModalityState modality = ModalityState.stateForComponent(list);
 		popup.closeOk(null);
-		selected.navigate();
+		selected.navigate(modality);
 		return true;
 	}
 
@@ -439,7 +441,7 @@ public class DependencySiteNavigator {
 
 		private final FileType fileType;
 
-		private SitePresentation(DependencySiteSearchHit hit) {
+		SitePresentation(DependencySiteSearchHit hit) {
 
 			PsiElement source = hit.element();
 			PsiFile psiFile = source.getContainingFile();
@@ -500,20 +502,25 @@ public class DependencySiteNavigator {
 					HighlighterTargetArea.EXACT_RANGE);
 		}
 
-		private void navigate() {
+		void navigate(ModalityState modality) {
 
-			ReadAction.run(() -> {
+			ApplicationManager.getApplication().invokeLater(() -> {
 
-				PsiElement source = element.getElement();
-				if (source == null) {
-					return;
+				OpenFileDescriptor descriptor = ReadAction.compute(() -> {
+					PsiElement source = element.getElement();
+					if (source == null) {
+						return null;
+					}
+
+					PsiFile psiFile = source.getContainingFile();
+					VirtualFile file = psiFile != null ? psiFile.getVirtualFile() : null;
+					return file != null ? new OpenFileDescriptor(project, file, source.getTextOffset()) : null;
+				});
+
+				if (descriptor != null) {
+					descriptor.navigate(true);
 				}
-
-				VirtualFile file = source.getContainingFile().getVirtualFile();
-				if (file != null) {
-					new OpenFileDescriptor(project, file, source.getTextOffset()).navigate(true);
-				}
-			});
+			}, modality, project.getDisposed());
 		}
 
 		FileType fileType() {
