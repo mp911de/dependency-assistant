@@ -57,10 +57,10 @@ dependencies {
 	// https://youtrack.jetbrains.com/issue/IJPL-159134/JUnit5-Test-Framework-refers-to-JUnit4-java.lang.NoClassDefFoundError-junit-framework-TestCase
 	testImplementation("junit:junit:4.13.2")
 
-	testImplementation("com.tngtech.archunit:archunit-junit5-api:1.5.0")
+	testImplementation("com.tngtech.archunit:archunit-junit5-api:1.5.1")
 
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-	testRuntimeOnly("com.tngtech.archunit:archunit-junit5-engine:1.5.0")
+	testRuntimeOnly("com.tngtech.archunit:archunit-junit5-engine:1.5.1")
 }
 
 intellijPlatform {
