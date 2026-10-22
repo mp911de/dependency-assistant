@@ -23,6 +23,8 @@ import java.util.Map;
 import biz.paluch.dap.artifact.RemoteRepository;
 import biz.paluch.dap.artifact.RepositoryCredentials;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -33,8 +35,9 @@ import static org.assertj.core.api.Assertions.*;
  */
 class MavenSettingsTests {
 
-	RepositoryCredentials credentials = new RepositoryCredentials("internal", "alice", "secret", null);
-	RepositoryCredentials mirrorCredentials = new RepositoryCredentials("mirror", "alice", "secret", null);
+	RepositoryCredentials credentials = new RepositoryCredentials("internal", "alice", "secret");
+
+	RepositoryCredentials mirrorCredentials = new RepositoryCredentials("mirror", "alice", "secret");
 
 	@Test
 	void returnsRepositoryUnchangedWhenNoMirrorApplies() {
@@ -99,23 +102,37 @@ class MavenSettingsTests {
 		assertThat(repository.getId()).isEqualTo("central-mirror");
 	}
 
-	@Test
-	void attachesCredentialsOnlyToTheirSettingsDeclaredRepositoryBase() {
+	@ParameterizedTest
+	@ValueSource(strings = {"https://nexus.corp/releases/library/", "https://nexus.corp/snapshots/",
+			"https://nexus.corp:443/releases/", "HTTPS://NEXUS.Corp/releases/"})
+	void attachesBoundCredentialsToSameOrigin(String url) {
 
 		RepositoryCredentials bound = new RepositoryCredentials("internal", "alice", "secret",
 				List.of(URI.create("https://nexus.corp/releases/")));
 		MavenSettings settings = new MavenSettings(Map.of("internal", bound), List.of());
 
-		assertThat(settings.getRemoteRepository("internal", "https://nexus.corp/releases/library/").credentials())
-				.isEqualTo(bound);
-		assertThat(settings.getRemoteRepository("internal", "https://nexus.corp:443/releases/library/").credentials())
-				.isEqualTo(bound);
-		assertThat(settings.getRemoteRepository("internal", "http://nexus.corp/releases/library/").credentials())
-				.isNull();
-		assertThat(settings.getRemoteRepository("internal", "https://nexus.corp:8443/releases/library/").credentials())
-				.isNull();
-		assertThat(settings.getRemoteRepository("internal", "https://attacker.example/releases/").credentials())
-				.isNull();
+		assertThat(settings.getRemoteRepository("internal", url).credentials()).isEqualTo(bound);
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = {"http://nexus.corp/releases/", "https://nexus.corp:8443/releases/",
+			"https://attacker.example/releases/"})
+	void refusesBoundCredentialsForOtherOrigin(String url) {
+
+		RepositoryCredentials bound = new RepositoryCredentials("internal", "alice", "secret",
+				URI.create("https://nexus.corp/releases/"));
+		MavenSettings settings = new MavenSettings(Map.of("internal", bound), List.of());
+
+		assertThat(settings.getRemoteRepository("internal", url).credentials()).isNull();
+	}
+
+	@Test
+	void acceptsCredentialsWithEmptyBinding() {
+
+		RepositoryCredentials bound = new RepositoryCredentials("internal", "alice", "secret");
+		MavenSettings settings = new MavenSettings(Map.of("internal", bound), List.of());
+
+		assertThat(settings.getRemoteRepository("internal", "https://nexus.corp/releases/").credentials()).isNotNull();
 	}
 
 }

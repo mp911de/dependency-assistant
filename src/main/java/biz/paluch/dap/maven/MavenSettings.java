@@ -52,8 +52,8 @@ public class MavenSettings {
 	/**
 	 * Apply mirror routing and credentials to a repository.
 	 * <p>Credentials are selected by the effective repository or mirror ID. Their
-	 * URL binding must permit the effective URL. Unbound credentials are selected
-	 * by ID alone.
+	 * origin binding (scheme, host, port) must permit the effective URL. Unbound
+	 * credentials are selected by ID alone.
 	 */
 	public RemoteRepository getRemoteRepository(String id, String url) {
 

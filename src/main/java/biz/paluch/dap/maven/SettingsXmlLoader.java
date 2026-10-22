@@ -51,11 +51,11 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>For trusted projects, the loader uses the active Maven installation to
  * merge global and user settings, decrypt server passwords, and retain mirror
- * declarations. Credentials are URL-bound when matching repository declarations
- * are present in settings, and the {@code central} server is bound to the
- * standard Maven Central endpoints. Other server credentials remain eligible by
- * repository ID alone. The result is cached on the project until explicitly
- * invalidated.
+ * declarations. Credentials are origin-bound (scheme, host, port) when matching
+ * repository declarations are present in any settings profile, and the
+ * {@code central} server is bound to the standard Maven Central origins. Other
+ * server credentials remain eligible by repository ID alone. The result is
+ * cached on the project until explicitly invalidated.
  *
  * @author Mark Paluch
  */
@@ -368,8 +368,7 @@ class SettingsXmlLoader {
 			return;
 		}
 		try {
-			URI uri = URI.create(url.endsWith("/") ? url : url + "/").normalize();
-			byId.computeIfAbsent(id.trim(), k -> new ArrayList<>()).add(uri);
+			byId.computeIfAbsent(id.trim(), k -> new ArrayList<>()).add(URI.create(url.trim()));
 		} catch (IllegalArgumentException e) {
 			LOG.debug("Skipping invalid repository URL in settings for server id " + id, e);
 		}

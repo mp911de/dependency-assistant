@@ -200,14 +200,15 @@ public class HttpClientUtil {
 	 * Compare hosts case-insensitively and effective ports. Scheme and path are not
 	 * compared. Missing hosts never match.
 	 */
-	public static boolean hasSameBaseUri(URI u1, URI u2) {
+	public static boolean hasSameHostAndPort(URI u1, URI u2) {
 
 		String baseHost = u1.getHost();
 		String targetHost = u2.getHost();
 		if (baseHost == null || targetHost == null) {
 			return false;
 		}
-		return baseHost.equalsIgnoreCase(targetHost) && getEffectivePort(u1) == getEffectivePort(u2);
+		return baseHost.equalsIgnoreCase(targetHost)
+				&& getEffectivePort(u1) == getEffectivePort(u2);
 	}
 
 	private static class CappedInputStream extends FilterInputStream {

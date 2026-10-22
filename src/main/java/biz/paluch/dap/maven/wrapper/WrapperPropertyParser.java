@@ -20,7 +20,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.regex.Matcher;
 
 import biz.paluch.dap.artifact.RemoteRepository;
@@ -54,7 +53,7 @@ class WrapperPropertyParser {
 
 		PsiElement value = PropertyUtils.findPropertyValue(property);
 		if (!wrapperProperty.key().equals(property.getUnescapedKey()) || value == null
-		    || PropertyUtils.containsLineContinuation(value.getText())) {
+				|| PropertyUtils.containsLineContinuation(value.getText())) {
 			return null;
 		}
 
@@ -66,8 +65,7 @@ class WrapperPropertyParser {
 		URI uri;
 		try {
 			uri = URI.create(decoded);
-		}
-		catch (IllegalArgumentException malformed) {
+		} catch (IllegalArgumentException malformed) {
 			return null;
 		}
 
@@ -75,8 +73,7 @@ class WrapperPropertyParser {
 		if (TrustedProjects.isProjectTrusted(property.getProject())) {
 			RepositoryCredentials credentials = parseCredentials(uri);
 			repository = parseRemoteRepository(wrapperProperty, uri, credentials);
-		}
-		else {
+		} else {
 			repository = RemoteRepository.mavenCentral();
 		}
 
@@ -90,7 +87,8 @@ class WrapperPropertyParser {
 		return new WrapperEntry(wrapperProperty, property, value, repository, pathVersion, fileVersion);
 	}
 
-	static RemoteRepository parseRemoteRepository(WrapperProperty wrapperProperty, URI uri, @Nullable RepositoryCredentials credentials) {
+	static RemoteRepository parseRemoteRepository(WrapperProperty wrapperProperty, URI uri,
+			@Nullable RepositoryCredentials credentials) {
 		URI repositoryBase = repositoryBaseUri(wrapperProperty, uri);
 		if (repositoryBase == null) {
 			return RemoteRepository.mavenCentral();
@@ -123,8 +121,7 @@ class WrapperPropertyParser {
 				try {
 					return new URI(uri.getScheme(), uri.getRawAuthority(), rawPath.substring(0, start + 1), null,
 							null);
-				}
-				catch (URISyntaxException ex) {
+				} catch (URISyntaxException ex) {
 					return null;
 				}
 			}
@@ -142,11 +139,12 @@ class WrapperPropertyParser {
 			if (colon >= 0) {
 				String user = URLDecoder.decode(userInfo.substring(0, colon), StandardCharsets.UTF_8);
 				String pass = URLDecoder.decode(userInfo.substring(colon + 1), StandardCharsets.UTF_8);
-				return new RepositoryCredentials(MavenWrapperUtils.REPOSITORY_ID, user, pass, List.of(uri));
+				return new RepositoryCredentials(MavenWrapperUtils.REPOSITORY_ID, user, pass, uri);
 			}
 			String user = URLDecoder.decode(userInfo, StandardCharsets.UTF_8);
-			return new RepositoryCredentials(MavenWrapperUtils.REPOSITORY_ID, user, "", List.of(uri));
+			return new RepositoryCredentials(MavenWrapperUtils.REPOSITORY_ID, user, "", uri);
 		}
 		return null;
 	}
+
 }

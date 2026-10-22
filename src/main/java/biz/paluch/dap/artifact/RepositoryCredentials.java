@@ -27,12 +27,20 @@ import org.jspecify.annotations.Nullable;
  * <p>Equality uses only the server id. The repository-base list is retained and
  * must not change because it controls credential scope.
  *
- * @param settingsDeclaredRepositoryBases allowed repository bases from
- * settings. A {@literal null} list leaves URL binding to the Maven server id.
- * An empty list permits no repository.
+ * @param allowedOrigins repository URLs from settings whose origins (scheme,
+ * host, port) the credentials are bound to. An empty list leaves URL binding to
+ * the Maven server id.
  */
 public record RepositoryCredentials(String id, String username, String password,
-		@Nullable List<URI> settingsDeclaredRepositoryBases) {
+		@Nullable List<URI> allowedOrigins) {
+
+	public RepositoryCredentials(String id, String username, String password) {
+		this(id, username, password, List.of());
+	}
+
+	public RepositoryCredentials(String id, String username, String password, URI allowedOrigin) {
+		this(id, username, password, List.of(allowedOrigin));
+	}
 
 	@Override
 	public boolean equals(Object obj) {
@@ -54,74 +62,53 @@ public record RepositoryCredentials(String id, String username, String password,
 
 	/**
 	 * Return whether credentials may be used for the repository URL.
-	 * <p>Bound credentials require the same scheme, host, effective port, and a
-	 * path below a declared base. Invalid URLs are rejected. Without a binding
-	 * list, any URL is accepted for the matching server id.
+	 * <p>Bound credentials require the same scheme, host, and effective port.
+	 * Invalid URLs are rejected. Without a binding list, any URL is accepted for
+	 * the matching server id.
+	 *
+	 * @param repositoryUrl the effective repository URL.
+	 * @return {@literal true} if the credentials may be sent to the repository.
 	 */
 	public boolean allowsRepositoryUrl(String repositoryUrl) {
 
-		if (settingsDeclaredRepositoryBases == null) {
+		if (allowedOrigins == null || allowedOrigins.isEmpty()) {
 			return true;
 		}
-		if (settingsDeclaredRepositoryBases.isEmpty()) {
-			return false;
-		}
 
-		URI repoUri;
 		try {
-			repoUri = normalizeBaseUri(repositoryUrl);
+			return allowsRepositoryUrl(URI.create(repositoryUrl.trim()));
 		} catch (IllegalArgumentException e) {
 			return false;
 		}
+	}
 
-		String repoHost = repoUri.getHost();
-		if (repoHost == null) {
+	/**
+	 * Return whether credentials may be used for the repository URL.
+	 * <p>Bound credentials require the same scheme, host, and effective port.
+	 * Invalid URLs are rejected. Without a binding list, any URL is accepted for
+	 * the matching server id.
+	 *
+	 * @return {@literal true} if the credentials may be sent to the repository.
+	 */
+	public boolean allowsRepositoryUrl(URI repository) {
+
+		if (allowedOrigins == null || allowedOrigins.isEmpty()) {
+			return true;
+		}
+
+		String scheme = repository.getScheme();
+		if (scheme == null) {
 			return false;
 		}
-		String repoScheme = repoUri.getScheme();
-		int repoPort = HttpClientUtil.getEffectivePort(repoUri);
 
-		String repoPath = pathOrSlash(repoUri);
-
-		for (URI declared : settingsDeclaredRepositoryBases) {
-
-			String declaredHost = declared.getHost();
-			if (declaredHost == null) {
-				continue;
-			}
-			if (!repoHost.equalsIgnoreCase(declaredHost)) {
-				continue;
-			}
-			if (repoScheme == null || !repoScheme.equalsIgnoreCase(declared.getScheme())
-					|| repoPort != HttpClientUtil.getEffectivePort(declared)) {
-				continue;
-			}
-
-			String declaredPath = pathOrSlash(declared);
-			if (repoPath.startsWith(declaredPath)) {
+		for (URI declared : allowedOrigins) {
+			if (scheme.equalsIgnoreCase(declared.getScheme())
+					&& HttpClientUtil.hasSameHostAndPort(repository, declared)) {
 				return true;
 			}
 		}
 
 		return false;
-	}
-
-	private static URI normalizeBaseUri(String url) {
-
-		String trimmed = url.trim();
-		if (!trimmed.endsWith("/")) {
-			trimmed = trimmed + "/";
-		}
-		return URI.create(trimmed).normalize();
-	}
-
-	private static String pathOrSlash(URI uri) {
-
-		String path = uri.getPath();
-		if (path == null || path.isEmpty()) {
-			return "/";
-		}
-		return path.endsWith("/") ? path : path + "/";
 	}
 
 }

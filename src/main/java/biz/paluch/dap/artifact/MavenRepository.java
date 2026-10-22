@@ -176,10 +176,9 @@ public class MavenRepository implements ReleaseSource {
 			return requestBuilder;
 		}
 
-		URI repositoryBaseUri = repository.getUrl().normalize();
 		return requestBuilder.tuner(connection -> {
 			URI target = URI.create(connection.getURL().toString()).normalize();
-			if (!(connection instanceof HttpURLConnection http) || !isWithinRepository(repositoryBaseUri, target)) {
+			if (!(connection instanceof HttpURLConnection http) || !credentials.allowsRepositoryUrl(target)) {
 				return;
 			}
 
@@ -283,14 +282,14 @@ public class MavenRepository implements ReleaseSource {
 	}
 
 	/**
-	 * Return whether {@code target} shares scheme, host, effective port, and base
-	 * path with the repository URL, so that repository credentials may be offered.
+	 * Return whether {@code target} shares scheme, host, effective port the
+	 * repository URL, so that repository credentials may be offered.
 	 */
 	static boolean isWithinRepository(URI repositoryBaseUri, URI target) {
 
 		String scheme = repositoryBaseUri.getScheme();
 		if (scheme == null || !scheme.equalsIgnoreCase(target.getScheme())
-				|| !HttpClientUtil.hasSameBaseUri(repositoryBaseUri, target)) {
+				|| !HttpClientUtil.hasSameHostAndPort(repositoryBaseUri, target)) {
 			return false;
 		}
 
