@@ -18,9 +18,6 @@ package biz.paluch.dap.plan;
 
 import java.util.List;
 
-import biz.paluch.dap.ticket.Label;
-import biz.paluch.dap.ticket.Milestone;
-import biz.paluch.dap.ticket.TicketSystem;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.PlatformDataKeys;
@@ -81,44 +78,14 @@ public class CreateTicketsAction extends UpgradePlanAction {
 	}
 
 	@Override
-	public void actionPerformed(AnActionEvent e) {
-
-		Project project = e.getProject();
-		if (project == null) {
-			return;
-		}
-
-		UpgradePlanService service = UpgradePlanService.getInstance(project);
+	public void perform(AnActionEvent e, Project project, UpgradePlanService service) {
 		if (service.hasTicketSystem()) {
-			createTickets(service, getTargetItems(e, service));
+			new FindOrCreateUpgradeTickets(service, getTargetItems(e, service)).start();
 		}
 	}
 
 	List<PlannedUpgrade> getTargetItems(AnActionEvent e, UpgradePlanService service) {
 		return PlanSelection.from(e).orElseGet(() -> service.getUpgradePlan().getItems());
-	}
-
-	/**
-	 * Create tickets for the whole plan. The action-event entry point honors
-	 * selection.
-	 */
-	@Override
-	public void perform(AnActionEvent e, Project project, UpgradePlanService service) {
-		if (service.hasTicketSystem()) {
-			createTickets(service, service.getUpgradePlan().getItems());
-		}
-	}
-
-	private void createTickets(UpgradePlanService service, List<PlannedUpgrade> items) {
-
-		TicketSystem ticketSystem = service.getTicketSystem();
-
-		Label label = service.getLabel();
-		List<Label> labels = label != null ? List.of(label) : List.of();
-		Milestone milestone = service.getSelectedMilestone();
-		List<Milestone> milestones = milestone != null ? List.of(milestone) : List.of();
-
-		new FindOrCreateUpgradeTickets(service, ticketSystem, milestones, labels, items).start();
 	}
 
 }

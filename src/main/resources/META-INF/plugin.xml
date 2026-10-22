@@ -180,6 +180,7 @@
 			        class="biz.paluch.dap.plan.CreateAllTicketsAction"
 			        icon="biz.paluch.dap.DependencyAssistantIcons.PLAN_CREATE_TICKETS"/>
 		</group>
+
 		<group id="DependencyAssistant.UpgradePlan.Toolbar">
 			<action id="DependencyAssistant.UpgradePlan.ApplyAll"
 			        class="biz.paluch.dap.plan.ApplyAllAction"
@@ -195,6 +196,7 @@
 			        class="biz.paluch.dap.plan.CreateTicketsAction"
 			        icon="biz.paluch.dap.DependencyAssistantIcons.PLAN_CREATE_TICKETS"/>
 			<separator/>
+			<separator/>
 			<action id="DependencyAssistant.UpgradePlan.Refresh"
 			        class="biz.paluch.dap.plan.RefreshPlanAction"
 			        icon="AllIcons.Actions.Refresh"/>
@@ -202,6 +204,7 @@
 			        class="biz.paluch.dap.plan.DiscardPlanAction"
 			        icon="AllIcons.Actions.GC"/>
 		</group>
+
 		<group id="DependencyAssistant.UpgradePlan.Popup">
 			<action id="DependencyAssistant.UpgradePlan.ApplySelected"
 			        class="biz.paluch.dap.plan.ApplySelectedAction"
@@ -216,6 +219,9 @@
 			        icon="AllIcons.Actions.Find"/>
 			<separator/>
 			<reference ref="DependencyAssistant.UpgradePlan.CreateTickets"/>
+			<action id="DependencyAssistant.UpgradePlan.FindAndLinkTickets"
+			        class="biz.paluch.dap.plan.FindAndLinkTicketAction"
+			        icon="biz.paluch.dap.DependencyAssistantIcons.PLAN_FIND_TICKETS"/>
 			<action id="DependencyAssistant.UpgradePlan.OpenTicket"
 			        class="biz.paluch.dap.plan.OpenTicketInBrowserAction"
 			        icon="AllIcons.General.Web"/>
@@ -231,6 +237,7 @@
 			<reference ref="$Paste"/>
 			<reference ref="$Delete"/>
 		</group>
+
 		<group id="DependencyAssistant"
 		       text="Dependency Assistant" popup="true"	icon="biz.paluch.dap.DependencyAssistantIcons.ICON">
 			<add-to-group group-id="ToolsMenu"/>
@@ -243,5 +250,6 @@
 			</action>
 			<separator/>
 		</group>
+
 	</actions>
 </idea-plugin>

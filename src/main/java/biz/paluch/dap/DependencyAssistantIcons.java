@@ -73,6 +73,8 @@ public class DependencyAssistantIcons {
 
 	public static final Icon PLAN_CREATE_TICKETS = load("/META-INF/icons/plan/createTickets.svg");
 
+	public static final Icon PLAN_FIND_TICKETS = AllIcons.Actions.Find;
+
 	/**
 	 * Upgrade Plan: milestone selector (GitHub Octicon "milestone").
 	 */

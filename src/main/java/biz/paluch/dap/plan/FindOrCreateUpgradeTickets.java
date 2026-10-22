@@ -17,30 +17,19 @@
 package biz.paluch.dap.plan;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 
 import biz.paluch.dap.notify.NotificationChannel;
 import biz.paluch.dap.notify.Notifications;
-import biz.paluch.dap.ticket.Label;
-import biz.paluch.dap.ticket.Milestone;
 import biz.paluch.dap.ticket.Ticket;
 import biz.paluch.dap.ticket.TicketRepository;
 import biz.paluch.dap.ticket.TicketState;
-import biz.paluch.dap.ticket.TicketSystem;
 import biz.paluch.dap.util.MessageBundle;
-import biz.paluch.dap.util.TaskScope;
-import biz.paluch.dap.util.TaskScope.Subtask;
-import biz.paluch.dap.util.WeightedStepsProgressIndicator;
-import com.intellij.openapi.diagnostic.Logger;
+import biz.paluch.dap.util.StepsProgressIndicator;
 import com.intellij.openapi.progress.ProcessCanceledException;
-import com.intellij.openapi.progress.ProgressIndicator;
-import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.util.text.HtmlBuilder;
 import com.intellij.openapi.util.text.HtmlChunk;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Find or create upgrade tickets in the background.
@@ -49,21 +38,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-class FindOrCreateUpgradeTickets extends Task.Backgroundable {
-
-	private static final Logger LOG = Logger.getInstance(FindOrCreateUpgradeTickets.class);
-
-	private static final int MAX_CONCURRENT_TASKS = 4;
-
-	private final UpgradePlanService service;
-
-	private final TicketSystem ticketSystem;
-
-	private final List<Milestone> milestones;
-
-	private final List<Label> labels;
-
-	private final List<PlannedUpgrade> items;
+class FindOrCreateUpgradeTickets extends TicketTaskSupport {
 
 	private final AtomicInteger created = new AtomicInteger();
 
@@ -71,107 +46,28 @@ class FindOrCreateUpgradeTickets extends Task.Backgroundable {
 
 	private final AtomicInteger failed = new AtomicInteger();
 
-	FindOrCreateUpgradeTickets(UpgradePlanService service, TicketSystem ticketSystem, List<Milestone> milestones,
-			List<Label> labels, List<PlannedUpgrade> items) {
+	private final UpgradePlanService service;
 
-		super(service.getProject(), MessageBundle.message("plan.tickets.progress"), true);
+	FindOrCreateUpgradeTickets(UpgradePlanService service, List<PlannedUpgrade> items) {
+		super(service, items, MessageBundle.message("plan.tickets.create.progress"));
 		this.service = service;
-		this.ticketSystem = ticketSystem;
-		this.milestones = milestones;
-		this.labels = labels;
-		this.items = items;
-	}
-
-	void start() {
-
-		if (service.isBusy() || items.stream()
-				.allMatch(PlannedUpgrade::hasTicket)) {
-			return;
-		}
-
-		service.setBusy(true);
-		try {
-			queue();
-		} catch (RuntimeException e) {
-			service.setBusy(false);
-			throw e;
-		}
 	}
 
 	@Override
-	public void run(ProgressIndicator indicator) {
-
-		indicator.setIndeterminate(false);
-
-		List<PlannedUpgrade> pending = items.stream()
-				.filter(item -> !item.hasTicket()).toList();
-		if (pending.isEmpty()) {
-			return;
-		}
-
-		WeightedStepsProgressIndicator steps = WeightedStepsProgressIndicator.forTasks(indicator, pending.size());
-		TicketRepository repository = ticketSystem.getRepository();
-		List<TicketState> openStates = getOpenStates(repository, indicator);
-		AtomicReference<TicketCreationFailed> taskFailure = new AtomicReference<>();
-
-		try (TaskScope scope = TaskScope.open("UpgradeTickets", indicator, MAX_CONCURRENT_TASKS)) {
-
-			for (PlannedUpgrade item : pending) {
-				scope.fork(() -> {
-					findOrCreate(repository, openStates, steps, item, taskFailure);
-					return null;
-				});
-			}
-
-			scope.joinAll();
-
-			// findOrCreate records ticket failures itself, anything left is an error
-			for (Subtask<?> subtask : scope.getSubtasks()) {
-				subtask.getOrThrow();
-			}
-		}
-
-		TicketCreationFailed failure = taskFailure.get();
-		if (failure != null) {
-			throw failure;
-		}
-	}
-
-	private static List<TicketState> getOpenStates(TicketRepository repository, ProgressIndicator indicator) {
-
-		List<TicketState> openStates = new ArrayList<>();
-		try {
-			for (TicketState state : repository.getTicketStates(indicator)) {
-				if (state.isOpen()) {
-					openStates.add(state);
-				}
-			}
-		} catch (IOException e) {
-			throw new IllegalStateException("Cannot load ticket states", e);
-		}
-		return openStates;
-	}
-
-	private void findOrCreate(TicketRepository repository, List<TicketState> openStates,
-			WeightedStepsProgressIndicator indicator, PlannedUpgrade item,
-			AtomicReference<TicketCreationFailed> taskFailure) {
-
-		if (taskFailure.get() != null) {
-			indicator.nextStep();
-			return;
-		}
+	void doRun(TicketRepository repository, List<TicketState> openStates, StepsProgressIndicator indicator,
+			PlannedUpgrade item) {
 
 		String title = service.getTicketTitle(item);
 		try {
 			indicator.checkCanceled();
-			indicator.setText(MessageBundle.message("plan.tickets.progress.item", item.getDisplayName(),
-							item.getToVersion()));
+			indicator.setText(MessageBundle.message("plan.tickets.create.progress.item", item.getDisplayName(),
+					item.getToVersion()));
 
-			Ticket ticket = findExisting(repository, openStates, indicator, title);
+			Ticket ticket = findExisting(title, openStates, indicator);
 			if (ticket != null) {
 				found.incrementAndGet();
 			} else {
-				ticket = createTicket(repository, indicator, title);
+				ticket = createTicket(title, indicator);
 				created.incrementAndGet();
 			}
 			Ticket linkedTicket = ticket;
@@ -181,8 +77,8 @@ class FindOrCreateUpgradeTickets extends Task.Backgroundable {
 			throw e;
 		} catch (IOException | RuntimeException e) {
 			failed.incrementAndGet();
-			LOG.warn("Failed to create or find ticket for " + title, e);
-			taskFailure.compareAndSet(null, new TicketCreationFailed(e, title));
+			log.warn("Failed to create or find ticket for " + title, e);
+			throw new TicketFailure(e, title);
 		} finally {
 			indicator.nextStep();
 		}
@@ -201,14 +97,15 @@ class FindOrCreateUpgradeTickets extends Task.Backgroundable {
 	@Override
 	public void onThrowable(Throwable error) {
 
-		LOG.warn("Ticket creation failed", error);
+		log.warn("Ticket creation failed", error);
 
-		String title = MessageBundle.message("plan.tickets.error.title", ticketSystem.getDisplayName());
+		String title = MessageBundle.message("plan.tickets.create.error.title", getTicketSystem().getDisplayName());
 
-		if (error instanceof TicketCreationFailed failure) {
+		if (error instanceof TicketFailure failure) {
 			HtmlBuilder builder = new HtmlBuilder();
 			builder.append(
-					HtmlChunk.p().addText(MessageBundle.message("plan.tickets.error.detail", failure.getTicket())));
+					HtmlChunk.p()
+							.addText(MessageBundle.message("plan.tickets.create.error.detail", failure.getTicket())));
 			builder.append(HtmlChunk.p().addText(Notifications.errorMessage(failure)));
 
 			Notifications.error(NotificationChannel.PLAN, title, builder.toString()).notify(service.getProject());
@@ -221,11 +118,6 @@ class FindOrCreateUpgradeTickets extends Task.Backgroundable {
 		if (created.get() + found.get() > 0) {
 			notifySummary();
 		}
-	}
-
-	@Override
-	public void onFinished() {
-		service.setBusy(false);
 	}
 
 	private String getSummary() {
@@ -243,47 +135,6 @@ class FindOrCreateUpgradeTickets extends Task.Backgroundable {
 		}
 
 		return failed > 0 ? message + MessageBundle.message("plan.tickets.summary.failed", failed) : message;
-	}
-
-	private static @Nullable Ticket findExisting(TicketRepository repository, List<TicketState> openStates,
-			ProgressIndicator indicator, String title) throws IOException {
-
-		List<? extends Ticket> existing = repository.findTickets(indicator,
-				query -> query.title(title).state(openStates));
-
-		for (Ticket ticket : existing) {
-			if (ticket.getState().isOpen()) {
-				return ticket;
-			}
-		}
-
-		return null;
-	}
-
-	private Ticket createTicket(TicketRepository repository, ProgressIndicator indicator, String title)
-			throws IOException {
-
-		return repository.createTicket(indicator, title, spec -> {
-			for (Milestone milestone : milestones) {
-				spec.milestone(milestone);
-			}
-			spec.label(labels);
-		});
-	}
-
-	static class TicketCreationFailed extends RuntimeException {
-
-		private final String ticket;
-
-		public TicketCreationFailed(Throwable cause, String ticket) {
-			super(cause);
-			this.ticket = ticket;
-		}
-
-		public String getTicket() {
-			return ticket;
-		}
-
 	}
 
 }
