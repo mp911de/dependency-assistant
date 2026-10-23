@@ -35,15 +35,17 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 import biz.paluch.dap.artifact.RepositoryCredentials;
+import biz.paluch.dap.util.StringUtils;
 import com.intellij.ide.trustedProjects.TrustedProjects;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
-import org.jetbrains.idea.maven.project.MavenHomeKt;
 import org.jetbrains.idea.maven.project.MavenProjectsManager;
-import org.jetbrains.idea.maven.project.StaticResolvedMavenHomeType;
+import org.jetbrains.idea.maven.server.MavenDistributionsCache;
 import org.jetbrains.idea.maven.utils.MavenUtil;
 import org.jspecify.annotations.Nullable;
+
+import org.springframework.util.ReflectionUtils;
 
 /**
  * Loads the effective Maven {@code settings.xml} state used for repository
@@ -53,9 +55,10 @@ import org.jspecify.annotations.Nullable;
  * merge global and user settings, decrypt server passwords, and retain mirror
  * declarations. Credentials are origin-bound (scheme, host, port) when matching
  * repository declarations are present in any settings profile, and the
- * {@code central} server is bound to the standard Maven Central origins. Other
- * server credentials remain eligible by repository ID alone. The result is
- * cached on the project until explicitly invalidated.
+ * {@code central} server is bound to the standard Maven Central origins.
+ * <p>Settings consider {@code repositoryOrigins} and {@code aliases} when using
+ * Maven 3.10.
+ * <p>The result is cached on the project until explicitly invalidated.
  *
  * @author Mark Paluch
  */
@@ -112,12 +115,11 @@ class SettingsXmlLoader {
 			return MavenSettings.empty();
 		}
 
-		StaticResolvedMavenHomeType homeType = MavenHomeKt
-				.staticOrBundled(mavenManager.getGeneralSettings().getMavenHomeType());
-		Path mavenHomePath = MavenUtil.getMavenHomePath(homeType);
-		File mavenHome = mavenHomePath != null ? mavenHomePath.toFile() : null;
-		if (mavenHome == null || !mavenHome.isDirectory()) {
-			LOG.debug("Maven home not resolved; skipping settings.xml credential loading");
+		Path mavenHomePath = MavenDistributionsCache.getInstance(project)
+				.getSettingsDistribution().getMavenHome();
+		File mavenHome = mavenHomePath.toFile();
+		if (!mavenHome.isDirectory()) {
+			LOG.debug("Maven home not resolved. Skipping settings.xml credential loading");
 			return MavenSettings.empty();
 		}
 
@@ -150,7 +152,6 @@ class SettingsXmlLoader {
 		return loadWithMavenApi(mavenClassLoader, globalSettings, userSettings, securityFilePath);
 	}
 
-
 	private static MavenSettings loadWithMavenApi(URLClassLoader loader, Path globalSettings,
 			Path userSettings, String securityFilePath) {
 
@@ -166,7 +167,7 @@ class SettingsXmlLoader {
 		}
 	}
 
-	private static Object mergeSettings(URLClassLoader loader, Path globalSettings, Path userSettings)
+	private static @Nullable Object mergeSettings(URLClassLoader loader, Path globalSettings, Path userSettings)
 			throws Exception {
 
 		Class<?> readerClass = loader.loadClass("org.apache.maven.settings.io.xpp3.SettingsXpp3Reader");
@@ -174,7 +175,6 @@ class SettingsXmlLoader {
 		Method readMethod = readerClass.getMethod("read", InputStream.class);
 
 		Object global = readSettingsFile(reader, readMethod, globalSettings);
-
 		Object user = readSettingsFile(reader, readMethod, userSettings);
 
 		if (global == null && user == null) {
@@ -192,14 +192,15 @@ class SettingsXmlLoader {
 		Class<?> mergerClass = loader.loadClass("org.apache.maven.settings.merge.MavenSettingsMerger");
 		Class<?> settingsClass = loader.loadClass("org.apache.maven.settings.Settings");
 		Object merger = mergerClass.getConstructor().newInstance();
-		mergerClass.getMethod("merge", settingsClass, settingsClass, String.class).invoke(merger, user, global,
+		Method merge = mergerClass.getMethod("merge", settingsClass, settingsClass, String.class);
+		merge.invoke(merger, user, global,
 				"user-level");
 
 		return user;
 	}
 
-	private static Object readSettingsFile(Object reader, Method readMethod, Path path) {
-		if (path == null || !Files.isRegularFile(path)) {
+	private static @Nullable Object readSettingsFile(Object reader, Method readMethod, Path path) {
+		if (!Files.isRegularFile(path)) {
 			return null;
 		}
 		try (InputStream in = Files.newInputStream(path)) {
@@ -214,6 +215,47 @@ class SettingsXmlLoader {
 			String securityFilePath) throws Exception {
 
 		Map<String, List<URI>> repositoryBindings = extractServerRepositoryBindings(loader, settingsObj);
+
+		List<Object> servers = getDecryptedServers(loader, settingsObj, securityFilePath);
+		Class<?> serverClass = loader.loadClass("org.apache.maven.settings.Server");
+		Method getId = serverClass.getMethod("getId");
+		Method getUsername = serverClass.getMethod("getUsername");
+		Method getPassword = serverClass.getMethod("getPassword");
+		Method getRepositoryOrigins = ReflectionUtils.findMethod(serverClass, "getRepositoryOrigins");
+		Method getAliases = ReflectionUtils.findMethod(serverClass, "getAliases");
+
+		Map<String, RepositoryCredentials> credentials = new LinkedHashMap<>();
+
+		for (Object server : servers) {
+
+			String id = (String) getId.invoke(server);
+			String username = (String) getUsername.invoke(server);
+			String password = (String) getPassword.invoke(server);
+
+			if (StringUtils.isEmpty(id) || StringUtils.isEmpty(username) || StringUtils.isEmpty(password)) {
+				continue;
+			}
+
+			id = id.trim();
+
+			if (STILL_ENCRYPTED.matcher(password.trim()).matches()) {
+				LOG.debug("Skipping server '" + id + "': Password could not be decrypted");
+				continue;
+			}
+
+			List<String> ids = getIds(id, server, getAliases);
+			for (String credentialId : ids) {
+				List<URI> bases = getBaseUrls(credentialId, repositoryBindings, server, getRepositoryOrigins);
+				credentials.put(credentialId, new RepositoryCredentials(id, username.trim(), password.trim(), bases));
+			}
+		}
+
+		return new MavenSettings(credentials, extractMirrors(loader, settingsObj));
+	}
+
+	@SuppressWarnings("unchecked")
+	private static List<Object> getDecryptedServers(URLClassLoader loader, Object settingsObj, String securityFilePath)
+			throws ReflectiveOperationException {
 
 		Class<?> cipherClass = loader.loadClass("org.sonatype.plexus.components.cipher.DefaultPlexusCipher");
 		Object cipher = cipherClass.getConstructor().newInstance();
@@ -237,48 +279,67 @@ class SettingsXmlLoader {
 		Object result = decryptMethod.invoke(decrypter, request);
 
 		Class<?> resultIface = loader.loadClass("org.apache.maven.settings.crypto.SettingsDecryptionResult");
-		@SuppressWarnings("unchecked")
-		List<Object> servers = (List<Object>) resultIface.getMethod("getServers").invoke(result);
-
-		Class<?> serverClass = loader.loadClass("org.apache.maven.settings.Server");
-		Method getId = serverClass.getMethod("getId");
-		Method getUsername = serverClass.getMethod("getUsername");
-		Method getPassword = serverClass.getMethod("getPassword");
-
-		Map<String, RepositoryCredentials> credentials = new LinkedHashMap<>();
-
-		for (Object server : servers) {
-			String id = (String) getId.invoke(server);
-			String username = (String) getUsername.invoke(server);
-			String password = (String) getPassword.invoke(server);
-
-			if (id == null || id.isBlank() || username == null || username.isBlank() || password == null
-					|| password.isBlank()) {
-				continue;
-			}
-
-			if (STILL_ENCRYPTED.matcher(password.trim()).matches()) {
-				LOG.debug("Skipping server '" + id + "': Password could not be decrypted");
-				continue;
-			}
-
-			String trimmedId = id.trim();
-			List<URI> boundUris = repositoryBindings.get(trimmedId);
-			if (boundUris == null && "central".equalsIgnoreCase(trimmedId)) {
-				boundUris = List.of(URI.create("https://repo1.maven.org/maven2/"),
-						URI.create("https://repo.maven.apache.org/maven2/"));
-			}
-			List<URI> bases = boundUris == null ? null : List.copyOf(boundUris);
-			credentials.put(trimmedId, new RepositoryCredentials(trimmedId, username.trim(), password.trim(), bases));
-		}
-
-		return new MavenSettings(credentials, extractMirrors(loader, settingsObj));
+		return (List<Object>) resultIface.getMethod("getServers").invoke(result);
 	}
 
+	@SuppressWarnings("unchecked")
+	private static List<String> getIds(String id, Object server, @Nullable Method getAliases) {
+
+		List<String> ids = new ArrayList<>();
+		ids.add(id);
+
+		if (getAliases != null) {
+			ReflectionUtils.makeAccessible(getAliases);
+			List<String> aliases = (List<String>) ReflectionUtils.invokeMethod(getAliases, server);
+
+			if (aliases != null) {
+				ids.addAll(aliases);
+			}
+		}
+
+		return ids;
+	}
+
+	@SuppressWarnings("unchecked")
+	private static List<URI> getBaseUrls(String id, Map<String, List<URI>> repositoryBindings, Object server,
+			@Nullable Method getRepositoryOrigins) {
+
+		List<URI> boundUris = new ArrayList<>();
+		List<URI> bindings = repositoryBindings.get(id);
+		if (bindings == null && "central".equalsIgnoreCase(id)) {
+			bindings = List.of(URI.create("https://repo1.maven.org/maven2/"),
+					URI.create("https://repo.maven.apache.org/maven2/"));
+		}
+		if (bindings != null) {
+			boundUris.addAll(bindings);
+		}
+
+		if (getRepositoryOrigins != null) {
+
+			ReflectionUtils.makeAccessible(getRepositoryOrigins);
+			List<String> origins = (List<String>) ReflectionUtils.invokeMethod(getRepositoryOrigins, server);
+			if (origins != null) {
+				for (String origin : origins) {
+					if (StringUtils.isEmpty(origin)) {
+						continue;
+					}
+					try {
+						boundUris.add(URI.create(origin));
+					} catch (IllegalArgumentException e) {
+						LOG.debug("Skipping invalid repository origin '%s' in settings for server id '%s'"
+								.formatted(origin, id), e);
+					}
+				}
+			}
+		}
+
+		return boundUris;
+	}
+
+	@SuppressWarnings("unchecked")
 	private static List<Mirror> extractMirrors(URLClassLoader loader, Object settingsObj) throws Exception {
 
 		Class<?> settingsClass = loader.loadClass("org.apache.maven.settings.Settings");
-		@SuppressWarnings("unchecked")
 		List<Object> mirrors = (List<Object>) settingsClass.getMethod("getMirrors")
 				.invoke(settingsObj);
 		if (mirrors == null || mirrors.isEmpty()) {
@@ -292,20 +353,22 @@ class SettingsXmlLoader {
 
 		List<Mirror> result = new ArrayList<>();
 		for (Object mirror : mirrors) {
+
 			String id = (String) getId.invoke(mirror);
 			String url = (String) getUrl.invoke(mirror);
 			String mirrorOf = (String) getMirrorOf.invoke(mirror);
 
-			if (id == null || id.isBlank() || url == null || url.isBlank() || mirrorOf == null || mirrorOf.isBlank()) {
+			if (StringUtils.isEmpty(id) || StringUtils.isEmpty(url) || StringUtils.isEmpty(mirrorOf)) {
 				continue;
 			}
 
 			result.add(new Mirror(id.trim(), url.trim(), mirrorOf.trim()));
 		}
 
-		return List.copyOf(result);
+		return result;
 	}
 
+	@SuppressWarnings("unchecked")
 	private static Map<String, List<URI>> extractServerRepositoryBindings(URLClassLoader loader, Object settingsObj)
 			throws Exception {
 
@@ -313,7 +376,6 @@ class SettingsXmlLoader {
 
 		Class<?> settingsClass = loader.loadClass("org.apache.maven.settings.Settings");
 		Method getMirrors = settingsClass.getMethod("getMirrors");
-		@SuppressWarnings("unchecked")
 		List<Object> mirrors = (List<Object>) getMirrors.invoke(settingsObj);
 
 		Class<?> mirrorClass = loader.loadClass("org.apache.maven.settings.Mirror");
@@ -326,7 +388,7 @@ class SettingsXmlLoader {
 		}
 
 		Method getProfiles = settingsClass.getMethod("getProfiles");
-		@SuppressWarnings("unchecked")
+
 		List<Object> profiles = (List<Object>) getProfiles.invoke(settingsObj);
 
 		if (profiles != null) {
@@ -346,13 +408,14 @@ class SettingsXmlLoader {
 		return byId;
 	}
 
+	@SuppressWarnings("unchecked")
 	private static void collectRepositoryBindings(Map<String, List<URI>> byId, Method repoGetId, Method repoGetUrl,
 			@Nullable Object repositoryList) throws Exception {
 
 		if (repositoryList == null) {
 			return;
 		}
-		@SuppressWarnings("unchecked")
+
 		List<Object> repositories = (List<Object>) repositoryList;
 		for (Object repository : repositories) {
 			addRepositoryBinding(byId, (String) repoGetId.invoke(repository), (String) repoGetUrl.invoke(repository));
@@ -361,19 +424,17 @@ class SettingsXmlLoader {
 
 	private static void addRepositoryBinding(Map<String, List<URI>> byId, @Nullable String id, @Nullable String url) {
 
-		if (id == null || id.isBlank() || url == null || url.isBlank()) {
+		if (StringUtils.isEmpty(id) || StringUtils.isEmpty(url)
+				|| (!url.startsWith("http://") && !url.startsWith("https://"))) {
 			return;
 		}
-		if (!url.startsWith("http://") && !url.startsWith("https://")) {
-			return;
-		}
+
 		try {
 			byId.computeIfAbsent(id.trim(), k -> new ArrayList<>()).add(URI.create(url.trim()));
 		} catch (IllegalArgumentException e) {
-			LOG.debug("Skipping invalid repository URL in settings for server id " + id, e);
+			LOG.debug("Skipping invalid repository URL '%s' in settings for server id '%s'".formatted(url, id), e);
 		}
 	}
-
 
 	private static URL[] collectJars(File libDir) throws IOException {
 
