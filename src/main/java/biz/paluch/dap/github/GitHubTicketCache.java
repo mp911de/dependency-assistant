@@ -16,6 +16,8 @@
 
 package biz.paluch.dap.github;
 
+import java.time.Clock;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,9 +46,23 @@ import org.jspecify.annotations.Nullable;
 public class GitHubTicketCache
 		implements PersistentStateComponentWithModificationTracker<GitHubTicketCache.Repositories> {
 
+	private static final Duration LABEL_MAX_AGE = Duration.ofDays(7);
+
+	private static final Duration MILESTONE_MAX_AGE = Duration.ofHours(6);
+
+	private final Clock clock;
+
 	private final Repositories state = new Repositories();
 
 	private final SimpleModificationTracker modificationTracker = new SimpleModificationTracker();
+
+	public GitHubTicketCache() {
+		this(Clock.systemUTC());
+	}
+
+	GitHubTicketCache(Clock clock) {
+		this.clock = clock;
+	}
 
 	public static GitHubTicketCache getInstance(Project project) {
 		return project.getService(GitHubTicketCache.class);
@@ -73,13 +89,14 @@ public class GitHubTicketCache
 	}
 
 	/**
-	 * Return cached labels, or an empty list if none are stored.
+	 * Return the last label listing, or null if no acceptable listing exists.
 	 */
-	List<GitHubLabel> getLabels(GitRepositoryMetadata coordinates) {
+	List<GitHubLabel> getLabels(GitRepositoryMetadata coordinates, boolean acceptStale) {
 		return readRepositories(state -> {
 
 			Repository repository = state.getRepository(coordinates);
-			if (repository == null) {
+			if (repository == null || !isAvailable(repository.labelsUpdatedAt, LABEL_MAX_AGE,
+					acceptStale)) {
 				return List.of();
 			}
 
@@ -93,13 +110,15 @@ public class GitHubTicketCache
 	}
 
 	/**
-	 * Return cached open milestones, or an empty list if none are stored.
+	 * Return the last open-milestone listing, or null if no acceptable listing
+	 * exists.
 	 */
-	List<GitHubMilestone> getMilestones(GitRepositoryMetadata coordinates) {
+	List<GitHubMilestone> getMilestones(GitRepositoryMetadata coordinates, boolean acceptStale) {
 		return readRepositories(repositories -> {
 
 			Repository repository = repositories.getRepository(coordinates);
-			if (repository == null) {
+			if (repository == null || !isAvailable(repository.milestonesUpdatedAt, MILESTONE_MAX_AGE,
+					acceptStale)) {
 				return List.of();
 			}
 
@@ -110,6 +129,13 @@ public class GitHubTicketCache
 
 			return milestones;
 		});
+	}
+
+	private boolean isAvailable(long updatedAt, Duration maxAge, boolean acceptStale) {
+		if (updatedAt == 0) {
+			return acceptStale;
+		}
+		return acceptStale || updatedAt > clock.millis() - maxAge.toMillis();
 	}
 
 	/**
@@ -125,6 +151,7 @@ public class GitHubTicketCache
 		writeRepositories(repositories -> {
 			Repository repository = repositories.getOrCreateRepository(coordinates);
 			repository.labels = stored;
+			repository.labelsUpdatedAt = clock.millis();
 		});
 	}
 
@@ -141,6 +168,7 @@ public class GitHubTicketCache
 		writeRepositories(repositories -> {
 			Repository repository = repositories.getOrCreateRepository(coordinates);
 			repository.milestones = stored;
+			repository.milestonesUpdatedAt = clock.millis();
 		});
 	}
 
@@ -211,6 +239,10 @@ public class GitHubTicketCache
 
 		public @Attribute String key = "";
 
+		public @Attribute long labelsUpdatedAt;
+
+		public @Attribute long milestonesUpdatedAt;
+
 		@XCollection(propertyElementName = "labels", elementName = "label", style = XCollection.Style.v2)
 		public List<CachedLabel> labels = new ArrayList<>();
 
@@ -221,6 +253,8 @@ public class GitHubTicketCache
 
 			Repository copy = new Repository();
 			copy.key = this.key;
+			copy.labelsUpdatedAt = this.labelsUpdatedAt;
+			copy.milestonesUpdatedAt = this.milestonesUpdatedAt;
 			for (CachedLabel label : labels) {
 				copy.labels.add(label.snapshot());
 			}

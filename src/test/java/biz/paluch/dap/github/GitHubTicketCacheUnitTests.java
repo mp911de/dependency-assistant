@@ -50,11 +50,11 @@ class GitHubTicketCacheUnitTests {
 		repository.milestones.getFirst().title = "changed";
 		snapshot.repositories.clear();
 
-		assertThat(cache.getLabels(COORDINATES)).singleElement().satisfies(label -> {
+		assertThat(cache.getLabels(COORDINATES, false)).singleElement().satisfies(label -> {
 			assertThat(label.getName()).isEqualTo("bug");
 			assertThat(label.getHexColor()).isEqualTo("d93f0b");
 		});
-		assertThat(cache.getMilestones(COORDINATES)).singleElement().satisfies(milestone -> {
+		assertThat(cache.getMilestones(COORDINATES, false)).singleElement().satisfies(milestone -> {
 			assertThat(milestone.getTitle()).isEqualTo("2026.1");
 			assertThat(milestone.getReleaseDate()).isEqualTo(LocalDateTime.of(2026, 8, 1, 0, 0));
 		});
@@ -87,8 +87,11 @@ class GitHubTicketCacheUnitTests {
 		milestone.title = "changed";
 		state.repositories.clear();
 
-		assertThat(cache.getLabels(COORDINATES)).extracting(GitHubLabel::getName).containsExactly("bug");
-		assertThat(cache.getMilestones(COORDINATES)).extracting(GitHubMilestone::getTitle).containsExactly("2026.1");
+		assertThat(cache.getLabels(COORDINATES, false)).isEmpty();
+		assertThat(cache.getMilestones(COORDINATES, false)).isEmpty();
+		assertThat(cache.getLabels(COORDINATES, true)).extracting(GitHubLabel::getName).containsExactly("bug");
+		assertThat(cache.getMilestones(COORDINATES, true)).extracting(GitHubMilestone::getTitle)
+				.containsExactly("2026.1");
 	}
 
 }

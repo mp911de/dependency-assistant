@@ -232,7 +232,7 @@ class GitHubTicketRepositoryTests {
 		assertThat(milestones).hasSize(1);
 		assertThat(milestones.getFirst().getTitle()).isEqualTo("2026.1");
 		assertThat(milestones.getFirst().getReleaseDate()).isEqualTo(LocalDateTime.of(2026, 8, 1, 0, 0));
-		assertThat(cache.getMilestones(COORDINATES)).hasSize(1);
+		assertThat(cache.getMilestones(COORDINATES, false)).hasSize(1);
 		assertThat(requestedUrl()).contains("state=open").contains("sort=due_on");
 	}
 

@@ -35,6 +35,7 @@ import biz.paluch.dap.ticket.TicketSpec;
 import biz.paluch.dap.ticket.TicketState;
 import biz.paluch.dap.util.StringUtils;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.intellij.ide.PowerSaveMode;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import org.jetbrains.plugins.github.api.GHRepositoryCoordinates;
@@ -162,7 +163,7 @@ class GitHubTicketRepository implements TicketRepository {
 		try {
 			dtos = loadPages(path, GitHubMilestoneDto.class, indicator);
 		} catch (IOException ex) {
-			List<GitHubMilestone> fallback = cache.getMilestones(coordinates);
+			List<GitHubMilestone> fallback = cache.getMilestones(coordinates, false);
 			if (!fallback.isEmpty()) {
 				return fallback;
 			}
@@ -189,7 +190,7 @@ class GitHubTicketRepository implements TicketRepository {
 		try {
 			dtos = loadPages(path, GithubIssueLabel.class, indicator);
 		} catch (IOException ex) {
-			List<GitHubLabel> fallback = cache.getLabels(coordinates);
+			List<GitHubLabel> fallback = cache.getLabels(coordinates, false);
 			if (!fallback.isEmpty()) {
 				return fallback;
 			}
@@ -231,12 +232,12 @@ class GitHubTicketRepository implements TicketRepository {
 
 			@Override
 			public List<GitHubMilestone> getMilestones(ProgressIndicator indicator) {
-				return cache.getMilestones(coordinates);
+				return cache.getMilestones(coordinates, PowerSaveMode.isEnabled());
 			}
 
 			@Override
 			public List<GitHubLabel> getLabels(ProgressIndicator indicator) {
-				return cache.getLabels(coordinates);
+				return cache.getLabels(coordinates, PowerSaveMode.isEnabled());
 			}
 
 			@Override
