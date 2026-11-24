@@ -37,7 +37,6 @@ import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
 
 import biz.paluch.dap.util.MessageBundle;
-import biz.paluch.dap.util.StringUtils;
 import com.intellij.icons.AllIcons;
 import com.intellij.ide.DataManager;
 import com.intellij.ide.IdeTooltip;
@@ -118,9 +117,7 @@ class SelectorAction<T> extends DumbAwareAction implements CustomComponentAction
 	}
 
 	private String getTooltipText(T value) {
-		String tooltip = model.getToolTip(value);
-		String tooltipToUse = tooltip != null && !tooltip.isBlank() ? tooltip : model.getText(value);
-		return StringUtils.hasText(tooltipToUse) ? StringUtil.escapeXmlEntities(tooltipToUse) : tooltipToUse;
+		return model.getToolTip(value);
 	}
 
 	@Override
@@ -575,7 +572,7 @@ class SelectorAction<T> extends DumbAwareAction implements CustomComponentAction
 
 		@Nullable
 		String getToolTip(T value) {
-			return getText(value);
+			return StringUtil.escapeXmlEntities(getText(value));
 		}
 
 		@Nullable

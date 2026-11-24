@@ -158,7 +158,7 @@ class UpgradePlanTabActions {
 		@Override
 		@Nullable
 		String getToolTip(Label value) {
-			return value.getDescription();
+			return StringUtil.escapeXmlEntities(value.getDescription());
 		}
 
 		@Override
