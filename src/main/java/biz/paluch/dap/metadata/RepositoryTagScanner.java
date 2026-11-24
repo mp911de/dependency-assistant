@@ -19,9 +19,14 @@ package biz.paluch.dap.metadata;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import biz.paluch.dap.artifact.ArtifactNotFoundException;
+import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.TagSource;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
@@ -32,10 +37,14 @@ import biz.paluch.dap.util.StepsProgressIndicator;
 import biz.paluch.dap.util.StringUtils;
 import biz.paluch.dap.util.TaskScope;
 import biz.paluch.dap.util.TaskScope.Subtask;
+import biz.paluch.dap.util.WeightedStepsProgressIndicator;
+import com.intellij.concurrency.SensitiveProgressWrapper;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressIndicator;
+import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.project.Project;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Refreshes cached repository tags from captured project metadata.
@@ -71,47 +80,101 @@ public class RepositoryTagScanner {
 	 * <p>Successful scans replace the cached tags. Failed lookups retain them.
 	 */
 	public void scan(ProgressIndicator indicator) {
+		WeightedStepsProgressIndicator steps = new WeightedStepsProgressIndicator(indicator, 0.33d, 0.66d);
+		steps.setIndeterminate(false);
 
-		populateRepositories(indicator);
-		scanTags(indicator);
+		populateRepositories(steps);
+		steps.nextStep();
+
+		scanTags(steps);
+		steps.nextStep();
 	}
 
 	private void populateRepositories(ProgressIndicator indicator) {
-
-		for (CachedArtifact artifact : cache.getCachedArtifacts()) {
-
-			indicator.checkCanceled();
-
-			CachedMetadata metadata = artifact.getProjectMetadata();
-			String repositoryUrl = metadata != null ? metadata.getRepositoryUrl() : null;
-			if (!StringUtils.hasText(repositoryUrl)) {
-				continue;
-			}
-
-			RepositoryConnection connection = Platform.findConnection(repositoryUrl, null);
-			if (connection != null) {
-				cache.createOrUpdateRepository(connection.getKey(), connection.getUrl());
-			}
+		List<CachedArtifact> artifacts = cache.getCachedArtifacts();
+		if (artifacts.isEmpty()) {
+			return;
+		}
+		StepsProgressIndicator steps = StepsProgressIndicator.forSteps(indicator, artifacts.size());
+		for (CachedArtifact artifact : artifacts) {
+			steps.checkCanceled();
+			populateRepository(artifact);
+			steps.nextStep();
 		}
 	}
 
-	// TODO: populateRepositories(List<ArtifactId>,ProgressIndicator indicator) to
-	// be called post DependencyCheck
-
 	private void scanTags(ProgressIndicator indicator) {
+		scanTags(getTagScanCandidates(cache.getRepositories()), indicator);
+	}
 
-		List<TagScanCandidate> candidates = findCandidates();
+	/**
+	 * Refresh repositories from packages.
+	 * <p>Successful scans replace the cached tags. Failed lookups retain them.
+	 */
+	public void scan(Collection<PackageIdentity> packages, ProgressIndicator indicator) {
+		WeightedStepsProgressIndicator steps = new WeightedStepsProgressIndicator(indicator, 0.33d, 0.66d);
+		steps.setIndeterminate(false);
+
+		Map<String, CachedRepository> repositories = populateRepositories(packages, indicator);
+		steps.nextStep();
+
+		scanTags(getTagScanCandidates(repositories.values()), indicator);
+		steps.nextStep();
+	}
+
+	private Map<String, CachedRepository> populateRepositories(Collection<PackageIdentity> packages,
+			ProgressIndicator indicator) {
+		if (packages.isEmpty()) {
+			return Collections.emptyMap();
+		}
+		StepsProgressIndicator steps = StepsProgressIndicator.forSteps(indicator, packages.size());
+		Map<String, CachedRepository> repositories = new HashMap<>();
+		for (PackageIdentity pkg : packages) {
+			CachedArtifact artifact = cache.findCachedArtifact(pkg);
+			steps.checkCanceled();
+			if (artifact != null) {
+				CachedRepository cachedRepository = populateRepository(artifact);
+				if (cachedRepository != null) {
+					repositories.put(cachedRepository.getKey(), cachedRepository);
+				}
+			}
+			steps.nextStep();
+		}
+
+		return repositories;
+	}
+
+	private @Nullable CachedRepository populateRepository(CachedArtifact artifact) {
+		CachedMetadata metadata = artifact.getProjectMetadata();
+		String repositoryUrl = metadata != null ? metadata.getRepositoryUrl() : null;
+		if (StringUtils.hasText(repositoryUrl)) {
+			RepositoryConnection connection = Platform.findConnection(repositoryUrl, null);
+			if (connection != null) {
+				return cache.createOrUpdateRepository(connection.getKey(), connection.getUrl());
+			}
+		}
+		return null;
+	}
+
+	private void scanTags(List<TagScanCandidate> candidates, ProgressIndicator indicator) {
+
 		if (candidates.isEmpty()) {
 			return;
 		}
 
 		StepsProgressIndicator steps = StepsProgressIndicator.forSteps(indicator, candidates.size());
+		ProgressManager manager = ProgressManager.getInstance();
 
-		try (TaskScope scope = TaskScope.open("RepositoryTags", indicator, MAX_CONCURRENT_TASKS)) {
+		try (TaskScope scope = TaskScope.open("RepositoryTags", steps, MAX_CONCURRENT_TASKS)) {
 
 			for (TagScanCandidate candidate : candidates) {
 				scope.fork(() -> {
-					scanRepository(candidate, steps);
+
+					SensitiveProgressWrapper indicatorWrapper = new SensitiveProgressWrapper(steps);
+					manager.runProcess(() -> {
+						scanRepository(candidate, indicatorWrapper);
+					}, indicatorWrapper);
+					steps.nextStep();
 					return null;
 				});
 			}
@@ -131,12 +194,12 @@ public class RepositoryTagScanner {
 
 	}
 
-	private List<TagScanCandidate> findCandidates() {
+	private List<TagScanCandidate> getTagScanCandidates(Collection<CachedRepository> repositories) {
 
 		long threshold = cache.now() - SCAN_INTERVAL.toMillis();
 		List<TagScanCandidate> candidates = new ArrayList<>();
 
-		for (CachedRepository repository : cache.getRepositories()) {
+		for (CachedRepository repository : repositories) {
 
 			if (repository.getLastUpdateTimestamp() < threshold) {
 
@@ -166,10 +229,11 @@ public class RepositoryTagScanner {
 		return candidates;
 	}
 
-	private void scanRepository(TagScanCandidate scanCandidate, StepsProgressIndicator indicator) {
+	private void scanRepository(TagScanCandidate scanCandidate, ProgressIndicator indicator) {
 
 		String key = scanCandidate.connection.getKey();
 		try {
+			indicator.setIndeterminate(false);
 			indicator.checkCanceled();
 			indicator.setText2(key);
 
@@ -188,7 +252,7 @@ public class RepositoryTagScanner {
 			LOG.warn("[" + key + "] Repository tag scan failed", e);
 			recordFailure(key);
 		} finally {
-			indicator.nextStep();
+			indicator.setFraction(1);
 		}
 	}
 

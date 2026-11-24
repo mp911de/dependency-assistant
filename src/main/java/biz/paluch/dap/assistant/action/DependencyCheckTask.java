@@ -17,16 +17,24 @@
 package biz.paluch.dap.assistant.action;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.artifact.PackageIdentity;
+import biz.paluch.dap.artifact.ReleaseSources;
 import biz.paluch.dap.assistant.check.DependencyCheck;
 import biz.paluch.dap.assistant.check.DependencyCheckResult;
+import biz.paluch.dap.assistant.check.ReleaseLookupResult;
+import biz.paluch.dap.assistant.check.ReleaseResolver;
 import biz.paluch.dap.assistant.check.UpgradeScope;
 import biz.paluch.dap.assistant.review.DependencyCheckDialog;
+import biz.paluch.dap.metadata.RepositoryTagScanner;
 import biz.paluch.dap.notify.Notifications;
+import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.ide.nls.NlsMessages;
 import com.intellij.openapi.application.ReadAction;
@@ -75,13 +83,38 @@ public class DependencyCheckTask extends Task.Backgroundable {
 		this.scope = scope;
 
 		if (scope.isEmpty()) {
-			indicator.stop();
 			return;
 		}
 
-		DependencyCheck dependencyCheck = new DependencyCheck(project);
+		Set<PackageIdentity> identities = new HashSet<>();
+		DependencyCheck dependencyCheck = new DependencyCheck(project) {
+
+			@Override
+			protected Map<PackageIdentity, ReleaseLookupResult> resolveReleases(ProgressIndicator indicator,
+					List<ReleaseSources> artifactSources, ReleaseResolver.Consistency consistency) {
+				for (ReleaseSources artifactSource : artifactSources) {
+					identities.add(artifactSource.pkg());
+				}
+
+				return super.resolveReleases(indicator, artifactSources, consistency);
+			}
+
+		};
 		indicator.setText(MessageBundle.message("action.check.dependencies.progress"));
 		this.resultRef = dependencyCheck.findDependencyUpgrades(indicator, scope);
+
+		if (!identities.isEmpty()) {
+			RepositoryTagScanner scanner = new RepositoryTagScanner(project, StateService.getInstance(project)
+					.getCache());
+			new Task.Backgroundable(project, MessageBundle.message("post-startup.repository-scan.loading"), true) {
+
+				@Override
+				public void run(ProgressIndicator indicator) {
+					scanner.scan(identities, indicator);
+				}
+
+			}.queue();
+		}
 	}
 
 	@Override

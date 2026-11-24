@@ -17,6 +17,7 @@
 package biz.paluch.dap.github;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -37,8 +38,10 @@ import biz.paluch.dap.artifact.TagSource;
 import biz.paluch.dap.util.Sequence;
 import biz.paluch.dap.util.StringUtils;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.intellij.concurrency.SensitiveProgressWrapper;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProgressIndicator;
+import com.intellij.openapi.progress.ProgressManager;
 import org.jetbrains.plugins.github.api.GithubApiRequest;
 import org.jetbrains.plugins.github.api.GithubApiRequestExecutor;
 import org.jetbrains.plugins.github.api.GithubServerPath;
@@ -84,7 +87,16 @@ public class GitHubReleases implements ReleaseSource, TagSource {
 
 	@Override
 	public Sequence<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException {
-		return Sequence.of(fetchAllReleases(artifactId, indicator));
+
+		ProgressManager manager = ProgressManager.getInstance();
+		SensitiveProgressWrapper wrapper = new SensitiveProgressWrapper(indicator);
+		return manager.runProcess(() -> {
+			try {
+				return Sequence.of(fetchAllReleases(artifactId, wrapper));
+			} catch (IOException e) {
+				throw new UncheckedIOException(e);
+			}
+		}, wrapper);
 	}
 
 	/**
