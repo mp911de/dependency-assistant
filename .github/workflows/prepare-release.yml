@@ -212,7 +212,7 @@ jobs:
         shell: bash
         env:
           CHANGELOG_REPOSITORY: https://github.com/mp911de/changelog.git
-          CHANGELOG_REVISION: b3eb5f1eb9c64513a11943dd9aa85327ecbdbb37
+          CHANGELOG_REVISION: d0f87a4f1e36001a2fd12d4a1376631a105ffb03
         run: |
           set -euo pipefail
 
