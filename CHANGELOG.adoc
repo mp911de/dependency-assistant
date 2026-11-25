@@ -7,6 +7,17 @@ This document provides a curated changelog for each release.
 [[releasenotes]]
 == Release notes
 
+=== 1.0.1
+
+- Upgrade Plan option to find existing tickets for planned upgrades #16.
+- Refined Maven Central repository handling in Maven projects #13.
+- Cached GitHub labels and milestones now expire, labels after 7 days and milestones after 6 hours, so outdated milestones are less likely to be used #18.
+- Stale or unavailable metadata notifications expire when a dependency check runs #14.
+- IntelliJ IDEA 2026.3 compatibility: GitHub accounts and tokens are still taken from the IDE's GitHub login, now without internal GitHub plugin API #22.
+- Fix Git push from a notification failing with an EDT access exception #15.
+- Fix `WriteIntentReadAction` being called from a `ReadAction` during dependency site navigation #17.
+- Fix `ProgressIndicator` being shared across threads #19.
+
 === 1.0.0
 
 - GitHub-specific template for ticket close references in commit messages.
