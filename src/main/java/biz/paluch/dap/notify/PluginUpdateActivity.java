@@ -22,6 +22,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import biz.paluch.dap.DependencyAssistantIcons;
+import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.state.ApplicationSettings;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
@@ -89,7 +90,9 @@ public class PluginUpdateActivity implements ProjectActivity, DumbAware, LightEd
 		if (!updated) {
 			return;
 		}
-		settings.setVersion(metadata.version());
+		if (!ArtifactVersion.of(metadata.version()).isSnapshotVersion()) {
+			settings.setVersion(metadata.version());
+		}
 
 		String changes = createChanges(metadata, oldVersion);
 		if (StringUtils.isEmpty(changes)) {
