@@ -29,7 +29,9 @@ dependencies {
 	asciidoctorj("org.asciidoctor:asciidoctorj-cli:3.0.1")
 
 	intellijPlatform {
-		intellijIdea("2026.2.2")
+		intellijIdea("2026.2.2") {
+			useCache = true
+		}
 		testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
 		testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.JUnit5)
 		bundledPlugin("org.jetbrains.idea.maven")

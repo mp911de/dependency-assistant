@@ -40,6 +40,12 @@ jobs:
         with:
           cache-cleanup: on-success
 
+      - name: Cache extracted IDE
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: .intellijPlatform/ides
+          key: ide-${{ hashFiles('build.gradle.kts') }}
+
       - name: Build plugin
         run: ./gradlew check buildPlugin -Porg.jetbrains.intellij.platform.downloadSources=false
 
