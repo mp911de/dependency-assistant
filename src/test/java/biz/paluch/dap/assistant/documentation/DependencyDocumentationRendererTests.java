@@ -27,24 +27,17 @@ import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.TestCache;
 import biz.paluch.dap.checker.CvssSeverity;
 import biz.paluch.dap.checker.Vulnerability;
+import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.fixtures.DependencyAssistantFixtures;
 import biz.paluch.dap.fixtures.Releases;
 import biz.paluch.dap.fixtures.TestDependencyRule;
 import biz.paluch.dap.fixtures.TestVulnerabilities;
-import biz.paluch.dap.metadata.GitLabPlatform;
-import biz.paluch.dap.metadata.Platform;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.CachedMetadata;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.state.VersionProperty;
-import com.intellij.mock.MockApplication;
-import com.intellij.openapi.Disposable;
-import com.intellij.openapi.extensions.ExtensionPoint;
-import com.intellij.openapi.util.Disposer;
 import org.jspecify.annotations.Nullable;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -54,28 +47,13 @@ import static org.assertj.core.api.Assertions.*;
  *
  * @author Mark Paluch
  */
+@IdeaProjectTests
 class DependencyDocumentationRendererTests {
 
 	static final Vulnerability CVE = TestVulnerabilities.cve("GHSA-abcd", "CVE-2026-1", "GHSA-abcd",
 			"Remote code execution", 9.8, CvssSeverity.CRITICAL, "https://example.com/advisory");
 
 	TestCache cache = DependencyAssistantFixtures.createCache();
-
-	Disposable disposable = Disposer.newDisposable();
-
-	@BeforeEach
-	void registerPlatforms() {
-
-		MockApplication application = MockApplication.setUp(disposable);
-		application.getExtensionArea().registerExtensionPoint(Platform.EP_NAME, Platform.class.getName(),
-				ExtensionPoint.Kind.INTERFACE, disposable);
-		Platform.EP_NAME.getPoint().registerExtension(new GitLabPlatform(), disposable);
-	}
-
-	@AfterEach
-	void tearDown() {
-		Disposer.dispose(disposable);
-	}
 
 	@Test
 	void shouldDocumentPropertyWithSharedReleaseLine() {
@@ -452,13 +430,6 @@ class DependencyDocumentationRendererTests {
 
 	private static CachedMetadata capturedName(String projectName) {
 		return CachedMetadata.of(null, null, projectName, null);
-	}
-
-	private CachedMetadata releaseNotes(String repositoryUrl, String... tags) {
-
-		cache.createOrUpdateRepository("gitlab.com/redis/lettuce", "https://gitlab.com/redis/lettuce")
-				.setTags(List.of(tags));
-		return CachedMetadata.of(repositoryUrl, null, null, null);
 	}
 
 	private static DependencyRuleEvaluator rejectingRule() {
