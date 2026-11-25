@@ -21,7 +21,6 @@ import java.util.function.Consumer;
 
 import biz.paluch.dap.ticket.TicketSystemInvalidationListener;
 import com.intellij.ide.trustedProjects.TrustedProjects;
-import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.components.Service;
 import com.intellij.openapi.project.Project;
 import kotlin.Pair;
@@ -30,7 +29,6 @@ import kotlinx.coroutines.CoroutineScope;
 import kotlinx.coroutines.flow.Flow;
 import kotlinx.coroutines.flow.FlowKt;
 import kotlinx.coroutines.flow.StateFlow;
-import org.jetbrains.plugins.github.authentication.accounts.GHAccountManager;
 import org.jetbrains.plugins.github.authentication.accounts.GithubAccount;
 import org.jetbrains.plugins.github.pullrequest.config.GithubPullRequestsProjectUISettings;
 import org.jetbrains.plugins.github.util.GHGitRepositoryMapping;
@@ -63,7 +61,7 @@ final class GitHubAccountSelector {
 	GitHubAccountSelector(Project project, CoroutineScope coroutineScope) {
 
 		this.project = project;
-		GHAccountManager accountManager = ApplicationManager.getApplication().getService(GHAccountManager.class);
+		GitHubAccountManager accountManager = GitHubAccountManager.getInstance();
 		GHHostedRepositoriesManager repositoriesManager = project.getService(GHHostedRepositoriesManager.class);
 		this.accounts = accountManager.getAccountsState().getValue();
 		this.repositories = repositoriesManager.getKnownRepositoriesState().getValue();

@@ -22,16 +22,11 @@ import java.util.List;
 
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.ide.trustedProjects.TrustedProjects;
-import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.project.Project;
-import kotlin.coroutines.EmptyCoroutineContext;
-import kotlinx.coroutines.BuildersKt;
 import org.jetbrains.plugins.github.api.GHRepositoryCoordinates;
 import org.jetbrains.plugins.github.api.GithubApiRequestExecutor;
 import org.jetbrains.plugins.github.api.GithubServerPath;
-import org.jetbrains.plugins.github.authentication.accounts.GHAccountManager;
 import org.jetbrains.plugins.github.authentication.accounts.GithubAccount;
 import org.jetbrains.plugins.github.authentication.accounts.GithubProjectDefaultAccountHolder;
 import org.jetbrains.plugins.github.exceptions.GithubParseException;
@@ -50,9 +45,8 @@ import org.springframework.util.Assert;
  * do not require selection, or a selection-required result that explains why no
  * executor was created.
  *
- * <p>Credential lookup blocks while bridging the GitHub plugin's suspending
- * API. Callers must not resolve authenticated executors on the event-dispatch
- * thread.
+ * <p>Credential lookup blocks while reading the IDE password safe. Callers must
+ * not resolve authenticated executors on the event-dispatch thread.
  *
  * @author Mark Paluch
  */
@@ -64,20 +58,22 @@ class GithubApiRequestExecutorFactory {
 
 	private final GHHostedRepositoriesManager repositoriesManager;
 
-	private final GHAccountManager accountManager;
+	private final GitHubAccountManager accountManager;
 
 	private final GithubProjectDefaultAccountHolder defaultAccountHolder;
 
 	GithubApiRequestExecutorFactory(Project project) {
 		this.project = project;
 		this.repositoriesManager = project.getService(GHHostedRepositoriesManager.class);
-		this.accountManager = ApplicationManager.getApplication().getService(GHAccountManager.class);
+		this.accountManager = GitHubAccountManager.getInstance();
 		this.defaultAccountHolder = project.getService(GithubProjectDefaultAccountHolder.class);
 	}
 
-	static GithubApiRequestExecutorFactory getInstance(Project project) {
+
+	public static GithubApiRequestExecutorFactory getInstance(Project project) {
 		return project.getService(GithubApiRequestExecutorFactory.class);
 	}
+
 
 	/**
 	 * Create a best-effort executor for the first known repository, with anonymous
@@ -159,20 +155,6 @@ class GithubApiRequestExecutorFactory {
 
 	private SelectionDetails getSelectionDetails(GithubServerPath server) {
 		return getSelectionDetails(server, getRepositoryMappings(server));
-	}
-
-	public static GithubServerPath getServerPath(String gitHost) {
-
-		if (!StringUtils.hasText(gitHost)) {
-			return GithubServerPath.DEFAULT_SERVER;
-		}
-
-		try {
-			return GithubServerPath.from(gitHost.trim());
-		} catch (GithubParseException ex) {
-			LOG.warn("Failed to parse GitHub server path '%s': %s".formatted(gitHost, ex.getMessage()));
-			return new GithubServerPath(gitHost.trim());
-		}
 	}
 
 	private ExecutorResult resolve(GithubServerPath server, SelectionDetails selectionDetails) {
@@ -275,7 +257,7 @@ class GithubApiRequestExecutorFactory {
 			Collection<GHGitRepositoryMapping> repositories) {
 
 		List<GithubAccount> accounts = getAccounts(server);
-		return new SelectionDetails(project, repositoriesManager, accountManager, server, repositories,
+		return new SelectionDetails(project, repositoriesManager, server, repositories,
 				accounts, uniqueOrNull(repositories), selectAccount(accounts));
 	}
 
@@ -317,14 +299,7 @@ class GithubApiRequestExecutorFactory {
 	}
 
 	protected @Nullable String lookupToken(GithubAccount account) {
-
-		try {
-			return BuildersKt.runBlocking(EmptyCoroutineContext.INSTANCE,
-					(scope, continuation) -> accountManager.findCredentials(account, continuation));
-		} catch (InterruptedException ex) {
-			Thread.currentThread().interrupt();
-			throw new ProcessCanceledException(ex);
-		}
+		return accountManager.findToken(account);
 	}
 
 	protected GithubApiRequestExecutor createExecutor(GithubServerPath server, GithubAccount account, String token) {
@@ -333,6 +308,26 @@ class GithubApiRequestExecutorFactory {
 
 	protected GithubApiRequestExecutor createAnonymousExecutor() {
 		return GithubApiRequestExecutor.Factory.getInstance().create();
+	}
+
+	/**
+	 * Return the {@link GithubServerPath} object from a {@code gitHost}.
+	 * @param gitHost the GitHub instance base url, such as
+	 * {@code https://github.internal:1234}.
+	 * @return the server path object.
+	 */
+	public static GithubServerPath getServerPath(String gitHost) {
+
+		if (!StringUtils.hasText(gitHost)) {
+			return GithubServerPath.DEFAULT_SERVER;
+		}
+
+		try {
+			return GithubServerPath.from(gitHost.trim());
+		} catch (GithubParseException ex) {
+			LOG.warn("Failed to parse GitHub server path '%s': %s".formatted(gitHost, ex.getMessage()));
+			return new GithubServerPath(gitHost.trim());
+		}
 	}
 
 	private static <T> @Nullable T firstOrNull(Collection<T> items) {
@@ -394,8 +389,6 @@ class GithubApiRequestExecutorFactory {
 
 		private final @Nullable GHHostedRepositoriesManager repositoriesManager;
 
-		private final @Nullable GHAccountManager accountManager;
-
 		private final GithubServerPath server;
 
 		private final Collection<GHGitRepositoryMapping> repositories;
@@ -407,37 +400,17 @@ class GithubApiRequestExecutorFactory {
 		private final @Nullable GithubAccount suggestedAccount;
 
 		SelectionDetails(@Nullable Project project, @Nullable GHHostedRepositoriesManager repositoriesManager,
-				@Nullable GHAccountManager accountManager, GithubServerPath server,
-				Collection<GHGitRepositoryMapping> repositories, Collection<GithubAccount> accounts,
-				@Nullable GHGitRepositoryMapping suggestedRepository, @Nullable GithubAccount suggestedAccount) {
+				GithubServerPath server, Collection<GHGitRepositoryMapping> repositories,
+				Collection<GithubAccount> accounts, @Nullable GHGitRepositoryMapping suggestedRepository,
+				@Nullable GithubAccount suggestedAccount) {
 
 			this.project = project;
 			this.repositoriesManager = repositoriesManager;
-			this.accountManager = accountManager;
 			this.server = server;
 			this.repositories = repositories;
 			this.accounts = accounts;
 			this.suggestedRepository = suggestedRepository;
 			this.suggestedAccount = suggestedAccount;
-		}
-
-		@Nullable
-		Project getProject() {
-			return project;
-		}
-
-		@Nullable
-		GHHostedRepositoriesManager getRepositoriesManager() {
-			return repositoriesManager;
-		}
-
-		@Nullable
-		GHAccountManager getAccountManager() {
-			return accountManager;
-		}
-
-		GithubServerPath getServer() {
-			return server;
 		}
 
 		Collection<GHGitRepositoryMapping> getRepositories() {
@@ -446,20 +419,6 @@ class GithubApiRequestExecutorFactory {
 
 		Collection<GithubAccount> getAccounts() {
 			return accounts;
-		}
-
-		@Nullable
-		GHGitRepositoryMapping getSuggestedRepository() {
-			return suggestedRepository;
-		}
-
-		@Nullable
-		GithubAccount getSuggestedAccount() {
-			return suggestedAccount;
-		}
-
-		boolean canShowSelector() {
-			return project != null && repositoriesManager != null && accountManager != null && !repositories.isEmpty();
 		}
 
 	}
