@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "biz.paluch"
-version = "1.0.1"
+version = "1.0.2-SNAPSHOT"
 val sinceIntelliJBuild = "252"
 
 repositories {
